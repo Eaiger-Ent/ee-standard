@@ -24,11 +24,21 @@ echo ""
 echo "═══════════════ environment ═══════════════"
 
 if gh auth status &>/dev/null; then
-  echo "  ✓ GitHub CLI — authenticated"
+  echo "  ✓ GitHub CLI — authenticated (Eaiger-Ent via GITHUB_TOKEN)"
 elif [ -n "${GITHUB_TOKEN:-}" ]; then
   echo "  ✗ GitHub CLI — GITHUB_TOKEN set but rejected (expired? wrong scopes?)"
 else
   echo "  ✗ GitHub CLI — not authenticated. Run: gh auth login"
+fi
+
+if [ -n "${EE_SKILLS_GITHUB_TOKEN:-}" ]; then
+  if env -u GITHUB_TOKEN GH_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" gh auth status &>/dev/null; then
+    echo "  ✓ gh-ee-skills — authenticated (EqualExperts via EE_SKILLS_GITHUB_TOKEN)"
+  else
+    echo "  ✗ gh-ee-skills — EE_SKILLS_GITHUB_TOKEN set but rejected (expired? wrong scopes?)"
+  fi
+else
+  echo "  ✗ gh-ee-skills — no EE_SKILLS_GITHUB_TOKEN. See docs/06-devcontainer-setup.md"
 fi
 
 if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then

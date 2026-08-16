@@ -15,18 +15,23 @@ echo "==> Fetching secrets from Keychain..."
 
 PROJECT_PREFIX=$(basename "$PWD" | tr '[:lower:]-' '[:upper:]_')
 
-# Tries ${PROJECT_PREFIX}_${1}, then ${1}. Sets LAST_SECRET_KEY to the hit.
+# Tries ${PROJECT_PREFIX}_${2}, then ${2}, writing the value into the
+# variable named by $1. Sets LAST_SECRET_KEY to the hit.
+# Run directly (not via command substitution) so these assignments land in
+# the caller's shell rather than a throwaway subshell.
 fetch_secret() {
-  local name="$1" prefixed="${PROJECT_PREFIX}_${1}" value
+  local __outvar="$1" name="$2" prefixed="${PROJECT_PREFIX}_${2}" value
   value=$(security find-generic-password -a "$USER" -s "$prefixed" -w 2>/dev/null) || true
   if [ -n "$value" ]; then
-    LAST_SECRET_KEY="$prefixed"; printf '%s' "$value"; return
+    LAST_SECRET_KEY="$prefixed"
+  else
+    value=$(security find-generic-password -a "$USER" -s "$name" -w 2>/dev/null) || true
+    LAST_SECRET_KEY="$name"
   fi
-  value=$(security find-generic-password -a "$USER" -s "$name" -w 2>/dev/null) || true
-  LAST_SECRET_KEY="$name"; printf '%s' "$value"
+  printf -v "$__outvar" '%s' "$value"
 }
 
-CLAUDE_CODE_OAUTH_TOKEN=$(fetch_secret "CLAUDE_OAUTH_TOKEN")
+fetch_secret CLAUDE_CODE_OAUTH_TOKEN "CLAUDE_OAUTH_TOKEN"
 if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
   echo "  ✗ No Claude Code OAuth token in Keychain."
   echo "    Run 'claude setup-token' on your Mac, then:"
@@ -37,13 +42,23 @@ fi
 echo "CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}" >> .devcontainer/.env
 echo "  ✓ CLAUDE_CODE_OAUTH_TOKEN [${LAST_SECRET_KEY}]"
 
-GITHUB_TOKEN=$(fetch_secret "GITHUB_TOKEN")
+fetch_secret GITHUB_TOKEN "GITHUB_TOKEN"
 if [ -n "$GITHUB_TOKEN" ]; then
   echo "GITHUB_TOKEN=${GITHUB_TOKEN}" >> .devcontainer/.env
   echo "  ✓ GITHUB_TOKEN [${LAST_SECRET_KEY}]"
 fi
 
-GIT_AUTHOR_NAME=$(fetch_secret "GIT_AUTHOR_NAME")
+# Second PAT, for the EqualExperts org (ee-skills, ee-skills-incubator,
+# generate-ee-slides) — GITHUB_TOKEN above is scoped to Eaiger-Ent and would
+# otherwise shadow gh's own auth for those repos too. Consumed via the
+# `gh-ee-skills` wrapper (setup.sh), never as the ambient GITHUB_TOKEN.
+fetch_secret EE_SKILLS_GITHUB_TOKEN "EE_SKILLS_GITHUB_TOKEN"
+if [ -n "$EE_SKILLS_GITHUB_TOKEN" ]; then
+  echo "EE_SKILLS_GITHUB_TOKEN=${EE_SKILLS_GITHUB_TOKEN}" >> .devcontainer/.env
+  echo "  ✓ EE_SKILLS_GITHUB_TOKEN [${LAST_SECRET_KEY}]"
+fi
+
+fetch_secret GIT_AUTHOR_NAME "GIT_AUTHOR_NAME"
 if [ -n "$GIT_AUTHOR_NAME" ]; then
   {
     echo "GIT_AUTHOR_NAME=\"${GIT_AUTHOR_NAME}\""
@@ -52,7 +67,7 @@ if [ -n "$GIT_AUTHOR_NAME" ]; then
   echo "  ✓ GIT_AUTHOR_NAME [${LAST_SECRET_KEY}]"
 fi
 
-GIT_AUTHOR_EMAIL=$(fetch_secret "GIT_AUTHOR_EMAIL")
+fetch_secret GIT_AUTHOR_EMAIL "GIT_AUTHOR_EMAIL"
 if [ -n "$GIT_AUTHOR_EMAIL" ]; then
   {
     echo "GIT_AUTHOR_EMAIL=\"${GIT_AUTHOR_EMAIL}\""

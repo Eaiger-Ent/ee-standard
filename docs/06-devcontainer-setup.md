@@ -83,22 +83,47 @@ security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" \
 
 | Keychain service | Container variable(s) | Purpose |
 | --- | --- | --- |
-| `GITHUB_TOKEN` | `GITHUB_TOKEN` | Authenticates `gh` and git without an interactive `gh auth login` |
+| `EE_STANDARD_GITHUB_TOKEN` | `GITHUB_TOKEN` | Authenticates `gh` and git without an interactive `gh auth login`. Scoped to **Eaiger-Ent** (this repo's org), which is *not* generic across ee projects — stored under the per-project override name (see "Per-project overrides" below), not the bare `GITHUB_TOKEN` service, so it can't leak in as the default PAT for an unrelated project on this machine. |
+| `EE_SKILLS_GITHUB_TOKEN` | `EE_SKILLS_GITHUB_TOKEN` | A second PAT, scoped to the **EqualExperts** org (`ee-skills`, `ee-skills-incubator`, `generate-ee-slides`). Used only via the `gh-ee-skills` wrapper below — it never becomes the ambient `GITHUB_TOKEN`. |
 | `GIT_AUTHOR_NAME` | `GIT_AUTHOR_NAME`, `GIT_COMMITTER_NAME` | Pre-configures the container's git identity |
 | `GIT_AUTHOR_EMAIL` | `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_EMAIL` | As above |
 
 ```bash
-security add-generic-password -a "$USER" -s "GITHUB_TOKEN"     -w "ghp_..."
+security add-generic-password -a "$USER" -s "EE_STANDARD_GITHUB_TOKEN" -w "ghp_..."
+security add-generic-password -a "$USER" -s "EE_SKILLS_GITHUB_TOKEN"   -w "ghp_..."
 security add-generic-password -a "$USER" -s "GIT_AUTHOR_NAME"  -w "Your Name"
 security add-generic-password -a "$USER" -s "GIT_AUTHOR_EMAIL" \
   -w "you@equalexperts.com"
 ```
 
+### Two PATs, two orgs
+
+`gh` (and the git credential helper that shells out to it) only honours one
+`GH_TOKEN`/`GITHUB_TOKEN` at a time, host-wide — it has no notion of "use PAT A
+for org X, PAT B for org Y". Rather than fight that, `setup.sh` installs a
+one-off wrapper, `gh-ee-skills`, that scopes the second PAT to a single
+invocation:
+
+```bash
+gh-ee-skills issue create --repo EqualExperts/ee-skills-incubator ...
+```
+
+Plain `gh ...` (no wrapper) keeps using `GITHUB_TOKEN`, i.e. Eaiger-Ent. Do not
+export `EE_SKILLS_GITHUB_TOKEN` as `GH_TOKEN` in the shell profile — that would
+just recreate the ambient-shadowing problem the troubleshooting section below
+describes, with the second PAT instead of the first.
+
+If this container ever needs to `git push`/`pull` against an EqualExperts-org
+repo directly (not just `gh`), embed that PAT in that remote's URL instead —
+`git remote set-url origin https://<PAT>@github.com/EqualExperts/<repo>.git` —
+rather than extending the credential helper. Out of scope for now: this
+container's git operations are all against Eaiger-Ent/ee-standard.
+
 `add-generic-password` will not overwrite. To rotate a value, delete first:
 
 ```bash
-security delete-generic-password -a "$USER" -s "GITHUB_TOKEN"
-security add-generic-password    -a "$USER" -s "GITHUB_TOKEN" -w "ghp_new..."
+security delete-generic-password -a "$USER" -s "EE_STANDARD_GITHUB_TOKEN"
+security add-generic-password    -a "$USER" -s "EE_STANDARD_GITHUB_TOKEN" -w "ghp_new..."
 ```
 
 ### Deliberately absent: `ANTHROPIC_API_KEY`
@@ -114,13 +139,11 @@ name, so that Claude Code never sees `ANTHROPIC_API_KEY` in its environment.
 
 Every lookup tries `<REPO_SLUG>_<NAME>` before the generic `<NAME>`, where the
 slug is the **checkout directory name**, upper-snake-cased. For a checkout in
-`ee-standard`, the prefix is `EE_STANDARD`:
-
-```bash
-# A different PAT for this project only:
-security add-generic-password -a "$USER" -s "EE_STANDARD_GITHUB_TOKEN" \
-  -w "ghp_..."
-```
+`ee-standard`, the prefix is `EE_STANDARD` — which is how `EE_STANDARD_GITHUB_TOKEN`
+above resolves to the container's `GITHUB_TOKEN` without ever touching a bare
+`GITHUB_TOKEN` Keychain entry. Use the bare, unprefixed service name only for a
+value that is genuinely identical across every ee project (author name/email);
+anything org- or repo-scoped, like a PAT, belongs under the prefix.
 
 `fetch-secrets.sh` prints which key it resolved, so you can confirm the override
 took effect.
