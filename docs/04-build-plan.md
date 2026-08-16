@@ -54,28 +54,29 @@ Phase 1 unclosable by its own terms.
 
 ### Exit criteria — phase 0.5
 
-- [ ] The container builds from a clean clone on a host with only the required
+- [x] The container builds from a clean clone on a host with only the required
       Keychain value set
-- [ ] `image` is pinned by `@sha256:` digest, and the digest matches what the
+- [x] `image` is pinned by `@sha256:` digest, and the digest matches what the
       registry serves
-- [ ] `devcontainer-lock.json` is committed and pins **every** feature named in
+- [x] `devcontainer-lock.json` is committed and pins **every** feature named in
       `devcontainer.json` — a lock file covering three of four features reads as
       solved and is not
-- [ ] `.devcontainer/.env` is gitignored, and `git log --all -- .devcontainer/.env`
+- [x] `.devcontainer/.env` is gitignored, and `git log --all -- .devcontainer/.env`
       is empty
-- [ ] The container's final user is not root, stated explicitly rather than
+- [x] The container's final user is not root, stated explicitly rather than
       inherited from the base image
-- [ ] `setup.sh` is short enough not to need sectioning — anything longer is
+- [x] `setup.sh` is short enough not to need sectioning — anything longer is
       doing work that belongs in a feature
-- [ ] DEV-001's `enforces` text in `controls.yaml` covers the image digest as
+- [x] DEV-001's `enforces` text in `controls.yaml` covers the image digest as
       well as the lock file, matching what
       [`03-devcontainer.md`](03-devcontainer.md) already claims it verifies
 
-The last one is register debt, not container work, and is listed here because
-this is the phase that exposes it: as `controls.yaml` currently stands, a repo
-with a complete lock file and a floating image tag passes DEV-001. That is
-theme **T-1** inside the register itself, and Phase 1 should not implement the
-control against text known to be incomplete.
+The last one was register debt, not container work: as `controls.yaml`
+originally stood, a repo with a complete lock file and a floating image tag
+passed DEV-001 — theme **T-1** inside the register itself. Closed at register
+`v0.2.0` (contract 2) by widening DEV-001's `enforces` text and adding the
+`devcontainer_image_digest_pinned` assertion, so Phase 1 implements the control
+against complete text.
 
 ## Phase 1 — The checker
 

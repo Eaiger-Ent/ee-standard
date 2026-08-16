@@ -7,13 +7,15 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.1.0
+version: 0.2.0
 
 meta:
   owner: platform-engineering
   # Bumped when any control's `rung`, `verify`, or `variance` changes.
   # Skills read this to decide whether a deployed artefact is stale.
-  register_contract: 1
+  # 2: DEV-001 gained the image-digest half of its verification (Phase 0.5
+  #    exit criterion — see docs/06-devcontainer-setup.md § Known gap).
+  register_contract: 2
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -199,7 +201,10 @@ controls:
     title: Devcontainer features are version-pinned
     enforces: >
       `.devcontainer/devcontainer-lock.json` exists and pins every feature
-      referenced by `devcontainer.json` to a resolved digest.
+      referenced by `devcontainer.json` to a resolved digest, and the `image`
+      reference in `devcontainer.json` carries an `@sha256:` digest. A complete
+      lock file over a floating image tag is the more dangerous half-state —
+      it reads as solved and is not.
     standard:
       name: Dev Container Features specification
       url: https://containers.dev/implementors/features/
@@ -213,6 +218,8 @@ controls:
     verify:
       - kind: file
         assert: devcontainer_lock_covers_all_features
+      - kind: file
+        assert: devcontainer_image_digest_pinned
     owner: platform-engineering
     variance: narrowing-only
     baseline: null

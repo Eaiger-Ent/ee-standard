@@ -301,22 +301,17 @@ bash .devcontainer/setup.sh
 If it is missing *repeatedly*, it is being installed by the wrong mechanism.
 Promote it to a pinned feature rather than adding a retry.
 
-## Known gap in DEV-001
+## Closed gap in DEV-001
 
 [`03-devcontainer.md`](03-devcontainer.md) states that DEV-001 "verifies both
 halves: `devcontainer-lock.json` present *and* the image reference containing an
-`@sha256:` digest." The register does not yet say that — `controls.yaml`
-DEV-001 `enforces` covers only the lock file:
+`@sha256:` digest." The register originally said less — its `enforces` covered
+only the lock file, so a repo with a complete lock file and a floating `image`
+tag passed DEV-001. That was theme **T-1** (a stated standard that nothing
+enforces) inside the register itself.
 
-> `.devcontainer/devcontainer-lock.json` exists and pins every feature
-> referenced by `devcontainer.json` to a resolved digest.
-
-As written, a repo with a complete lock file and a floating `image` tag passes
-DEV-001 — which `03-devcontainer.md` identifies as "the more dangerous of the
-two states, because the lock file's existence makes it look solved."
-
-That is theme **T-1** (a stated standard that nothing enforces) inside the
-register itself. It should be closed by amending the DEV-001 `enforces` text
-and its assertions before Phase 1 treats the control as implemented, not by
-relying on this document to describe the intent. It is carried as an exit
-criterion of Phase 0.5 in [`04-build-plan.md`](04-build-plan.md).
+Closed at register `v0.2.0` (contract 2), as Phase 0.5's final exit criterion
+required: DEV-001's `enforces` text now covers both halves, and its `verify`
+list carries `devcontainer_image_digest_pinned` alongside
+`devcontainer_lock_covers_all_features`. The register entry is authoritative;
+this section remains only as the record of how the gap was found and closed.
