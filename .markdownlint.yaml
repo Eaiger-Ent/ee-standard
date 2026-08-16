@@ -1,15 +1,18 @@
 # .markdownlint.yaml
-# ee-control: DOC-001  ee-skill: lint-md@unreleased  register: v0.1.0
+# ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.1.0
 #
 # Deployed artefact. Local edits are classified by `standard-check drift`;
 # DOC-001 is `narrowing-only`, so rules may be added or tightened here but
 # not removed or loosened. See docs/02-skill-family.md § Staleness.
 
 default: true
-
 MD013:
-  line_length: 80
-  # Tables and fenced code carry URLs and shell lines that cannot wrap without
-  # changing meaning. Prose still wraps at 80.
-  tables: false
+  line_length: 250
   code_blocks: false
+  tables: false
+MD024:
+  siblings_only: true
+MD050:
+  style: asterisk
+MD060:
+  style: compact

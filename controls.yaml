@@ -365,7 +365,10 @@ controls:
     title: Markdown conforms to one shared, pinned rule set
     enforces: >
       markdownlint-cli2 runs from a single configuration wired at editor,
-      pre-commit and CI loci.
+      pre-commit and CI loci. Prose lines are capped at 250 characters
+      (code blocks and tables exempt), matching the lint-md deployed
+      config; narrowing-only variance permits tightening below 250 in a
+      repo but never loosening above it.
     standard:
       name: markdownlint-cli2
       url: https://github.com/DavidAnson/markdownlint-cli2
