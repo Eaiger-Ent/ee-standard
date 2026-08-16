@@ -34,7 +34,9 @@
 
   "customizations": {
     "vscode": {
-      "extensions": [],
+      // LNT-001's editor locus: ruff in the editor reads the same
+      // [tool.ruff] configuration that pre-commit and CI read.
+      "extensions": ["charliermarsh.ruff"],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh"
       }

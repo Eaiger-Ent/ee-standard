@@ -14,6 +14,26 @@ sudo chown -R vscode:vscode /home/vscode/.claude
 # Change this and the CI pin together, never one alone.
 npm install -g markdownlint-cli2@0.23.2
 
+# uv pinned; the project env, hooks and checker all flow from uv.lock, so
+# every locus runs the same tool versions. Change this and the CI pin together.
+pip install --quiet uv==0.12.5
+uv sync --frozen
+uv run pre-commit install
+
+# gitleaks at SEC-001's shared pin, verified by checksum (a pinned release
+# artefact — preference 3 in docs/03-devcontainer.md). Same version as CI.
+GITLEAKS_VERSION=8.30.1
+case "$(uname -m)" in
+  aarch64|arm64) GL_ARCH=arm64 GL_SHA=e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080 ;;
+  *)             GL_ARCH=x64   GL_SHA=551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb ;;
+esac
+curl -sSfL -o /tmp/gitleaks.tgz \
+  "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_${GL_ARCH}.tar.gz"
+echo "${GL_SHA}  /tmp/gitleaks.tgz" | sha256sum -c --quiet -
+tar -xzf /tmp/gitleaks.tgz -C /tmp gitleaks
+sudo install /tmp/gitleaks /usr/local/bin/gitleaks
+rm /tmp/gitleaks.tgz /tmp/gitleaks
+
 # The host ~/.gitconfig may name a Homebrew gh path that does not exist here.
 GH_BIN="$(command -v gh)"
 for host in github.com gist.github.com; do

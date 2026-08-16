@@ -1,0 +1,17 @@
+# SUP-002 — dependency updates are proposed automatically, covering every
+# ecosystem present in this repo. Digest and SHA pins (DEV-001, SUP-003) rely
+# on these proposals to stay current instead of fossilising.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: devcontainers
+    directory: /
+    schedule:
+      interval: weekly

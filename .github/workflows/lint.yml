@@ -9,8 +9,11 @@ jobs:
   lint-md:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      # SUP-003 — third-party actions are pinned to a commit SHA.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Lint Markdown
+        # DOC-001 — same pinned version as .devcontainer/setup.sh and
+        # .pre-commit-config.yaml. Change all three together, never one alone.
         run: |
-          npm install -g markdownlint-cli2
+          npm install -g markdownlint-cli2@0.23.2
           markdownlint-cli2 "**/*.md"

@@ -1,5 +1,36 @@
+# Pre-commit locus. Local hooks run through `uv run`, so every tool executes
+# at the version uv.lock pins — the same version the ci locus installs.
 repos:
   - repo: https://github.com/DavidAnson/markdownlint-cli2
     rev: v0.23.2
     hooks:
       - id: markdownlint-cli2
+  - repo: local
+    hooks:
+      # SEC-001 — same pinned binary as .devcontainer/setup.sh and CI.
+      - id: gitleaks
+        name: gitleaks (SEC-001)
+        entry: gitleaks protect --staged --no-banner --redact
+        language: system
+        pass_filenames: false
+      # LNT-001 — reads [tool.ruff] in pyproject.toml, the single definition.
+      - id: ruff
+        name: ruff check (LNT-001)
+        entry: uv run ruff check --force-exclude
+        language: system
+        types: [python]
+      # TYP-001 — reads [tool.mypy] in pyproject.toml (strict).
+      - id: mypy
+        name: mypy --strict (TYP-001)
+        entry: uv run mypy
+        language: system
+        pass_filenames: false
+        types: [python]
+      # The register is validated on every commit that touches it
+      # (docs/01-register-schema.md).
+      - id: standard-check-schema
+        name: register schema
+        entry: uv run standard-check schema
+        language: system
+        pass_filenames: false
+        files: ^controls\.yaml$
