@@ -1,6 +1,6 @@
 # Build plan
 
-Six phases, each with exit criteria that can be checked rather than felt.
+Seven phases, each with exit criteria that can be checked rather than felt.
 
 The ordering principle: **the checker is built before the template.** A template
 without a checker produces repos that are conformant on the day they are created
@@ -8,6 +8,11 @@ and unmeasured thereafter — which is the predecessor's failure, reproduced
 faster. With the checker first, every subsequent phase has an objective test, and
 the template can be validated by generating a repo and running the checker
 against it.
+
+That principle governs the **shipped template**, which stays in Phase 2. It does
+not govern **this repo's own environment**, which comes first — see Phase 0.5.
+The two are different artefacts and conflating them is what put the devcontainer
+in the wrong phase originally.
 
 ## Phase 0 — The register
 
@@ -23,10 +28,60 @@ every standard URL verified to resolve.
       at files not yet written. This is the phase's remaining debt and blocks
       Phase 1's schema validation passing cleanly.
 
+## Phase 0.5 — This repo's own devcontainer
+
+**Before any code is written.** All development on this repository happens
+inside a container; nothing in Phase 1 is written against a host toolchain.
+
+Operator instructions, including the macOS Keychain values that must be set on
+the host first, are in
+[`06-devcontainer-setup.md`](06-devcontainer-setup.md).
+
+This is not the shipped template — that is still Phase 2's deliverable, and is
+built by generalising this one. What Phase 2 gains is a working reference to
+generalise from rather than a specification to implement blind.
+
+Two reasons this cannot wait:
+
+**Phase 1 is development work.** If `standard-check` is written on a host
+toolchain, the first thing the standard repo does is violate the premise it
+exists to enforce.
+
+**Phase 1's own exit criteria already require it.** The last criterion — "the
+checker's own repo passes every control it can verify locally", called "the real
+gate" — includes DEV-001. A repo with no `.devcontainer/` cannot pass DEV-001,
+so Phase 1 cannot close without one. Deferring the devcontainer to Phase 2 makes
+Phase 1 unclosable by its own terms.
+
+### Exit criteria — phase 0.5
+
+- [ ] The container builds from a clean clone on a host with only the required
+      Keychain value set
+- [ ] `image` is pinned by `@sha256:` digest, and the digest matches what the
+      registry serves
+- [ ] `devcontainer-lock.json` is committed and pins **every** feature named in
+      `devcontainer.json` — a lock file covering three of four features reads as
+      solved and is not
+- [ ] `.devcontainer/.env` is gitignored, and `git log --all -- .devcontainer/.env`
+      is empty
+- [ ] The container's final user is not root, stated explicitly rather than
+      inherited from the base image
+- [ ] `setup.sh` is short enough not to need sectioning — anything longer is
+      doing work that belongs in a feature
+- [ ] DEV-001's `enforces` text in `controls.yaml` covers the image digest as
+      well as the lock file, matching what
+      [`03-devcontainer.md`](03-devcontainer.md) already claims it verifies
+
+The last one is register debt, not container work, and is listed here because
+this is the phase that exposes it: as `controls.yaml` currently stands, a repo
+with a complete lock file and a floating image tag passes DEV-001. That is
+theme **T-1** inside the register itself, and Phase 1 should not implement the
+control against text known to be incomplete.
+
 ## Phase 1 — The checker
 
 Build `standard-check` as an ordinary executable. Python, installed from a
-pinned version, no Claude anywhere near it.
+pinned version, no Claude anywhere near it — inside the Phase 0.5 container.
 
 Implement in this order, because each stage is testable against the register that
 already exists:
@@ -66,9 +121,16 @@ Order within the phase: `gate-secrets` first, as the reference implementation.
 It exercises every locus (`pre-commit`, `ci`, and `remote` in Phase 3), so
 whatever shape works for it works for the rest. The others follow it.
 
-Alongside them, the `.devcontainer/` template per
+Alongside them, the `.devcontainer/` **template** per
 [`03-devcontainer.md`](03-devcontainer.md) — image digest-pinned,
 `devcontainer-lock.json` present, `setup.sh` short.
+
+The template is a generalisation of this repo's own container from Phase 0.5,
+not a fresh implementation: strip the ee-standard-specific parts (the Python
+version, the volume name, `markdownlint-cli2` as a hard dependency), keep the
+structure. Anything the generalisation cannot carry across is a sign the
+original was wired to this repo in a way the spec did not intend, and should be
+fixed in both.
 
 ### Exit criteria — phase 2
 
@@ -191,9 +253,10 @@ amendment.
 
 ## Sequencing risk
 
-The plan's dependencies are strict in one place and loose everywhere else:
-Phase 1 gates everything, and Phase 4 gates Phase 6. Phases 2 and 3 can overlap
-once the checker's assert interface is settled.
+The plan's dependencies are strict in two places and loose everywhere else:
+Phase 0.5 gates Phase 1, Phase 1 gates everything after it, and Phase 4 gates
+Phase 6. Phases 2 and 3 can overlap once the checker's assert interface is
+settled.
 
 The genuine risk is Phase 4 revealing something Phases 1–3 assumed. That is the
 purpose of Phase 4, and discovering it there costs a rework; discovering it after

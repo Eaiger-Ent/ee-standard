@@ -1,0 +1,17 @@
+# Host-fetched secrets. SEC-001 depends on this line — see
+# docs/06-devcontainer-setup.md § "The macOS Keychain values".
+.devcontainer/.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+
+# Editors and OS
+.DS_Store

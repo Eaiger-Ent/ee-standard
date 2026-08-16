@@ -48,8 +48,9 @@ Three properties follow:
 | [`docs/01-register-schema.md`](docs/01-register-schema.md) | Field-by-field spec for `controls.yaml`. |
 | [`docs/02-skill-family.md`](docs/02-skill-family.md) | The plugin: dispatcher, gates, checker, staleness. |
 | [`docs/03-devcontainer.md`](docs/03-devcontainer.md) | The clean devcontainer, and how it composes with `project-init`. |
-| [`docs/04-build-plan.md`](docs/04-build-plan.md) | Six phases with checkable exit criteria. |
+| [`docs/04-build-plan.md`](docs/04-build-plan.md) | Seven phases with checkable exit criteria. |
 | [`docs/05-promotion.md`](docs/05-promotion.md) | The route to the `ee-skills` marketplace. |
+| [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md) | **Start here.** Standing up this repo's own container, and the macOS values it needs. |
 | [`controls.yaml`](controls.yaml) | The register itself. |
 
 ## The register at a glance
@@ -82,9 +83,15 @@ was verified before it was committed.
 
 ## Status
 
-Phase 0 complete — the register exists. Phase 1, the checker, is next.
+Phase 0 complete — the register exists.
 
-See [`docs/04-build-plan.md`](docs/04-build-plan.md) for exit criteria.
+Phase 0.5, this repo's own devcontainer, is next and comes before any code is
+written: all development happens inside the container, and Phase 1 cannot meet
+its own exit criteria without one. Follow
+[`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md).
+
+Then Phase 1, the checker. See
+[`docs/04-build-plan.md`](docs/04-build-plan.md) for exit criteria.
 
 ## Relationship to existing ee-skills plugins
 
