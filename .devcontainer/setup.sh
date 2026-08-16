@@ -50,7 +50,7 @@ if [ -n "${EE_SKILLS_GITHUB_TOKEN:-}" ]; then
       claude plugin marketplace add EqualExperts/ee-skills
   fi
   installed="$(claude plugin list 2>/dev/null || true)"
-  for plugin in adr-toolkit lint-md devcontainer-check skill-preflight ee-skills-manage; do
+  for plugin in adr-toolkit lint-md devcontainer-check skill-preflight ee-skills-manage clarify-all; do
     echo "${installed}" | grep -q "${plugin}@ee-skills" && continue
     GITHUB_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" GH_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" \
       claude plugin install "${plugin}@ee-skills"
