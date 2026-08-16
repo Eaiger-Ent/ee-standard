@@ -24,9 +24,8 @@ every standard URL verified to resolve.
 - [x] Every control cites an external standard with a resolving URL
 - [x] Every control has an owner, a `review_by`, and a variance policy
 - [x] Tier-1 controls carry `baseline: null`
-- [ ] An ADR exists per control in `docs/adr/` — `rationale_adr` currently points
-      at files not yet written. This is the phase's remaining debt and blocks
-      Phase 1's schema validation passing cleanly.
+- [x] An ADR exists per control in `docs/adr/` — thirteen records,
+      `0001`–`0013`, one per `rationale_adr` reference in `controls.yaml`.
 
 ## Phase 0.5 — This repo's own devcontainer
 
