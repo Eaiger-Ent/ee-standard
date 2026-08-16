@@ -6,14 +6,18 @@ toolchain.
 
 [`03-devcontainer.md`](03-devcontainer.md) specifies *what* the clean
 devcontainer is and why. This document is the operator's half: the host values
-you must set first, the files to create, and how to verify the result.
+you must set first, what the committed files do, and how to verify the result.
+
+The files themselves live in [`.devcontainer/`](../.devcontainer/) and are the
+single copy. This document does not restate their contents — a second copy of a
+config in prose is exactly theme **T-2**, and it would drift.
 
 ## Why this is step zero, not Phase 2
 
-[`04-build-plan.md`](04-build-plan.md) places the devcontainer template in
+[`04-build-plan.md`](04-build-plan.md) originally placed the devcontainer in
 Phase 2, alongside the gates. That is right for the **template** — the artefact
-this repo ships to consumers. It is wrong for **this repo's own environment**,
-for two reasons:
+this repo ships to consumers, which Phase 2 still owns. It is wrong for **this
+repo's own environment**, for two reasons:
 
 **Phase 1 is development work.** Building `standard-check` means writing and
 running Python. If that happens on a host toolchain, the first thing the
@@ -26,10 +30,9 @@ it "the real gate". DEV-001 is one of those controls. A repo with no
 devcontainer existing. Deferring it to Phase 2 makes Phase 1 unclosable by its
 own terms.
 
-So the sequence is: **build this repo's devcontainer → Phase 1 → Phase 2
-generalises it into the shipped template**. Phase 2 still owns the template;
-it now has a working reference to generalise from rather than a specification
-to implement blind.
+So the sequence is: **Phase 0.5 (this) → Phase 1 → Phase 2 generalises this
+container into the shipped template**. Phase 2 now has a working reference to
+generalise from rather than a specification to implement blind.
 
 ## 1 — Host prerequisites (macOS)
 
@@ -47,10 +50,11 @@ and a node toolchain are both installed.
 
 ## 2 — The macOS Keychain values
 
-`initializeCommand` runs `.devcontainer/fetch-secrets.sh` **on the host**. It
-reads each secret with `security find-generic-password -a "$USER" -s <NAME> -w`
-and writes the resolved values to `.devcontainer/.env`, which `runArgs` passes
-into the container via `--env-file`.
+[`.devcontainer/fetch-secrets.sh`](../.devcontainer/fetch-secrets.sh) runs **on
+the host** as `initializeCommand`. It reads each secret with
+`security find-generic-password -a "$USER" -s <NAME> -w` and writes the resolved
+values to `.devcontainer/.env`, which `runArgs` passes into the container via
+`--env-file`.
 
 This is the "secrets fetched, never committed" pattern from
 [`03-devcontainer.md`](03-devcontainer.md). The `.env` is gitignored, so SEC-001
@@ -121,252 +125,40 @@ security add-generic-password -a "$USER" -s "EE_STANDARD_GITHUB_TOKEN" \
 `fetch-secrets.sh` prints which key it resolved, so you can confirm the override
 took effect.
 
-## 3 — Create `.devcontainer/`
+## 3 — What is committed, and why
 
-Six files. The image digest below was resolved on 2026-08-16 and is real —
-verify it yourself with the command in step 5 before trusting it.
+Four files, plus the lock file you generate in step 4.
 
-### `.devcontainer/devcontainer.json`
-
-```jsonc
-{
-  "name": "ee-standard Dev Environment",
-
-  // DEV-001 — the image is pinned by digest, not by floating tag. No lock file
-  // covers images, so this is the one pin that must live inline.
-  // mcr.microsoft.com/devcontainers/base:trixie, resolved 2026-08-16.
-  "image": "mcr.microsoft.com/devcontainers/base:trixie@sha256:025b74bb5f7ac53edd77e01aa7188c359aab100e23a2f6220bde50bbb9fd31dd",
-
-  // Features are pinned by devcontainer-lock.json (step 4), not here.
-  "features": {
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/node:2": {},
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.13",
-      "installTools": false
-    },
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
-  },
-
-  "initializeCommand": "bash .devcontainer/fetch-secrets.sh",
-  "runArgs": ["--env-file", ".devcontainer/.env"],
-  "postCreateCommand": "bash .devcontainer/setup.sh",
-  "postStartCommand": "bash .devcontainer/check-auth.sh",
-
-  // BLD-001 — the container's final user is not root.
-  "remoteUser": "vscode",
-
-  "mounts": [
-    "source=ee-standard-claude-home,target=/home/vscode/.claude,type=volume"
-  ],
-
-  "customizations": {
-    "vscode": {
-      "extensions": [],
-      "settings": {
-        "terminal.integrated.defaultProfile.linux": "zsh"
-      }
-    }
-  }
-}
-```
+| File | Runs | Does |
+| --- | --- | --- |
+| [`devcontainer.json`](../.devcontainer/devcontainer.json) | — | Digest-pinned image, four pinned features, `remoteUser: vscode`, one persistent volume |
+| [`fetch-secrets.sh`](../.devcontainer/fetch-secrets.sh) | Host, before start | Keychain → `.devcontainer/.env` |
+| [`setup.sh`](../.devcontainer/setup.sh) | Container, on create | Volume ownership, `markdownlint-cli2` pin, git credential helper |
+| [`check-auth.sh`](../.devcontainer/check-auth.sh) | Container, every start | Re-sources `.env`, prints the auth banner |
 
 Three things differ from the target file sketched in
-[`03-devcontainer.md`](03-devcontainer.md), and each is a correction:
+[`03-devcontainer.md`](03-devcontainer.md), and each is a correction to that
+sketch rather than a deviation from it:
 
 | Change | Why |
 | --- | --- |
 | `/home/vscode/.claude`, not `/home/node/` | `devcontainers/base` runs as `vscode`. `/home/node` only exists on the `javascript-node` image the predecessor used — the sketch carried the path over with the pattern. Mounting at `/home/node` would create a root-owned directory Claude Code never reads. |
 | `"remoteUser": "vscode"` stated explicitly | BLD-001 is a Tier-1 control of this register. Relying on the image's default is exactly the "declared but unreachable" shape (T-3) the repo exists to catch. |
-| Claude Code as a pinned **feature** | `03-devcontainer.md` ranks a version-pinned feature above `curl … \| sh`. `ghcr.io/anthropics/devcontainer-features/claude-code` is official and lock-file-covered, which removes one of the three pipes-to-shell and shortens `setup.sh`. |
+| Claude Code as a pinned **feature** | `03-devcontainer.md` ranks a version-pinned feature above `curl … \| sh`. `ghcr.io/anthropics/devcontainer-features/claude-code` is official and lock-file-covered, which removes one of the three pipes-to-shell and shortens `setup.sh` to wiring only. |
 
-Python `3.13` is the one genuinely open choice here — change it in this one
-place if the checker should target something else. `installTools: false` keeps
-the feature from installing an unpinned grab-bag of linters, which would
-reintroduce the unversioned-global-install problem (T-2) the spec calls out.
+Two settings are the genuinely open choices, both in `devcontainer.json`:
+Python **3.13** — change it in that one place if the checker should target
+something else — and `installTools: false`, which stops the Python feature
+installing an unpinned grab-bag of linters. That would reintroduce the
+unversioned-global-install problem the spec calls out.
 
-### `.devcontainer/fetch-secrets.sh`
-
-Runs on the **host**, before the container starts.
-
-```bash
-#!/usr/bin/env bash
-# Runs on the host before container start. Fetches secrets from the macOS
-# Keychain into .devcontainer/.env for injection via runArgs --env-file.
-#
-# Service names are generic (no per-repo prefix) so one host-side credential
-# store is reused across projects. Prefix any name with the checkout directory
-# in UPPER_SNAKE_CASE to override a single project: EE_STANDARD_GITHUB_TOKEN.
-set -euo pipefail
-
-echo "==> Fetching secrets from Keychain..."
-: > .devcontainer/.env
-
-PROJECT_PREFIX=$(basename "$PWD" | tr '[:lower:]-' '[:upper:]_')
-
-# Tries ${PROJECT_PREFIX}_${1}, then ${1}. Sets LAST_SECRET_KEY to the hit.
-fetch_secret() {
-  local name="$1" prefixed="${PROJECT_PREFIX}_${1}" value
-  value=$(security find-generic-password -a "$USER" -s "$prefixed" -w 2>/dev/null) || true
-  if [ -n "$value" ]; then
-    LAST_SECRET_KEY="$prefixed"; printf '%s' "$value"; return
-  fi
-  value=$(security find-generic-password -a "$USER" -s "$name" -w 2>/dev/null) || true
-  LAST_SECRET_KEY="$name"; printf '%s' "$value"
-}
-
-CLAUDE_CODE_OAUTH_TOKEN=$(fetch_secret "CLAUDE_OAUTH_TOKEN")
-if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
-  echo "  ✗ No Claude Code OAuth token in Keychain."
-  echo "    Run 'claude setup-token' on your Mac, then:"
-  echo "      security add-generic-password -a \"\$USER\" \\"
-  echo "        -s \"CLAUDE_OAUTH_TOKEN\" -w \"sk-ant-oat01-...\""
-  exit 1
-fi
-echo "CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}" >> .devcontainer/.env
-echo "  ✓ CLAUDE_CODE_OAUTH_TOKEN [${LAST_SECRET_KEY}]"
-
-GITHUB_TOKEN=$(fetch_secret "GITHUB_TOKEN")
-if [ -n "$GITHUB_TOKEN" ]; then
-  echo "GITHUB_TOKEN=${GITHUB_TOKEN}" >> .devcontainer/.env
-  echo "  ✓ GITHUB_TOKEN [${LAST_SECRET_KEY}]"
-fi
-
-GIT_AUTHOR_NAME=$(fetch_secret "GIT_AUTHOR_NAME")
-if [ -n "$GIT_AUTHOR_NAME" ]; then
-  {
-    echo "GIT_AUTHOR_NAME=\"${GIT_AUTHOR_NAME}\""
-    echo "GIT_COMMITTER_NAME=\"${GIT_AUTHOR_NAME}\""
-  } >> .devcontainer/.env
-  echo "  ✓ GIT_AUTHOR_NAME [${LAST_SECRET_KEY}]"
-fi
-
-GIT_AUTHOR_EMAIL=$(fetch_secret "GIT_AUTHOR_EMAIL")
-if [ -n "$GIT_AUTHOR_EMAIL" ]; then
-  {
-    echo "GIT_AUTHOR_EMAIL=\"${GIT_AUTHOR_EMAIL}\""
-    echo "GIT_COMMITTER_EMAIL=\"${GIT_AUTHOR_EMAIL}\""
-  } >> .devcontainer/.env
-  echo "  ✓ GIT_AUTHOR_EMAIL [${LAST_SECRET_KEY}]"
-fi
-
-echo "  ✓ Written to .devcontainer/.env"
-```
-
-### `.devcontainer/setup.sh`
-
-Runs once, on container create. Deliberately short — per
-[`03-devcontainer.md`](03-devcontainer.md), *"anything long enough to need
-sectioning is doing work that belongs in the image or a feature."* Everything
-installable is a pinned feature; what remains is wiring.
-
-```bash
-#!/usr/bin/env bash
-# Runs on container create. Keep this short — installs belong in features.
-set -euo pipefail
-
-# The named volume mounts root-owned on first create.
-sudo chown -R vscode:vscode /home/vscode/.claude
-
-# markdownlint-cli2 at the version the register records, so the editor and CI
-# cannot disagree about what DOC-001 means (theme T-2).
-npm install -g markdownlint-cli2@0.23.2
-
-# The host ~/.gitconfig may name a Homebrew gh path that does not exist here.
-GH_BIN="$(command -v gh)"
-for host in github.com gist.github.com; do
-  git config --global --unset-all "credential.https://${host}.helper" || true
-  git config --global --add "credential.https://${host}.helper" \
-    "!${GH_BIN} auth git-credential"
-done
-
-echo "✓ setup complete"
-```
-
-Pin `markdownlint-cli2` to whatever version the register records for DOC-001,
-and change both together. CI must install the same version — two unversioned
+`setup.sh` pins `markdownlint-cli2` to the version the register records for
+DOC-001. Change that pin and CI's together, never one alone; two unversioned
 copies of one tool is the drift this repo exists to prevent.
 
-### `.devcontainer/check-auth.sh`
-
-Runs on **every** container start, so a rotated Keychain value takes effect on
-restart rather than needing a full rebuild.
-
-```bash
-#!/usr/bin/env bash
-# Runs on every container start. Re-sources .env, then reports auth state.
-set -uo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/.env"
-
-# runArgs --env-file only applies at create; this hook makes restarts enough.
-if [ -f "$ENV_FILE" ]; then
-  set -a; . "$ENV_FILE"; set +a
-  TMP=$(mktemp)
-  cat > "$TMP" <<EOF
-#!/bin/sh
-# Auto-generated by .devcontainer/check-auth.sh — do not edit.
-if [ -f "$ENV_FILE" ]; then set -a; . "$ENV_FILE"; set +a; fi
-EOF
-  sudo install -m 0644 -o root -g root "$TMP" /etc/profile.d/devcontainer-env.sh
-  rm -f "$TMP"
-fi
-
-echo ""
-echo "═══════════════ environment ═══════════════"
-
-if gh auth status &>/dev/null; then
-  echo "  ✓ GitHub CLI — authenticated"
-elif [ -n "${GITHUB_TOKEN:-}" ]; then
-  echo "  ✗ GitHub CLI — GITHUB_TOKEN set but rejected (expired? wrong scopes?)"
-else
-  echo "  ✗ GitHub CLI — not authenticated. Run: gh auth login"
-fi
-
-if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
-  echo "  ✓ Claude Code — OAuth token present (subscription billing)"
-else
-  echo "  ✗ Claude Code — no OAuth token. See docs/06-devcontainer-setup.md"
-fi
-
-for tool in claude python3 node markdownlint-cli2; do
-  if command -v "$tool" &>/dev/null; then
-    echo "  ✓ ${tool} — $("$tool" --version 2>/dev/null | head -1)"
-  else
-    echo "  ✗ ${tool} — missing (re-run: bash .devcontainer/setup.sh)"
-  fi
-done
-
-if git config user.email &>/dev/null; then
-  echo "  ✓ git — $(git config user.name) <$(git config user.email)>"
-else
-  echo "  ✗ git — identity not configured"
-fi
-
-echo "═══════════════════════════════════════════"
-echo ""
-```
-
-### `.devcontainer/claude-user-settings.json`
-
-Seeded into the persistent volume on first create. Start empty and add settings
-as they are justified:
-
-```json
-{}
-```
-
-### `.gitignore`
-
-The repo has none yet. It needs, at minimum:
-
-```gitignore
-.devcontainer/.env
-```
-
-This is load-bearing, not hygiene — it is the half of the
-"secrets fetched, never committed" pattern that does the *never committed* part.
+The `.gitignore` entry for `.devcontainer/.env` is load-bearing, not hygiene —
+it is the half of the "secrets fetched, never committed" pattern that does the
+*never committed* part.
 
 ## 4 — Build, and generate the lock file
 
@@ -407,12 +199,16 @@ grep -q '@sha256:' .devcontainer/devcontainer.json && echo "image pinned"
 
 # The lock file exists and names every feature
 grep -c '"resolved"' .devcontainer/devcontainer-lock.json   # expect 4
+
+# The .env has never been committed
+git log --all --oneline -- .devcontainer/.env               # expect empty
 ```
 
-For reference, the feature digests resolved on 2026-08-16:
+For reference, the digests resolved on 2026-08-16:
 
-| Feature | Version | Digest |
+| Reference | Version | Digest |
 | --- | --- | --- |
+| `mcr.microsoft.com/devcontainers/base:trixie` | — | `sha256:025b74bb5f7ac53edd77e01aa7188c359aab100e23a2f6220bde50bbb9fd31dd` |
 | `devcontainers/features/github-cli` | 1.1.0 | `sha256:d22f50b70ed75339b4eed1ba9ecde3a1791f90e88d37936517e3bace0bbad671` |
 | `devcontainers/features/node` | 2.1.0 | `sha256:8c0de46939b61958041700ee89e3493f3b2e4131a06dc46b4d9423427d06e5f6` |
 | `devcontainers/features/python` | 1.8.0 | `sha256:fbcad6955caeecc5ad3f7886baf652e25cba5225a6c4c2287c536de2e5607511` |
@@ -421,6 +217,10 @@ For reference, the feature digests resolved on 2026-08-16:
 The `github-cli` digest matches the one already quoted in
 [`03-devcontainer.md`](03-devcontainer.md), which is a useful independent
 confirmation that the resolution method is sound.
+
+Only the image digest is authoritative in `devcontainer.json`; the feature
+digests above are a cross-check against the lock file, which is where features
+are actually pinned.
 
 ## What survives a rebuild
 
@@ -460,8 +260,10 @@ env -u GITHUB_TOKEN git push
 ```
 
 This was confirmed against `Eaiger-Ent/ee-standard` on 2026-08-16, where it
-presented as `404` then `403`. Fix it by widening the PAT's scope or removing
-the Keychain entry and relying on `gh auth login`, which persists in the volume.
+presented as `404` then `403`, and again the same day when pushing this
+document — `env -u GITHUB_TOKEN git push` succeeded where the plain push had
+failed. Fix it permanently by widening the PAT's scope, or by removing the
+Keychain entry and relying on `gh auth login`, which persists in the volume.
 
 It is also a live instance of theme **T-5** — the credential boundary least
 defended — arriving as a support question rather than as a breach, which is the
@@ -493,4 +295,5 @@ two states, because the lock file's existence makes it look solved."
 That is theme **T-1** (a stated standard that nothing enforces) inside the
 register itself. It should be closed by amending the DEV-001 `enforces` text
 and its assertions before Phase 1 treats the control as implemented, not by
-relying on this document to describe the intent.
+relying on this document to describe the intent. It is carried as an exit
+criterion of Phase 0.5 in [`04-build-plan.md`](04-build-plan.md).
