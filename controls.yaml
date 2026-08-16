@@ -1,0 +1,430 @@
+# ee-standard control register
+#
+# The single source of truth for what "conformant" means at Equal Experts.
+# Every other artefact in this repo — CI templates, gate skills, the conformance
+# checker, the devcontainer — derives from this file rather than restating it.
+#
+# Schema: docs/01-register-schema.md
+# Concepts: docs/00-concepts.md
+
+version: 0.1.0
+
+meta:
+  owner: platform-engineering
+  # Bumped when any control's `rung`, `verify`, or `variance` changes.
+  # Skills read this to decide whether a deployed artefact is stale.
+  register_contract: 1
+
+# ---------------------------------------------------------------------------
+# Stack predicates. A control whose `applies_to` names a predicate that this
+# repo does not satisfy is SKIPPED, not failed. Predicates are evaluated by
+# standard-check against the repo's own files — never self-declared.
+# ---------------------------------------------------------------------------
+predicates:
+  always: true
+  python: "pyproject.toml exists"
+  typescript: "tsconfig.json exists"
+  container: "any Dockerfile exists"
+  terraform: "any *.tf file exists"
+  github-actions: ".github/workflows/ exists"
+  devcontainer: ".devcontainer/devcontainer.json exists"
+
+# ---------------------------------------------------------------------------
+# Tier 1 — birth conditions.
+#
+# Every Tier-1 control is `blocking` from the first commit and carries
+# `baseline: null`. A greenfield repo has no legacy to exempt, so there is
+# nothing to baseline; a control that cannot be met at birth does not belong
+# in Tier 1. Tier 2 (advisory windows) and Tier 3 (as earned) are defined in
+# docs/04-build-plan.md and added to this file in later phases.
+# ---------------------------------------------------------------------------
+controls:
+
+  # --- Secrets -------------------------------------------------------------
+
+  - id: SEC-001
+    title: A commit containing a secret cannot reach the remote
+    enforces: >
+      gitleaks runs as a pre-commit hook and as a CI job, and GitHub secret
+      scanning push protection is enabled on the repository.
+    standard:
+      name: OWASP Secrets Management Cheat Sheet
+      url: https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
+    also_see:
+      - name: GitHub push protection
+        url: https://docs.github.com/en/code-security/secret-scanning/introduction/about-push-protection
+      - name: EE Supply Chain Security Handbook
+        url: https://github.com/EqualExperts/ee-supply-chain-security-handbook
+    tier: 1
+    rung: blocking
+    locus: [pre-commit, ci, remote]
+    applies_to: [always]
+    verify:
+      - kind: command
+        run: gitleaks detect --no-banner --redact
+      - kind: file
+        assert: precommit_hook_present
+        args: { id: gitleaks }
+      - kind: remote
+        assert: github_push_protection_enabled
+    owner: platform-engineering
+    variance: forbidden
+    baseline: null
+    review_by: 2027-08-16
+    rationale_adr: docs/adr/0001-secrets-never-reach-the-remote.md
+
+  - id: SEC-002
+    title: CI authenticates without a long-lived cloud credential
+    enforces: >
+      No workflow references a static cloud key secret; cloud access is obtained
+      via OIDC workload identity federation.
+    standard:
+      name: NIST SP 800-218 (SSDF) PW.9
+      url: https://csrc.nist.gov/pubs/sp/800/218/final
+    also_see:
+      - name: Workload Identity Federation
+        url: https://cloud.google.com/iam/docs/workload-identity-federation
+    tier: 1
+    rung: blocking
+    locus: [ci]
+    applies_to: [github-actions]
+    verify:
+      - kind: command
+        run: standard-check assert no-static-cloud-keys
+    owner: platform-engineering
+    variance: forbidden
+    baseline: null
+    review_by: 2027-08-16
+    rationale_adr: docs/adr/0002-federated-ci-identity.md
+
+  # --- Supply chain --------------------------------------------------------
+
+  - id: SUP-001
+    title: Dependencies resolve from a committed lockfile
+    enforces: >
+      A lockfile exists for every package manager in use, is committed, and CI
+      installs from it in frozen mode rather than re-resolving.
+    standard:
+      name: OpenSSF Baseline
+      url: https://baseline.openssf.org/
+    tier: 1
+    rung: blocking
+    locus: [ci]
+    applies_to: [python, typescript]
+    verify:
+      - kind: file
+        assert: lockfile_present_and_tracked
+      - kind: command
+        run: standard-check assert ci-installs-frozen
+    owner: platform-engineering
+    variance: narrowing-only
+    baseline: null
+    review_by: 2027-08-16
+    rationale_adr: docs/adr/0003-frozen-dependency-resolution.md
+
+  - id: SUP-002
+    title: Dependency updates are proposed automatically
+    enforces: >
+      A Dependabot or Renovate configuration exists and covers every ecosystem
+      present in the repo, including GitHub Actions.
+    standard:
+      name: OpenSSF Scorecard — Maintained / Dependency-Update-Tool
+      url: https://scorecard.dev/
+    also_see:
+      - name: Dependabot
+        url: https://docs.github.com/en/code-security/dependabot/working-with-dependabot
+    tier: 1
+    rung: blocking
+    locus: [ci]
+    applies_to: [always]
+    verify:
+      - kind: file
+        assert: dependency_update_config_covers_all_ecosystems
+    owner: platform-engineering
+    variance: narrowing-only
+    baseline: null
+    review_by: 2027-08-16
+    rationale_adr: docs/adr/0004-automated-dependency-proposals.md
+
+  - id: SUP-003
+    title: Third-party CI actions are pinned to a commit SHA
+    enforces: >
+      Every `uses:` in every workflow references a 40-character commit SHA, not
+      a tag or branch. Actions published by the repository owner are exempt.
+    standard:
+      name: SLSA v1.0 Build levels
+      url: https://slsa.dev/spec/v1.0/levels
+    tier: 1
+    rung: blocking
+    locus: [pre-commit, ci]
+    applies_to: [github-actions]
+    verify:
+      - kind: command
+        run: standard-check assert actions-pinned-to-sha
+    owner: platform-engineering
+    variance: justified
+    baseline: null
+    review_by: 2027-08-16
+    rationale_adr: docs/adr/0005-pinned-ci-actions.md
+
+  # --- Build and runtime ---------------------------------------------------
+
+  - id: BLD-001
+    title: Every container image stage ends as a non-root user
+    enforces: >
+      The final stage of every Dockerfile declares a USER that is not root and
+      not numeric 0.
+    standard:
+      name: CIS Docker Benchmark §4.1
+      url: https://www.cisecurity.org/benchmark/docker
+    also_see:
+      - name: hadolint
+        url: https://github.com/hadolint/hadolint
+    tier: 1
+    rung: blocking
+    locus: [pre-commit, ci]
+    applies_to: [container]
+    verify:
+      - kind: file
+        assert: dockerfile_final_user_is_non_root
+      - kind: command
+        run: hadolint --failure-threshold error
+    owner: platform-engineering
+    variance: forbidden
+    baseline: null
+    review_by: 2027-08-16
+    rationale_adr: docs/adr/0006-containers-run-unprivileged.md
+
+  - id: DEV-001
+    title: Devcontainer features are version-pinned
+    enforces: >
+      `.devcontainer/devcontainer-lock.json` exists and pins every feature
+      referenced by `devcontainer.json` to a resolved digest.
+    standard:
+      name: Dev Container Features specification
+      url: https://containers.dev/implementors/features/
+    also_see:
+      - name: Dev Container specification
+        url: https://containers.dev/implementors/spec/
+    tier: 1
+    rung: blocking
+    locus: [pre-commit, ci]
+    applies_to: [devcontainer]
+    verify:
+      - kind: file
+        assert: devcontainer_lock_covers_all_features
+    owner: platform-engineering
+    variance: narrowing-only
+    baseline: null
+    review_by: 2027-08-16
+    rationale_adr: docs/adr/0007-pinned-devcontainer-features.md
+
+  # --- Repository controls -------------------------------------------------
+
+  - id: CI-001
+    title: The default branch cannot be written to without a passing check
+    enforces: >
+      A GitHub ruleset protects the default branch requiring a pull request,
+      at least one passing status check, and forbidding force-push.
+    standard:
+      name: OpenSSF Baseline — Branch Protection
+      url: https://baseline.openssf.org/
+    also_see:
+      - name: GitHub rulesets
+        url: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets
+      - name: Trunk-based development
+        url: https://trunkbaseddevelopment.com/
+    tier: 1
+    rung: blocking
+    locus: [remote]
+    applies_to: [always]
+    verify:
+      - kind: remote
+        assert: default_branch_ruleset_satisfies
+        args:
+          require_pull_request: true
+          require_status_checks: true
+          allow_force_push: false
+    owner: platform-engineering
+    variance: forbidden
+    baseline: null
+    review_by: 2027-08-16
+    rationale_adr: docs/adr/0008-protected-default-branch.md
+
+  # --- Code quality --------------------------------------------------------
+
+  - id: LNT-001
+    title: Lint and format violations block the merge
+    enforces: >
+      The configured linter runs at editor, pre-commit and CI loci from one
+      pinned configuration, and the CI invocation has no failure suppression.
+    standard:
+      name: Ruff rules
+      url: https://docs.astral.sh/ruff/rules/
+    also_see:
+      - name: pre-commit
+        url: https://pre-commit.com/
+    tier: 1
+    rung: blocking
+    locus: [editor, pre-commit, ci]
+    applies_to: [python, typescript]
+    verify:
+      - kind: command
+        run: standard-check assert linter-wired-at-all-loci
+      - kind: command
+        run: standard-check assert no-failure-suppression
+    owner: platform-engineering
+    variance: narrowing-only
+    baseline: null
+    review_by: 2027-08-16
+    rationale_adr: docs/adr/0009-single-lint-definition.md
+
+  - id: TYP-001
+    title: Static type checking runs in strict mode and blocks
+    enforces: >
+      mypy (Python) or `tsc --strict` (TypeScript) runs over all first-party
+      source in CI with no per-file opt-out beyond the recorded baseline.
+    standard:
+      name: mypy command line — strict mode
+      url: https://mypy.readthedocs.io/en/stable/command_line.html
+    also_see:
+      - name: Python typing specification
+        url: https://typing.python.org/en/latest/spec/
+    tier: 1
+    rung: blocking
+    locus: [pre-commit, ci]
+    applies_to: [python, typescript]
+    verify:
+      - kind: command
+        run: standard-check assert typecheck-strict-and-blocking
+    owner: platform-engineering
+    variance: narrowing-only
+    baseline: null
+    review_by: 2027-08-16
+    rationale_adr: docs/adr/0010-strict-typing-from-birth.md
+
+  - id: TST-001
+    title: A failing test fails the build
+    enforces: >
+      The test command runs in CI, its exit code is the job's verdict, and no
+      step in the chain swallows a non-zero status.
+    standard:
+      name: NIST SP 800-218 (SSDF) PW.8
+      url: https://csrc.nist.gov/pubs/sp/800/218/final
+    also_see:
+      - name: The Practical Test Pyramid
+        url: https://martinfowler.com/articles/practical-test-pyramid.html
+    tier: 1
+    rung: blocking
+    locus: [ci]
+    applies_to: [always]
+    verify:
+      - kind: command
+        run: standard-check assert tests-run-and-block
+      - kind: command
+        run: standard-check assert no-failure-suppression
+    owner: platform-engineering
+    variance: forbidden
+    baseline: null
+    review_by: 2027-08-16
+    rationale_adr: docs/adr/0011-test-failures-are-terminal.md
+
+  # --- Infrastructure ------------------------------------------------------
+
+  - id: IAC-001
+    title: Infrastructure code is statically analysed before apply
+    enforces: >
+      checkov and tflint run over all Terraform/OpenTofu in CI, and their exit
+      codes block the merge.
+    standard:
+      name: Checkov
+      url: https://www.checkov.io/1.Welcome/What%20is%20Checkov.html
+    also_see:
+      - name: tflint
+        url: https://github.com/terraform-linters/tflint
+      - name: CIS Google Cloud Platform Benchmark
+        url: https://www.cisecurity.org/benchmark/google_cloud_computing_platform
+    tier: 1
+    rung: blocking
+    locus: [pre-commit, ci]
+    applies_to: [terraform]
+    verify:
+      - kind: command
+        run: checkov --directory . --compact --quiet
+      - kind: command
+        run: tflint --recursive
+    owner: platform-engineering
+    variance: justified
+    baseline: null
+    review_by: 2027-08-16
+    rationale_adr: docs/adr/0012-iac-static-analysis.md
+
+  # --- Documentation -------------------------------------------------------
+
+  - id: DOC-001
+    title: Markdown conforms to one shared, pinned rule set
+    enforces: >
+      markdownlint-cli2 runs from a single configuration wired at editor,
+      pre-commit and CI loci.
+    standard:
+      name: markdownlint-cli2
+      url: https://github.com/DavidAnson/markdownlint-cli2
+    tier: 1
+    rung: blocking
+    locus: [editor, pre-commit, ci]
+    applies_to: [always]
+    deployed_by: lint-md
+    verify:
+      - kind: command
+        run: markdownlint-cli2 "**/*.md"
+      - kind: file
+        assert: markdownlint_config_present
+    owner: platform-engineering
+    variance: narrowing-only
+    baseline: null
+    review_by: 2027-08-16
+    rationale_adr: docs/adr/0013-one-markdown-rule-set.md
+
+# ---------------------------------------------------------------------------
+# Meta-controls. These do not check the code — they check the register and its
+# enforcement. Without them the register can rot silently: a control can be
+# declared blocking and be unreachable, a baseline can grow, an expiry can pass.
+# ---------------------------------------------------------------------------
+meta_controls:
+
+  - id: GOV-001
+    title: Every blocking control is reachable from a CI step that can fail
+    enforces: >
+      For each control with `rung: blocking` and `ci` in its locus, a CI step
+      exists that invokes its verification and is not marked continue-on-error.
+    rationale: >
+      A control declared blocking but unreachable is worse than no control —
+      it reports safety that does not exist. This is theme T-3 from the
+      predecessor retrospective.
+    verify:
+      - kind: command
+        run: standard-check meta GOV-001
+
+  - id: GOV-002
+    title: No baseline grew
+    enforces: >
+      Every baseline artefact has the same or fewer entries than at the
+      previous commit on the default branch.
+    rationale: >
+      The baseline's size is the burndown metric. A baseline that may grow is
+      an exemption list, not a migration.
+    verify:
+      - kind: command
+        run: standard-check meta GOV-002
+
+  - id: GOV-003
+    title: No control is past its review date
+    enforces: >
+      No control in this register has a `review_by` earlier than today.
+    rationale: >
+      An unreviewed control drifts from the standard it claims to enforce.
+      Expiry forces the re-decision rather than letting silence stand in
+      for agreement.
+    verify:
+      - kind: command
+        run: standard-check meta GOV-003
