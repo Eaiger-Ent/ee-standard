@@ -83,14 +83,17 @@ was verified before it was committed.
 
 ## Status
 
-Phase 0 complete — the register exists.
+Phase 0 complete — the register exists, with a rationale ADR per control in
+[`docs/adr/`](docs/adr/).
 
-Phase 0.5, this repo's own devcontainer, is next and comes before any code is
-written: all development happens inside the container, and Phase 1 cannot meet
-its own exit criteria without one. Follow
-[`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md).
+Phase 0.5 complete — this repo's own devcontainer, digest-pinned and verified.
+Operator guide: [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md).
 
-Then Phase 1, the checker. See
+Phase 1 complete — `standard-check` exists (`uv run standard-check`), and this
+repo passes every control it can verify locally; remote halves report
+`SKIPPED (no credentials)` until Phase 3.
+
+Phase 2, the gate skills and the shipped devcontainer template, is next. See
 [`docs/04-build-plan.md`](docs/04-build-plan.md) for exit criteria.
 
 ## Relationship to existing ee-skills plugins

@@ -99,15 +99,18 @@ that must not be stubbed.
 
 ### Exit criteria — phase 1
 
-- [ ] `standard-check schema` passes against `controls.yaml`
-- [ ] Running against this repo produces a report with no `UNCLASSIFIED` verdicts
+- [x] `standard-check schema` passes against `controls.yaml`
+- [x] Running against this repo produces a report with no `UNCLASSIFIED` verdicts
       arising from checker bugs (as opposed to genuine ambiguity)
-- [ ] A deliberately broken register fails schema validation with a message
-      naming the field
-- [ ] An unknown `assert` name is a schema **error**, not a skipped check
-- [ ] `SKIPPED (predicate)` and `SKIPPED (no credentials)` render distinctly and
+- [x] A deliberately broken register fails schema validation with a message
+      naming the field — exercised in `tests/test_schema.py`, one test per
+      breakage class
+- [x] An unknown `assert` name is a schema **error**, not a skipped check — the
+      closed set is derived from the checker's assert registries, so it cannot
+      drift from the implementation
+- [x] `SKIPPED (predicate)` and `SKIPPED (no credentials)` render distinctly and
       neither is counted as a pass in the exit code
-- [ ] The checker's own repo passes every control it can verify locally
+- [x] The checker's own repo passes every control it can verify locally
 
 The last one is the real gate. If the standard repo cannot satisfy its own
 Tier-1 controls, they are not birth conditions.

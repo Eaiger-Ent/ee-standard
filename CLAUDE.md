@@ -6,20 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A control register for Equal Experts repositories: `controls.yaml` defines what
 "conformant" means, a family of Claude skills deploys the gates, and a checker
-(`standard-check`, not yet built) audits them. There is no application code yet
-— the repo is currently the register plus design docs plus its own devcontainer.
+(`standard-check`, in `src/standard_check/`) audits them.
 
-Current status: Phase 0 (register) and Phase 0.5 (this repo's devcontainer) are
-complete. Phase 1 — building `standard-check` as a plain Python executable, in
-the order given in `docs/04-build-plan.md` § Phase 1 — is next. `kind: remote`
-verification is deliberately deferred to Phase 3; do not stub it earlier.
+Current status: Phases 0, 0.5 and 1 are complete — the register has its ADRs,
+the devcontainer is verified, and `standard-check` exists as a plain Python
+executable whose own repo passes every control it can verify locally. Phase 2
+(the `gate-*` skills and the devcontainer template, per `docs/04-build-plan.md`)
+is next. `kind: remote` verification is deliberately deferred to Phase 3; do
+not stub it earlier — remote verify blocks report `SKIPPED (no credentials)`.
 
 ## Commands
 
-- Lint markdown (the only gate wired so far): `markdownlint-cli2 "**/*.md"` —
-  also runs via a PostToolUse auto-fix hook on every file you write, a
-  pre-commit hook, and `.github/workflows/lint.yml`.
-- Run all pre-commit hooks: `pre-commit run --all-files`
+- Full conformance run: `uv run standard-check` (also: `schema`, `--tier 1`,
+  `meta GOV-001`, `assert <name>`, `explain <ID>`). CI runs it in
+  `.github/workflows/standard-check.yml`.
+- Quality gates: `uv run ruff check .`, `uv run mypy`, `uv run pytest` — all
+  configured in `pyproject.toml`, the single definition every locus reads.
+- Lint markdown: `markdownlint-cli2 "**/*.md"` — also runs via a PostToolUse
+  auto-fix hook on every file you write, a pre-commit hook, and
+  `.github/workflows/lint.yml`.
+- Run all pre-commit hooks: `uv run pre-commit run --all-files`
 - Verify container auth/tools: `.devcontainer/check-auth.sh`
 - `gh` for repos in the Eaiger-Ent org (ambient `GITHUB_TOKEN`); `gh-ee-skills`
   for repos in the EqualExperts org (ee-skills, ee-skills-incubator) — the
