@@ -51,6 +51,7 @@ Three properties follow:
 | [`docs/04-build-plan.md`](docs/04-build-plan.md) | Seven phases with checkable exit criteria. |
 | [`docs/05-promotion.md`](docs/05-promotion.md) | The route to the `ee-skills` marketplace. |
 | [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md) | **Start here.** Standing up this repo's own container, and the macOS values it needs. |
+| [`docs/07-inherited-conventions.md`](docs/07-inherited-conventions.md) | What the predecessor repo already knew, and which half of it transfers. |
 | [`controls.yaml`](controls.yaml) | The register itself. |
 
 ## The register at a glance
