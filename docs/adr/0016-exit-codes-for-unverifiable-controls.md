@@ -1,11 +1,15 @@
 # ADR 0016: Give "Could Not Verify" Its Own Exit Code
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-08-17
 
-Open decision from
+Ratified decision from
 [`04-build-plan.md`](../04-build-plan.md) § Phase 1.5 § Decisions required.
-This record states the recommendation and is not ratified.
+
+**Not yet implemented.** Acceptance settles the semantics, not the code:
+`standard-check` still exits `0` on `SKIPPED (no credentials)`, still reports an
+absent binary as `FAIL` rather than `UNCLASSIFIED`, and `--require-complete`
+does not exist. Phase 1.5's exit criteria track that work.
 
 ## Background
 
@@ -86,6 +90,12 @@ not-applicable with unverified would make the code meaningless in the common
 case. The repository's own `Standard` workflow will pass `--require-complete`,
 so this repo's CI turns red until [ADR 0014](0014-satisfying-remote-locus-controls.md)
 is resolved — which is the correct reading of its current state.
+
+Ratified on 2026-08-17. One clause above was overtaken between drafting and
+ratification: ADR 0014 is now implemented and this repository is public, but
+`kind: remote` verification remains deferred to Phase 3, so the credentials are
+still not read and the red state persists until Phase 3 lands rather than until
+0014 resolves. The exit-code semantics ratified here are unchanged by that.
 
 ## Consequences
 

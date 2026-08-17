@@ -1,11 +1,15 @@
 # ADR 0017: Report a Partially Implemented Control as Partial
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-08-17
 
-Open decision from
+Ratified decision from
 [`04-build-plan.md`](../04-build-plan.md) § Phase 1.5 § Decisions required.
-This record states the recommendation and is not ratified.
+
+**Not yet implemented.** Acceptance settles the mechanism, not the code: the
+register has no field for a partial declaration, GOV-001 still prints an
+unqualified `PASS`, and no expiry is enforced. Phase 1.5's exit criteria track
+that work.
 
 ## Background
 
@@ -84,6 +88,12 @@ expiry fails the same way. Option 2 was rejected because discarding a valid
 half-result makes the report less useful without making it more honest, and
 Option 1 because the report is the artefact people read.
 
+Ratified on 2026-08-17. The schema addition it requires carries a
+`register_contract` bump, so it lands before Phase 2's gate skills read that
+contract. GOV-001's own partial declaration expires when Phase 3 gives it
+platform state to read — ADR 0014's implementation was a precondition for that,
+not the whole of it.
+
 ## Consequences
 
 **Positive outcomes:**
@@ -108,7 +118,8 @@ Option 1 because the report is the artefact people read.
 - [ADR 0016: Give "Could Not Verify" Its Own Exit Code](0016-exit-codes-for-unverifiable-controls.md)
   — how a partial control affects the run's exit status.
 - [ADR 0014: Make Remote-Locus Controls Satisfiable on This Repository](0014-satisfying-remote-locus-controls.md)
-  — resolving it is what lets GOV-001 drop its partial annotation.
+  — its implementation is the precondition for GOV-001 dropping its partial
+  annotation; Phase 3 reading the platform state is what actually does it.
 - [ADR 0008: Protect the Default Branch by Ruleset](0008-protected-default-branch.md)
   — the platform state GOV-001 must eventually read.
 

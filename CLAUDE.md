@@ -19,10 +19,19 @@ not treat a ticked box in an earlier phase as settled without checking it.
 `kind: remote` verification stays deferred to Phase 3; do not stub it earlier —
 remote verify blocks report `SKIPPED (no credentials)`.
 
-Per [ADR 0014](docs/adr/0014-satisfying-remote-locus-controls.md) (**Accepted**,
-not yet implemented), this repository is to become **public**: write nothing that
+Per [ADR 0014](docs/adr/0014-satisfying-remote-locus-controls.md) (**Accepted**
+and implemented 2026-08-17), this repository **is public**: write nothing that
 assumes privacy, and treat anything committed as publishable. CI-001 and SEC-001
 stay Tier 1 — do not re-tier a control to make a report green.
+
+Per [ADR 0016](docs/adr/0016-exit-codes-for-unverifiable-controls.md) and
+[ADR 0017](docs/adr/0017-partial-verification-is-reported.md) (both **Accepted**
+2026-08-17, neither implemented), the checker's verdict vocabulary is settled:
+exit `3` means no violation was found but something could not be verified, `1`
+means a verified violation, `0` means every applicable control was verified, and
+`--require-complete` promotes `3` to `1`. A control whose tool is absent is
+`UNCLASSIFIED`, not `FAIL`. A verification block declares its own partial
+implementation **in the register**, with an expiry — never in the checker.
 
 ## Commands
 
