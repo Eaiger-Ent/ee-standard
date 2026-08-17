@@ -14,8 +14,26 @@ from standard_check.register import Register
 from standard_check.repo import Repo, git
 from standard_check.runner import Verdict, applies
 
-_BARE_INVOCATION = re.compile(
-    r"^\s*(?:uv run\s+)?standard-check(?:\s+--tier\s+\d+)?\s*$", re.MULTILINE
+# A step runs the whole register if it *invokes* the checker without a
+# subcommand that narrows it. Matched as an invocation — the command word at the
+# start of a command, optionally behind `uv run` — not as a line shape.
+#
+# The previous pattern required the line to be exactly the invocation, which
+# made every control's verdict depend on shell punctuation: adding error
+# handling to the CI step (`… && status=0 || status=$?`) silently flipped
+# GOV-001 from "everything reachable" to "SUP-002 and DEV-001 unreachable",
+# without either control changing. A reachability test that a cosmetic
+# reformat can invert is not measuring reachability.
+#
+# The leading alternation is what keeps `pip install standard-check` out: an
+# invocation starts a command, so it follows a line start or a separator, never
+# another word. This is the "match invocations, not substrings" criterion
+# applied to the full-run case; the per-control case is still a substring test
+# and is fixed with the `kind:` taxonomy.
+_FULL_RUN = re.compile(
+    r"(?:^\s*|[;&|(]\s*)(?:uv\s+run\s+)?standard-check"
+    r"(?![-\w])(?!\s+(?:assert|meta|explain|schema)\b)",
+    re.MULTILINE,
 )
 
 
@@ -25,7 +43,7 @@ def gov_001(register: Register, repo: Repo) -> tuple[Verdict, str]:
         step for step in _workflow_steps(repo) if step.run and not step.suppressed
     ]
     full_run = any(
-        _BARE_INVOCATION.search(step.run) and not _SUPPRESSION.search(step.run)
+        _FULL_RUN.search(step.run) and not _SUPPRESSION.search(step.run)
         for step in clean_steps
     )
     unreachable = []

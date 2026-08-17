@@ -60,6 +60,49 @@ def test_gov_001_ignores_suppressed_steps(tmp_path: Path) -> None:
     assert verdict is Verdict.FAIL
 
 
+def test_gov_001_full_run_survives_shell_punctuation(tmp_path: Path) -> None:
+    """A step that handles the exit code still runs the whole register.
+
+    The old pattern required the CI line to be *exactly* the invocation, so
+    wrapping it in error handling flipped GOV-001 from "everything reachable" to
+    "SUP-002 and DEV-001 unreachable" without either control changing. A
+    reachability test a cosmetic reformat can invert is not measuring
+    reachability.
+    """
+    register, repo = _load(tmp_path, minimal_register())
+    workflow = (
+        "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        "      - run: |\n"
+        "          uv run standard-check && status=0 || status=$?\n"
+        '          if [ "$status" -ne 0 ] && [ "$status" -ne 3 ]; then\n'
+        '            exit "$status"\n'
+        "          fi\n"
+    )
+    make_repo(tmp_path, {".github/workflows/check.yml": workflow})
+    verdict, _message = gov_001(register, repo)
+    assert verdict is Verdict.PASS
+
+
+def test_gov_001_does_not_count_installing_the_checker_as_running_it(
+    tmp_path: Path,
+) -> None:
+    """`pip install standard-check` is not evidence that anything is checked.
+
+    An invocation starts a command; it never follows another word. Substring
+    matching made installing the tool mark every control reachable at once —
+    § A row 4 of the build plan.
+    """
+    register, repo = _load(tmp_path, minimal_register())
+    workflow = (
+        "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        "      - run: pip install standard-check\n"
+    )
+    make_repo(tmp_path, {".github/workflows/check.yml": workflow})
+    verdict, message = gov_001(register, repo)
+    assert verdict is Verdict.FAIL
+    assert "SEC-001" in message
+
+
 def _commit(root: Path, message: str) -> None:
     subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
     subprocess.run(

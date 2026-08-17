@@ -259,6 +259,14 @@ step every control passes vacuously, and without one SUP-002 and DEV-001 fail
 however well they are wired. This is the control the register calls its
 highest-value one, and the guard against theme **T-3**.
 
+**Demonstrated on 2026-08-17, not merely reasoned about.** Adding exit-code
+handling to the workflow's Conformance step — `… && status=0 || status=$?`,
+which changes nothing about what runs — flipped GOV-001 from PASS to
+`FAIL: blocking controls with no reachable CI step: SUP-002, DEV-001`. The old
+pattern required the CI line to be *exactly* the invocation, so the verdict
+depended on shell punctuation rather than on whether anything was checked. The
+full-run half is fixed; the per-control substring test remains.
+
 **The checker has become a second source of truth** for rules recorded nowhere
 in the register: ruff/eslint/mypy/pytest as the mandated tools, the
 `charliermarsh.ruff` extension ID, the test-command spellings, a Python-and-Node
@@ -395,7 +403,13 @@ below — not this table — track that.
       control only if it actually runs that control's verification. The two
       degenerate readings in § E are gone — six controls no longer collapse to
       the bare token `standard-check`, and a bare invocation no longer marks
-      every control reachable at once
+      every control reachable at once. **Half done 2026-08-17**: the full-run
+      case now matches an invocation (a command word at the start of a command,
+      optionally behind `uv run`), so `pip install standard-check` is no longer
+      evidence that anything is checked, and shell punctuation around the
+      invocation no longer changes the verdict. The per-control case is still a
+      substring test over `block.run.split()[0]` and closes with the `kind:`
+      taxonomy, below
 - [ ] Every verification block declares the `kind` it actually is. No file-shape
       assertion is declared `kind: command`, and GOV-001 can find a blocking `ci`
       control reachable through its `kind: file` blocks — otherwise SUP-002 and
