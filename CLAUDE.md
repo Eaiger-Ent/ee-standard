@@ -119,10 +119,17 @@ Defined in `docs/00-concepts.md`; the schema is `docs/01-register-schema.md`.
 
 ## Deployed artefacts and skills
 
-Files deployed by ee-skills plugins (e.g. `.markdownlint.yaml`) carry an
-`ee-control:` provenance header naming the control, the deploying skill and
-version, and the register version. Keep the header when editing such files, and
-respect the control's variance direction. `lint-md` owns the whole DOC-001
+Files deployed by ee-skills plugins carry an `ee-control:` provenance header
+naming the control, the deploying skill and version, the register version **and
+the register contract** — `docs/00-concepts.md` § The provenance stamp has the
+format, and `tests/test_provenance_stamps.py` checks every stamp parses and
+names a real control. Five files carry one: `.markdownlint.yaml`,
+`.markdownlint-cli2.yaml`, `.github/workflows/lint.yml`,
+`.claude/hooks/md-lint.py`, and — at the hook it owns rather than at the top of
+the file — `.pre-commit-config.yaml`. Keep the header when editing such files,
+note the edit in it, and respect the control's variance direction: no ignore
+path may be added to a `narrowing-only` control with `baseline: null`, which is
+all of them. `lint-md` owns the whole DOC-001
 lifecycle — this repo does not write its own markdown gate, and `lint-md`'s
 shape (pre-flight → install → write config → wire every locus → migrate →
 verify) is the template every future gate skill copies (`docs/02-skill-family.md`).
