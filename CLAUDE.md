@@ -93,8 +93,15 @@ Defined in `docs/00-concepts.md`; the schema is `docs/01-register-schema.md`.
   self-declared.
 - **Baseline**: shrink-only tolerated-violation list (GOV-002 fails if one
   grows). All Tier-1 controls carry `baseline: null` by design.
-- **Verification kinds**: `command` (exit code), `file` (shape assertion),
-  `remote` (platform API state).
+- **Verification kinds**: `command` (an external tool; exit code is the verdict),
+  `file` (an in-process assertion over repository files), `remote` (platform API
+  state). The kind names what performs the verification, not which module
+  implements it — declaring an in-process assertion as `kind: command` is a
+  schema error, because GOV-001 reads `kind: command` blocks and the
+  miscategorisation decided its verdict.
+- **Partial**: any verify block may declare itself not fully implemented, naming
+  the unverified property and an expiry date. GOV-003 fails an expired one, and
+  a partial block denies the run a `0` exit.
 - **Variance**: `forbidden` or `narrowing-only`. Deployed artefacts may tighten
   a narrowing-only control but never loosen it; loosening requires updating the
   control's entry in the register first (as was done for DOC-001's 250-char

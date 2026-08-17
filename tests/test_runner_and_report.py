@@ -126,6 +126,41 @@ def test_predicate_skip_alone_still_exits_zero(
     assert "1 skipped (predicate)" in capsys.readouterr().out
 
 
+def test_partial_declaration_renders_and_denies_a_clean_exit(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ADR 0017 composing with ADR 0016.
+
+    The control passes everything it can check, and says so — but a verdict that
+    does not cover what the control claims must not leave exit 0, or the
+    annotation would be decoration.
+    """
+    document = minimal_register(
+        verify=[
+            {
+                "kind": "file",
+                "assert": "precommit_hook_present",
+                "args": {"id": "gitleaks"},
+                "partial": {
+                    "unverified": "whether push protection is enabled",
+                    "expires": "2099-01-01",
+                },
+            }
+        ]
+    )
+    write_register(tmp_path, document)
+    make_repo(
+        tmp_path,
+        {".pre-commit-config.yaml": "repos:\n  - repo: local\n    hooks:\n      - id: gitleaks\n"},
+    )
+    code = main(["--repo", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert code == 3
+    assert "1 passed" in out
+    assert "partial: whether push protection is enabled (expires 2099-01-01)" in out
+    assert main(["--repo", str(tmp_path), "--require-complete"]) == 1
+
+
 def test_absent_tool_is_unclassified_not_failure(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

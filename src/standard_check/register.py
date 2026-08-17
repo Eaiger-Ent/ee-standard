@@ -16,19 +16,41 @@ from typing import Any
 
 import yaml
 
-from standard_check.asserts_command import COMMAND_ASSERTS
-from standard_check.asserts_file import FILE_ASSERTS, REMOTE_ASSERTS
+from standard_check.asserts import ASSERTS, REMOTE_ASSERTS
 from standard_check.predicates import PredicateSyntaxError, compile_predicate
 
 RUNGS = ("advisory", "warn", "blocking", "blocking (baselined)")
 LOCI = ("editor", "pre-commit", "ci", "remote")
-VARIANCES = ("forbidden", "narrowing-only", "justified", "free")
+# `justified` and `free` were removed at contract 3. `justified` was
+# unimplementable as specified: 00-concepts.md says a justified weakening *is* a
+# baseline entry, and the validator rejects any Tier-1 baseline, so the
+# mechanism that stops it becoming a loophole was structurally unreachable for
+# both controls that used it. `free` had no users and asserts nothing.
+VARIANCES = ("forbidden", "narrowing-only")
 KINDS = ("command", "file", "remote")
 
 _CONTROL_ID = re.compile(r"^[A-Z]{2,4}-\d{3}$")
 _META_ID = re.compile(r"^GOV-\d{3}$")
 _SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
-_SELF_ASSERT = re.compile(r"^standard-check assert (\S+)$")
+
+# `run:` is executed with shlex.split and no shell, so an operator in the string
+# is not an operator — it becomes a literal argument. `true && false` ran as
+# `true` with two ignored arguments and exited 0, which would have let a future
+# `pytest && mypy` silently check only pytest. Rejected at schema time rather
+# than executed correctly: giving the register a shell would make every `run:`
+# string a shell-injection surface for no gain the register needs.
+_SHELL_OPERATOR = re.compile(r"(?:&&|\|\||[;|&><]|\$\(|`)")
+
+# Keys the schema knows. Anything else is an error, not a silent no-op:
+# 02-skill-family.md § Version policy describes a per-control `pinned` /
+# `floating-minor` / `latest` field that exists in neither the schema doc nor
+# the register, and because unknown keys were accepted, adding it would have
+# been ignored rather than rejected.
+_DOCUMENT_ALLOWED = ("version", "meta", "predicates", "controls", "meta_controls")
+_METADATA_ALLOWED = ("owner", "register_contract")
+_STANDARD_ALLOWED = ("name", "url")
+_BLOCK_ALLOWED = ("kind", "run", "assert", "args", "partial")
+_PARTIAL_ALLOWED = ("unverified", "expires")
 
 _CONTROL_REQUIRED = (
     "id",
@@ -46,8 +68,10 @@ _CONTROL_REQUIRED = (
     "review_by",
     "rationale_adr",
 )
+_CONTROL_ALLOWED = (*_CONTROL_REQUIRED, "deployed_by", "also_see")
 _META_REQUIRED = ("id", "title", "enforces", "rationale", "verify")
 _META_FORBIDDEN = ("tier", "rung", "locus", "baseline", "applies_to", "variance")
+_META_ALLOWED = _META_REQUIRED
 
 
 @dataclass(frozen=True)
@@ -62,11 +86,27 @@ class SchemaError:
 
 
 @dataclass(frozen=True)
+class Partial:
+    """A verification block's declaration that it is not fully implemented.
+
+    ADR 0017. The declaration lives in the register, not the checker, so
+    coverage is a register fact reviewable in the same place as everything else
+    — otherwise the checker becomes a second source of truth about its own
+    coverage. `expires` is what keeps it from being a loophole: past that date
+    GOV-003 fails it, exactly as it fails a control past `review_by`.
+    """
+
+    unverified: str
+    expires: datetime.date
+
+
+@dataclass(frozen=True)
 class VerifyBlock:
     kind: str
     run: str | None = None
     assert_name: str | None = None
     args: dict[str, object] = field(default_factory=dict)
+    partial: Partial | None = None
 
     def describe(self) -> str:
         if self.kind == "command":
@@ -146,31 +186,40 @@ class _Validator:
             if not isinstance(block, dict):
                 self.error(here, "must be a mapping")
                 continue
+            self._unknown_keys(block, _BLOCK_ALLOWED, here)
             kind = block.get("kind")
             if kind not in KINDS:
                 self.error(f"{here}.kind", f"must be one of {', '.join(KINDS)}, got {kind!r}")
                 continue
+            partial = self._partial(block.get("partial"), f"{here}.partial")
             if kind == "command":
                 run = block.get("run")
                 if not isinstance(run, str) or not run.strip():
                     self.error(f"{here}.run", "kind: command requires a non-empty run string")
                     continue
-                if match := _SELF_ASSERT.match(run.strip()):
-                    name = match.group(1)
-                    if name not in COMMAND_ASSERTS:
-                        self.error(
-                            f"{here}.run",
-                            f"unknown assert name '{name}' — known command asserts: "
-                            + ", ".join(sorted(COMMAND_ASSERTS)),
-                        )
-                        continue
-                blocks.append(VerifyBlock(kind="command", run=run.strip()))
+                if match := _SHELL_OPERATOR.search(run):
+                    self.error(
+                        f"{here}.run",
+                        f"contains the shell operator {match.group(0)!r}, but run strings are "
+                        "executed without a shell — it would become a literal argument, not an "
+                        "operator. Split it into one block per command",
+                    )
+                    continue
+                if run.strip().startswith("standard-check assert "):
+                    self.error(
+                        f"{here}.run",
+                        "an in-process assertion is `kind: file` with an `assert:` name, not a "
+                        "command. Declaring it a command is what let GOV-001 read it as a "
+                        "reachable CI step while the file asserts beside it were invisible",
+                    )
+                    continue
+                blocks.append(VerifyBlock(kind="command", run=run.strip(), partial=partial))
                 continue
             name = block.get("assert")
             if not isinstance(name, str):
                 self.error(f"{here}.assert", f"kind: {kind} requires an assert name")
                 continue
-            known = FILE_ASSERTS.keys() if kind == "file" else REMOTE_ASSERTS
+            known = ASSERTS.keys() if kind == "file" else REMOTE_ASSERTS
             if name not in known:
                 self.error(
                     f"{here}.assert",
@@ -182,8 +231,52 @@ class _Validator:
             if not isinstance(args, dict):
                 self.error(f"{here}.args", "must be a mapping")
                 continue
-            blocks.append(VerifyBlock(kind=kind, assert_name=name, args=dict(args)))
+            blocks.append(
+                VerifyBlock(kind=kind, assert_name=name, args=dict(args), partial=partial)
+            )
         return tuple(blocks)
+
+    def _partial(self, raw: Any, where: str) -> Partial | None:
+        """ADR 0017's declaration that a block is not fully implemented."""
+        if raw is None:
+            return None
+        if not isinstance(raw, dict):
+            self.error(where, "must be a mapping with 'unverified' and 'expires'")
+            return None
+        self._unknown_keys(raw, _PARTIAL_ALLOWED, where)
+        unverified = raw.get("unverified")
+        if not isinstance(unverified, str) or not unverified.strip():
+            self.error(
+                f"{where}.unverified",
+                "must name the property this block cannot yet verify — an unnamed "
+                "gap is the silence the annotation exists to end",
+            )
+            unverified = None
+        expires = raw.get("expires")
+        if isinstance(expires, str):
+            try:
+                expires = datetime.date.fromisoformat(expires)
+            except ValueError:
+                self.error(f"{where}.expires", f"must be an ISO date, got {expires!r}")
+                expires = None
+        elif not isinstance(expires, datetime.date):
+            self.error(
+                f"{where}.expires",
+                "a partial declaration requires an expiry — without one it becomes "
+                f"permanent, got {expires!r}",
+            )
+            expires = None
+        if unverified is None or not isinstance(expires, datetime.date):
+            return None
+        return Partial(unverified=unverified.strip(), expires=expires)
+
+    def _unknown_keys(self, raw: dict[str, Any], allowed: tuple[str, ...], where: str) -> None:
+        for key in raw:
+            if key not in allowed:
+                self.error(
+                    f"{where}.{key}",
+                    f"unknown key — allowed here: {', '.join(sorted(allowed))}",
+                )
 
     def _require(self, raw: dict[str, Any], names: tuple[str, ...], where: str) -> bool:
         missing = [n for n in names if n not in raw]
@@ -200,6 +293,7 @@ class _Validator:
             where = f"{where} ({control_id})"
         else:
             self.error(f"{where}.id", f"must match AAA-NNN, got {control_id!r}")
+        self._unknown_keys(raw, _CONTROL_ALLOWED, where)
         if not self._require(raw, _CONTROL_REQUIRED, where):
             return None
         before = len(self.errors)
@@ -227,8 +321,31 @@ class _Validator:
             or not isinstance(standard.get("url"), str)
         ):
             self.error(f"{where}.standard", "must be a mapping with 'name' and 'url'")
-        elif not str(standard["url"]).startswith(("http://", "https://")):
-            self.error(f"{where}.standard.url", f"must be an http(s) URL, got {standard['url']!r}")
+        else:
+            self._unknown_keys(standard, _STANDARD_ALLOWED, f"{where}.standard")
+            if not str(standard["url"]).startswith(("http://", "https://")):
+                self.error(
+                    f"{where}.standard.url", f"must be an http(s) URL, got {standard['url']!r}"
+                )
+        # `also_see` was accepted and validated by nothing before contract 3 —
+        # unknown keys were permitted, so a field carrying external URLs was
+        # exempt from the rule that every URL in the register resolves.
+        also_see = raw.get("also_see", [])
+        if not isinstance(also_see, list):
+            self.error(f"{where}.also_see", "must be a list of {name, url} mappings")
+        else:
+            for j, entry in enumerate(also_see):
+                at = f"{where}.also_see[{j}]"
+                if (
+                    not isinstance(entry, dict)
+                    or not isinstance(entry.get("name"), str)
+                    or not isinstance(entry.get("url"), str)
+                ):
+                    self.error(at, "must be a mapping with 'name' and 'url'")
+                    continue
+                self._unknown_keys(entry, _STANDARD_ALLOWED, at)
+                if not str(entry["url"]).startswith(("http://", "https://")):
+                    self.error(f"{at}.url", f"must be an http(s) URL, got {entry['url']!r}")
         variance = raw["variance"]
         if variance not in VARIANCES:
             self.error(
@@ -297,6 +414,7 @@ class _Validator:
                     "meta-controls carry no tier, rung, locus, variance or baseline — "
                     "they are unconditionally blocking wherever the checker runs",
                 )
+        self._unknown_keys(raw, _META_ALLOWED, where)
         if not self._require(raw, _META_REQUIRED, where):
             return None
         before = len(self.errors)
@@ -318,6 +436,7 @@ class _Validator:
         if not isinstance(raw, dict):
             self.error("(document)", "the register must be a YAML mapping")
             return None
+        self._unknown_keys(raw, _DOCUMENT_ALLOWED, "(document)")
         version = raw.get("version")
         if not isinstance(version, str) or not _SEMVER.match(version):
             self.error("version", f"must be a semver string, got {version!r}")
@@ -326,6 +445,7 @@ class _Validator:
         if not isinstance(meta, dict):
             self.error("meta", "required mapping is missing")
         else:
+            self._unknown_keys(meta, _METADATA_ALLOWED, "meta")
             if not isinstance(meta.get("owner"), str):
                 self.error("meta.owner", "must be a string")
             else:

@@ -14,8 +14,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import Enum
 
-from standard_check.asserts_command import COMMAND_ASSERTS
-from standard_check.asserts_file import FILE_ASSERTS, AssertResult
+from standard_check.asserts import ASSERTS
+from standard_check.asserts_file import AssertResult
 from standard_check.predicates import compile_predicate
 from standard_check.register import Control, MetaControl, Register, VerifyBlock
 from standard_check.repo import NotAGitRepository, Repo
@@ -60,11 +60,19 @@ EXIT_INCOMPLETE = 3
 _UNVERIFIED = (Verdict.SKIPPED_NO_CREDENTIALS, Verdict.UNCLASSIFIED)
 
 
-def exit_code(verdicts: list[Verdict], *, require_complete: bool = False) -> int:
-    """The run's exit status, given every control and meta-control verdict."""
+def exit_code(
+    verdicts: list[Verdict], *, require_complete: bool = False, partial: bool = False
+) -> int:
+    """The run's exit status, given every control and meta-control verdict.
+
+    `partial` is ADR 0017 composing with ADR 0016: a control that declared part
+    of itself unimplemented was not fully verified, however clean the verdict it
+    could compute. Without this a partial control would leave exit 0, which is
+    the overstatement the annotation exists to prevent.
+    """
     if any(verdict is Verdict.FAIL for verdict in verdicts):
         return EXIT_VIOLATION
-    if any(verdict in _UNVERIFIED for verdict in verdicts):
+    if partial or any(verdict in _UNVERIFIED for verdict in verdicts):
         return EXIT_VIOLATION if require_complete else EXIT_INCOMPLETE
     return EXIT_OK
 
@@ -125,7 +133,7 @@ def run_block(block: VerifyBlock, repo: Repo) -> BlockResult:
             "remote verification requires credentials (Phase 3)",
         )
     assert block.assert_name is not None
-    passed, message = guarded(FILE_ASSERTS[block.assert_name], repo, block.args)
+    passed, message = guarded(ASSERTS[block.assert_name], repo, block.args)
     return BlockResult(block, Verdict.PASS if passed else Verdict.FAIL, message)
 
 
@@ -169,10 +177,14 @@ def guarded(
 
 
 def run_command_assert(name: str, repo: Repo) -> tuple[bool, str]:
-    """Entry point for `standard-check assert <name>`."""
-    if name not in COMMAND_ASSERTS:
+    """Entry point for `standard-check assert <name>`.
+
+    A debugging entry point, not the register's mechanism: the register declares
+    an assertion as `kind: file` with an `assert:` name, and the schema rejects
+    the `standard-check assert …` form outright.
+    """
+    if name not in ASSERTS:
         return False, (
-            f"unknown assert name '{name}' — known command asserts: "
-            + ", ".join(sorted(COMMAND_ASSERTS))
+            f"unknown assert name '{name}' — known asserts: " + ", ".join(sorted(ASSERTS))
         )
-    return guarded(COMMAND_ASSERTS[name], repo, {})
+    return guarded(ASSERTS[name], repo, {})

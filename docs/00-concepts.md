@@ -120,14 +120,21 @@ variance happens; it is whether variance is **visible and directional**.
 | --- | --- |
 | `forbidden` | No local deviation. Change the register instead. |
 | `narrowing-only` | Local config may add rules or tighten thresholds, never remove or loosen. |
-| `justified` | Any direction, but requires a recorded reason, owner and expiry. |
-| `free` | Local choice; the register only asserts the control exists. |
 
 Because configs are typed and declarative, a delta usually has a knowable
 direction — adding a lint rule strengthens, raising a coverage floor
 strengthens, adding an ignore path weakens. A permitted weakening **is** a
 baseline entry: it inherits the owner, the expiry, and the may-only-shrink rule.
-That is what keeps `justified` from becoming a loophole.
+
+**`justified` and `free` were removed at register contract 3.** `justified`
+allowed any direction given a recorded reason, owner and expiry — and the
+mechanism that kept it from being a loophole was that the weakening became a
+baseline entry. But every Tier-1 control carries `baseline: null` by design and
+the validator rejects any Tier-1 baseline, so for both controls that used it
+(SUP-003 and IAC-001) that mechanism was structurally unreachable: the value
+permitted weakenings it had no way to record. Both moved to `narrowing-only`,
+which is stricter, so no control was loosened by the removal. `free` asserted
+only that a control exists and had no users.
 
 ## The provenance stamp
 

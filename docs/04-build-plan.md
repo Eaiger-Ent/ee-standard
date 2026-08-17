@@ -380,8 +380,10 @@ below — not this table — track that.
 - [x] A target that is not a git repository is an error, never a page of
       `SKIPPED (predicate)` verdicts. `schema` and `explain` are exempt: they
       read the register, not the repository
-- [ ] A register `run:` string containing a shell operator is either rejected at
-      schema time or executed correctly — never silently truncated
+- [x] A register `run:` string containing a shell operator is either rejected at
+      schema time or executed correctly — never silently truncated. Rejected at
+      schema time: giving the register a shell would make every `run:` string an
+      injection surface for no gain the register needs
 - [ ] The `container` predicate and BLD-001's assert agree on what a Dockerfile is
 - [ ] DOC-001 verifies its three loci and the ceiling its `enforces` names
 - [x] The exit code distinguishes "no credentials" from "all clear", per
@@ -399,26 +401,31 @@ below — not this table — track that.
       GOV-002 with no resolvable HEAD is `UNCLASSIFIED`, not a fabricated
       violation. `UNCLASSIFIED` now has producers, so Phase 1's re-opened
       criterion is no longer vacuous
-- [ ] GOV-001 matches **invocations, not substrings**: a step is evidence for a
-      control only if it actually runs that control's verification. The two
-      degenerate readings in § E are gone — six controls no longer collapse to
-      the bare token `standard-check`, and a bare invocation no longer marks
-      every control reachable at once. **Half done 2026-08-17**: the full-run
-      case now matches an invocation (a command word at the start of a command,
-      optionally behind `uv run`), so `pip install standard-check` is no longer
-      evidence that anything is checked, and shell punctuation around the
-      invocation no longer changes the verdict. The per-control case is still a
-      substring test over `block.run.split()[0]` and closes with the `kind:`
-      taxonomy, below
-- [ ] Every verification block declares the `kind` it actually is. No file-shape
+- [x] GOV-001 matches **invocations, not substrings**: a step is evidence for a
+      control only if it actually runs that control's verification. Both
+      degenerate readings in § E are gone. The full-run case matches an
+      invocation — a command word at the start of a command, optionally behind
+      `uv run` — so `pip install standard-check` is no longer evidence that
+      anything is checked, and shell punctuation around the invocation no longer
+      changes the verdict. The per-control case matches each block's own tool or
+      assert name, so the six controls that collapsed to the token
+      `standard-check` are distinguishable and a control verified only by file
+      asserts can be reached on its own evidence
+- [x] Every verification block declares the `kind` it actually is. No file-shape
       assertion is declared `kind: command`, and GOV-001 can find a blocking `ci`
       control reachable through its `kind: file` blocks — otherwise SUP-002 and
-      DEV-001 remain permanently unreachable by construction
+      DEV-001 remain permanently unreachable by construction. All eight moved to
+      `kind: file` at contract 3; the two assert modules now share one namespace,
+      so which module implements an assertion is no longer a register fact
 - [ ] Every row in § D has a test that fails before its fix and passes after
 - [ ] The tool-version question is settled in the register, and no version
       string exists in more than one place
-- [ ] `variance: justified` is implementable or removed from the vocabulary, and
-      `CLAUDE.md` lists whatever survives
+- [x] `variance: justified` is implementable or removed from the vocabulary, and
+      `CLAUDE.md` lists whatever survives — **removed** at contract 3, with
+      `free`. `justified`'s anti-loophole mechanism was that a weakening becomes
+      a baseline entry, and the validator rejects any Tier-1 baseline, so it was
+      structurally unreachable for both users. SUP-003 and IAC-001 are now
+      `narrowing-only`, which is stricter, so nothing was loosened
 - [ ] Every `lint-md`-deployed artefact this repo has edited carries a
       provenance stamp, and the amend submission against `lint-md` is raised
 - [ ] The stamp format carries the **register contract number**, not only the
@@ -431,7 +438,11 @@ below — not this table — track that.
       `narrowing-only` control with `baseline: null` admits no exemptions, so
       leaving them undeclared is the repository that authored the variance rule
       breaking it
-- [ ] The register rejects unknown keys
+- [x] The register rejects unknown keys — at every level: document, `meta`,
+      control, `standard`, `also_see` entry, verify block and `partial`. It
+      immediately earned its place by surfacing `also_see`, a real field
+      carrying external URLs that was accepted and validated by nothing; it is
+      now allowed and its URLs are checked like `standard.url`
 - [x] ADRs 0014–0018 are ratified — each moved from `Proposed` to `Accepted`, or
       superseded by a recorded alternative. 5 of 5 done: 0014 Accepted and
       implemented, 0015 Superseded by 0008 without ever being ratified, 0016,
@@ -442,11 +453,13 @@ below — not this table — track that.
       that stay carry a recorded reason in the ADR, and SUP-001's lockfile
       ecosystems are register facts, so a Go, Rust or Java repo no longer passes
       it with no lockfile at all
-- [ ] ADR 0017 is **implemented**, not merely accepted — the register can
+- [x] ADR 0017 is **implemented**, not merely accepted — the register can
       declare a verification block partially implemented, with an expiry date
       and a named unverified property; GOV-001 carries that declaration instead
       of an unqualified `PASS`; and a declaration past its expiry fails the way
-      GOV-003's `review_by` does
+      GOV-003's `review_by` does. GOV-001's declaration expires 2026-11-30 and
+      names what it cannot see: whether the workflow is a *required status
+      check*. A run containing any partial block cannot exit `0`
 - [x] ADR 0014 is **implemented**, not merely accepted — the repository is
       public as of 2026-08-17, confirmed by the rulesets API returning `[]` where
       it returned `403 Upgrade to GitHub Pro or make this repository public`

@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.2.0
+version: 0.3.0
 
 meta:
   owner: platform-engineering
@@ -15,7 +15,12 @@ meta:
   # Skills read this to decide whether a deployed artefact is stale.
   # 2: DEV-001 gained the image-digest half of its verification (Phase 0.5
   #    exit criterion — see docs/06-devcontainer-setup.md § Known gap).
-  register_contract: 2
+  # 3: The `kind:` taxonomy was corrected — eight in-process assertions were
+  #    declared `kind: command` as `standard-check assert …` strings and are
+  #    now `kind: file`. `variance: justified` was removed from the vocabulary
+  #    (unimplementable as specified) and its two users are `narrowing-only`.
+  #    Verification blocks may declare themselves partial (ADR 0017).
+  register_contract: 3
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -91,8 +96,8 @@ controls:
     locus: [ci]
     applies_to: [github-actions]
     verify:
-      - kind: command
-        run: standard-check assert no-static-cloud-keys
+      - kind: file
+        assert: no-static-cloud-keys
     owner: platform-engineering
     variance: forbidden
     baseline: null
@@ -116,8 +121,8 @@ controls:
     verify:
       - kind: file
         assert: lockfile_present_and_tracked
-      - kind: command
-        run: standard-check assert ci-installs-frozen
+      - kind: file
+        assert: ci-installs-frozen
     owner: platform-engineering
     variance: narrowing-only
     baseline: null
@@ -161,10 +166,10 @@ controls:
     locus: [pre-commit, ci]
     applies_to: [github-actions]
     verify:
-      - kind: command
-        run: standard-check assert actions-pinned-to-sha
+      - kind: file
+        assert: actions-pinned-to-sha
     owner: platform-engineering
-    variance: justified
+    variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
     rationale_adr: docs/adr/0005-pinned-ci-actions.md
@@ -276,10 +281,10 @@ controls:
     locus: [editor, pre-commit, ci]
     applies_to: [python, typescript]
     verify:
-      - kind: command
-        run: standard-check assert linter-wired-at-all-loci
-      - kind: command
-        run: standard-check assert no-failure-suppression
+      - kind: file
+        assert: linter-wired-at-all-loci
+      - kind: file
+        assert: no-failure-suppression
     owner: platform-engineering
     variance: narrowing-only
     baseline: null
@@ -302,8 +307,8 @@ controls:
     locus: [pre-commit, ci]
     applies_to: [python, typescript]
     verify:
-      - kind: command
-        run: standard-check assert typecheck-strict-and-blocking
+      - kind: file
+        assert: typecheck-strict-and-blocking
     owner: platform-engineering
     variance: narrowing-only
     baseline: null
@@ -326,10 +331,10 @@ controls:
     locus: [ci]
     applies_to: [always]
     verify:
-      - kind: command
-        run: standard-check assert tests-run-and-block
-      - kind: command
-        run: standard-check assert no-failure-suppression
+      - kind: file
+        assert: tests-run-and-block
+      - kind: file
+        assert: no-failure-suppression
     owner: platform-engineering
     variance: forbidden
     baseline: null
@@ -361,7 +366,7 @@ controls:
       - kind: command
         run: tflint --recursive
     owner: platform-engineering
-    variance: justified
+    variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
     rationale_adr: docs/adr/0012-iac-static-analysis.md
@@ -414,6 +419,16 @@ meta_controls:
     verify:
       - kind: command
         run: standard-check meta GOV-001
+        # ADR 0017. The file-level half genuinely passes: workflow steps are
+        # read, invocations are matched, suppression is detected. What cannot
+        # be seen from files is whether the workflow is a *required status
+        # check* — the sharpest instance of theme T-3, and the one this control
+        # was written for. That needs platform state, which is Phase 3.
+        partial:
+          unverified: >-
+            whether the CI workflow is a required status check — reachability
+            from a step that can fail is verified, being required is not
+          expires: 2026-11-30
 
   - id: GOV-002
     title: No baseline grew

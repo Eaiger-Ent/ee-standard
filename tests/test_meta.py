@@ -103,6 +103,61 @@ def test_gov_001_does_not_count_installing_the_checker_as_running_it(
     assert "SEC-001" in message
 
 
+def test_gov_001_reaches_a_control_verified_only_by_file_asserts(tmp_path: Path) -> None:
+    """SUP-002 and DEV-001's case: no `kind: command` block at all.
+
+    Before contract 3, reachability was a substring test over the first word of
+    each command block, so a control with only file asserts had no token and was
+    unreachable *by construction* — it could pass only via the full-run
+    short-circuit, never on its own evidence.
+    """
+    register, repo = _load(tmp_path, minimal_register())
+    workflow = (
+        "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        "      - run: uv run standard-check assert precommit_hook_present\n"
+    )
+    make_repo(tmp_path, {".github/workflows/check.yml": workflow})
+    verdict, message = gov_001(register, repo)
+    assert verdict is Verdict.PASS, message
+
+
+def test_gov_001_does_not_accept_a_different_assert_as_evidence(tmp_path: Path) -> None:
+    """Reaching *an* assertion is not reaching *this* control's assertion."""
+    register, repo = _load(tmp_path, minimal_register())
+    workflow = (
+        "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        "      - run: uv run standard-check assert actions-pinned-to-sha\n"
+    )
+    make_repo(tmp_path, {".github/workflows/check.yml": workflow})
+    verdict, message = gov_001(register, repo)
+    assert verdict is Verdict.FAIL
+    assert "SEC-001" in message
+
+
+def test_gov_003_fails_an_expired_partial_declaration(tmp_path: Path) -> None:
+    """ADR 0017's expiry is enforced by the same mechanism as `review_by`.
+
+    An expiry nothing enforces is what lets "partial" become permanent, which is
+    the one objection the ADR raised against its own decision.
+    """
+    document = minimal_register(
+        verify=[
+            {
+                "kind": "file",
+                "assert": "precommit_hook_present",
+                "args": {"id": "gitleaks"},
+                "partial": {"unverified": "the remote half", "expires": "2001-01-01"},
+            }
+        ]
+    )
+    register, repo = _load(tmp_path, document)
+    make_repo(tmp_path, {})
+    verdict, message = gov_003(register, repo)
+    assert verdict is Verdict.FAIL
+    assert "partial declaration expired" in message
+    assert "the remote half" in message
+
+
 def _commit(root: Path, message: str) -> None:
     subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
     subprocess.run(
