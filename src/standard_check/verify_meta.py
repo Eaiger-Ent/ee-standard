@@ -12,30 +12,36 @@ import re
 from standard_check.meta import META_CHECKS
 from standard_check.register import MetaControl, Register
 from standard_check.repo import NotAGitRepository, Repo
-from standard_check.runner import Verdict, run_block
+from standard_check.runner import Verdict, run_block, worst
 
 _SELF_META = re.compile(r"^standard-check meta (\S+)$")
 
 
 def run_meta_control(
     meta: MetaControl, register: Register, repo: Repo
-) -> tuple[str, str, bool, str]:
-    """Returns (id, title, passed, message)."""
-    passed = True
+) -> tuple[str, str, Verdict, str]:
+    """Returns (id, title, verdict, message).
+
+    A meta-control carries a verdict rather than a boolean because "could not
+    verify" is a third answer (ADR 0016) — GOV-002 with no comparison point has
+    no evidence in either direction, and flattening that to False would report a
+    violation the run never observed.
+    """
+    verdicts: list[Verdict] = []
     messages: list[str] = []
     for block in meta.verify:
         match = _SELF_META.match(block.run or "")
         if match and match.group(1) in META_CHECKS:
             try:
-                block_passed, message = META_CHECKS[match.group(1)](register, repo)
+                verdict, message = META_CHECKS[match.group(1)](register, repo)
             except NotAGitRepository:
                 raise
             except Exception as exc:
-                block_passed, message = False, f"could not evaluate: {type(exc).__name__}: {exc}"
+                verdict = Verdict.FAIL
+                message = f"could not evaluate: {type(exc).__name__}: {exc}"
         else:
             result = run_block(block, repo)
-            block_passed = result.verdict is Verdict.PASS
-            message = result.message
-        passed = passed and block_passed
+            verdict, message = result.verdict, result.message
+        verdicts.append(verdict)
         messages.append(message)
-    return meta.id, meta.title, passed, "; ".join(messages)
+    return meta.id, meta.title, worst(verdicts) if verdicts else Verdict.PASS, "; ".join(messages)

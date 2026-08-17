@@ -46,6 +46,29 @@ def worst(verdicts: list[Verdict]) -> Verdict:
     return max(verdicts, key=_SEVERITY.index)
 
 
+# Exit codes, per ADR 0016. `2` is left to argparse for usage errors and to the
+# CLI for a target that is not a repository — collapsing those into either of
+# the verdict codes would be a fresh ambiguity.
+EXIT_OK = 0
+EXIT_VIOLATION = 1
+EXIT_INCOMPLETE = 3
+
+# Verdicts that mean "this run gathered no evidence either way". A predicate
+# skip is deliberately absent: not-applicable is a legitimate pass, and
+# conflating it with unverified would make the code meaningless in the common
+# case (a repo with no Terraform genuinely satisfies IAC-001's applicability).
+_UNVERIFIED = (Verdict.SKIPPED_NO_CREDENTIALS, Verdict.UNCLASSIFIED)
+
+
+def exit_code(verdicts: list[Verdict], *, require_complete: bool = False) -> int:
+    """The run's exit status, given every control and meta-control verdict."""
+    if any(verdict is Verdict.FAIL for verdict in verdicts):
+        return EXIT_VIOLATION
+    if any(verdict in _UNVERIFIED for verdict in verdicts):
+        return EXIT_VIOLATION if require_complete else EXIT_INCOMPLETE
+    return EXIT_OK
+
+
 @dataclass(frozen=True)
 class BlockResult:
     block: VerifyBlock
@@ -73,7 +96,14 @@ def _run_command_block(block: VerifyBlock, repo: Repo) -> BlockResult:
             argv, cwd=repo.root, capture_output=True, text=True, timeout=300, check=False
         )
     except FileNotFoundError:
-        return BlockResult(block, Verdict.FAIL, f"command not found: {argv[0]}")
+        # Cannot verify is not the same as violates (ADR 0016). A missing binary
+        # says nothing about the repository, so reporting FAIL would assert a
+        # violation this run has no evidence for.
+        return BlockResult(
+            block,
+            Verdict.UNCLASSIFIED,
+            f"tool not installed: {argv[0]} — cannot verify",
+        )
     except subprocess.TimeoutExpired:
         return BlockResult(block, Verdict.FAIL, f"timed out after 300s: {block.run}")
     if completed.returncode == 0:

@@ -1,4 +1,10 @@
-"""The meta-controls: GOV-001, GOV-002, GOV-003."""
+"""The meta-controls: GOV-001, GOV-002, GOV-003.
+
+Meta-controls return a `Verdict`, not a bool, so that "could not verify" is
+expressible (ADR 0016). These tests compare against the enum member rather than
+its truthiness: every `Verdict` is truthy, so `assert verdict` would pass for
+FAIL and UNCLASSIFIED alike — the false green this repository exists to prevent.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +16,7 @@ from conftest import make_repo, minimal_register, write_register
 from standard_check.meta import gov_001, gov_002, gov_003
 from standard_check.register import Register, load_register
 from standard_check.repo import Repo
+from standard_check.runner import Verdict
 
 
 def _load(root: Path, document: dict[str, Any]) -> tuple[Register, Repo]:
@@ -29,15 +36,15 @@ _WORKFLOW_FULL_RUN = (
 def test_gov_001_passes_when_checker_runs_in_ci(tmp_path: Path) -> None:
     register, repo = _load(tmp_path, minimal_register())
     make_repo(tmp_path, {".github/workflows/check.yml": _WORKFLOW_FULL_RUN})
-    passed, _message = gov_001(register, repo)
-    assert passed
+    verdict, _message = gov_001(register, repo)
+    assert verdict is Verdict.PASS
 
 
 def test_gov_001_fails_with_no_reachable_step(tmp_path: Path) -> None:
     register, repo = _load(tmp_path, minimal_register())
     make_repo(tmp_path, {".github/workflows/check.yml": "jobs: {}\n"})
-    passed, message = gov_001(register, repo)
-    assert not passed
+    verdict, message = gov_001(register, repo)
+    assert verdict is Verdict.FAIL
     assert "SEC-001" in message
 
 
@@ -49,8 +56,51 @@ def test_gov_001_ignores_suppressed_steps(tmp_path: Path) -> None:
         "        continue-on-error: true\n"
     )
     make_repo(tmp_path, {".github/workflows/check.yml": workflow})
-    passed, _message = gov_001(register, repo)
-    assert not passed
+    verdict, _message = gov_001(register, repo)
+    assert verdict is Verdict.FAIL
+
+
+def test_gov_001_full_run_survives_shell_punctuation(tmp_path: Path) -> None:
+    """A step that handles the exit code still runs the whole register.
+
+    The old pattern required the CI line to be *exactly* the invocation, so
+    wrapping it in error handling flipped GOV-001 from "everything reachable" to
+    "SUP-002 and DEV-001 unreachable" without either control changing. A
+    reachability test a cosmetic reformat can invert is not measuring
+    reachability.
+    """
+    register, repo = _load(tmp_path, minimal_register())
+    workflow = (
+        "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        "      - run: |\n"
+        "          uv run standard-check && status=0 || status=$?\n"
+        '          if [ "$status" -ne 0 ] && [ "$status" -ne 3 ]; then\n'
+        '            exit "$status"\n'
+        "          fi\n"
+    )
+    make_repo(tmp_path, {".github/workflows/check.yml": workflow})
+    verdict, _message = gov_001(register, repo)
+    assert verdict is Verdict.PASS
+
+
+def test_gov_001_does_not_count_installing_the_checker_as_running_it(
+    tmp_path: Path,
+) -> None:
+    """`pip install standard-check` is not evidence that anything is checked.
+
+    An invocation starts a command; it never follows another word. Substring
+    matching made installing the tool mark every control reachable at once —
+    § A row 4 of the build plan.
+    """
+    register, repo = _load(tmp_path, minimal_register())
+    workflow = (
+        "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        "      - run: pip install standard-check\n"
+    )
+    make_repo(tmp_path, {".github/workflows/check.yml": workflow})
+    verdict, message = gov_001(register, repo)
+    assert verdict is Verdict.FAIL
+    assert "SEC-001" in message
 
 
 def _commit(root: Path, message: str) -> None:
@@ -78,17 +128,17 @@ def test_gov_002_fails_when_a_baseline_grows(tmp_path: Path) -> None:
     register, repo = _load(tmp_path, document)
     make_repo(tmp_path, {"baselines/sec.txt": "one\n"})
     baseline = tmp_path / "baselines/sec.txt"
-    passed, _message = gov_002(register, repo)
-    assert passed
+    verdict, _message = gov_002(register, repo)
+    assert verdict is Verdict.PASS
     baseline.write_text("one\ntwo\n", encoding="utf-8")
-    passed, message = gov_002(register, repo)
-    assert not passed
+    verdict, message = gov_002(register, repo)
+    assert verdict is Verdict.FAIL
     assert "1 → 2" in message
     # Shrinking is always fine.
     baseline.write_text("", encoding="utf-8")
     _commit(tmp_path, "shrink")
-    passed, _message = gov_002(register, repo)
-    assert passed
+    verdict, _message = gov_002(register, repo)
+    assert verdict is Verdict.PASS
 
 
 def test_gov_002_fails_when_growth_is_committed(tmp_path: Path) -> None:
@@ -98,8 +148,8 @@ def test_gov_002_fails_when_growth_is_committed(tmp_path: Path) -> None:
     make_repo(tmp_path, {"baselines/sec.txt": "one\n"})
     (tmp_path / "baselines/sec.txt").write_text("one\ntwo\n", encoding="utf-8")
     _commit(tmp_path, "grow the baseline")
-    passed, message = gov_002(register, repo)
-    assert not passed
+    verdict, message = gov_002(register, repo)
+    assert verdict is Verdict.FAIL
     assert "1 → 2" in message
 
 
@@ -111,8 +161,8 @@ def test_gov_002_fails_when_growth_is_on_a_branch(tmp_path: Path) -> None:
     subprocess.run(["git", "-C", str(tmp_path), "checkout", "-q", "-b", "feature"], check=True)
     (tmp_path / "baselines/sec.txt").write_text("one\ntwo\nthree\n", encoding="utf-8")
     _commit(tmp_path, "grow on a branch")
-    passed, message = gov_002(register, repo)
-    assert not passed
+    verdict, message = gov_002(register, repo)
+    assert verdict is Verdict.FAIL
     assert "1 → 3" in message
 
 
@@ -122,20 +172,35 @@ def test_gov_002_passes_when_a_committed_change_shrinks(tmp_path: Path) -> None:
     make_repo(tmp_path, {"baselines/sec.txt": "one\ntwo\n"})
     (tmp_path / "baselines/sec.txt").write_text("one\n", encoding="utf-8")
     _commit(tmp_path, "shrink the baseline")
-    passed, _message = gov_002(register, repo)
-    assert passed
+    verdict, _message = gov_002(register, repo)
+    assert verdict is Verdict.PASS
+
+
+def test_gov_002_is_unclassified_with_no_comparison_point(tmp_path: Path) -> None:
+    """No commits means no evidence about growth — in either direction.
+
+    Failing closed here would assert a violation the run never observed; passing
+    would be the false green. UNCLASSIFIED is the third answer (ADR 0016), and it
+    keeps the exit code off 0 without claiming the baseline grew.
+    """
+    document = minimal_register(tier=2, baseline="baselines/sec.txt")
+    register, repo = _load(tmp_path, document)
+    make_repo(tmp_path, {"baselines/sec.txt": "one\n"}, commit=False)
+    verdict, message = gov_002(register, repo)
+    assert verdict is Verdict.UNCLASSIFIED
+    assert "cannot determine a comparison point" in message
 
 
 def test_gov_003_fails_past_review_date(tmp_path: Path) -> None:
     register, repo = _load(tmp_path, minimal_register(review_by="2001-01-01"))
     make_repo(tmp_path, {})
-    passed, message = gov_003(register, repo)
-    assert not passed
+    verdict, message = gov_003(register, repo)
+    assert verdict is Verdict.FAIL
     assert "SEC-001" in message
 
 
 def test_gov_003_passes_before_review_date(tmp_path: Path) -> None:
     register, repo = _load(tmp_path, minimal_register())
     make_repo(tmp_path, {})
-    passed, _message = gov_003(register, repo)
-    assert passed
+    verdict, _message = gov_003(register, repo)
+    assert verdict is Verdict.PASS
