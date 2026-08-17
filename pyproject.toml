@@ -39,10 +39,12 @@ packages = ["src/standard_check"]
 target-version = "py313"
 line-length = 100
 src = ["src", "tests"]
-# .claude/hooks/md-lint.py is a lint-md deployed artefact (DOC-001) — its
-# owner is the lint-md skill, and this repo's Python rules do not apply to it.
-# The same boundary exists in .markdownlint-cli2.yaml's ignores.
-extend-exclude = [".claude"]
+# No `extend-exclude`. `.claude/hooks/md-lint.py` sat behind one on the grounds
+# that lint-md owns it, and the exclusion hid eleven LNT-001 violations in a
+# file this repository has itself edited. LNT-001 is `narrowing-only` with
+# `baseline: null`, which admits no exemptions — an ignore path is a weakening
+# by the definition in docs/00-concepts.md, and this one was recorded nowhere
+# but in a comment. The file conforms instead.
 
 [tool.ruff.lint]
 select = [
@@ -58,9 +60,9 @@ select = [
 
 [tool.mypy]
 strict = true
-# `scripts` is first-party source too — TYP-001 says all of it, not the
-# convenient parts.
-files = ["src", "tests", "scripts"]
+# `scripts` and `.claude/hooks` are first-party source too — TYP-001 says all
+# of it, not the convenient parts.
+files = ["src", "tests", "scripts", ".claude/hooks"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

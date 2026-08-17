@@ -54,12 +54,18 @@ def _stamped_files() -> list[str]:
 
 
 def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
-    """All four `lint-md` artefacts, where only one used to be stamped."""
+    """All five `lint-md` artefacts, where only one used to be stamped.
+
+    § F counted four. The fifth, `.claude/hooks/md-lint.py`, was invisible to
+    that count because it sat behind a ruff exclusion — which is the same
+    exclusion that hid eleven LNT-001 violations in it.
+    """
     assert set(_stamped_files()) == {
         ".markdownlint.yaml",
         ".markdownlint-cli2.yaml",
         ".pre-commit-config.yaml",
         ".github/workflows/lint.yml",
+        ".claude/hooks/md-lint.py",
     }
 
 

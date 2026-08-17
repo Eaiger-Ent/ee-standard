@@ -320,6 +320,11 @@ in `pyproject.toml` and `.claude/**` in the markdownlint config are what
 `narrowing-only` controls whose `baseline: null` the schema doc says means no
 exemptions are possible.
 
+**Closed by removal.** Both are gone, and the file behind them conforms. The
+count of four artefacts above was itself a consequence of the exclusion: there
+are five, and `.claude/hooks/md-lint.py` was invisible to a search that ruff had
+been told to skip. An exemption hides more than the rule it exempts.
+
 ### G — Tool version reconciliation
 
 Closed at register contract 4, except for one part that turned out to rest on a
@@ -601,12 +606,21 @@ below — not this table — track that.
       recommendation, and a test that failed the build on one would be enforcing
       redeployment, which "notify, never redeploy" rules out. Reporting the
       stale-but-valid case stays Phase 5's sweep
-- [ ] The unrecorded weakening is closed: `extend-exclude = [".claude"]` in
+- [x] The unrecorded weakening is closed: `extend-exclude = [".claude"]` in
       `pyproject.toml` and `.claude/**` in the markdownlint config are either
       removed, or recorded in the register as the variance they are. A
       `narrowing-only` control with `baseline: null` admits no exemptions, so
       leaving them undeclared is the repository that authored the variance rule
-      breaking it
+      breaking it. **Removed, not recorded** — recording was not available: both
+      controls are Tier 1 with `baseline: null`, and the schema rejects a Tier-1
+      baseline, so there was no honest place to put an exemption. The exclusion
+      rested on "lint-md owns that file", which was already false in fact — this
+      repository edited it at `bd23bfb` — and it was hiding **eleven** LNT-001
+      violations. `.claude/hooks/md-lint.py` now conforms to ruff and to strict
+      mypy, which `[tool.mypy] files` was widened to cover, and its three paths
+      (clean file, unfixable file, missing file) were exercised after the
+      rewrite. It is also a **fifth** deployed artefact: § F counted four
+      because the exclusion made this one invisible to the count
 - [x] The register rejects unknown keys — at every level: document, `meta`,
       control, `standard`, `also_see` entry, verify block and `partial`. It
       immediately earned its place by surfacing `also_see`, a real field
