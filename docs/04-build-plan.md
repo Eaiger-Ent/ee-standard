@@ -300,6 +300,13 @@ artefact stale by the definition in `00-concepts.md` — and the stamp format
 carries no contract number, so the documented noise control cannot be evaluated
 from a stamp at all.
 
+**Closed for the stamps, open for the submission.** All four artefacts are
+stamped and the format now carries `register-contract:`; each stamp also records
+the hand-edits made since deployment, which is the amend's scope written down
+rather than remembered. What remains is raising the amend against `lint-md`
+itself — an issue in another organisation's repository, and the fourth
+submission Phase 6 tracks.
+
 That last clause is a **Phase 5 dependency, not a cosmetic one**. Phase 5's first
 two exit criteria — a version bump must produce no redeployment recommendation, a
 contract bump must — are the whole noise argument expressed as a test, and
@@ -573,11 +580,27 @@ below — not this table — track that.
       structurally unreachable for both users. SUP-003 and IAC-001 are now
       `narrowing-only`, which is stricter, so nothing was loosened
 - [ ] Every `lint-md`-deployed artefact this repo has edited carries a
-      provenance stamp, and the amend submission against `lint-md` is raised
-- [ ] The stamp format carries the **register contract number**, not only the
+      provenance stamp, and the amend submission against `lint-md` is raised —
+      **stamps done, submission outstanding**. All four artefacts are stamped:
+      `.markdownlint.yaml`, `.markdownlint-cli2.yaml`, `.github/workflows/lint.yml`
+      and — at the hook rather than at the top of the file —
+      `.pre-commit-config.yaml`, which holds hooks for five controls and whose
+      whole-file stamp would have claimed the other four. Each names the
+      hand-edits made since deployment, so the amend has a written scope. The
+      submission against `lint-md` is the outstanding half
+- [x] The stamp format carries the **register contract number**, not only the
       register version, so Phase 5's first two criteria are evaluable from a
-      stamp. The one existing stamp reads `register: v0.1.0` against a v0.2.0
-      register and is corrected
+      stamp. Format is now
+      `ee-control: ID  ee-skill: name@version  register: vX.Y.Z  register-contract: N`
+      — the version moves for a typo in a comment, the contract only when what
+      gets deployed could differ, so a stamp carrying only the version goes
+      stale on every release and tells a reader nothing. `tests/test_provenance_stamps.py`
+      checks that every stamp parses, names a control the register defines, and
+      does not claim a contract the register has not reached. It deliberately
+      does **not** fail a stale stamp: staleness is a redeployment
+      recommendation, and a test that failed the build on one would be enforcing
+      redeployment, which "notify, never redeploy" rules out. Reporting the
+      stale-but-valid case stays Phase 5's sweep
 - [ ] The unrecorded weakening is closed: `extend-exclude = [".claude"]` in
       `pyproject.toml` and `.claude/**` in the markdownlint config are either
       removed, or recorded in the register as the variance they are. A

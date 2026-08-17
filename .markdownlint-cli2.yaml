@@ -1,3 +1,8 @@
+# .markdownlint-cli2.yaml
+# ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.5.0  register-contract: 5
+#
+# Deployed artefact — the runner's configuration. The rule set itself lives in
+# .markdownlint.yaml. See docs/00-concepts.md § The provenance stamp.
 ignores:
   - "**/node_modules/**"
   - "**/.venv/**"

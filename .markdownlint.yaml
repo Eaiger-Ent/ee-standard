@@ -1,9 +1,10 @@
 # .markdownlint.yaml
-# ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.1.0
+# ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.5.0  register-contract: 5
 #
-# Deployed artefact. Local edits are classified by `standard-check drift`;
-# DOC-001 is `narrowing-only`, so rules may be added or tightened here but
-# not removed or loosened. See docs/02-skill-family.md § Staleness.
+# Deployed artefact. DOC-001 is `narrowing-only`, so rules may be added or
+# tightened here but not removed or loosened — `markdown_gate_wired_at_all_loci`
+# verifies that the MD013 ceiling below is at or under the register's.
+# See docs/00-concepts.md § The provenance stamp.
 
 default: true
 MD013:

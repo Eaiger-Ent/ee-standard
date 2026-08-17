@@ -138,13 +138,26 @@ only that a control exists and had no users.
 
 ## The provenance stamp
 
-Every artefact a gate skill deploys carries a comment identifying what wrote it
-and from which register version:
+Every artefact a gate skill deploys carries a comment identifying what wrote it,
+which control it serves, and from which register version **and contract**:
 
 ```text
 # .markdownlint.yaml — written by the gate skill
-# ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.4.2
+# ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.5.0  register-contract: 5
 ```
+
+`register-contract` is not decoration. The register's *version* moves for any
+change including a typo in a comment; the *contract* moves only when a control's
+`rung`, `verify` or `variance` changes — that is, only when what gets deployed
+could differ. Recording only the version means every stamp goes stale on every
+release, which is the noise this design exists to avoid, and a reader comparing
+`v0.5.0` against `v0.5.1` cannot tell whether anything they hold is affected.
+With the contract in the stamp, they can.
+
+A file a skill owns **in part** carries the stamp above the section it owns,
+not at the top of the file. `.pre-commit-config.yaml` holds hooks for five
+controls, only one of them `lint-md`'s; a whole-file stamp would claim the other
+four.
 
 This makes "deployed but stale" **computable** rather than a matter of memory.
 Three distinct states become distinguishable:
@@ -152,8 +165,14 @@ Three distinct states become distinguishable:
 | State | Detected by |
 | --- | --- |
 | Never deployed | No stamp, no artefact |
-| Deployed and current | Stamp matches installed skill and register |
-| Deployed and stale | Stamp is behind the installed skill or register |
+| Deployed and current | Stamp matches installed skill and register contract |
+| Deployed and stale | Stamp is behind the installed skill's deployment contract or the register contract |
+
+Staleness is **reported, never enforced** — see § Notify, never redeploy below.
+A stale stamp is a recommendation to redeploy, so nothing in the checker fails a
+build over one. What is checked is that a stamp is *well-formed*: that it parses
+and names a control the register defines. A stamp naming `DOC-002` where no such
+control exists is a defect in the deployment, not a staleness signal.
 
 ## Notify, never redeploy
 
