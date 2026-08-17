@@ -103,20 +103,22 @@ that must not be stubbed.
 ### Exit criteria — phase 1
 
 - [x] `standard-check schema` passes against `controls.yaml`
-- [ ] Running against this repo produces a report with no `UNCLASSIFIED` verdicts
-      arising from checker bugs (as opposed to genuine ambiguity) — **re-opened**:
-      vacuously true, because no code path can emit `UNCLASSIFIED`
-      (Phase 1.5 § E)
+- [x] Running against this repo produces a report with no `UNCLASSIFIED` verdicts
+      arising from checker bugs (as opposed to genuine ambiguity) — re-opened as
+      vacuously true, **closed 2026-08-17**: `UNCLASSIFIED` now has two
+      producers (an absent tool, and GOV-002 with no comparison point), so the
+      criterion has content. This repo's own run reports none of either
 - [x] A deliberately broken register fails schema validation with a message
       naming the field — exercised in `tests/test_schema.py`, one test per
       breakage class
 - [x] An unknown `assert` name is a schema **error**, not a skipped check — the
       closed set is derived from the checker's assert registries, so it cannot
       drift from the implementation
-- [ ] `SKIPPED (predicate)` and `SKIPPED (no credentials)` render distinctly and
-      neither is counted as a pass in the exit code — **re-opened**: they render
-      distinctly, but a no-credentials skip leaves the exit code at 0, so CI is
-      green while two Tier-1 controls are unverified (Phase 1.5 § A)
+- [x] `SKIPPED (predicate)` and `SKIPPED (no credentials)` render distinctly and
+      neither is counted as a pass in the exit code — re-opened because a
+      no-credentials skip left the code at 0, **closed 2026-08-17**: it now
+      yields exit `3` under ADR 0016, while a predicate skip stays `0` because
+      not-applicable is a legitimate pass
 - [x] The checker's own repo passes every control it can verify locally
 
 The last one is the real gate. If the standard repo cannot satisfy its own
@@ -370,16 +372,25 @@ below — not this table — track that.
 - [x] A target that is not a git repository is an error, never a page of
       `SKIPPED (predicate)` verdicts. `schema` and `explain` are exempt: they
       read the register, not the repository
-- [ ] A control whose tool is absent reports `UNCLASSIFIED`, distinct from FAIL
 - [ ] A register `run:` string containing a shell operator is either rejected at
       schema time or executed correctly — never silently truncated
 - [ ] The `container` predicate and BLD-001's assert agree on what a Dockerfile is
 - [ ] DOC-001 verifies its three loci and the ceiling its `enforces` names
-- [ ] The exit code distinguishes "no credentials" from "all clear", per
+- [x] The exit code distinguishes "no credentials" from "all clear", per
       [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) — `3` for
       unverified-but-no-violation, `1` for a verified violation, `0` only for a
-      fully verified run, and `--require-complete` promotes `3` to `1`. The
-      `Standard` workflow passes that flag
+      fully verified run, and `--require-complete` promotes `3` to `1`. A
+      predicate skip still exits `0`. This repo now reports exit `3`: nine
+      controls pass, none fails, and CI-001 and SEC-001 are unverified.
+      The `Standard` workflow **tolerates `3` and nothing else** until Phase 3,
+      per ADR 0016 § Ratified tolerance — the flip to `--require-complete` is
+      held by a Phase 3 criterion, because `standard-check` is a required check
+      and a hard failure here would freeze the branch against its own repair
+- [x] A control whose tool is absent reports `UNCLASSIFIED`, distinct from FAIL,
+      and a meta-control that cannot reach a comparison point does the same —
+      GOV-002 with no resolvable HEAD is `UNCLASSIFIED`, not a fabricated
+      violation. `UNCLASSIFIED` now has producers, so Phase 1's re-opened
+      criterion is no longer vacuous
 - [ ] GOV-001 matches **invocations, not substrings**: a step is evidence for a
       control only if it actually runs that control's verification. The two
       degenerate readings in § E are gone — six controls no longer collapse to
@@ -497,7 +508,14 @@ unreachable — and only a remote check catches it.
 
 - [ ] Remote verification passes against a real repository
 - [ ] With no credentials, remote checks report `SKIPPED (no credentials)` and
-      the run does **not** exit 0 on that basis alone
+      the run does **not** exit 0 on that basis alone — satisfied for the exit
+      code since 2026-08-17 (it is `3`), outstanding for the workflow
+- [ ] The `Standard` workflow's Conformance step passes `--require-complete` and
+      no longer tolerates exit `3`. This is the flip ADR 0016 § Ratified
+      tolerance defers to this phase: the tolerance exists only because remote
+      verification does not, so implementing it here is what ends it. Leaving
+      the tolerance in place after remote verification works would be the
+      silence ADR 0016 was written to stop
 - [ ] GOV-001 correctly fails a repo whose lint workflow exists but is not a
       required status check
 - [x] GOV-002 fails when a baseline file grows by one line — **already

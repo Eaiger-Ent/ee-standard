@@ -12,14 +12,14 @@ import re
 from standard_check.asserts_command import _SUPPRESSION, _workflow_steps
 from standard_check.register import Register
 from standard_check.repo import Repo, git
-from standard_check.runner import applies
+from standard_check.runner import Verdict, applies
 
 _BARE_INVOCATION = re.compile(
     r"^\s*(?:uv run\s+)?standard-check(?:\s+--tier\s+\d+)?\s*$", re.MULTILINE
 )
 
 
-def gov_001(register: Register, repo: Repo) -> tuple[bool, str]:
+def gov_001(register: Register, repo: Repo) -> tuple[Verdict, str]:
     """Every blocking control is reachable from a CI step that can fail."""
     clean_steps = [
         step for step in _workflow_steps(repo) if step.run and not step.suppressed
@@ -48,10 +48,13 @@ def gov_001(register: Register, repo: Repo) -> tuple[bool, str]:
         if not reached:
             unreachable.append(control.id)
     if unreachable:
-        return False, (
+        return Verdict.FAIL, (
             "blocking controls with no reachable CI step: " + ", ".join(unreachable)
         )
-    return True, "every applicable blocking control is reachable from a CI step that can fail"
+    return (
+        Verdict.PASS,
+        "every applicable blocking control is reachable from a CI step that can fail",
+    )
 
 
 def _entries(text: str) -> int:
@@ -109,16 +112,18 @@ def _entries_now(repo: Repo, rel: str) -> int:
     return _entries(path.read_text(encoding="utf-8"))
 
 
-def gov_002(register: Register, repo: Repo) -> tuple[bool, str]:
+def gov_002(register: Register, repo: Repo) -> tuple[Verdict, str]:
     """No baseline grew. A baseline that may grow is an exemption list."""
     baselines = [c for c in register.controls if c.baseline is not None]
     if not baselines:
-        return True, "no control carries a baseline — nothing that could grow"
+        return Verdict.PASS, "no control carries a baseline — nothing that could grow"
     reference, description = _reference_commit(repo)
     if reference is None:
-        # Cannot verify is not the same as passes. Under ADR 0016 this becomes
-        # UNCLASSIFIED; until that is ratified, failing closed is the safe answer.
-        return False, f"cannot determine a comparison point: {description}"
+        # Cannot verify is not the same as passes, and not the same as violates
+        # either (ADR 0016). Without a comparison point this run has no evidence
+        # about growth in any direction, and UNCLASSIFIED keeps the exit code
+        # off 0 without asserting a violation.
+        return Verdict.UNCLASSIFIED, f"cannot determine a comparison point: {description}"
     grown = []
     for control in baselines:
         assert control.baseline is not None
@@ -127,11 +132,14 @@ def gov_002(register: Register, repo: Repo) -> tuple[bool, str]:
         if current > previous:
             grown.append(f"{control.id} ({control.baseline}: {previous} → {current})")
     if grown:
-        return False, f"baselines grew against {description}: " + "; ".join(grown)
-    return True, f"no baseline grew ({len(baselines)} checked against {description})"
+        return Verdict.FAIL, f"baselines grew against {description}: " + "; ".join(grown)
+    return (
+        Verdict.PASS,
+        f"no baseline grew ({len(baselines)} checked against {description})",
+    )
 
 
-def gov_003(register: Register, _repo: Repo) -> tuple[bool, str]:
+def gov_003(register: Register, _repo: Repo) -> tuple[Verdict, str]:
     """No control is past its review_by date."""
     today = datetime.date.today()
     expired = [
@@ -140,8 +148,8 @@ def gov_003(register: Register, _repo: Repo) -> tuple[bool, str]:
         if control.review_by < today
     ]
     if expired:
-        return False, "controls past their review date: " + ", ".join(expired)
-    return True, "no control is past its review date"
+        return Verdict.FAIL, "controls past their review date: " + ", ".join(expired)
+    return Verdict.PASS, "no control is past its review date"
 
 
 META_CHECKS = {

@@ -1,11 +1,23 @@
 """The standard-check command line.
 
-    standard-check                 # all applicable controls; exit 1 on any failure
-    standard-check --tier 1        # subset
+    standard-check                 # all applicable controls
+    standard-check run --tier 1    # subset
     standard-check schema          # validate controls.yaml itself
     standard-check meta GOV-001    # one meta-control
     standard-check assert <name>   # one command assert
     standard-check explain SEC-001 # what it checks, why, and the standard it cites
+
+Exit codes for a run, per ADR 0016:
+
+    0  every applicable control was verified, and none is violated
+    1  at least one verified violation
+    2  usage error, or a target that is not a repository
+    3  no violation found, but at least one applicable control could not be
+       verified — a missing tool, or a remote block with no credentials
+
+`--require-complete` promotes 3 to 1, for the pipeline that must be
+authoritative. A predicate skip is not incompleteness: a repo with no Terraform
+genuinely satisfies IAC-001's applicability, so those runs still exit 0.
 """
 
 from __future__ import annotations
@@ -18,7 +30,7 @@ from standard_check.meta import META_CHECKS
 from standard_check.register import Control, Register, load_register
 from standard_check.repo import NotAGitRepository, Repo, require_git_repo
 from standard_check.report import render
-from standard_check.runner import Verdict, run_command_assert, run_control
+from standard_check.runner import exit_code, run_command_assert, run_control
 from standard_check.verify_meta import run_meta_control
 
 
@@ -35,6 +47,11 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="path to controls.yaml (default: <repo>/controls.yaml)",
+    )
+    parser.add_argument(
+        "--require-complete",
+        action="store_true",
+        help="exit 1 rather than 3 when a control could not be verified",
     )
     sub = parser.add_subparsers(dest="command")
     run = sub.add_parser("run", help="run all applicable controls (the default)")
@@ -72,7 +89,12 @@ def _cmd_schema(repo_path: Path, register_path: Path | None) -> int:
     return 0
 
 
-def _cmd_run(repo_path: Path, register_path: Path | None, tier: int | None) -> int:
+def _cmd_run(
+    repo_path: Path,
+    register_path: Path | None,
+    tier: int | None,
+    require_complete: bool,
+) -> int:
     register, code = _load(repo_path, register_path)
     if register is None:
         return code
@@ -81,12 +103,13 @@ def _cmd_run(repo_path: Path, register_path: Path | None, tier: int | None) -> i
     results = [run_control(control, register, repo) for control in controls]
     meta_results = [run_meta_control(meta, register, repo) for meta in register.meta_controls]
     print(render(register, results, meta_results))
-    failed = any(r.verdict in (Verdict.FAIL, Verdict.UNCLASSIFIED) for r in results)
-    meta_failed = any(not passed for _id, _title, passed, _msg in meta_results)
-    return 1 if failed or meta_failed else 0
+    verdicts = [r.verdict for r in results] + [m[2] for m in meta_results]
+    return exit_code(verdicts, require_complete=require_complete)
 
 
-def _cmd_meta(repo_path: Path, register_path: Path | None, meta_id: str) -> int:
+def _cmd_meta(
+    repo_path: Path, register_path: Path | None, meta_id: str, require_complete: bool
+) -> int:
     register, code = _load(repo_path, register_path)
     if register is None:
         return code
@@ -96,9 +119,9 @@ def _cmd_meta(repo_path: Path, register_path: Path | None, meta_id: str) -> int:
             file=sys.stderr,
         )
         return 2
-    passed, message = META_CHECKS[meta_id](register, Repo(repo_path))
-    print(f"{meta_id}: {'PASS' if passed else 'FAIL'} — {message}")
-    return 0 if passed else 1
+    verdict, message = META_CHECKS[meta_id](register, Repo(repo_path))
+    print(f"{meta_id}: {verdict} — {message}")
+    return exit_code([verdict], require_complete=require_complete)
 
 
 def _cmd_assert(repo_path: Path, name: str) -> int:
@@ -154,13 +177,13 @@ def main(argv: list[str] | None = None) -> int:
 def _dispatch(args: argparse.Namespace, repo_path: Path, register_path: Path | None) -> int:
     match args.command:
         case None:
-            return _cmd_run(repo_path, register_path, None)
+            return _cmd_run(repo_path, register_path, None, args.require_complete)
         case "run":
-            return _cmd_run(repo_path, register_path, args.tier)
+            return _cmd_run(repo_path, register_path, args.tier, args.require_complete)
         case "schema":
             return _cmd_schema(repo_path, register_path)
         case "meta":
-            return _cmd_meta(repo_path, register_path, args.id)
+            return _cmd_meta(repo_path, register_path, args.id, args.require_complete)
         case "assert":
             return _cmd_assert(repo_path, args.name)
         case "explain":

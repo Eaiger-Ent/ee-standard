@@ -97,6 +97,36 @@ ratification: ADR 0014 is now implemented and this repository is public, but
 still not read and the red state persists until Phase 3 lands rather than until
 0014 resolves. The exit-code semantics ratified here are unchanged by that.
 
+### Ratified tolerance — the `Standard` workflow, until Phase 3
+
+Amended 2026-08-17, on implementation. The clause committing this repository's
+own workflow to `--require-complete` was written when `main` was unprotected. It
+is now a **required status check** with no bypass actors, so the ratified
+consequence changed under us: "CI turns red" became "no pull request can merge,
+including the pull requests that would remove the incompleteness". A standard
+that forbids its own remediation has stopped being a standard.
+
+The workflow therefore tolerates exit `3` — and only `3` — until Phase 3
+implements `kind: remote` verification. This is a bounded exception, recorded
+here rather than left as a comment in YAML, because an unrecorded tolerance is
+indistinguishable from the silence this ADR exists to end. Three things bound
+it:
+
+- The tolerance is **exit-code-specific**. A verified violation still exits `1`
+  and still fails the check; only "could not verify" is tolerated.
+- The incompleteness is **still loud**: the report prints the note, the summary
+  counts the skips, and both appear in the workflow log on every run.
+- It **expires by construction**. Phase 3's exit criteria require that with no
+  credentials the run does not exit 0 on that basis alone, so satisfying Phase 3
+  is what flips the step to `--require-complete`; the tolerance cannot outlive
+  the condition that justified it.
+
+What is *not* tolerated is the version of this that would have been easier:
+removing `standard-check` from the ruleset's required checks. A gate that exists
+but is not a required check is theme **T-3** — declared and unreachable — which
+is the failure GOV-001 exists to catch and the one this repository was founded
+on.
+
 ## Consequences
 
 **Positive outcomes:**

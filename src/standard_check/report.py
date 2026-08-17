@@ -27,7 +27,7 @@ def _sort_key(result: ControlResult) -> tuple[int, int, str]:
 def render(
     register: Register,
     results: list[ControlResult],
-    meta_results: list[tuple[str, str, bool, str]],
+    meta_results: list[tuple[str, str, Verdict, str]],
 ) -> str:
     lines = [
         f"ee-standard conformance report — register v{register.version} "
@@ -50,13 +50,16 @@ def render(
                 for block in result.blocks
             )
     lines.append("Meta")
-    for meta_id, title, passed, message in meta_results:
-        verdict = "PASS" if passed else "FAIL"
-        lines.append(f"  {meta_id:<8} {verdict:<25} {title}")
-        if not passed:
-            lines.append(f"           ✗ {message}")
+    for meta_id, title, verdict, message in meta_results:
+        lines.append(f"  {meta_id:<8} {verdict!s:<25} {title}")
+        if verdict is not Verdict.PASS:
+            lines.append(f"           {_MARK[verdict]} {message}")
+    # Counts stay control-only so "N passed" keeps meaning what it always has;
+    # meta-controls have their own line. The notes below read both, because a
+    # meta-control that could not be verified makes the report incomplete too.
     counts = Counter(result.verdict for result in results)
-    meta_failed = sum(1 for m in meta_results if not m[2])
+    meta_passed = sum(1 for meta in meta_results if meta[2] is Verdict.PASS)
+    all_verdicts = [result.verdict for result in results] + [meta[2] for meta in meta_results]
     lines += [
         "",
         "Summary: "
@@ -65,11 +68,19 @@ def render(
         f"{counts[Verdict.SKIPPED_PREDICATE]} skipped (predicate), "
         f"{counts[Verdict.SKIPPED_NO_CREDENTIALS]} skipped (no credentials), "
         f"{counts[Verdict.UNCLASSIFIED]} unclassified; "
-        f"meta-controls: {len(meta_results) - meta_failed}/{len(meta_results)} passed",
+        f"meta-controls: {meta_passed}/{len(meta_results)} passed",
     ]
-    if counts[Verdict.SKIPPED_NO_CREDENTIALS]:
+    # Two different reasons a run gathered no evidence, reported separately
+    # because they are fixed differently: one needs credentials, the other needs
+    # the tool installed. Neither is a claim that the control holds (ADR 0016).
+    if Verdict.SKIPPED_NO_CREDENTIALS in all_verdicts:
         lines.append(
             "Note: remote checks were skipped without credentials — this report is "
             "incomplete, not a claim that those controls hold."
+        )
+    if Verdict.UNCLASSIFIED in all_verdicts:
+        lines.append(
+            "Note: some controls could not be verified — this report is incomplete, "
+            "not a claim that those controls hold."
         )
     return "\n".join(lines)

@@ -84,14 +84,70 @@ def test_run_exit_codes_and_distinct_skip_rendering(
     code = main(["--repo", str(tmp_path)])
     out = capsys.readouterr().out
     # Local control passes, remote skip and predicate skip render distinctly,
-    # and neither skip is counted as a pass.
-    assert code == 0
+    # and neither skip is counted as a pass. The no-credentials skip makes the
+    # run incomplete, so it exits 3 rather than 0 (ADR 0016) — this is the
+    # Phase 1 criterion that was re-opened for having left the code at 0.
+    assert code == 3
     assert "SKIPPED (no credentials)" in out
     assert "SKIPPED (predicate)" in out
     assert "1 passed" in out
     assert "1 skipped (predicate)" in out
     assert "1 skipped (no credentials)" in out
     assert "incomplete" in out
+    # ...and --require-complete turns that incompleteness into a hard failure.
+    assert main(["--repo", str(tmp_path), "--require-complete"]) == 1
+
+
+def test_predicate_skip_alone_still_exits_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Not-applicable is a legitimate pass, even under --require-complete.
+
+    A repo with no Terraform genuinely satisfies IAC-001's applicability.
+    Conflating that with "could not verify" would make exit 3 meaningless in the
+    common case, so a predicate skip never contributes to incompleteness.
+    """
+    document = minimal_register()
+    document["controls"].append(
+        dict(
+            document["controls"][0],
+            id="IAC-001",
+            title="Predicate-skipped control",
+            applies_to=["python"],
+        )
+    )
+    write_register(tmp_path, document)
+    make_repo(
+        tmp_path,
+        {".pre-commit-config.yaml": "repos:\n  - repo: local\n    hooks:\n      - id: gitleaks\n"},
+    )
+    assert main(["--repo", str(tmp_path)]) == 0
+    assert main(["--repo", str(tmp_path), "--require-complete"]) == 0
+    assert "1 skipped (predicate)" in capsys.readouterr().out
+
+
+def test_absent_tool_is_unclassified_not_failure(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """"Cannot verify" must be distinguishable from "violates".
+
+    A missing binary says nothing about the repository. Reporting FAIL asserts a
+    violation the run has no evidence for — and makes a broken container look
+    identical to a non-conformant repo.
+    """
+    document = minimal_register(
+        verify=[{"kind": "command", "run": "definitely-not-installed --check"}]
+    )
+    write_register(tmp_path, document)
+    make_repo(tmp_path, {})
+    code = main(["--repo", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert code == 3
+    assert "UNCLASSIFIED" in out
+    assert "tool not installed: definitely-not-installed" in out
+    assert "0 failed" in out
+    assert "1 unclassified" in out
+    assert main(["--repo", str(tmp_path), "--require-complete"]) == 1
 
 
 def test_run_exits_nonzero_on_failure(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
