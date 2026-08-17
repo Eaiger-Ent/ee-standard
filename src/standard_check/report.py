@@ -49,11 +49,28 @@ def render(
                 f"           {_MARK[block.verdict]} {block.block.describe()} — {block.message}"
                 for block in result.blocks
             )
+        # ADR 0017: a verdict that does not cover everything the control claims
+        # says so, whatever the verdict was. Printed even for PASS — especially
+        # for PASS, since that is the verdict a partial block would otherwise
+        # let overstate its evidence.
+        lines.extend(
+            f"           partial: {block.block.partial.unverified} "
+            f"(expires {block.block.partial.expires.isoformat()})"
+            for block in result.blocks
+            if block.block.partial is not None
+        )
     lines.append("Meta")
+    meta_by_id = {meta.id: meta for meta in register.meta_controls}
     for meta_id, title, verdict, message in meta_results:
         lines.append(f"  {meta_id:<8} {verdict!s:<25} {title}")
         if verdict is not Verdict.PASS:
             lines.append(f"           {_MARK[verdict]} {message}")
+        lines.extend(
+            f"           partial: {block.partial.unverified} "
+            f"(expires {block.partial.expires.isoformat()})"
+            for block in meta_by_id[meta_id].verify
+            if block.partial is not None
+        )
     # Counts stay control-only so "N passed" keeps meaning what it always has;
     # meta-controls have their own line. The notes below read both, because a
     # meta-control that could not be verified makes the report incomplete too.

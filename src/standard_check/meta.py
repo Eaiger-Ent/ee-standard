@@ -10,7 +10,7 @@ import datetime
 import re
 
 from standard_check.asserts_command import _SUPPRESSION, _workflow_steps
-from standard_check.register import Register
+from standard_check.register import Control, MetaControl, Register
 from standard_check.repo import Repo, git
 from standard_check.runner import Verdict, applies
 
@@ -37,6 +37,43 @@ _FULL_RUN = re.compile(
 )
 
 
+def _invocation(word: str) -> re.Pattern[str]:
+    """A pattern matching `word` invoked as a command, not merely mentioned.
+
+    An invocation starts a command, so it follows a line start or a separator —
+    never another word. This is what distinguishes running a tool from
+    installing it, naming it in an echo, or matching it inside a longer name.
+    """
+    return re.compile(rf"(?:^\s*|[;&|(]\s*)(?:\S+\s+run\s+)?{re.escape(word)}(?![-\w])", re.M)
+
+
+def _reaches(control: Control, run: str) -> bool:
+    """Whether this CI step verifies `control`.
+
+    A control is reached by a step that runs one of its external tools, or that
+    runs one of its assertions by name. Before contract 3 this was a substring
+    test over the first word of each `kind: command` block — which, because
+    every in-process assertion was declared as `standard-check assert …`, meant
+    six controls collapsed to the single token `standard-check`, and the two
+    verified only by file asserts (SUP-002, DEV-001) had no token at all and
+    were unreachable by construction.
+    """
+    if _SUPPRESSION.search(run):
+        return False
+    for block in control.verify:
+        if block.kind == "command" and block.run and _invocation(block.run.split()[0]).search(run):
+            return True
+        # `standard-check assert <name>` — the debugging entry point, but a
+        # legitimate way for CI to reach one assertion deliberately.
+        if (
+            block.kind == "file"
+            and block.assert_name
+            and re.search(rf"standard-check\s+assert\s+{re.escape(block.assert_name)}\b", run)
+        ):
+            return True
+    return False
+
+
 def gov_001(register: Register, repo: Repo) -> tuple[Verdict, str]:
     """Every blocking control is reachable from a CI step that can fail."""
     clean_steps = [
@@ -54,16 +91,7 @@ def gov_001(register: Register, repo: Repo) -> tuple[Verdict, str]:
             continue
         if full_run:
             continue
-        commands = [
-            block.run.split()[0]
-            for block in control.verify
-            if block.kind == "command" and block.run
-        ]
-        reached = any(
-            any(command in step.run for command in commands) and not _SUPPRESSION.search(step.run)
-            for step in clean_steps
-        )
-        if not reached:
+        if not any(_reaches(control, step.run) for step in clean_steps):
             unreachable.append(control.id)
     if unreachable:
         return Verdict.FAIL, (
@@ -158,16 +186,30 @@ def gov_002(register: Register, repo: Repo) -> tuple[Verdict, str]:
 
 
 def gov_003(register: Register, _repo: Repo) -> tuple[Verdict, str]:
-    """No control is past its review_by date."""
+    """No control is past its review_by date, and no partial declaration expired.
+
+    Both are the same mechanism: an expiry that turns silence into a build
+    failure. ADR 0017 gives a partial declaration an expiry precisely so that
+    "partial" cannot become permanent, and enforcing it here is what makes that
+    promise real rather than decorative.
+    """
     today = datetime.date.today()
     expired = [
         f"{control.id} (review_by {control.review_by.isoformat()})"
         for control in register.controls
         if control.review_by < today
     ]
+    declared: list[Control | MetaControl] = [*register.controls, *register.meta_controls]
+    expired += [
+        f"{control.id} (partial declaration expired {block.partial.expires.isoformat()}: "
+        f"{block.partial.unverified})"
+        for control in declared
+        for block in control.verify
+        if block.partial is not None and block.partial.expires < today
+    ]
     if expired:
-        return Verdict.FAIL, "controls past their review date: " + ", ".join(expired)
-    return Verdict.PASS, "no control is past its review date"
+        return Verdict.FAIL, "past their review date: " + ", ".join(expired)
+    return Verdict.PASS, "no control is past its review date, and no partial declaration expired"
 
 
 META_CHECKS = {

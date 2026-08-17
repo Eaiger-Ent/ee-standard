@@ -44,7 +44,8 @@ ignore the recommendation, which costs more than the edit saved.
 | `deployed_by` | no | string | The gate skill that writes this control's artefacts. |
 | `verify` | yes | list | One or more verification blocks. See below. |
 | `owner` | yes | string | Team accountable for *this* control. |
-| `variance` | yes | enum | `forbidden` / `narrowing-only` / `justified` / `free`. |
+| `variance` | yes | enum | `forbidden` / `narrowing-only`. |
+| `also_see` | no | list | Supplementary `{name, url}` references. Each URL is validated like `standard.url`. |
 | `baseline` | yes | path or `null` | Path to the baseline artefact, or `null` for no exemptions ever. |
 | `review_by` | yes | ISO date | GOV-003 fails the build after this date. |
 | `rationale_adr` | yes | path | The ADR recording why this control exists. |
@@ -95,6 +96,41 @@ All blocks must pass for the control to pass. The `assert` names are implemented
 in the checker and are a closed set — an unknown assert name is a schema error,
 not a skipped check, so a typo cannot silently disable a control.
 
+The three kinds are distinguished by *what performs the verification*, not by
+which module implements it: `command` shells out to an external tool and reads
+its exit code, `file` runs an in-process assertion over repository files, and
+`remote` reads platform API state. An in-process assertion declared as
+`kind: command` — the `standard-check assert <name>` form used before contract
+3 — is now a schema error. It is not cosmetic: GOV-001 derives reachability from
+`kind: command` blocks, so the miscategorisation decided that control's verdict.
+
+`run:` is executed without a shell. A string containing a shell operator is
+rejected at schema time, because it would become a literal argument rather than
+an operator — `pytest && mypy` would have run `pytest` with two ignored
+arguments and reported success.
+
+#### `partial`
+
+Any block may declare that it is not yet fully implemented ([ADR
+0017](adr/0017-partial-verification-is-reported.md)):
+
+```yaml
+  - kind: command
+    run: standard-check meta GOV-001
+    partial:
+      unverified: >-
+        whether the CI workflow is a required status check
+      expires: 2026-11-30
+```
+
+The control still renders the verdict it can compute, followed by a `partial:`
+line naming what it cannot see. Both fields are required: without `unverified`
+the gap is unnamed, and without `expires` "partial" becomes permanent. GOV-003
+fails a declaration past its expiry, exactly as it fails a control past
+`review_by`. A run containing any partial block is incomplete in the sense of
+[ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md), so it cannot exit
+`0`.
+
 `remote` verifications need credentials and network, so they are skipped with an
 explicit `SKIPPED (no credentials)` verdict rather than passing by default. A
 skipped remote check never counts as a pass.
@@ -105,12 +141,13 @@ skipped remote check never counts as a pass.
 | --- | --- | --- |
 | `forbidden` | nothing | — |
 | `narrowing-only` | add rules, tighten thresholds | — |
-| `justified` | any change | reason, owner, expiry |
-| `free` | anything | — |
 
-Under `justified`, a weakening is recorded as a baseline entry and inherits the
-may-only-shrink rule. Under `narrowing-only`, the checker classifies the delta's
-direction and fails on any weakening.
+Under `narrowing-only`, the checker classifies the delta's direction and fails
+on any weakening.
+
+`justified` and `free` were removed at contract 3 — see
+[`00-concepts.md`](00-concepts.md) § Variance for why `justified` could not be
+implemented as specified.
 
 Direction classification fails in three known cases, all of which the checker
 reports as `UNCLASSIFIED` rather than guessing: a rule replaced by a differently

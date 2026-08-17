@@ -30,7 +30,7 @@ from standard_check.meta import META_CHECKS
 from standard_check.register import Control, Register, load_register
 from standard_check.repo import NotAGitRepository, Repo, require_git_repo
 from standard_check.report import render
-from standard_check.runner import exit_code, run_command_assert, run_control
+from standard_check.runner import Verdict, exit_code, run_command_assert, run_control
 from standard_check.verify_meta import run_meta_control
 
 
@@ -104,7 +104,18 @@ def _cmd_run(
     meta_results = [run_meta_control(meta, register, repo) for meta in register.meta_controls]
     print(render(register, results, meta_results))
     verdicts = [r.verdict for r in results] + [m[2] for m in meta_results]
-    return exit_code(verdicts, require_complete=require_complete)
+    # A predicate-skipped control ran nothing, so its partial declarations say
+    # nothing about this run — counting them would make exit 3 fire for controls
+    # that legitimately do not apply.
+    partial = any(
+        block.block.partial is not None
+        for result in results
+        if result.verdict is not Verdict.SKIPPED_PREDICATE
+        for block in result.blocks
+    ) or any(
+        block.partial is not None for meta in register.meta_controls for block in meta.verify
+    )
+    return exit_code(verdicts, require_complete=require_complete, partial=partial)
 
 
 def _cmd_meta(

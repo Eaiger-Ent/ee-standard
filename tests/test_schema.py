@@ -36,12 +36,114 @@ def test_unknown_file_assert_is_a_schema_error(tmp_path: Path) -> None:
     assert any("verify[0].assert" in e for e in errors)
 
 
-def test_unknown_command_assert_is_a_schema_error(tmp_path: Path) -> None:
+def test_an_assertion_declared_as_a_command_is_rejected(tmp_path: Path) -> None:
+    """The `kind:` taxonomy means what it says, from contract 3.
+
+    An in-process assertion declared `kind: command` is what let GOV-001 read it
+    as a reachable CI step while the `kind: file` blocks beside it were
+    invisible — six controls collapsed to the token `standard-check`, and two
+    verified only by file asserts had no token at all.
+    """
     document = minimal_register(
-        verify=[{"kind": "command", "run": "standard-check assert not-a-thing"}]
+        verify=[{"kind": "command", "run": "standard-check assert no-static-cloud-keys"}]
     )
     errors = _errors_for(tmp_path, document)
+    assert any("is `kind: file` with an `assert:` name" in e for e in errors)
+
+
+def test_unknown_assert_name_is_a_schema_error_not_a_skipped_check(tmp_path: Path) -> None:
+    """The namespace is closed, and it is one namespace.
+
+    Names from both assert modules resolve, so moving an assertion between them
+    is not a register change.
+    """
+    document = minimal_register(verify=[{"kind": "file", "assert": "not-a-thing"}])
+    errors = _errors_for(tmp_path, document)
     assert any("unknown assert name 'not-a-thing'" in e for e in errors)
+    # A name that used to be reachable only as a command still resolves.
+    _register, ok = load_register(
+        write_register(
+            tmp_path, minimal_register(verify=[{"kind": "file", "assert": "actions-pinned-to-sha"}])
+        )
+    )
+    assert ok == []
+
+
+def test_unknown_key_is_rejected(tmp_path: Path) -> None:
+    """02-skill-family.md's `pinned`/`floating-minor`/`latest` field is the case.
+
+    It is described in a document, exists in neither the schema nor the
+    register, and — while unknown keys were accepted — adding it would have been
+    silently ignored rather than rejected.
+    """
+    errors = _errors_for(tmp_path, minimal_register(version_policy="pinned"))
+    assert any("(SEC-001).version_policy" in e and "unknown key" in e for e in errors)
+
+
+def test_unknown_key_in_a_verify_block_is_rejected(tmp_path: Path) -> None:
+    document = minimal_register(
+        verify=[{"kind": "file", "assert": "precommit_hook_present", "argz": {"id": "gitleaks"}}]
+    )
+    errors = _errors_for(tmp_path, document)
+    assert any("verify[0].argz" in e and "unknown key" in e for e in errors)
+
+
+def test_shell_operator_in_run_is_rejected(tmp_path: Path) -> None:
+    """`run:` is executed without a shell, so an operator is not an operator.
+
+    `true && false` became `['true', '&&', 'false']` and exited 0, which would
+    have let a future `pytest && mypy` silently check only pytest.
+    """
+    errors = _errors_for(
+        tmp_path, minimal_register(verify=[{"kind": "command", "run": "pytest && mypy"}])
+    )
+    assert any("verify[0].run" in e and "without a shell" in e for e in errors)
+
+
+def test_justified_variance_is_no_longer_in_the_vocabulary(tmp_path: Path) -> None:
+    """Removed at contract 3 as unimplementable.
+
+    00-concepts.md said a justified weakening *is* a baseline entry, and the
+    validator rejects any Tier-1 baseline — so the mechanism that stopped it
+    becoming a loophole was structurally unreachable for both controls that
+    used it.
+    """
+    errors = _errors_for(tmp_path, minimal_register(variance="justified"))
+    assert any("(SEC-001).variance" in e for e in errors)
+
+
+def test_partial_declaration_requires_an_expiry_and_a_named_gap(tmp_path: Path) -> None:
+    """ADR 0017. Without an expiry, "partial" becomes permanent."""
+    no_expiry = minimal_register(
+        verify=[
+            {
+                "kind": "file",
+                "assert": "precommit_hook_present",
+                "args": {"id": "gitleaks"},
+                "partial": {"unverified": "the remote half"},
+            }
+        ]
+    )
+    assert any("requires an expiry" in e for e in _errors_for(tmp_path, no_expiry))
+    no_gap = minimal_register(
+        verify=[
+            {
+                "kind": "file",
+                "assert": "precommit_hook_present",
+                "args": {"id": "gitleaks"},
+                "partial": {"expires": "2027-01-01"},
+            }
+        ]
+    )
+    assert any("must name the property" in e for e in _errors_for(tmp_path, no_gap))
+
+
+def test_also_see_urls_are_validated(tmp_path: Path) -> None:
+    """It carried external URLs and was validated by nothing before contract 3."""
+    errors = _errors_for(
+        tmp_path, minimal_register(also_see=[{"name": "Something", "url": "not-a-url"}])
+    )
+    assert any("also_see[0].url" in e for e in errors)
 
 
 def test_missing_required_field_names_the_field(tmp_path: Path) -> None:
