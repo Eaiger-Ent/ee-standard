@@ -285,7 +285,7 @@ become a second copy of the reasoning. Ratifying one means moving it to
 
 | Decision | Recorded in | Why it cannot be deferred |
 | --- | --- | --- |
-| This repository cannot satisfy CI-001 or SEC-001's remote half. `GET /rulesets` returns 403 ("Upgrade to GitHub Pro or make this repository public"), `security_and_analysis` is null, and `main` reports `protected: false` | [ADR 0014](adr/0014-satisfying-remote-locus-controls.md) — **Accepted** 2026-08-17, not yet implemented | Decided: the repository becomes public and both controls stay Tier 1. Phase 3 stays blocked until the visibility change is actually made, because acceptance settles what will be done and not that it has been |
+| This repository cannot satisfy CI-001 or SEC-001's remote half. `GET /rulesets` returned 403 ("Upgrade to GitHub Pro or make this repository public"), `security_and_analysis` was null, and `main` reported `protected: false` | [ADR 0014](adr/0014-satisfying-remote-locus-controls.md) — **Accepted and implemented** 2026-08-17 | Settled: the repository is public and both controls stay Tier 1. The capability is confirmed live (`GET /rulesets` now returns `[]`). Two follow-on acts remain — create the ruleset, enable push protection — both blocked on a PAT lacking `Administration: write`, not on any decision |
 | `main` is unprotected today, so every blocking gate is bypassable | [ADR 0015](adr/0015-interim-branch-discipline.md) | The Phase 1 gates are advisory in fact until this is closed, whatever the register says |
 | Whether `SKIPPED (no credentials)` should leave a non-zero exit, a distinct exit code, or a warning | [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) | Phase 3's criteria demand a non-zero exit on that basis; Phase 2's gates inherit whichever semantics is chosen |
 | How a partially-implemented control reports its own incompleteness | [ADR 0017](adr/0017-partial-verification-is-reported.md) | GOV-001 cannot see platform state until Phase 3, yet prints an unqualified PASS today |
@@ -351,9 +351,19 @@ become a second copy of the reasoning. Ratifying one means moving it to
 - [ ] ADRs 0014–0017 are ratified — each moved from `Proposed` to `Accepted`, or
       superseded by a recorded alternative. 1 of 4 done: 0014 Accepted
       2026-08-17; 0015, 0016 and 0017 still `Proposed`
-- [ ] ADR 0014 is **implemented**, not merely accepted — the repository is
-      public, and CI-001 and SEC-001's remote halves verify against live
-      platform state instead of reporting `SKIPPED (no credentials)`
+- [x] ADR 0014 is **implemented**, not merely accepted — the repository is
+      public as of 2026-08-17, confirmed by the rulesets API returning `[]` where
+      it returned `403 Upgrade to GitHub Pro or make this repository public`
+- [ ] The default-branch ruleset exists and secret scanning push protection is
+      enabled, so CI-001 and SEC-001 hold *in fact*. **Blocked**: the container's
+      fine-grained PAT lacks `Administration: write`, so both mutations return
+      `403 Resource not accessible by personal access token`
+
+The second criterion stops at the platform state being *correct*. Whether the
+checker can *verify* it is Phase 3's `kind: remote` work and belongs to Phase 3's
+exit criteria — requiring it here would make Phase 1.5 unclosable by its own
+terms, which is the error this plan already made once by putting the devcontainer
+in Phase 2.
 
 The § D criterion is the real gate this time. Phase 1's suite passed 48 checks
 while GOV-002 could not fail, a trailing comma could abort the run, and a

@@ -20,12 +20,18 @@ This is not hypothetical. All five Phase 1 commits were pushed directly to
 than gating it. That is theme **T-3** — the gates are declared and, at the merge,
 unreachable.
 
-CI-001 exists to close this, but its mechanism is unavailable until
-[ADR 0014](0014-satisfying-remote-locus-controls.md) is ratified and acted on.
-So there is an interval — of unknown length, since it depends on an
-organisational decision — during which the enforcement cannot exist. The
-question this ADR settles is how to behave inside that interval. Leaving it
-unaddressed is theme **T-4**: a known failure absorbed rather than surfaced.
+CI-001 exists to close this. Its mechanism became *available* on 2026-08-17,
+when [ADR 0014](0014-satisfying-remote-locus-controls.md) was implemented and the
+repository went public: the rulesets API changed from `403` to an empty list. But
+available is not applied — no ruleset exists, and `main` still reports
+`"protected": false`.
+
+That distinction is the correction this ADR needed, and it is why the interval is
+longer than first written. Publication makes protection *possible*; a separate
+act makes it *real*. So this ADR's sunset condition is **not** "ADR 0014 is acted
+on" but "a default-branch ruleset exists and CI-001 verifies against it". The
+question it settles is how to behave until then. Leaving that unaddressed is
+theme **T-4**: a known failure absorbed rather than surfaced.
 
 ## Alternatives Considered
 
@@ -86,7 +92,9 @@ verifies is precisely what the register refuses to count as a control.
 ## Related ADRs
 
 - [ADR 0014: Make Remote-Locus Controls Satisfiable on This Repository](0014-satisfying-remote-locus-controls.md)
-  — the decision that replaces this convention with enforcement.
+  — implemented 2026-08-17, which made enforcement possible but not yet real.
+  This ADR is superseded by [ADR 0008](0008-protected-default-branch.md) once the
+  ruleset exists and CI-001 verifies against it, not on publication alone.
 - [ADR 0008: Protect the Default Branch by Ruleset](0008-protected-default-branch.md)
   — the control this interim posture stands in for, and does not satisfy.
 

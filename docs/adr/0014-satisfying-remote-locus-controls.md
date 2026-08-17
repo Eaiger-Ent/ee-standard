@@ -6,12 +6,19 @@
 Ratified decision from
 [`04-build-plan.md`](../04-build-plan.md) § Phase 1.5 § Decisions required.
 
-**Not yet implemented.** Acceptance settles *what* will be done; changing the
-repository's visibility is a separate, irreversible act that has not been
-performed. Its precondition — a history review — is partly discharged:
-`gitleaks detect` over the full history reports no leaks, and
-`.devcontainer/.env` has never been committed. What remains is a human read of
-the history for content that is embarrassing rather than secret.
+**Implemented 2026-08-17.** The repository is public
+(`"visibility": "public"`), and the capability this decision existed to unlock is
+confirmed live: `GET /rulesets` changed from `403 Upgrade to GitHub Pro or make
+this repository public` to an empty list. The precondition was discharged first —
+`gitleaks detect` found no leaks across the full history and
+`.devcontainer/.env` has never been committed.
+
+Two follow-on acts remain, and neither is this decision: the default-branch
+ruleset must be created, and secret scanning push protection enabled. Both are
+blocked on tooling rather than on judgement — the container's fine-grained PAT
+lacks `Administration: write`, so both API calls return `403 Resource not
+accessible by personal access token`. Until the ruleset exists,
+[ADR 0015](0015-interim-branch-discipline.md) remains in force.
 
 ## Background
 
