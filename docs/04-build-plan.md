@@ -236,11 +236,26 @@ structurally unreachable for both controls that use it. `CLAUDE.md` compounds it
 by listing only two of the four values. `UNCLASSIFIED` is likewise unreachable
 from every code path.
 
-**The `kind: command` / `kind: file` taxonomy has been subverted.** Five of the
-seven `standard-check assert …` blocks are file-shape assertions declared as
-commands; ADR 0002 even describes SEC-002 as "a file-shaped assertion" while the
-register calls it a command. This is not cosmetic — GOV-001 derives reachability
-from `kind: command` blocks and ignores `kind: file` ones.
+**The `kind: command` / `kind: file` taxonomy has been subverted.** **All eight**
+`standard-check assert …` blocks are file-shape assertions declared as commands —
+not five of seven, as this section previously recorded; the count was re-measured
+on 2026-08-17 against the register's own loader. ADR 0002 even describes SEC-002
+as "a file-shaped assertion" while the register calls it a command.
+
+This is not cosmetic — GOV-001 derives reachability from `kind: command` blocks
+and ignores `kind: file` ones, so the miscategorisation decides that control's
+verdict. Measured against the register as it stands, GOV-001 sees:
+
+| What GOV-001 sees | Controls | Consequence |
+| --- | --- | --- |
+| The bare token `standard-check` | SEC-002, SUP-001, SUP-003, LNT-001, TYP-001, TST-001 | Six blocking controls collapse to one indistinguishable token; any CI step containing that substring marks all six reachable |
+| No `kind: command` block at all | SUP-002, DEV-001 | Blocking, `ci`, verified only by file asserts. `commands` is empty, so `reached` is always false and they can pass only via the bare-invocation short-circuit |
+| A distinct tool token | SEC-001, BLD-001, IAC-001, DOC-001 | The only four where the reachability test measures anything |
+
+So neither branch of GOV-001 measures reachability: with a bare `standard-check`
+step every control passes vacuously, and without one SUP-002 and DEV-001 fail
+however well they are wired. This is the control the register calls its
+highest-value one, and the guard against theme **T-3**.
 
 **The checker has become a second source of truth** for rules recorded nowhere
 in the register: ruff/eslint/mypy/pytest as the mandated tools, the
@@ -251,6 +266,12 @@ patterns, the predicate grammar, the `GOV-\d{3}` pattern, `rationale_adr` file
 existence, strict semver, and the Tier-1 baseline rule. Phase 2's shared assert
 implementation inherits all of it, so the boundary needs deciding here: what
 belongs in the register, and what is legitimately the checker's business.
+
+The lockfile map is the measured harm: it knows Python and Node, so a Go, Rust or
+Java repository with no lockfile passes SUP-001. That exemption was never
+decided — it is which dictionary keys someone wrote — and because the register
+does not record it, no review and no `review_by` date will ever surface it.
+Recorded as [ADR 0018](adr/0018-register-checker-boundary.md).
 
 ### F — Deployment and provenance
 
@@ -268,6 +289,13 @@ though `CLAUDE.md` states as fact that they do. The one that has a stamp reads
 artefact stale by the definition in `00-concepts.md` — and the stamp format
 carries no contract number, so the documented noise control cannot be evaluated
 from a stamp at all.
+
+That last clause is a **Phase 5 dependency, not a cosmetic one**. Phase 5's first
+two exit criteria — a version bump must produce no redeployment recommendation, a
+contract bump must — are the whole noise argument expressed as a test, and
+neither can be evaluated against a stamp that does not carry the contract number.
+Fixing the format here is what makes Phase 5 testable; deferring it means
+discovering the gap in the phase that depends on it.
 
 Phase 1 also introduced an unrecorded weakening: `extend-exclude = [".claude"]`
 in `pyproject.toml` and `.claude/**` in the markdownlint config are what
@@ -290,6 +318,7 @@ below — not this table — track that.
 | `main` was unprotected, so every blocking gate was bypassable | [ADR 0015](adr/0015-interim-branch-discipline.md) — **Superseded** by [ADR 0008](adr/0008-protected-default-branch.md) 2026-08-17, never ratified | Closed by enforcement rather than by convention: the ruleset makes CI-001 mechanical, so the proposed stopgap was redundant before it was decided |
 | Whether `SKIPPED (no credentials)` should leave a non-zero exit, a distinct exit code, or a warning | [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) — **Accepted** 2026-08-17, not yet implemented | Decided: exit `3` for a run with no violation but something it could not verify, `1` for a verified violation, `0` only when every applicable control was verified, and `--require-complete` promotes `3` to `1`. Predicate skips stay `0`. Phase 2's gates inherit these semantics, so the code follows before they are written |
 | How a partially-implemented control reports its own incompleteness | [ADR 0017](adr/0017-partial-verification-is-reported.md) — **Accepted** 2026-08-17, not yet implemented | Decided: the register — not the checker — declares a verification block partially implemented with an expiry, and the report renders the computed verdict plus a `partial:` line. The schema addition carries a `register_contract` bump, so it lands before Phase 2's skills read that contract |
+| Which verdict-deciding rules belong in the register and which are legitimately the checker's business | [ADR 0018](adr/0018-register-checker-boundary.md) — `Status: Proposed` | About a dozen rules decide verdicts from Python alone (§ E). Phase 2 copies the assert layer into six gate skills, so a rule on the wrong side of the line gets six more copies — the argument that created this phase. Measured harm already: SUP-001 exempts Go, Rust and Java by accident |
 
 ### Carried debt — recorded, not gating
 
@@ -304,7 +333,9 @@ below — not this table — track that.
 - `setup.sh` is 82 lines across seven sections. `uv` and `gitleaks` belong in
   pinned features, which would also bring them under `devcontainer-lock.json`.
 - No repo-root `LICENSE`, though `pyproject.toml` declares Apache-2.0 and
-  `05-promotion.md` requires every plugin to ship a copy of it.
+  `05-promotion.md` requires every plugin to ship a copy of it. **Not gating for
+  this phase, but gating for Phase 6** — `check_plugin_license.py` fails without
+  it, so it now carries a Phase 6 exit criterion rather than sitting here alone.
 - `.devcontainer/.env` is mode `0644` while holding a live OAuth token and two
   PATs. A `chmod 600` in `fetch-secrets.sh` costs nothing, and the docs present
   that file as the credential boundary (theme T-5).
@@ -349,6 +380,15 @@ below — not this table — track that.
       unverified-but-no-violation, `1` for a verified violation, `0` only for a
       fully verified run, and `--require-complete` promotes `3` to `1`. The
       `Standard` workflow passes that flag
+- [ ] GOV-001 matches **invocations, not substrings**: a step is evidence for a
+      control only if it actually runs that control's verification. The two
+      degenerate readings in § E are gone — six controls no longer collapse to
+      the bare token `standard-check`, and a bare invocation no longer marks
+      every control reachable at once
+- [ ] Every verification block declares the `kind` it actually is. No file-shape
+      assertion is declared `kind: command`, and GOV-001 can find a blocking `ci`
+      control reachable through its `kind: file` blocks — otherwise SUP-002 and
+      DEV-001 remain permanently unreachable by construction
 - [ ] Every row in § D has a test that fails before its fix and passes after
 - [ ] The tool-version question is settled in the register, and no version
       string exists in more than one place
@@ -356,12 +396,26 @@ below — not this table — track that.
       `CLAUDE.md` lists whatever survives
 - [ ] Every `lint-md`-deployed artefact this repo has edited carries a
       provenance stamp, and the amend submission against `lint-md` is raised
+- [ ] The stamp format carries the **register contract number**, not only the
+      register version, so Phase 5's first two criteria are evaluable from a
+      stamp. The one existing stamp reads `register: v0.1.0` against a v0.2.0
+      register and is corrected
+- [ ] The unrecorded weakening is closed: `extend-exclude = [".claude"]` in
+      `pyproject.toml` and `.claude/**` in the markdownlint config are either
+      removed, or recorded in the register as the variance they are. A
+      `narrowing-only` control with `baseline: null` admits no exemptions, so
+      leaving them undeclared is the repository that authored the variance rule
+      breaking it
 - [ ] The register rejects unknown keys
 - [x] ADRs 0014–0017 are ratified — each moved from `Proposed` to `Accepted`, or
       superseded by a recorded alternative. 4 of 4 done: 0014 Accepted and
       implemented, 0015 Superseded by 0008 without ever being ratified, 0016 and
       0017 Accepted 2026-08-17 and not yet implemented. Ratification is not
       implementation — the criteria above and below carry that
+- [ ] [ADR 0018](adr/0018-register-checker-boundary.md) is ratified, and the
+      rules its test moves are in the register while the rules that stay have a
+      recorded reason. SUP-001's lockfile ecosystems are register facts, so a
+      Go, Rust or Java repo no longer passes it with no lockfile
 - [ ] ADR 0017 is **implemented**, not merely accepted — the register can
       declare a verification block partially implemented, with an expiry date
       and a named unverified property; GOV-001 carries that declaration instead
@@ -445,7 +499,11 @@ unreachable — and only a remote check catches it.
       the run does **not** exit 0 on that basis alone
 - [ ] GOV-001 correctly fails a repo whose lint workflow exists but is not a
       required status check
-- [ ] GOV-002 fails when a baseline file grows by one line
+- [x] GOV-002 fails when a baseline file grows by one line — **already
+      satisfied** by Phase 1.5's first criterion, which made GOV-002 compare
+      against the default branch's merge-base. GOV-002 reads the register, not
+      platform state, so nothing here is deferred to this phase; the box is
+      listed for completeness of the meta-control set
 - [ ] GOV-003 fails on a control past `review_by`
 - [ ] `gate-repo` confirms before every remote mutation, independently of the
       plan-level confirmation
@@ -514,6 +572,9 @@ makes four.
 
 ### Exit criteria — phase 6
 
+- [ ] A repo-root `LICENSE` exists and is copied into the plugin —
+      `check_plugin_license.py` fails without it, and `pyproject.toml` already
+      declares Apache-2.0. Carried as debt since Phase 1.5, gating here
 - [ ] All four submissions raised (the three in `05-promotion.md`, plus the
       `lint-md` amendment from Phase 1.5 § F)
 - [ ] `ee-standard` installable from the marketplace
