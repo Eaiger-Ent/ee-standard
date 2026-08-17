@@ -286,7 +286,7 @@ become a second copy of the reasoning. Ratifying one means moving it to
 | Decision | Recorded in | Why it cannot be deferred |
 | --- | --- | --- |
 | This repository cannot satisfy CI-001 or SEC-001's remote half. `GET /rulesets` returned 403 ("Upgrade to GitHub Pro or make this repository public"), `security_and_analysis` was null, and `main` reported `protected: false` | [ADR 0014](adr/0014-satisfying-remote-locus-controls.md) — **Accepted and implemented** 2026-08-17 | Settled: the repository is public and both controls stay Tier 1. The capability is confirmed live (`GET /rulesets` now returns `[]`). Two follow-on acts remain — create the ruleset, enable push protection — both blocked on a PAT lacking `Administration: write`, not on any decision |
-| `main` is unprotected today, so every blocking gate is bypassable | [ADR 0015](adr/0015-interim-branch-discipline.md) | The Phase 1 gates are advisory in fact until this is closed, whatever the register says |
+| `main` was unprotected, so every blocking gate was bypassable | [ADR 0015](adr/0015-interim-branch-discipline.md) — **Superseded** by [ADR 0008](adr/0008-protected-default-branch.md) 2026-08-17, never ratified | Closed by enforcement rather than by convention: the ruleset makes CI-001 mechanical, so the proposed stopgap was redundant before it was decided |
 | Whether `SKIPPED (no credentials)` should leave a non-zero exit, a distinct exit code, or a warning | [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) | Phase 3's criteria demand a non-zero exit on that basis; Phase 2's gates inherit whichever semantics is chosen |
 | How a partially-implemented control reports its own incompleteness | [ADR 0017](adr/0017-partial-verification-is-reported.md) | GOV-001 cannot see platform state until Phase 3, yet prints an unqualified PASS today |
 
@@ -349,15 +349,17 @@ become a second copy of the reasoning. Ratifying one means moving it to
       provenance stamp, and the amend submission against `lint-md` is raised
 - [ ] The register rejects unknown keys
 - [ ] ADRs 0014–0017 are ratified — each moved from `Proposed` to `Accepted`, or
-      superseded by a recorded alternative. 1 of 4 done: 0014 Accepted
-      2026-08-17; 0015, 0016 and 0017 still `Proposed`
+      superseded by a recorded alternative. 2 of 4 done: 0014 Accepted and
+      implemented, 0015 Superseded by 0008 without ever being ratified; 0016 and
+      0017 still `Proposed`
 - [x] ADR 0014 is **implemented**, not merely accepted — the repository is
       public as of 2026-08-17, confirmed by the rulesets API returning `[]` where
       it returned `403 Upgrade to GitHub Pro or make this repository public`
-- [ ] The default-branch ruleset exists and secret scanning push protection is
-      enabled, so CI-001 and SEC-001 hold *in fact*. **Blocked**: the container's
-      fine-grained PAT lacks `Administration: write`, so both mutations return
-      `403 Resource not accessible by personal access token`
+- [x] The default-branch ruleset exists and secret scanning push protection is
+      enabled, so CI-001 and SEC-001 hold *in fact* — ruleset
+      `default-branch-protection` (id `20937135`, `active`, no bypass actors)
+      created 2026-08-17, `main` now reports `"protected": true`, and a direct
+      push to `main` was observed being refused
 
 The second criterion stops at the platform state being *correct*. Whether the
 checker can *verify* it is Phase 3's `kind: remote` work and belongs to Phase 3's

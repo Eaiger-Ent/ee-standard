@@ -73,6 +73,12 @@ targeted is precisely a protection that everyone believes is still on.
   — its push-protection half lives in the same platform-state locus.
 - [ADR 0011: Test Failures Are Terminal](0011-test-failures-are-terminal.md) —
   the check this ruleset makes unbypassable.
+- [ADR 0015: Work on Branches While the Default Branch Is Unprotected](0015-interim-branch-discipline.md)
+  — **superseded by this ADR** on 2026-08-17. It proposed a convention to stand
+  in for this control while no ruleset existed; creating the ruleset made the
+  convention redundant before it was ever ratified.
+- [ADR 0014: Make Remote-Locus Controls Satisfiable on This Repository](0014-satisfying-remote-locus-controls.md)
+  — made this control satisfiable at all on this repository.
 
 ## References
 
