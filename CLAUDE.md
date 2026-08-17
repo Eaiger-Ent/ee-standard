@@ -110,6 +110,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/04-build-plan.md` | The phase exit criteria that define "done" for any implementation work, and the only list of outstanding work |
 | `docs/05-promotion.md` | The route to the `ee-skills` marketplace |
 | `docs/06-devcontainer-setup.md` | Operator guide for this repo's own container |
+| `docs/07-inherited-conventions.md` | What the predecessor repo knew, sorted by whether it transfers — including what must **not** be copied |
 | `docs/adr/` | One ADR per control, plus the open decisions at `Status: Proposed` |
 
 `README.md` § "The register at a glance" lists the thirteen Tier-1 controls, with
