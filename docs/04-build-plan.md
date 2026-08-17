@@ -309,7 +309,7 @@ These are not code, and they are not the author's to settle alone. Each is
 recorded as an ADR — the ADR holds the options, the recommendation and the
 consequences, so this table stays an index and does not become a second copy of
 the reasoning. Ratifying one means moving it to `Accepted` via `/adr-approve`.
-All four are now settled; none is yet fully implemented, and the exit criteria
+All five are now settled; none is yet fully implemented, and the exit criteria
 below — not this table — track that.
 
 | Decision | Recorded in | Why it cannot be deferred |
@@ -318,7 +318,7 @@ below — not this table — track that.
 | `main` was unprotected, so every blocking gate was bypassable | [ADR 0015](adr/0015-interim-branch-discipline.md) — **Superseded** by [ADR 0008](adr/0008-protected-default-branch.md) 2026-08-17, never ratified | Closed by enforcement rather than by convention: the ruleset makes CI-001 mechanical, so the proposed stopgap was redundant before it was decided |
 | Whether `SKIPPED (no credentials)` should leave a non-zero exit, a distinct exit code, or a warning | [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) — **Accepted** 2026-08-17, not yet implemented | Decided: exit `3` for a run with no violation but something it could not verify, `1` for a verified violation, `0` only when every applicable control was verified, and `--require-complete` promotes `3` to `1`. Predicate skips stay `0`. Phase 2's gates inherit these semantics, so the code follows before they are written |
 | How a partially-implemented control reports its own incompleteness | [ADR 0017](adr/0017-partial-verification-is-reported.md) — **Accepted** 2026-08-17, not yet implemented | Decided: the register — not the checker — declares a verification block partially implemented with an expiry, and the report renders the computed verdict plus a `partial:` line. The schema addition carries a `register_contract` bump, so it lands before Phase 2's skills read that contract |
-| Which verdict-deciding rules belong in the register and which are legitimately the checker's business | [ADR 0018](adr/0018-register-checker-boundary.md) — `Status: Proposed` | About a dozen rules decide verdicts from Python alone (§ E). Phase 2 copies the assert layer into six gate skills, so a rule on the wrong side of the line gets six more copies — the argument that created this phase. Measured harm already: SUP-001 exempts Go, Rust and Java by accident |
+| Which verdict-deciding rules belong in the register and which are legitimately the checker's business | [ADR 0018](adr/0018-register-checker-boundary.md) — **Accepted** 2026-08-17, not yet implemented | Decided by one test: could a reasonable EE repository need this to differ without changing the checker? Yes → the register (mandated tools, lockfile ecosystems, test-command spellings, cloud-key names, Dependabot ecosystems, suppression patterns). No → the checker, with a recorded reason (predicate grammar, ID pattern, semver strictness, `rationale_adr` existence, the Tier-1 baseline rule). The move batches into ADR 0017's `register_contract` bump |
 
 ### Carried debt — recorded, not gating
 
@@ -407,15 +407,16 @@ below — not this table — track that.
       leaving them undeclared is the repository that authored the variance rule
       breaking it
 - [ ] The register rejects unknown keys
-- [x] ADRs 0014–0017 are ratified — each moved from `Proposed` to `Accepted`, or
-      superseded by a recorded alternative. 4 of 4 done: 0014 Accepted and
-      implemented, 0015 Superseded by 0008 without ever being ratified, 0016 and
-      0017 Accepted 2026-08-17 and not yet implemented. Ratification is not
-      implementation — the criteria above and below carry that
-- [ ] [ADR 0018](adr/0018-register-checker-boundary.md) is ratified, and the
-      rules its test moves are in the register while the rules that stay have a
-      recorded reason. SUP-001's lockfile ecosystems are register facts, so a
-      Go, Rust or Java repo no longer passes it with no lockfile
+- [x] ADRs 0014–0018 are ratified — each moved from `Proposed` to `Accepted`, or
+      superseded by a recorded alternative. 5 of 5 done: 0014 Accepted and
+      implemented, 0015 Superseded by 0008 without ever being ratified, 0016,
+      0017 and 0018 Accepted 2026-08-17 and not yet implemented. Ratification is
+      not implementation — the criteria above and below carry that
+- [ ] [ADR 0018](adr/0018-register-checker-boundary.md) is **implemented**, not
+      merely accepted — the rules its test moves are in the register, the rules
+      that stay carry a recorded reason in the ADR, and SUP-001's lockfile
+      ecosystems are register facts, so a Go, Rust or Java repo no longer passes
+      it with no lockfile at all
 - [ ] ADR 0017 is **implemented**, not merely accepted — the register can
       declare a verification block partially implemented, with an expiry date
       and a named unverified property; GOV-001 carries that declaration instead

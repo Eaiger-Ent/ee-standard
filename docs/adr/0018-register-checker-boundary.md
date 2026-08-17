@@ -1,11 +1,15 @@
 # ADR 0018: Draw the Boundary Between Register and Checker
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-08-17
 
-Open decision from
+Ratified decision from
 [`04-build-plan.md`](../04-build-plan.md) § Phase 1.5 § Decisions required.
-This record states the recommendation and is not ratified.
+
+**Not yet implemented.** Acceptance settles the test and what it classifies, not
+the code: every rule listed below is still in Python, SUP-001 still exempts Go,
+Rust and Java by accident, and the register has no field for any of it. Phase
+1.5's exit criteria track that work.
 
 ## Background
 
@@ -118,6 +122,12 @@ makes the register a program, which the build plan excludes by name. Option 1 wa
 rejected because it has already failed in the one case that was measured: SUP-001
 silently exempts three major ecosystems, and no reading of "the register records
 intent" would have caught it.
+
+Ratified on 2026-08-17. The classification above is the ratified part; the list
+is not closed, and a rule discovered later is classified by the same test rather
+than by where it happens to have been written. A rule that stays in the checker
+must carry its reason in this ADR — an unreasoned omission is the failure this
+record exists to stop, not an application of it.
 
 ## Consequences
 

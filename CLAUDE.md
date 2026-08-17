@@ -67,6 +67,18 @@ Never introduce a second copy of a rule (in prose, CI, or config) that could
 drift from the register; that duplication ("theme T-2") is the failure this repo
 exists to prevent.
 
+**Python counts as a second copy.** Per
+[ADR 0018](docs/adr/0018-register-checker-boundary.md) (**Accepted** 2026-08-17,
+not yet implemented), before writing a rule into `src/standard_check/` ask:
+*could a reasonable Equal Experts repository need this to differ without
+changing the checker?* If yes, it belongs in `controls.yaml` — mandated tool
+names, lockfile ecosystems, test-command spellings, cloud-key names, Dependabot
+ecosystems, suppression patterns. If no, the checker may hold it, but the reason
+must be recorded in ADR 0018 — the predicate grammar, the ID pattern, semver
+strictness, `rationale_adr` existence and the Tier-1 baseline rule are
+properties of the register format, not of any repository. An unreasoned rule in
+the checker is the failure, not an exception to it.
+
 ## Vocabulary you need before editing anything
 
 Defined in `docs/00-concepts.md`; the schema is `docs/01-register-schema.md`.
