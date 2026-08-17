@@ -16,7 +16,7 @@ from pathlib import Path
 
 from standard_check.meta import META_CHECKS
 from standard_check.register import Control, Register, load_register
-from standard_check.repo import Repo
+from standard_check.repo import NotAGitRepository, Repo, require_git_repo
 from standard_check.report import render
 from standard_check.runner import Verdict, run_command_assert, run_control
 from standard_check.verify_meta import run_meta_control
@@ -140,6 +140,18 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     repo_path: Path = args.repo.resolve()
     register_path: Path | None = args.register
+    try:
+        # Only the commands that evaluate the repository need it to be one;
+        # `schema` and `explain` read the register and nothing else.
+        if args.command in (None, "run", "assert", "meta"):
+            require_git_repo(repo_path)
+        return _dispatch(args, repo_path, register_path)
+    except NotAGitRepository as exc:
+        print(f"standard-check: {exc}", file=sys.stderr)
+        return 2
+
+
+def _dispatch(args: argparse.Namespace, repo_path: Path, register_path: Path | None) -> int:
     match args.command:
         case None:
             return _cmd_run(repo_path, register_path, None)

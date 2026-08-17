@@ -43,10 +43,10 @@ def precommit_hook_present(repo: Repo, args: Mapping[str, object]) -> AssertResu
     config = yaml.safe_load(repo.read(".pre-commit-config.yaml"))
     if not isinstance(config, dict):
         return _fail(".pre-commit-config.yaml is not a mapping")
-    for repo_block in config.get("repos", []):
+    for repo_block in config.get("repos") or []:
         if not isinstance(repo_block, dict):
             continue
-        for hook in repo_block.get("hooks", []):
+        for hook in repo_block.get("hooks") or []:
             if isinstance(hook, dict) and hook.get("id") == hook_id:
                 return _ok(f"pre-commit hook '{hook_id}' is configured")
     return _fail(f"no pre-commit hook with id '{hook_id}' in .pre-commit-config.yaml")
@@ -127,7 +127,7 @@ def dependency_update_config_covers_all_ecosystems(
         return _fail(f"{dependabot} is not a mapping")
     covered = {
         str(update.get("package-ecosystem", ""))
-        for update in config.get("updates", [])
+        for update in config.get("updates") or []
         if isinstance(update, dict)
     }
     missing = [
@@ -155,7 +155,7 @@ def devcontainer_lock_covers_all_features(
     config = load_jsonc(repo.root / ".devcontainer/devcontainer.json")
     if not isinstance(config, dict):
         return _fail(".devcontainer/devcontainer.json is not a mapping")
-    declared = {_feature_id(ref) for ref in config.get("features", {})}
+    declared = {_feature_id(ref) for ref in config.get("features") or {}}
     if not repo.exists(".devcontainer/devcontainer-lock.json"):
         if declared:
             return _fail(".devcontainer/devcontainer-lock.json does not exist")
@@ -164,7 +164,7 @@ def devcontainer_lock_covers_all_features(
     if not isinstance(lock, dict):
         return _fail(".devcontainer/devcontainer-lock.json is not a mapping")
     locked: dict[str, str] = {}
-    for ref, entry in lock.get("features", {}).items():
+    for ref, entry in (lock.get("features") or {}).items():
         if isinstance(entry, dict):
             locked[_feature_id(str(ref))] = str(entry.get("resolved", ""))
     problems = []

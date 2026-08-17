@@ -14,15 +14,44 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
+class NotAGitRepository(RuntimeError):
+    """The target cannot be evaluated, so no verdict about it would be honest."""
+
+
+def git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    """Run a git command against `root`, surfacing a missing git binary clearly."""
+    try:
+        return subprocess.run(
+            ["git", "-C", str(root), *args], capture_output=True, text=True, check=False
+        )
+    except FileNotFoundError as exc:  # git absent from PATH
+        raise NotAGitRepository("git is not installed or not on PATH") from exc
+
+
+def require_git_repo(root: Path) -> None:
+    """Raise unless `root` is inside a git work tree.
+
+    Predicates are evaluated against git-visible files, so on a non-repository
+    every predicate is unsatisfied and every control reports SKIPPED — a clean
+    report over a directory the checker never actually examined. Refusing is the
+    only honest answer.
+    """
+    if not root.is_dir():
+        raise NotAGitRepository(f"{root} is not a directory")
+    result = git(root, "rev-parse", "--is-inside-work-tree")
+    if result.returncode != 0 or result.stdout.strip() != "true":
+        raise NotAGitRepository(
+            f"{root} is not a git repository — predicates are evaluated against "
+            "git-visible files, so any report here would describe nothing"
+        )
+
+
 def _git_ls(root: Path, *flags: str) -> set[str]:
-    result = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-z", *flags],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    result = git(root, "ls-files", "-z", *flags)
     if result.returncode != 0:
-        return set()
+        raise NotAGitRepository(
+            f"git ls-files failed in {root}: {result.stderr.strip() or 'unknown error'}"
+        )
     return {p for p in result.stdout.split("\0") if p}
 
 
@@ -76,14 +105,16 @@ class Repo:
             or p.endswith(".Dockerfile")
         )
 
+    def is_git_repo(self) -> bool:
+        try:
+            require_git_repo(self.root)
+        except NotAGitRepository:
+            return False
+        return True
+
     def owner(self) -> str | None:
         """The repository owner per the origin remote, if resolvable."""
-        result = subprocess.run(
-            ["git", "-C", str(self.root), "remote", "get-url", "origin"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        result = git(self.root, "remote", "get-url", "origin")
         if result.returncode != 0:
             return None
         match = re.search(r"github\.com[:/]([^/]+)/", result.stdout.strip())
@@ -91,7 +122,12 @@ class Repo:
 
 
 def strip_jsonc(text: str) -> str:
-    """Strip // and /* */ comments from JSONC, preserving string contents."""
+    """Make JSONC parseable as JSON.
+
+    Strips `//` and `/* */` comments and trailing commas before `}` or `]`,
+    preserving string contents. Trailing commas are legal JSONC and `tsc`
+    accepts them, so a `tsconfig.json` carrying one must not be a parse error.
+    """
     out: list[str] = []
     i, n = 0, len(text)
     in_string = False
@@ -116,10 +152,32 @@ def strip_jsonc(text: str) -> str:
             while i + 1 < n and not (text[i] == "*" and text[i + 1] == "/"):
                 i += 1
             i += 1
+        elif ch == "," and _next_significant(text, i + 1) in "}]":
+            pass  # trailing comma — drop it
         else:
             out.append(ch)
         i += 1
     return "".join(out)
+
+
+def _next_significant(text: str, start: int) -> str:
+    """The next character that is neither whitespace nor a comment."""
+    i, n = start, len(text)
+    while i < n:
+        ch = text[i]
+        if ch.isspace():
+            i += 1
+        elif ch == "/" and i + 1 < n and text[i + 1] == "/":
+            while i < n and text[i] != "\n":
+                i += 1
+        elif ch == "/" and i + 1 < n and text[i + 1] == "*":
+            i += 2
+            while i + 1 < n and not (text[i] == "*" and text[i + 1] == "/"):
+                i += 1
+            i += 2
+        else:
+            return ch
+    return ""
 
 
 def load_jsonc(path: Path) -> object:
