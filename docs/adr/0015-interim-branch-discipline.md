@@ -1,18 +1,33 @@
 # ADR 0015: Work on Branches While the Default Branch Is Unprotected
 
-**Status:** Proposed
+**Status:** Superseded
 **Date:** 2026-08-17
 
-Open decision from
-[`04-build-plan.md`](../04-build-plan.md) § Phase 1.5 § Decisions required.
-This record states the recommendation and is not ratified.
+Superseded by [ADR 0008](0008-protected-default-branch.md) on 2026-08-17, the
+same day it was written, and **never ratified** — the gap it proposed to bridge
+by convention was closed by real enforcement before the proposal was decided.
+The `default-branch-protection` ruleset (id `20937135`) makes CI-001's
+requirement mechanical, so a convention standing in for it has nothing left to
+do.
+
+Kept rather than deleted because the interval was real: every Phase 1 commit
+reached `main` ungated, and this record is what makes that visible instead of
+tidied away.
+
+One correction it earned along the way, worth carrying into future interim
+measures: an earlier revision set its sunset at "a ruleset exists **and** CI-001
+verifies against it". That was over-tight. This ADR existed because *nothing
+enforced*; enforcement now exists, and whether the checker can read it back is
+CI-001's audit concern, not this ADR's reason to exist. Conflating enforcement
+with verification would have kept a dead stopgap alive through all of Phase 3.
 
 ## Background
 
-`main` reports `"protected": false`. Nothing requires a pull request, nothing
-requires a passing check, and force-push is permitted. Every blocking control in
-the register expresses its verdict as a CI check, so while this holds, all of
-them are advisory in fact whatever their `rung` says — the enforcement chain has
+At the time of writing, `main` reported `"protected": false`. Nothing required a
+pull request, nothing required a passing check, and force-push was permitted.
+Every blocking control in
+the register expresses its verdict as a CI check, so while this held, all of
+them were advisory in fact whatever their `rung` said — the enforcement chain had
 a bypass at its final link.
 
 This is not hypothetical. All five Phase 1 commits were pushed directly to
@@ -20,18 +35,19 @@ This is not hypothetical. All five Phase 1 commits were pushed directly to
 than gating it. That is theme **T-3** — the gates are declared and, at the merge,
 unreachable.
 
-CI-001 exists to close this. Its mechanism became *available* on 2026-08-17,
-when [ADR 0014](0014-satisfying-remote-locus-controls.md) was implemented and the
-repository went public: the rulesets API changed from `403` to an empty list. But
-available is not applied — no ruleset exists, and `main` still reports
-`"protected": false`.
+CI-001 exists to close this, and did. Its mechanism became *available* on
+2026-08-17, when [ADR 0014](0014-satisfying-remote-locus-controls.md) was
+implemented and the repository went public: the rulesets API changed from `403`
+to an empty list. Availability was not application, though — for a few hours the
+capability existed and no ruleset did, so `main` stayed unprotected and this
+ADR's interval stayed open.
 
-That distinction is the correction this ADR needed, and it is why the interval is
-longer than first written. Publication makes protection *possible*; a separate
-act makes it *real*. So this ADR's sunset condition is **not** "ADR 0014 is acted
-on" but "a default-branch ruleset exists and CI-001 verifies against it". The
-question it settles is how to behave until then. Leaving that unaddressed is
-theme **T-4**: a known failure absorbed rather than surfaced.
+That distinction is the one thing this ADR is worth remembering for. Publication
+made protection *possible*; creating the ruleset made it *real*, and the two
+were not the same act. Anyone reading the plan would have assumed the first
+implied the second. The interval closed the same day, when the ruleset was
+created and a direct push to `main` was refused with
+`push declined due to repository rule violations`.
 
 ## Alternatives Considered
 
