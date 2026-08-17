@@ -313,6 +313,62 @@ in `pyproject.toml` and `.claude/**` in the markdownlint config are what
 `narrowing-only` controls whose `baseline: null` the schema doc says means no
 exemptions are possible.
 
+### G — Tool version reconciliation
+
+Closed at register contract 4, except for one part that turned out to rest on a
+tool nobody had checked was installed.
+
+**What holds now.** The register's `tools:` section records a `source` per tool
+rather than a bare version, because "the version exists in exactly one place" is
+not achievable — a tool installed by a package manager necessarily appears in
+that manager's manifest too. Two sources:
+
+| `source` | Meaning | Duplication | Here |
+| --- | --- | --- | --- |
+| `lockfile` | A package manager owns the version; every locus invokes the tool through it | **Eliminated** | `markdownlint-cli2`, via `package-lock.json` |
+| `literal` | Nothing owns it; the version lives in the register and each locus repeats it | Reconciled, not removed | `uv`, `gitleaks` |
+
+`markdownlint-cli2` went from five hand-kept pins to the manifest/lockfile pair
+that owns it. `uv` bootstraps the Python environment so it cannot come from it,
+and `gitleaks` is a release binary — neither has an ecosystem this repo locks.
+
+**The finding.** The `literal` half was written to rely on Renovate custom
+managers: a `# renovate: datasource=…` annotation above each literal, so one PR
+updates every site together. **Renovate is not installed on this repository** —
+no config, no bot pull requests. What *is* running is Dependabot (PR #1, bumping
+`actions/checkout`), and Dependabot has no equivalent of a custom manager: it
+updates ecosystems it recognises and will not touch `GITLEAKS_VERSION=8.30.1` in
+a shell script or `uv==0.12.5` in a workflow step.
+
+So the annotations are syntactically correct and currently inert. `uv` and
+`gitleaks` are held by exactly one mechanism — `tool_versions_match_register`
+failing the build when the copies disagree. That catches drift between loci; it
+does not propose the upgrade, so nobody is told when a new version ships.
+
+This is the same defect already recorded under § Carried debt as
+title-versus-mechanism drift: *"SUP-002's title is broader than what passes,
+since the npm and curl pins are precisely the two Dependabot cannot propose."*
+That entry predates this work and is now the live constraint rather than a
+footnote.
+
+**Actions, one of which must be chosen.** This is not deferrable past Phase 2:
+the shipped devcontainer template inherits whichever pattern is chosen, and
+every consumer repo in Phase 4 inherits it again.
+
+| Action | What it costs | What it buys |
+| --- | --- | --- |
+| **1. Install Renovate** on the org or this repo | An app installation and a `renovate.json`; optionally retires Dependabot so one bot runs | The annotations already written start working, with no further change. Cheapest path to a proposing mechanism |
+| **2. Adopt `mise`** — a `mise.toml` pinning `uv` and `gitleaks`, read by the devcontainer and by `jdx/mise-action` in CI | New tooling in the template, and a devcontainer feature to install it | Collapses both literals into one authority that a bot *can* update, and gives consumer repos a toolchain file rather than pins scattered through scripts. The answer that scales to Phase 4 |
+| **3. Accept it** | Nothing | The two tools stay drift-checked but never auto-proposed. Honest, provided SUP-002's title is narrowed to match, so the register stops claiming a coverage it does not have |
+
+Recommended: **1 now, 2 when the Phase 2 template is built.** Option 1 makes the
+existing annotations live for the cost of an install; option 2 is the shape the
+template should ship, because a consumer repo that pins tools inside `setup.sh`
+reproduces this problem in every repo that adopts the standard. Option 3 is only
+acceptable with the SUP-002 title change, because leaving the title as it stands
+is the register asserting a mechanism that is not running — theme **T-3** inside
+the register itself.
+
 ### Decisions required before Phase 2
 
 These are not code, and they are not the author's to settle alone. Each is
@@ -442,10 +498,18 @@ below — not this table — track that.
       pre-commit mirror's `rev:`, which was a copy nothing compared. Register
       contract 4, because DOC-001's `verify` changed
 - [ ] The two remaining `literal` tools are reconciled by machine, not by a
-      human remembering. `uv` and `gitleaks` carry `# renovate:` annotations at
-      every site so one PR updates them together — **raised, not yet proven**:
-      no Renovate run has been observed updating them, and an annotation that
-      has never fired is a claim, not a mechanism
+      human remembering — **blocked on a choice, see § G**. `uv` and `gitleaks`
+      carry `# renovate:` annotations at every site, but **Renovate is not
+      installed on this repository**: no config, no bot pull requests. Dependabot
+      is running and has no equivalent of a custom manager, so it cannot update a
+      version embedded in a shell script or a workflow step. The annotations are
+      correct and inert. Closing this means picking one of § G's three actions;
+      until then the two tools are drift-checked but never auto-proposed
+- [ ] SUP-002's title matches what it verifies. It claims dependency updates are
+      proposed automatically, and for `uv` and `gitleaks` nothing proposes them.
+      Either § G's action 1 or 2 makes the title true, or the title narrows to
+      match — leaving it is the register asserting a mechanism that is not
+      running, which is theme T-3 inside the register itself
 - [x] `variance: justified` is implementable or removed from the vocabulary, and
       `CLAUDE.md` lists whatever survives — **removed** at contract 3, with
       `free`. `justified`'s anti-loophole mechanism was that a weakening becomes
@@ -541,6 +605,13 @@ fixed in both.
 - [ ] Gates and checker share one assert implementation — verified by there
       being one copy, not by comparing two
 - [ ] The devcontainer template builds, and DEV-001 passes against it
+- [ ] The template pins no tool version by hand. Every tool it installs is
+      either sourced from a lockfile the consumer repo already commits, or from
+      a single toolchain file (§ G's action 2) — never a literal inside
+      `setup.sh`. A template that scatters pins through a shell script
+      reproduces § G's problem in every repo that adopts the standard, and the
+      consumer has no `tool_versions_match_register` of their own until they
+      adopt the register too
 - [ ] Every SKILL.md passes preflight P1–P11
 - [ ] `standard-adopt` end-to-end on a scratch repo: plan → confirm → deploy →
       verify → commit, with the verify step genuinely able to fail
