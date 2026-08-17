@@ -13,12 +13,16 @@ this repository public` to an empty list. The precondition was discharged first 
 `gitleaks detect` found no leaks across the full history and
 `.devcontainer/.env` has never been committed.
 
-Two follow-on acts remain, and neither is this decision: the default-branch
-ruleset must be created, and secret scanning push protection enabled. Both are
-blocked on tooling rather than on judgement — the container's fine-grained PAT
-lacks `Administration: write`, so both API calls return `403 Resource not
-accessible by personal access token`. Until the ruleset exists,
-[ADR 0015](0015-interim-branch-discipline.md) remains in force.
+The two follow-on acts are also complete, on the same day. The
+`default-branch-protection` ruleset (id `20937135`, `active`) requires a pull
+request and passing `standard-check` and `lint-md` checks, and forbids
+force-push and deletion, with no bypass actors; `main` now reports
+`"protected": true`. Secret scanning and push protection are both `enabled`.
+
+So CI-001 and SEC-001 now hold **in fact**. They are not yet verified *by the
+checker* — `kind: remote` remains Phase 3 work, and both still report
+`SKIPPED (no credentials)`. That gap is an audit gap, not a protection gap, and
+it is the one CI-001's remote verification exists to close.
 
 ## Background
 

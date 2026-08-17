@@ -354,10 +354,11 @@ become a second copy of the reasoning. Ratifying one means moving it to
 - [x] ADR 0014 is **implemented**, not merely accepted — the repository is
       public as of 2026-08-17, confirmed by the rulesets API returning `[]` where
       it returned `403 Upgrade to GitHub Pro or make this repository public`
-- [ ] The default-branch ruleset exists and secret scanning push protection is
-      enabled, so CI-001 and SEC-001 hold *in fact*. **Blocked**: the container's
-      fine-grained PAT lacks `Administration: write`, so both mutations return
-      `403 Resource not accessible by personal access token`
+- [x] The default-branch ruleset exists and secret scanning push protection is
+      enabled, so CI-001 and SEC-001 hold *in fact* — ruleset
+      `default-branch-protection` (id `20937135`, `active`, no bypass actors)
+      created 2026-08-17, `main` now reports `"protected": true`, and a direct
+      push to `main` was observed being refused
 
 The second criterion stops at the platform state being *correct*. Whether the
 checker can *verify* it is Phase 3's `kind: remote` work and belongs to Phase 3's
