@@ -18,6 +18,14 @@ class PredicateSyntaxError(ValueError):
 
 
 _ANY = re.compile(r"^any (\S+)(?: files?)? exists$")
+# `any Dockerfile exists` means whatever BLD-001's assert means by a Dockerfile,
+# by construction rather than by coincidence. Compiled as an exact basename
+# match, it disagreed with `Repo.dockerfiles()` — which also accepts
+# `Dockerfile.*` and `*.Dockerfile` — so a repo whose only container file was
+# `Dockerfile.prod` reported BLD-001 SKIPPED (predicate) while the assert called
+# directly returned FAIL. A skip that hides a violation the checker can already
+# detect is the worst of the verdicts.
+_ANY_DOCKERFILE = re.compile(r"^any Dockerfile(?: files?)? exists$")
 _DIR = re.compile(r"^(\S+/) exists$")
 _FILE = re.compile(r"^(\S+) exists$")
 
@@ -30,6 +38,8 @@ def compile_predicate(expr: bool | str) -> Callable[[Repo], bool]:
     if text in {"true", "false"}:
         value = text == "true"
         return lambda _repo: value
+    if _ANY_DOCKERFILE.match(text):
+        return lambda repo: bool(repo.dockerfiles())
     if match := _ANY.match(text):
         pattern = match.group(1)
         return lambda repo: bool(repo.glob_basename(pattern))

@@ -384,7 +384,7 @@ below — not this table — track that.
       schema time or executed correctly — never silently truncated. Rejected at
       schema time: giving the register a shell would make every `run:` string an
       injection surface for no gain the register needs
-- [ ] The `container` predicate and BLD-001's assert agree on what a Dockerfile is
+- [x] The `container` predicate and BLD-001's assert agree on what a Dockerfile is
 - [ ] DOC-001 verifies its three loci and the ceiling its `enforces` names
 - [x] The exit code distinguishes "no credentials" from "all clear", per
       [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) — `3` for
@@ -417,7 +417,13 @@ below — not this table — track that.
       DEV-001 remain permanently unreachable by construction. All eight moved to
       `kind: file` at contract 3; the two assert modules now share one namespace,
       so which module implements an assertion is no longer a register fact
-- [ ] Every row in § D has a test that fails before its fix and passes after
+- [x] Every row in § D has a test that fails before its fix and passes after —
+      `tests/test_section_d.py`, one test per row. Verified by restoring the
+      pre-fix assert modules and re-running: all 18 fail, then all 18 pass. One
+      of them originally passed against the old code for a reason unrelated to
+      its row (the vacuous python branch caught it), and was strengthened until
+      it discriminated — which is the failure mode this criterion exists to rule
+      out
 - [x] The tool-version question is settled in the register, and no version
       string exists in more than one place — the register's `tools:` section is
       the single definition, and `tool_versions_match_register` compares every

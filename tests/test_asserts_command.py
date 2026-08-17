@@ -28,7 +28,12 @@ def _workflow(*runs: str, uses: str | None = None, suppressed: bool = False) -> 
         if suppressed:
             step += "        continue-on-error: true\n"
         steps.append(step)
-    return "jobs:\n  job:\n    runs-on: ubuntu-latest\n    steps:\n" + "".join(steps)
+    # `on:` is part of the fixture because a workflow that runs on nothing gates
+    # nothing — see test_workflow_dispatch_only_is_not_a_gate.
+    return (
+        "on: [push, pull_request]\njobs:\n  job:\n    runs-on: ubuntu-latest\n    steps:\n"
+        + "".join(steps)
+    )
 
 
 def test_no_static_cloud_keys(tmp_path: Path) -> None:

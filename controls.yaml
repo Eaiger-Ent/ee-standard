@@ -59,22 +59,32 @@ ecosystems:
     manifest: [pyproject.toml]
     lockfiles: [uv.lock, poetry.lock, pdm.lock]
     dependabot: [uv, pip]
+    test_commands: [pytest, tox, nox, "make test"]
   node:
     manifest: [package.json]
     lockfiles: [package-lock.json, pnpm-lock.yaml, yarn.lock, bun.lockb]
     dependabot: [npm]
+    test_commands: ["npm test", "npm run test", vitest, jest]
   go:
     manifest: [go.mod]
     lockfiles: [go.sum]
     dependabot: [gomod]
+    test_commands: ["go test"]
   rust:
     manifest: [Cargo.toml]
     lockfiles: [Cargo.lock]
     dependabot: [cargo]
+    test_commands: ["cargo test"]
   java:
     manifest: [pom.xml, build.gradle, build.gradle.kts]
     lockfiles: [gradle.lockfile, gradle/verification-metadata.xml]
     dependabot: [maven, gradle]
+    test_commands: ["gradle test", "mvn test"]
+  ruby:
+    manifest: [Gemfile, "*.gemspec"]
+    lockfiles: [Gemfile.lock]
+    dependabot: [bundler]
+    test_commands: [rspec, "bundle exec rspec", "rake test"]
 
 predicates:
   always: true
