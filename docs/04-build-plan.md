@@ -327,12 +327,17 @@ become a second copy of the reasoning. Ratifying one means moving it to
 
 ### Exit criteria — phase 1.5
 
-- [ ] GOV-002 fails on a baseline grown in a **commit**, not only in a dirty
-      worktree
-- [ ] No assert can abort the run: a read or parse failure is a verdict naming
-      the file, and later controls are still evaluated
-- [ ] A target that is not a git repository is an error, never a page of
-      `SKIPPED (predicate)` verdicts
+- [x] GOV-002 fails on a baseline grown in a **commit**, not only in a dirty
+      worktree — it now compares against the merge-base with the default branch
+      on a branch, and the parent commit on the default branch itself, and names
+      which reference it used
+- [x] No assert can abort the run: a read or parse failure is a verdict naming
+      the file, and later controls are still evaluated. The confirmed triggers
+      are fixed at source too — trailing commas in JSONC, `None`-valued config
+      sections, and `npm install-ci-test`
+- [x] A target that is not a git repository is an error, never a page of
+      `SKIPPED (predicate)` verdicts. `schema` and `explain` are exempt: they
+      read the register, not the repository
 - [ ] A control whose tool is absent reports `UNCLASSIFIED`, distinct from FAIL
 - [ ] A register `run:` string containing a shell operator is either rejected at
       schema time or executed correctly — never silently truncated

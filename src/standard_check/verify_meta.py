@@ -11,7 +11,7 @@ import re
 
 from standard_check.meta import META_CHECKS
 from standard_check.register import MetaControl, Register
-from standard_check.repo import Repo
+from standard_check.repo import NotAGitRepository, Repo
 from standard_check.runner import Verdict, run_block
 
 _SELF_META = re.compile(r"^standard-check meta (\S+)$")
@@ -26,7 +26,12 @@ def run_meta_control(
     for block in meta.verify:
         match = _SELF_META.match(block.run or "")
         if match and match.group(1) in META_CHECKS:
-            block_passed, message = META_CHECKS[match.group(1)](register, repo)
+            try:
+                block_passed, message = META_CHECKS[match.group(1)](register, repo)
+            except NotAGitRepository:
+                raise
+            except Exception as exc:
+                block_passed, message = False, f"could not evaluate: {type(exc).__name__}: {exc}"
         else:
             result = run_block(block, repo)
             block_passed = result.verdict is Verdict.PASS

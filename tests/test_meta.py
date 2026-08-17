@@ -91,6 +91,41 @@ def test_gov_002_fails_when_a_baseline_grows(tmp_path: Path) -> None:
     assert passed
 
 
+def test_gov_002_fails_when_growth_is_committed(tmp_path: Path) -> None:
+    """The CI case: growth is always committed by the time the checker sees it."""
+    document = minimal_register(tier=2, baseline="baselines/sec.txt")
+    register, repo = _load(tmp_path, document)
+    make_repo(tmp_path, {"baselines/sec.txt": "one\n"})
+    (tmp_path / "baselines/sec.txt").write_text("one\ntwo\n", encoding="utf-8")
+    _commit(tmp_path, "grow the baseline")
+    passed, message = gov_002(register, repo)
+    assert not passed
+    assert "1 → 2" in message
+
+
+def test_gov_002_fails_when_growth_is_on_a_branch(tmp_path: Path) -> None:
+    """The pull-request case: compare against the merge-base, not the branch tip."""
+    document = minimal_register(tier=2, baseline="baselines/sec.txt")
+    register, repo = _load(tmp_path, document)
+    make_repo(tmp_path, {"baselines/sec.txt": "one\n"})
+    subprocess.run(["git", "-C", str(tmp_path), "checkout", "-q", "-b", "feature"], check=True)
+    (tmp_path / "baselines/sec.txt").write_text("one\ntwo\nthree\n", encoding="utf-8")
+    _commit(tmp_path, "grow on a branch")
+    passed, message = gov_002(register, repo)
+    assert not passed
+    assert "1 → 3" in message
+
+
+def test_gov_002_passes_when_a_committed_change_shrinks(tmp_path: Path) -> None:
+    document = minimal_register(tier=2, baseline="baselines/sec.txt")
+    register, repo = _load(tmp_path, document)
+    make_repo(tmp_path, {"baselines/sec.txt": "one\ntwo\n"})
+    (tmp_path / "baselines/sec.txt").write_text("one\n", encoding="utf-8")
+    _commit(tmp_path, "shrink the baseline")
+    passed, _message = gov_002(register, repo)
+    assert passed
+
+
 def test_gov_003_fails_past_review_date(tmp_path: Path) -> None:
     register, repo = _load(tmp_path, minimal_register(review_by="2001-01-01"))
     make_repo(tmp_path, {})

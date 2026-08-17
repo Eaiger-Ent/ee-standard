@@ -10,14 +10,15 @@ from __future__ import annotations
 import shlex
 import subprocess
 import sys
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import Enum
 
 from standard_check.asserts_command import COMMAND_ASSERTS
-from standard_check.asserts_file import FILE_ASSERTS
+from standard_check.asserts_file import FILE_ASSERTS, AssertResult
 from standard_check.predicates import compile_predicate
 from standard_check.register import Control, MetaControl, Register, VerifyBlock
-from standard_check.repo import Repo
+from standard_check.repo import NotAGitRepository, Repo
 
 
 class Verdict(Enum):
@@ -94,8 +95,8 @@ def run_block(block: VerifyBlock, repo: Repo) -> BlockResult:
             "remote verification requires credentials (Phase 3)",
         )
     assert block.assert_name is not None
-    result = FILE_ASSERTS[block.assert_name](repo, block.args)
-    return BlockResult(block, Verdict.PASS if result.passed else Verdict.FAIL, result.message)
+    passed, message = guarded(FILE_ASSERTS[block.assert_name], repo, block.args)
+    return BlockResult(block, Verdict.PASS if passed else Verdict.FAIL, message)
 
 
 def applies(control: Control, register: Register, repo: Repo) -> tuple[bool, str]:
@@ -116,6 +117,27 @@ def run_control(control: Control, register: Register, repo: Repo) -> ControlResu
     return ControlResult(control, worst([b.verdict for b in blocks]), blocks)
 
 
+def guarded(
+    fn: Callable[[Repo, Mapping[str, object]], AssertResult],
+    repo: Repo,
+    args: Mapping[str, object],
+) -> tuple[bool, str]:
+    """Run an assert so that it always yields a verdict.
+
+    Asserts run in-process, so an unhandled exception would abort the whole
+    audit before any verdict is rendered — losing every other control's result
+    to one unreadable file. A raising assert is a failure of that control, and
+    the message names what could not be read.
+    """
+    try:
+        result = fn(repo, args)
+    except NotAGitRepository:
+        raise  # the target itself is unevaluable; the CLI reports this, not a verdict
+    except Exception as exc:
+        return False, f"could not evaluate: {type(exc).__name__}: {exc}"
+    return result.passed, result.message
+
+
 def run_command_assert(name: str, repo: Repo) -> tuple[bool, str]:
     """Entry point for `standard-check assert <name>`."""
     if name not in COMMAND_ASSERTS:
@@ -123,5 +145,4 @@ def run_command_assert(name: str, repo: Repo) -> tuple[bool, str]:
             f"unknown assert name '{name}' — known command asserts: "
             + ", ".join(sorted(COMMAND_ASSERTS))
         )
-    result = COMMAND_ASSERTS[name](repo, {})
-    return result.passed, result.message
+    return guarded(COMMAND_ASSERTS[name], repo, {})

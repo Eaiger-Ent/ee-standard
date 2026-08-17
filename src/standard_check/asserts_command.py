@@ -39,7 +39,7 @@ def _workflow_steps(repo: Repo) -> Iterator[WorkflowStep]:
             if not isinstance(job, dict):
                 continue
             job_suppressed = job.get("continue-on-error") is True
-            for step in job.get("steps", []):
+            for step in job.get("steps") or []:
                 if not isinstance(step, dict):
                     continue
                 yield WorkflowStep(
@@ -76,6 +76,18 @@ _EXACT_PIN_NPM = re.compile(r"@\d[\w.\-]*$")
 _EXACT_PIN_PIP = re.compile(r"==\d[\w.\-]*$")
 
 
+def _installed_packages(words: list[str]) -> list[str] | None:
+    """Package arguments after a literal `install` word, or None if there is none.
+
+    `npm install-ci-test` is a real command whose word boundary satisfies the
+    regex while `install` is not itself a word, so this must not assume it is
+    present.
+    """
+    if "install" not in words:
+        return None
+    return [w for w in words[words.index("install") + 1 :] if not w.startswith("-")]
+
+
 def _install_offences(run: str) -> Iterator[str]:
     for raw_line in run.splitlines():
         line = raw_line.split("#")[0]
@@ -87,13 +99,15 @@ def _install_offences(run: str) -> Iterator[str]:
             if re.search(r"\buv sync\b", text) and not re.search(r"--(frozen|locked)\b", text):
                 yield f"'{text}' re-resolves — use uv sync --frozen"
             elif re.search(r"\b(uv )?pip install\b", text):
-                args = [w for w in words[words.index("install") + 1 :] if not w.startswith("-")]
+                args = _installed_packages(words)
                 requirements = re.search(r"-r\s+\S+", text)
-                if not requirements and any(not _EXACT_PIN_PIP.search(a) for a in args):
+                if args and not requirements and any(not _EXACT_PIN_PIP.search(a) for a in args):
                     yield f"'{text}' installs unpinned packages"
             elif re.search(r"\bnpm install\b", text):
-                args = [w for w in words[words.index("install") + 1 :] if not w.startswith("-")]
-                if not args or any(not _EXACT_PIN_NPM.search(a) for a in args):
+                args = _installed_packages(words)
+                if args is not None and (
+                    not args or any(not _EXACT_PIN_NPM.search(a) for a in args)
+                ):
                     yield f"'{text}' re-resolves — use npm ci or an exact-pinned install"
             elif re.search(r"\byarn install\b", text) and "--immutable" not in text:
                 yield f"'{text}' re-resolves — use yarn install --immutable"
@@ -147,9 +161,9 @@ def _precommit_hooks(repo: Repo) -> list[dict[str, Any]]:
         return []
     return [
         hook
-        for repo_block in config.get("repos", [])
+        for repo_block in config.get("repos") or []
         if isinstance(repo_block, dict)
-        for hook in repo_block.get("hooks", [])
+        for hook in repo_block.get("hooks") or []
         if isinstance(hook, dict)
     ]
 
@@ -171,11 +185,9 @@ def _devcontainer_extensions(repo: Repo) -> list[str]:
     config = load_jsonc(repo.root / ".devcontainer/devcontainer.json")
     if not isinstance(config, dict):
         return []
-    extensions = (
-        config.get("customizations", {}).get("vscode", {}).get("extensions", [])
-        if isinstance(config.get("customizations"), dict)
-        else []
-    )
+    customizations = config.get("customizations")
+    vscode = customizations.get("vscode") if isinstance(customizations, dict) else None
+    extensions = vscode.get("extensions") if isinstance(vscode, dict) else None
     return [str(e) for e in extensions] if isinstance(extensions, list) else []
 
 

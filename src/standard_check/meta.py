@@ -8,11 +8,10 @@ from __future__ import annotations
 
 import datetime
 import re
-import subprocess
 
 from standard_check.asserts_command import _SUPPRESSION, _workflow_steps
 from standard_check.register import Register
-from standard_check.repo import Repo
+from standard_check.repo import Repo, git
 from standard_check.runner import applies
 
 _BARE_INVOCATION = re.compile(
@@ -61,37 +60,75 @@ def _entries(text: str) -> int:
     )
 
 
-def _previous_content(repo: Repo, rel: str) -> str | None:
-    for ref in ("origin/main", "main", "HEAD"):
-        result = subprocess.run(
-            ["git", "-C", str(repo.root), "show", f"{ref}:{rel}"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode == 0:
-            return result.stdout
-        if "does not exist" in result.stderr or "exists on disk, but not in" in result.stderr:
-            return None
-    return None
+def _rev_parse(repo: Repo, rev: str) -> str | None:
+    result = git(repo.root, "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}")
+    return result.stdout.strip() or None if result.returncode == 0 else None
+
+
+def _reference_commit(repo: Repo) -> tuple[str | None, str]:
+    """The commit whose baselines the working tree must not exceed.
+
+    GOV-002 compares against *the previous commit on the default branch*. Which
+    commit that is depends on where the checker is running:
+
+    - on a branch, it is the merge-base with the default branch, so a pull
+      request is measured against what it forked from;
+    - on the default branch itself, it is the parent commit, so a merge that
+      grew a baseline is caught.
+
+    Resolving to HEAD in either case is what made this control unable to fail:
+    once a growth is committed — which in CI it always is — HEAD *is* the grown
+    state, so current always equalled previous.
+    """
+    head = _rev_parse(repo, "HEAD")
+    if head is None:
+        return None, "HEAD does not resolve to a commit"
+    for name in ("origin/HEAD", "origin/main", "main", "master"):
+        tip = _rev_parse(repo, name)
+        if tip is None or tip == head:
+            continue
+        base = git(repo.root, "merge-base", name, "HEAD")
+        if base.returncode == 0 and base.stdout.strip():
+            return base.stdout.strip(), f"the merge-base with {name}"
+    parent = _rev_parse(repo, "HEAD~1")
+    if parent is not None:
+        return parent, "the previous commit"
+    return head, "HEAD (the repository has no earlier commit)"
+
+
+def _entries_at(repo: Repo, commit: str, rel: str) -> int:
+    """Entry count for `rel` at `commit`; absent there counts as zero."""
+    result = git(repo.root, "show", f"{commit}:{rel}")
+    return _entries(result.stdout) if result.returncode == 0 else 0
+
+
+def _entries_now(repo: Repo, rel: str) -> int:
+    path = repo.root / rel
+    if not path.is_file():
+        return 0
+    return _entries(path.read_text(encoding="utf-8"))
 
 
 def gov_002(register: Register, repo: Repo) -> tuple[bool, str]:
     """No baseline grew. A baseline that may grow is an exemption list."""
-    grown = []
     baselines = [c for c in register.controls if c.baseline is not None]
     if not baselines:
         return True, "no control carries a baseline — nothing that could grow"
+    reference, description = _reference_commit(repo)
+    if reference is None:
+        # Cannot verify is not the same as passes. Under ADR 0016 this becomes
+        # UNCLASSIFIED; until that is ratified, failing closed is the safe answer.
+        return False, f"cannot determine a comparison point: {description}"
+    grown = []
     for control in baselines:
         assert control.baseline is not None
-        current = _entries(repo.read(control.baseline)) if repo.exists(control.baseline) else 0
-        previous_text = _previous_content(repo, control.baseline)
-        previous = _entries(previous_text) if previous_text is not None else 0
+        current = _entries_now(repo, control.baseline)
+        previous = _entries_at(repo, reference, control.baseline)
         if current > previous:
             grown.append(f"{control.id} ({control.baseline}: {previous} → {current})")
     if grown:
-        return False, "baselines grew: " + "; ".join(grown)
-    return True, f"no baseline grew ({len(baselines)} checked)"
+        return False, f"baselines grew against {description}: " + "; ".join(grown)
+    return True, f"no baseline grew ({len(baselines)} checked against {description})"
 
 
 def gov_003(register: Register, _repo: Repo) -> tuple[bool, str]:
