@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import make_repo, write_register
+from conftest import a_register, make_repo, write_register
 from standard_check.cli import main
 from standard_check.register import VerifyBlock
 from standard_check.repo import Repo, strip_jsonc
@@ -34,7 +34,7 @@ def test_tracked_but_deleted_file_is_a_verdict(tmp_path: Path) -> None:
     """git ls-files still lists it, so repo.exists() is true and the read fails."""
     repo = make_repo(tmp_path / "r", {".pre-commit-config.yaml": _HOOK})
     (repo.root / ".pre-commit-config.yaml").unlink()
-    result = run_block(_file_block("precommit_hook_present", id="gitleaks"), repo)
+    result = run_block(_file_block("precommit_hook_present", id="gitleaks"), a_register(), repo)
     assert result.verdict is Verdict.FAIL
     assert ".pre-commit-config.yaml" in result.message
 
@@ -68,21 +68,21 @@ def test_degenerate_config_shapes_are_verdicts(
 ) -> None:
     """A file that parses to None, to a non-mapping, or not at all still yields a verdict."""
     repo = make_repo(tmp_path / label, {filename: content})
-    result = run_block(_file_block(assert_name, **args), repo)
+    result = run_block(_file_block(assert_name, **args), a_register(), repo)
     assert result.verdict is expected
     assert result.message
 
 
 def test_malformed_pyproject_is_a_verdict(tmp_path: Path) -> None:
     repo = make_repo(tmp_path / "r", {"pyproject.toml": "[project\nbroken = "})
-    passed, message = run_command_assert("typecheck-strict-and-blocking", repo)
+    passed, message = run_command_assert("typecheck-strict-and-blocking", a_register(), repo)
     assert not passed
     assert message  # a reason, not a traceback
 
 
 def test_unparseable_workflow_is_a_verdict(tmp_path: Path) -> None:
     repo = make_repo(tmp_path / "r", {".github/workflows/ci.yml": "jobs: [unclosed\n"})
-    passed, _message = run_command_assert("actions-pinned-to-sha", repo)
+    passed, _message = run_command_assert("actions-pinned-to-sha", a_register(), repo)
     assert not passed
 
 
@@ -92,7 +92,7 @@ def test_npm_install_ci_test_does_not_crash(tmp_path: Path) -> None:
         "jobs:\n  j:\n    runs-on: ubuntu-latest\n    steps:\n      - run: npm install-ci-test\n"
     )
     repo = make_repo(tmp_path / "r", {".github/workflows/ci.yml": workflow})
-    passed, message = run_command_assert("ci-installs-frozen", repo)
+    passed, message = run_command_assert("ci-installs-frozen", a_register(), repo)
     assert isinstance(passed, bool)
     assert "ValueError" not in message
 
@@ -127,7 +127,7 @@ def test_tsconfig_with_trailing_comma_is_read_not_fatal(tmp_path: Path) -> None:
         tmp_path / "r",
         {"tsconfig.json": '{\n  "compilerOptions": {\n    "strict": true,\n  },\n}\n'},
     )
-    passed, message = run_command_assert("typecheck-strict-and-blocking", repo)
+    passed, message = run_command_assert("typecheck-strict-and-blocking", a_register(), repo)
     # strict is set, so the only complaint may be the missing CI step — never a crash.
     assert "JSONDecodeError" not in message
     assert "compilerOptions.strict is not true" not in message

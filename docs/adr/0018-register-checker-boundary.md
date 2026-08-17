@@ -129,6 +129,37 @@ than by where it happens to have been written. A rule that stays in the checker
 must carry its reason in this ADR — an unreasoned omission is the failure this
 record exists to stop, not an application of it.
 
+### Applied — first pass, register contract 3
+
+| Rule | Where it lives now | Why |
+| --- | --- | --- |
+| Package ecosystems: manifests, lockfiles, Dependabot spellings | Register, `ecosystems:` | The measured harm. A repo may legitimately use a lockfile spelling the checker has not heard of, and the checker-side map exempted Go, Rust and Java from SUP-001 entirely |
+| Pinned tool versions and the gitleaks checksum | Register, `tools:` | Four documents already claimed the register held these. A repo pinning a different markdownlint-cli2 is an ordinary variance, not a checker change |
+| `requirements.txt` as a lockfile | Removed | It pins nothing. Accepting it was a false negative (§ D), not a policy |
+
+Asserts now take the register as well as the repository. An assert that cannot
+read the register has nowhere to read a register-owned rule from, which is how
+the checker became a second source of truth in the first place.
+
+### Staying in the checker — with reasons
+
+| Rule | Why it is not a register fact |
+| --- | --- |
+| `github-actions`, `devcontainers`, `docker`, `terraform` Dependabot spellings | Not package ecosystems with manifests and lockfiles but repository features, detected by predicates the register already owns. The spellings are GitHub's, not ours, so no repo could reasonably need them to differ |
+| The predicate grammar | Expressing it in the register makes the register a program — excluded by name in the build plan |
+| `AAA-NNN` / `GOV-NNN` ID patterns, semver strictness, `rationale_adr` existence, the Tier-1 baseline rule | Properties of the register *format*, not of any repository. A repo needing them to differ is asking for a different standard |
+| Reading YAML, walking workflow steps, parsing `pyproject.toml` | Implementation of detection, not the rule being detected |
+
+### Not yet applied
+
+The mandated tool names and their per-locus evidence — ruff, eslint, mypy,
+pytest, the `charliermarsh.ruff` extension ID, the test-command spellings and
+the suppression patterns — are still in the checker. They answer *yes* to the
+test and belong in the register; moving them means modelling per-stack tool
+roles and their evidence at each locus, which is a larger design than the two
+cases above and is tracked as its own exit criterion rather than being quietly
+dropped from this list.
+
 ## Consequences
 
 **Positive outcomes:**

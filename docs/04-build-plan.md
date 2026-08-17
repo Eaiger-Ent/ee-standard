@@ -418,8 +418,14 @@ below — not this table — track that.
       `kind: file` at contract 3; the two assert modules now share one namespace,
       so which module implements an assertion is no longer a register fact
 - [ ] Every row in § D has a test that fails before its fix and passes after
-- [ ] The tool-version question is settled in the register, and no version
-      string exists in more than one place
+- [x] The tool-version question is settled in the register, and no version
+      string exists in more than one place — the register's `tools:` section is
+      the single definition, and `tool_versions_match_register` compares every
+      locus against it, so drift is a verdict rather than something a reader has
+      to notice. Versions still *appear* at four loci; eliminating the
+      repetition needs generation, which is a gate skill's job in Phase 2, and
+      the comment in `lint.yml` telling humans to "change all three together"
+      where there were four is gone
 - [x] `variance: justified` is implementable or removed from the vocabulary, and
       `CLAUDE.md` lists whatever survives — **removed** at contract 3, with
       `free`. `justified`'s anti-loophole mechanism was that a weakening becomes
@@ -452,7 +458,13 @@ below — not this table — track that.
       merely accepted — the rules its test moves are in the register, the rules
       that stay carry a recorded reason in the ADR, and SUP-001's lockfile
       ecosystems are register facts, so a Go, Rust or Java repo no longer passes
-      it with no lockfile at all
+      it with no lockfile at all. **First pass done 2026-08-17**: `ecosystems:`
+      and `tools:` are register sections, asserts take the register, and the
+      rules that stayed are tabulated with reasons in the ADR. Outstanding: the
+      mandated tool names and their per-locus evidence — ruff, eslint, mypy,
+      pytest, the `charliermarsh.ruff` extension ID, the test-command spellings
+      and the suppression patterns — which need per-stack tool roles modelled
+      before they can move
 - [x] ADR 0017 is **implemented**, not merely accepted — the register can
       declare a verification block partially implemented, with an expiry date
       and a named unverified property; GOV-001 carries that declaration instead

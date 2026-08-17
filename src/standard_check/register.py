@@ -46,7 +46,17 @@ _SHELL_OPERATOR = re.compile(r"(?:&&|\|\||[;|&><]|\$\(|`)")
 # `floating-minor` / `latest` field that exists in neither the schema doc nor
 # the register, and because unknown keys were accepted, adding it would have
 # been ignored rather than rejected.
-_DOCUMENT_ALLOWED = ("version", "meta", "predicates", "controls", "meta_controls")
+_DOCUMENT_ALLOWED = (
+    "version",
+    "meta",
+    "tools",
+    "ecosystems",
+    "predicates",
+    "controls",
+    "meta_controls",
+)
+_TOOL_ALLOWED = ("version", "sha256")
+_ECOSYSTEM_ALLOWED = ("manifest", "lockfiles", "dependabot")
 _METADATA_ALLOWED = ("owner", "register_contract")
 _STANDARD_ALLOWED = ("name", "url")
 _BLOCK_ALLOWED = ("kind", "run", "assert", "args", "partial")
@@ -121,6 +131,31 @@ class Standard:
 
 
 @dataclass(frozen=True)
+class Tool:
+    """A pinned tool version — the single definition every locus reads."""
+
+    name: str
+    version: str
+    sha256: str | None = None
+
+
+@dataclass(frozen=True)
+class Ecosystem:
+    """A package ecosystem: how to detect it, and what counts as locked.
+
+    A register fact from contract 3 (ADR 0018): a repository might reasonably
+    need a different lockfile spelling without the checker changing, and the
+    previous checker-side dictionary silently exempted Go, Rust and Java from
+    SUP-001 entirely.
+    """
+
+    name: str
+    manifest: tuple[str, ...]
+    lockfiles: tuple[str, ...]
+    dependabot: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Control:
     id: str
     title: str
@@ -157,6 +192,8 @@ class Register:
     predicates: dict[str, bool | str]
     controls: tuple[Control, ...]
     meta_controls: tuple[MetaControl, ...]
+    tools: dict[str, Tool] = field(default_factory=dict)
+    ecosystems: dict[str, Ecosystem] = field(default_factory=dict)
 
     def control(self, control_id: str) -> Control | MetaControl | None:
         for control in self.controls:
@@ -456,6 +493,51 @@ class _Validator:
                 self.error("meta.register_contract", "must be an integer")
             else:
                 contract = meta["register_contract"]
+        tools: dict[str, Tool] = {}
+        tools_raw = raw.get("tools") or {}
+        if not isinstance(tools_raw, dict):
+            self.error("tools", "must be a mapping of tool name to {version, sha256}")
+        else:
+            for name, entry in tools_raw.items():
+                at = f"tools.{name}"
+                if not isinstance(entry, dict):
+                    self.error(at, "must be a mapping with a 'version'")
+                    continue
+                self._unknown_keys(entry, _TOOL_ALLOWED, at)
+                version = entry.get("version")
+                if not isinstance(version, str) or not version.strip():
+                    self.error(f"{at}.version", f"must be a non-empty string, got {version!r}")
+                    continue
+                sha = entry.get("sha256")
+                if sha is not None and (
+                    not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha)
+                ):
+                    self.error(f"{at}.sha256", "must be 64 lowercase hex characters")
+                    continue
+                tools[str(name)] = Tool(name=str(name), version=version.strip(), sha256=sha)
+        ecosystems: dict[str, Ecosystem] = {}
+        ecosystems_raw = raw.get("ecosystems") or {}
+        if not isinstance(ecosystems_raw, dict):
+            self.error("ecosystems", "must be a mapping of ecosystem name to its file sets")
+        else:
+            for name, entry in ecosystems_raw.items():
+                at = f"ecosystems.{name}"
+                if not isinstance(entry, dict):
+                    self.error(at, "must be a mapping")
+                    continue
+                self._unknown_keys(entry, _ECOSYSTEM_ALLOWED, at)
+                fields: dict[str, tuple[str, ...]] = {}
+                for key in _ECOSYSTEM_ALLOWED:
+                    value = entry.get(key)
+                    if not isinstance(value, list) or not value:
+                        self.error(f"{at}.{key}", "must be a non-empty list of strings")
+                        break
+                    if any(not isinstance(x, str) for x in value):
+                        self.error(f"{at}.{key}", "must contain only strings")
+                        break
+                    fields[key] = tuple(str(x) for x in value)
+                else:
+                    ecosystems[str(name)] = Ecosystem(name=str(name), **fields)
         predicates_raw = raw.get("predicates")
         predicates: dict[str, bool | str] = {}
         if not isinstance(predicates_raw, dict) or not predicates_raw:
@@ -504,6 +586,8 @@ class _Validator:
             predicates=predicates,
             controls=tuple(controls),
             meta_controls=tuple(meta_controls),
+            tools=tools,
+            ecosystems=ecosystems,
         )
 
 

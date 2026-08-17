@@ -40,7 +40,7 @@ def run_meta_control(
                 verdict = Verdict.FAIL
                 message = f"could not evaluate: {type(exc).__name__}: {exc}"
         else:
-            result = run_block(block, repo)
+            result = run_block(block, register, repo)
             verdict, message = result.verdict, result.message
         verdicts.append(verdict)
         messages.append(message)

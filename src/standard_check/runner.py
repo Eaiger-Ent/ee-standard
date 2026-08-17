@@ -10,12 +10,12 @@ from __future__ import annotations
 import shlex
 import subprocess
 import sys
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 
 from standard_check.asserts import ASSERTS
-from standard_check.asserts_file import AssertResult
+from standard_check.asserts_file import AssertFn
 from standard_check.predicates import compile_predicate
 from standard_check.register import Control, MetaControl, Register, VerifyBlock
 from standard_check.repo import NotAGitRepository, Repo
@@ -121,7 +121,7 @@ def _run_command_block(block: VerifyBlock, repo: Repo) -> BlockResult:
     return BlockResult(block, Verdict.FAIL, f"exit {completed.returncode}: {detail}")
 
 
-def run_block(block: VerifyBlock, repo: Repo) -> BlockResult:
+def run_block(block: VerifyBlock, register: Register, repo: Repo) -> BlockResult:
     if block.kind == "command":
         return _run_command_block(block, repo)
     if block.kind == "remote":
@@ -133,7 +133,7 @@ def run_block(block: VerifyBlock, repo: Repo) -> BlockResult:
             "remote verification requires credentials (Phase 3)",
         )
     assert block.assert_name is not None
-    passed, message = guarded(ASSERTS[block.assert_name], repo, block.args)
+    passed, message = guarded(ASSERTS[block.assert_name], repo, register, block.args)
     return BlockResult(block, Verdict.PASS if passed else Verdict.FAIL, message)
 
 
@@ -151,13 +151,14 @@ def run_control(control: Control, register: Register, repo: Repo) -> ControlResu
         return ControlResult(
             control, Verdict.SKIPPED_PREDICATE, (), note=f"predicate not satisfied: {detail}"
         )
-    blocks = tuple(run_block(block, repo) for block in control.verify)
+    blocks = tuple(run_block(block, register, repo) for block in control.verify)
     return ControlResult(control, worst([b.verdict for b in blocks]), blocks)
 
 
 def guarded(
-    fn: Callable[[Repo, Mapping[str, object]], AssertResult],
+    fn: AssertFn,
     repo: Repo,
+    register: Register,
     args: Mapping[str, object],
 ) -> tuple[bool, str]:
     """Run an assert so that it always yields a verdict.
@@ -168,7 +169,7 @@ def guarded(
     the message names what could not be read.
     """
     try:
-        result = fn(repo, args)
+        result = fn(repo, register, args)
     except NotAGitRepository:
         raise  # the target itself is unevaluable; the CLI reports this, not a verdict
     except Exception as exc:
@@ -176,7 +177,7 @@ def guarded(
     return result.passed, result.message
 
 
-def run_command_assert(name: str, repo: Repo) -> tuple[bool, str]:
+def run_command_assert(name: str, register: Register, repo: Repo) -> tuple[bool, str]:
     """Entry point for `standard-check assert <name>`.
 
     A debugging entry point, not the register's mechanism: the register declares
@@ -187,4 +188,4 @@ def run_command_assert(name: str, repo: Repo) -> tuple[bool, str]:
         return False, (
             f"unknown assert name '{name}' — known asserts: " + ", ".join(sorted(ASSERTS))
         )
-    return guarded(ASSERTS[name], repo, {})
+    return guarded(ASSERTS[name], repo, register, {})
