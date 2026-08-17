@@ -12,7 +12,6 @@ from standard_check.asserts_file import (
     devcontainer_lock_covers_all_features,
     dockerfile_final_user_is_non_root,
     lockfile_present_and_tracked,
-    markdownlint_config_present,
     precommit_hook_present,
 )
 
@@ -180,12 +179,6 @@ def test_dockerfile_final_user(tmp_path: Path) -> None:
     result = dockerfile_final_user_is_non_root(absent, a_register(), {})
     assert not result.passed
     assert "declares no USER" in result.message
-
-
-def test_markdownlint_config_present(tmp_path: Path) -> None:
-    repo = make_repo(tmp_path / "a", {".markdownlint.yaml": "default: true\n"})
-    assert markdownlint_config_present(repo, a_register(), {}).passed
-    assert not markdownlint_config_present(make_repo(tmp_path / "b", {}), a_register(), {}).passed
 
 
 def test_go_rust_java_repos_need_a_lockfile(tmp_path: Path) -> None:

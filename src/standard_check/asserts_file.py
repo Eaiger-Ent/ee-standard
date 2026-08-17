@@ -334,25 +334,11 @@ def dockerfile_final_user_is_non_root(
     return _ok(f"final stage of {len(dockerfiles)} Dockerfile(s) is non-root")
 
 
-_MARKDOWNLINT_CONFIGS = (
-    ".markdownlint.yaml",
-    ".markdownlint.yml",
-    ".markdownlint.jsonc",
-    ".markdownlint.json",
-    ".markdownlint-cli2.yaml",
-    ".markdownlint-cli2.jsonc",
-)
-
-
-def markdownlint_config_present(
-    repo: Repo,
-    _register: Register,
-    _args: Mapping[str, object],
-) -> AssertResult:
-    found = [p for p in _MARKDOWNLINT_CONFIGS if p in repo.tracked]
-    if not found:
-        return _fail("no tracked markdownlint configuration file")
-    return _ok(f"markdownlint configuration present: {', '.join(found)}")
+# `markdownlint_config_present` lived here and asserted exactly what its name
+# said: that a file existed. DOC-001's `enforces` names a ceiling and three
+# loci, none of which it read, so `line_length: 100000` passed and so did
+# deleting the CI step (§ A). It is superseded by
+# `markdown_gate_wired_at_all_loci` in `asserts_command`, which reads all four.
 
 
 # Where a pinned tool version can appear. Each pattern captures the version, so
@@ -436,7 +422,6 @@ FILE_ASSERTS: dict[str, AssertFn] = {
     "devcontainer_lock_covers_all_features": devcontainer_lock_covers_all_features,
     "devcontainer_image_digest_pinned": devcontainer_image_digest_pinned,
     "dockerfile_final_user_is_non_root": dockerfile_final_user_is_non_root,
-    "markdownlint_config_present": markdownlint_config_present,
 }
 
 # Remote assert names are part of the closed set from Phase 1 so a typo is a

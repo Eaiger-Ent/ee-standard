@@ -561,6 +561,128 @@ def tests_run_and_block(
     return _ok("the test command runs in CI and its exit code is the verdict")
 
 
+_MARKDOWNLINT_CONFIGS = (
+    ".markdownlint.yaml",
+    ".markdownlint.yml",
+    ".markdownlint.jsonc",
+    ".markdownlint.json",
+    ".markdownlint-cli2.yaml",
+    ".markdownlint-cli2.jsonc",
+)
+
+# markdownlint's own default when the rule is enabled but unconfigured. A repo
+# that never names a ceiling still has one, and it is tighter than any register
+# value we would set — which `narrowing-only` permits.
+_MARKDOWNLINT_DEFAULT_LINE_LENGTH = 80
+
+
+def _markdownlint_rules(repo: Repo) -> tuple[str, dict[str, Any]] | None:
+    """The rule set, from whichever of the six config spellings holds it.
+
+    A `.markdownlint-cli2.*` file wraps its rules in a `config:` key; the plain
+    `.markdownlint.*` files are the rules themselves.
+    """
+    for path in _MARKDOWNLINT_CONFIGS:
+        if path not in repo.tracked:
+            continue
+        text = repo.read(path)
+        doc = load_jsonc(repo.root / path) if path.endswith(("json", "jsonc")) else yaml.safe_load(
+            text
+        )
+        if not isinstance(doc, dict):
+            continue
+        if "markdownlint-cli2" in path:
+            nested = doc.get("config")
+            if not isinstance(nested, dict):
+                continue  # a cli2 file holding only `ignores:` is not the rule set
+            return path, nested
+        return path, doc
+    return None
+
+
+def _line_length_ceiling(rules: Mapping[str, Any]) -> int | str:
+    """The effective MD013 ceiling, or a sentence saying why there is none.
+
+    Both spellings are accepted because markdownlint accepts both: `MD013` is
+    the rule id and `line-length` its alias, and a config using the alias is no
+    less configured for it.
+    """
+    md013: Any = None
+    for key in ("MD013", "line-length"):
+        if key in rules:
+            md013 = rules[key]
+            break
+    if md013 is False:
+        return "the line-length rule (MD013) is switched off"
+    if md013 is None:
+        if rules.get("default") is False:
+            return "MD013 is not enabled and `default: false` leaves it off"
+        return _MARKDOWNLINT_DEFAULT_LINE_LENGTH
+    if not isinstance(md013, dict):
+        return _MARKDOWNLINT_DEFAULT_LINE_LENGTH  # `MD013: true` — enabled, unconfigured
+    for key in ("line_length", "line-length"):
+        value = md013.get(key)
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+    return _MARKDOWNLINT_DEFAULT_LINE_LENGTH
+
+
+def markdown_gate_wired_at_all_loci(
+    repo: Repo,
+    _register: Register,
+    args: Mapping[str, object],
+) -> AssertResult:
+    """DOC-001's `enforces`, verified rather than assumed.
+
+    The assert this replaces checked only that a configuration file existed. A
+    config setting `line_length: 100000` passed it, and so did deleting the CI
+    step, the pre-commit hook or the editor extension — an existence check
+    standing in for a control about one rule set wired at three loci (§ A).
+
+    Every value a repository could reasonably need to differ comes from the
+    register's `args` (ADR 0018): the ceiling, the tool name and the editor
+    extension id. What stays here is the shape — that the ceiling must not be
+    loosened and that all three loci must be wired — which is a property of the
+    control, not of any repository.
+    """
+    tool = str(args.get("tool", ""))
+    extension = str(args.get("editor_extension", ""))
+    ceiling = args.get("max_line_length")
+    if not tool or not extension or not isinstance(ceiling, int):
+        return _fail(
+            "assert requires 'tool', 'editor_extension' and an integer "
+            "'max_line_length' argument from the register"
+        )
+
+    found = _markdownlint_rules(repo)
+    if found is None:
+        return _fail("no tracked markdownlint configuration file")
+    path, rules = found
+
+    problems: list[str] = []
+    effective = _line_length_ceiling(rules)
+    if isinstance(effective, str):
+        problems.append(f"{path}: {effective}")
+    elif effective > ceiling:
+        # `narrowing-only` — a repo may tighten below the register's number and
+        # may never raise above it (docs/00-concepts.md § Variance).
+        problems.append(
+            f"{path}: line length ceiling is {effective}, above the register's {ceiling}"
+        )
+    if extension not in _devcontainer_extensions(repo):
+        problems.append(f"editor locus — no editor configuration installs {extension}")
+    if not _hook_mentions(repo, tool):
+        problems.append(f"pre-commit locus — no {tool} hook")
+    if not _ci_run_mentions(repo, rf"\b{re.escape(tool)}\b", hook=tool):
+        problems.append(f"ci locus — no gating step runs {tool}")
+    if problems:
+        return _fail("; ".join(problems))
+    return _ok(
+        f"{path} caps lines at {effective} (register allows {ceiling}) and {tool} "
+        "is wired at editor, pre-commit and ci"
+    )
+
+
 COMMAND_ASSERTS: dict[str, AssertFn] = {
     "no-static-cloud-keys": no_static_cloud_keys,
     "ci-installs-frozen": ci_installs_frozen,
@@ -569,4 +691,5 @@ COMMAND_ASSERTS: dict[str, AssertFn] = {
     "no-failure-suppression": no_failure_suppression,
     "typecheck-strict-and-blocking": typecheck_strict_and_blocking,
     "tests-run-and-block": tests_run_and_block,
+    "markdown_gate_wired_at_all_loci": markdown_gate_wired_at_all_loci,
 }

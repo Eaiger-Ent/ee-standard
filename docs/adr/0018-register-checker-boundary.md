@@ -141,6 +141,23 @@ Asserts now take the register as well as the repository. An assert that cannot
 read the register has nowhere to read a register-owned rule from, which is how
 the checker became a second source of truth in the first place.
 
+### Applied — second pass, register contract 5
+
+| Rule | Where it lives now | Why |
+| --- | --- | --- |
+| DOC-001's 250-character ceiling, its tool name, and its editor extension id | Register, in the verify block's `args:` | All three answer *yes*: a repo may tighten the ceiling under `narrowing-only`, and neither the tool nor the editor is a property of the register format |
+
+This pass also establishes **where** a per-control tool fact goes: the verify
+block's `args:`, beside the assert that reads it, rather than a new top-level
+section. The assert keeps only the shape — that the ceiling may narrow and never
+widen, and that every locus the control declares must be wired — which is a
+property of the control, not of any repository.
+
+It is the smallest instance of the *Not yet applied* item below, and deliberately
+so. DOC-001 has one tool and one extension, so it needed no per-stack model to
+move; taking it first gives the larger move a worked precedent to copy instead of
+a design argued in the abstract.
+
 ### Staying in the checker — with reasons
 
 | Rule | Why it is not a register fact |

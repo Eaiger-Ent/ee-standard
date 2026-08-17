@@ -152,7 +152,7 @@ what Phase 1 delivered.
 | Defect | Now | Required |
 | --- | --- | --- |
 | GOV-002 cannot fail in CI. `_previous_content` falls back `origin/main` → `main` → `HEAD`, so once a growth is committed, "previous" *is* the grown file. Confirmed: growth uncommitted → FAIL; same growth committed → PASS | Catches dirty worktrees only | Compare against the default branch's merge-base, and fail closed when no comparison point exists |
-| DOC-001 asserts only that a config file exists. Confirmed: `line_length: 100000` plus a 1600-character line passes; deleting the CI step, the pre-commit hook or the editor hook also passes | Existence check | A `doc_gate_wired_at_all_loci` assert mirroring LNT-001's, plus an assertion on the ceiling the register names |
+| DOC-001 asserts only that a config file exists. Confirmed: `line_length: 100000` plus a 1600-character line passes; deleting the CI step, the pre-commit hook or the editor hook also passes | **Closed** at contract 5 — `markdown_gate_wired_at_all_loci` | A `doc_gate_wired_at_all_loci` assert mirroring LNT-001's, plus an assertion on the ceiling the register names |
 | A control whose tool is missing reports FAIL. `hadolint`, `checkov` and `tflint` are absent from this container, so any repo with a `Dockerfile` or a `.tf` gets "command not found" | "Cannot verify" is indistinguishable from "violates" | `UNCLASSIFIED` — the verdict already exists for exactly this |
 | GOV-001 derives reachability from a substring test, and any bare `standard-check` step short-circuits every control | `pip install standard-check` would mark all controls reachable | Match invocations, not substrings; see § Decisions for how loudly it should admit being partial |
 | `SKIPPED (no credentials)` leaves the exit code at 0 | CI is green while SEC-001's remote half and all of CI-001 are unverified | See § Decisions |
@@ -484,7 +484,16 @@ below — not this table — track that.
       schema time: giving the register a shell would make every `run:` string an
       injection surface for no gain the register needs
 - [x] The `container` predicate and BLD-001's assert agree on what a Dockerfile is
-- [ ] DOC-001 verifies its three loci and the ceiling its `enforces` names
+- [x] DOC-001 verifies its three loci and the ceiling its `enforces` names —
+      `markdown_gate_wired_at_all_loci` replaces the existence check at register
+      contract 5. The ceiling may narrow and never widen, per the control's
+      `narrowing-only` variance, and all three declared loci are read. The
+      ceiling, the tool name and the editor extension id come from the verify
+      block's `args:` (ADR 0018, second pass) rather than from the checker. Its
+      first run failed this repository, correctly: DOC-001 declares an `editor`
+      locus and the devcontainer installed only `charliermarsh.ruff`, so the
+      locus had never been wired at all — a gap the existence check could not
+      have found
 - [x] The exit code distinguishes "no credentials" from "all clear", per
       [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) — `3` for
       unverified-but-no-violation, `1` for a verified violation, `0` only for a

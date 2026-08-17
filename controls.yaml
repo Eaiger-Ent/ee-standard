@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.4.0
+version: 0.5.0
 
 meta:
   owner: platform-engineering
@@ -22,7 +22,10 @@ meta:
   #    Verification blocks may declare themselves partial (ADR 0017).
   # 4: DOC-001 verifies through `npx`, so package-lock.json is the authority
   #    for its tool's version rather than four hand-kept pins.
-  register_contract: 4
+  # 5: DOC-001's file block verifies what its `enforces` says — the 250-char
+  #    ceiling and all three loci — where it previously asserted only that a
+  #    configuration file existed.
+  register_contract: 5
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -480,7 +483,16 @@ controls:
       - kind: command
         run: npx --no-install markdownlint-cli2 "**/*.md"
       - kind: file
-        assert: markdownlint_config_present
+        # The ceiling, the tool name and the editor extension id are register
+        # facts (ADR 0018): a repository may reasonably tighten the ceiling or
+        # name a different editor without the checker changing. What the assert
+        # holds is the shape — the ceiling may narrow but never widen, and all
+        # three declared loci must be wired.
+        assert: markdown_gate_wired_at_all_loci
+        args:
+          max_line_length: 250
+          tool: markdownlint-cli2
+          editor_extension: DavidAnson.vscode-markdownlint
     owner: platform-engineering
     variance: narrowing-only
     baseline: null
