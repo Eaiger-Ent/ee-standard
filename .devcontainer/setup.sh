@@ -9,13 +9,16 @@ set -euo pipefail
 # The named volume mounts root-owned on first create.
 sudo chown -R vscode:vscode /home/vscode/.claude
 
-# markdownlint-cli2 at the version the register records for DOC-001, so the
-# editor and CI cannot disagree about what the control means (theme T-2).
-# Change this and the CI pin together, never one alone.
-npm install -g markdownlint-cli2@0.23.2
+# DOC-001's tool, from the one authority that owns its version:
+# package-lock.json. Every locus runs `npx markdownlint-cli2`, so there is no
+# version to keep in step here — the lockfile is the pin, and SUP-001 already
+# enforces that it is committed and installed frozen.
+npm ci --no-audit --no-fund
 
-# uv pinned; the project env, hooks and checker all flow from uv.lock, so
-# every locus runs the same tool versions. Change this and the CI pin together.
+# uv bootstraps the Python environment, so it cannot come from it — its
+# version is a literal at each locus, kept in step by Renovate rather than by
+# a human remembering. See controls.yaml `tools:`.
+# renovate: datasource=pypi depName=uv
 pip install --quiet uv==0.12.5
 uv sync --frozen
 uv run pre-commit install

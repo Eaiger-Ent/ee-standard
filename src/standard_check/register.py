@@ -55,7 +55,8 @@ _DOCUMENT_ALLOWED = (
     "controls",
     "meta_controls",
 )
-_TOOL_ALLOWED = ("version", "sha256")
+_TOOL_ALLOWED = ("source", "version", "sha256", "lockfile")
+_TOOL_SOURCES = ("lockfile", "literal")
 _ECOSYSTEM_ALLOWED = ("manifest", "lockfiles", "dependabot", "test_commands")
 _METADATA_ALLOWED = ("owner", "register_contract")
 _STANDARD_ALLOWED = ("name", "url")
@@ -132,11 +133,20 @@ class Standard:
 
 @dataclass(frozen=True)
 class Tool:
-    """A pinned tool version — the single definition every locus reads."""
+    """Where a tool's version is authoritative, and the value when it lives here.
+
+    `source: lockfile` means a package manager already owns the version and the
+    loci invoke the tool through it, so there is no version in the register and
+    nothing to keep in step — the duplication is *eliminated*. `source: literal`
+    means no package manager owns the tool, so the version lives here and each
+    locus repeats it; those repetitions are reconciled rather than removed.
+    """
 
     name: str
-    version: str
+    source: str
+    version: str | None = None
     sha256: str | None = None
+    lockfile: str | None = None
 
 
 @dataclass(frozen=True)
@@ -505,10 +515,30 @@ class _Validator:
                     self.error(at, "must be a mapping with a 'version'")
                     continue
                 self._unknown_keys(entry, _TOOL_ALLOWED, at)
+                source = entry.get("source")
+                if source not in _TOOL_SOURCES:
+                    self.error(
+                        f"{at}.source",
+                        f"must be one of {', '.join(_TOOL_SOURCES)}, got {source!r}",
+                    )
+                    continue
                 # Deliberately not named `version`: that is the register's own
                 # version, bound above and read below.
                 tool_version = entry.get("version")
-                if not isinstance(tool_version, str) or not tool_version.strip():
+                lockfile = entry.get("lockfile")
+                if source == "lockfile":
+                    if tool_version is not None:
+                        self.error(
+                            f"{at}.version",
+                            "a lockfile-sourced tool carries no version here — the lockfile "
+                            "is the authority, and a copy beside it is the drift this "
+                            "field exists to prevent",
+                        )
+                        continue
+                    if not isinstance(lockfile, str) or not lockfile.strip():
+                        self.error(f"{at}.lockfile", "must name the lockfile that owns the version")
+                        continue
+                elif not isinstance(tool_version, str) or not tool_version.strip():
                     self.error(f"{at}.version", f"must be a non-empty string, got {tool_version!r}")
                     continue
                 sha = entry.get("sha256")
@@ -517,7 +547,13 @@ class _Validator:
                 ):
                     self.error(f"{at}.sha256", "must be 64 lowercase hex characters")
                     continue
-                tools[str(name)] = Tool(name=str(name), version=tool_version.strip(), sha256=sha)
+                tools[str(name)] = Tool(
+                    name=str(name),
+                    source=str(source),
+                    version=tool_version.strip() if isinstance(tool_version, str) else None,
+                    sha256=sha,
+                    lockfile=str(lockfile) if isinstance(lockfile, str) else None,
+                )
         ecosystems: dict[str, Ecosystem] = {}
         ecosystems_raw = raw.get("ecosystems") or {}
         if not isinstance(ecosystems_raw, dict):

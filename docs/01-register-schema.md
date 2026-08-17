@@ -135,6 +135,35 @@ fails a declaration past its expiry, exactly as it fails a control past
 explicit `SKIPPED (no credentials)` verdict rather than passing by default. A
 skipped remote check never counts as a pass.
 
+### `tools`
+
+Where each tool's version is authoritative. The register does **not** try to be
+the only place a version appears — a tool installed by a package manager
+necessarily appears in that manager's manifest too. It records which authority
+owns the value:
+
+```yaml
+tools:
+  markdownlint-cli2:
+    source: lockfile              # a package manager owns the version
+    lockfile: package-lock.json
+  gitleaks:
+    source: literal               # nothing owns it; the value lives here
+    version: "8.30.1"
+    sha256: 551f6f...
+```
+
+Under `source: lockfile` no `version` may be recorded — the loci invoke the tool
+through the package manager (`npx …`, `uv run …`), so there is no version at any
+locus to disagree with, and a copy here would recreate the drift the field
+exists to remove. Under `source: literal` the version lives here and each locus
+repeats it; those repetitions carry a `# renovate:` annotation so a bot updates
+them together, and `tool_versions_match_register` fails the build if one drifts.
+
+Prefer `lockfile`. It is the only option that eliminates duplication rather than
+reconciling it, and it is available whenever the tool is installable from an
+ecosystem the repo already locks.
+
 ### `variance`
 
 | Value | Local config may | Requires |

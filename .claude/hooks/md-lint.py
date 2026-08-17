@@ -15,11 +15,16 @@ if f.startswith(memory_root) and f'{os.sep}memory{os.sep}' in f:
 
 name = os.path.basename(f)
 
+# DOC-001's tool resolves from package-lock.json, so npx must run with the repo
+# root as cwd — this hook is invoked on files anywhere, including outside it.
+repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+mdl = ['npx', '--no-install', 'markdownlint-cli2']
+
 # Auto-fix what markdownlint can repair on its own.
-subprocess.run(['markdownlint-cli2', '--fix', f], capture_output=True)
+subprocess.run([*mdl, '--fix', f], capture_output=True, cwd=repo_root)
 
 # Re-check for anything that couldn't be auto-fixed.
-r = subprocess.run(['markdownlint-cli2', f], capture_output=True, text=True)
+r = subprocess.run([*mdl, f], capture_output=True, text=True, cwd=repo_root)
 out = (r.stdout + r.stderr).strip()
 
 if r.returncode != 0:
