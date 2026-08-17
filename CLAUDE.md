@@ -8,12 +8,16 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 "conformant" means, a family of Claude skills deploys the gates, and a checker
 (`standard-check`, in `src/standard_check/`) audits them.
 
-Current status: Phases 0, 0.5 and 1 are complete — the register has its ADRs,
-the devcontainer is verified, and `standard-check` exists as a plain Python
-executable whose own repo passes every control it can verify locally. Phase 2
-(the `gate-*` skills and the devcontainer template, per `docs/04-build-plan.md`)
-is next. `kind: remote` verification is deliberately deferred to Phase 3; do
-not stub it earlier — remote verify blocks report `SKIPPED (no credentials)`.
+Current status: Phases 0, 0.5 and 1 are built — the register has its ADRs, the
+devcontainer is verified, and `standard-check` exists as a plain Python
+executable. **Phase 1.5 (remediation) is next and gates Phase 2**: a review
+found the checker aborts without a verdict in some cases and reports green for
+things it never examined in others, and Phase 2 would copy that assert layer
+into six gate skills. Read `docs/04-build-plan.md` § Phase 1.5 before touching
+`src/standard_check/` — four earlier exit criteria are re-opened there, so do
+not treat a ticked box in an earlier phase as settled without checking it.
+`kind: remote` verification stays deferred to Phase 3; do not stub it earlier —
+remote verify blocks report `SKIPPED (no credentials)`.
 
 ## Commands
 

@@ -19,12 +19,6 @@ markdown gate would duplicate a working deployment mechanism — exactly the
 drift the register exists to prevent — so the control instead records
 `deployed_by: lint-md` and verifies what the skill deploys.
 
-The deployed configuration caps prose lines at 250 characters (code blocks and
-tables exempt). The register once said 120; the deployed config said 250, and
-the register was loosened to match — recorded here because it is this
-register's first exercised example of the rule that loosening happens in the
-register first, never silently in a deployed artefact.
-
 ## Alternatives Considered
 
 ### Option 1: A repo-local markdown gate
@@ -67,8 +61,7 @@ recorded as control DOC-001 at `rung: blocking` with
 
 - The pinned tool version lives in both `lint-md`'s deployment and this repo's
   setup and CI wiring; those pins must move together, never separately.
-- Rule tightening is local and free; any loosening is a register change first,
-  by the exercised precedent above.
+- Rule tightening is local and free; any loosening is a register change first.
 
 ## Related ADRs
 

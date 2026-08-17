@@ -89,12 +89,17 @@ Phase 0 complete — the register exists, with a rationale ADR per control in
 Phase 0.5 complete — this repo's own devcontainer, digest-pinned and verified.
 Operator guide: [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md).
 
-Phase 1 complete — `standard-check` exists (`uv run standard-check`), and this
-repo passes every control it can verify locally; remote halves report
-`SKIPPED (no credentials)` until Phase 3.
+Phase 1 built — `standard-check` exists (`uv run standard-check`) and this repo
+satisfies every control the checker can currently verify locally. Controls with
+a remote half report `SKIPPED (no credentials)` until Phase 3, which is never a
+pass.
 
-Phase 2, the gate skills and the shipped devcontainer template, is next. See
-[`docs/04-build-plan.md`](docs/04-build-plan.md) for exit criteria.
+Phase 1.5, remediation, is next and gates Phase 2. A review of Phase 1 found the
+checker aborting without a verdict in some conditions and reporting green for
+things it had not examined in others; since Phase 2 copies the assert layer into
+six gate skills, those defects are fixed first. The full backlog, the decisions
+it needs, and four re-opened exit criteria are in
+[`docs/04-build-plan.md`](docs/04-build-plan.md) § Phase 1.5.
 
 ## Relationship to existing ee-skills plugins
 

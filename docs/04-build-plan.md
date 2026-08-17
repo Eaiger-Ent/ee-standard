@@ -63,10 +63,13 @@ Phase 1 unclosable by its own terms.
       solved and is not
 - [x] `.devcontainer/.env` is gitignored, and `git log --all -- .devcontainer/.env`
       is empty
-- [x] The container's final user is not root, stated explicitly rather than
-      inherited from the base image
-- [x] `setup.sh` is short enough not to need sectioning — anything longer is
-      doing work that belongs in a feature
+- [ ] The container's final user is not root, stated explicitly rather than
+      inherited from the base image — **re-opened**: `remoteUser` is stated in
+      `devcontainer.json` but read by no assert, and BLD-001 needs a Dockerfile
+      so it skips here. Ticked on a JSON key nothing verifies (Phase 1.5 § A)
+- [ ] `setup.sh` is short enough not to need sectioning — anything longer is
+      doing work that belongs in a feature — **re-opened**: 82 lines across
+      seven sections (Phase 1.5 § Carried debt)
 - [x] DEV-001's `enforces` text in `controls.yaml` covers the image digest as
       well as the lock file, matching what
       [`03-devcontainer.md`](03-devcontainer.md) already claims it verifies
@@ -100,20 +103,252 @@ that must not be stubbed.
 ### Exit criteria — phase 1
 
 - [x] `standard-check schema` passes against `controls.yaml`
-- [x] Running against this repo produces a report with no `UNCLASSIFIED` verdicts
-      arising from checker bugs (as opposed to genuine ambiguity)
+- [ ] Running against this repo produces a report with no `UNCLASSIFIED` verdicts
+      arising from checker bugs (as opposed to genuine ambiguity) — **re-opened**:
+      vacuously true, because no code path can emit `UNCLASSIFIED`
+      (Phase 1.5 § E)
 - [x] A deliberately broken register fails schema validation with a message
       naming the field — exercised in `tests/test_schema.py`, one test per
       breakage class
 - [x] An unknown `assert` name is a schema **error**, not a skipped check — the
       closed set is derived from the checker's assert registries, so it cannot
       drift from the implementation
-- [x] `SKIPPED (predicate)` and `SKIPPED (no credentials)` render distinctly and
-      neither is counted as a pass in the exit code
+- [ ] `SKIPPED (predicate)` and `SKIPPED (no credentials)` render distinctly and
+      neither is counted as a pass in the exit code — **re-opened**: they render
+      distinctly, but a no-credentials skip leaves the exit code at 0, so CI is
+      green while two Tier-1 controls are unverified (Phase 1.5 § A)
 - [x] The checker's own repo passes every control it can verify locally
 
 The last one is the real gate. If the standard repo cannot satisfy its own
 Tier-1 controls, they are not birth conditions.
+
+Four of the boxes above and in phase 0.5 were re-opened by the review that
+follows. They are listed unticked with a pointer rather than quietly left green:
+a ledger that records only the optimistic reading is the thing this repo exists
+to prevent.
+
+## Phase 1.5 — Remediation
+
+Phases 0, 0.5 and 1 closed their exit criteria. A review of the result found
+that several were met in letter rather than in substance, and — more seriously —
+that the checker's failure modes point the wrong way. In multiple places it
+either **aborts without producing any verdict**, or **reports green for
+something it never examined**. For a conformance tool those are the only two
+failures that matter.
+
+This phase exists because of one line in Phase 2: *"Gates and checker share one
+assert implementation — verified by there being one copy."* Every defect below
+would be copied into six `gate-*` skills and become six times more expensive to
+correct. The principle that put the checker before the template applies again:
+fix the checker before anything derives from it.
+
+Nothing here is new scope. It is the distance between what Phase 1 claimed and
+what Phase 1 delivered.
+
+### A — Verdicts that overstate what was checked
+
+| Defect | Now | Required |
+| --- | --- | --- |
+| GOV-002 cannot fail in CI. `_previous_content` falls back `origin/main` → `main` → `HEAD`, so once a growth is committed, "previous" *is* the grown file. Confirmed: growth uncommitted → FAIL; same growth committed → PASS | Catches dirty worktrees only | Compare against the default branch's merge-base, and fail closed when no comparison point exists |
+| DOC-001 asserts only that a config file exists. Confirmed: `line_length: 100000` plus a 1600-character line passes; deleting the CI step, the pre-commit hook or the editor hook also passes | Existence check | A `doc_gate_wired_at_all_loci` assert mirroring LNT-001's, plus an assertion on the ceiling the register names |
+| A control whose tool is missing reports FAIL. `hadolint`, `checkov` and `tflint` are absent from this container, so any repo with a `Dockerfile` or a `.tf` gets "command not found" | "Cannot verify" is indistinguishable from "violates" | `UNCLASSIFIED` — the verdict already exists for exactly this |
+| GOV-001 derives reachability from a substring test, and any bare `standard-check` step short-circuits every control | `pip install standard-check` would mark all controls reachable | Match invocations, not substrings; see § Decisions for how loudly it should admit being partial |
+| `SKIPPED (no credentials)` leaves the exit code at 0 | CI is green while SEC-001's remote half and all of CI-001 are unverified | See § Decisions |
+
+### B — Runs that abort instead of reporting
+
+A `kind: command` block that explodes degrades to FAIL. A `kind: file` assert
+runs in-process, so one exception kills the run before anything is rendered.
+
+Confirmed triggers: a tracked file deleted from the worktree (`git ls-files`
+still lists it); `repos:` with nothing under it; `updates:` empty;
+`"features": null`; `customizations.vscode: null`; a malformed `pyproject.toml`;
+unparseable YAML; and — most likely to meet a real repo — **a `tsconfig.json`
+containing a trailing comma**, which is legal JSONC that `tsc` accepts and
+`strip_jsonc` does not handle. `YAMLError` is guarded in the register loader and
+nowhere else.
+
+Two more crashes: `words.index("install")` raises `ValueError` on
+`npm install-ci-test` (a real npm command whose `\b` boundary the regex
+matches), surfacing as a SUP-001 failure whose operator-facing message is a
+Python traceback; and if `git` is absent from `PATH` the checker crashes rather
+than reporting.
+
+**Required:** every assert returns a verdict. A read or parse failure is a FAIL
+naming the file and the reason, and the run continues to the next control.
+
+### C — Environments that silently look conformant
+
+| Defect | Confirmed behaviour |
+| --- | --- |
+| `_git_ls` swallows any non-zero `git` exit and returns an empty set, so every file predicate goes false | A non-git directory holding a root-running `Dockerfile`, an `AWS_SECRET_ACCESS_KEY` in a workflow and a `pyproject.toml` reports eight predicate skips and exits 0. The reason given — "predicate not satisfied" — is false; the files are on disk. A typo'd `--repo` path behaves identically. This is also the path taken when git refuses a repo for dubious ownership |
+| `gitleaks detect` is git-history-only | In a non-git directory it prints "0 commits scanned … no leaks found" and exits 0, so SEC-001 shows a green tick for a scan that examined nothing |
+| The `container` predicate is an exact basename match; `repo.dockerfiles()` accepts `Dockerfile.*` and `*.Dockerfile` | A repo whose only container file is `Dockerfile.prod` ending in `USER root` reports `BLD-001 SKIPPED (predicate)`, while the assert called directly returns FAIL. A skip hides a violation the checker can already detect |
+| `runner.py` uses `shlex.split` with no shell | `run: "true && false"` becomes `['true', '&&', 'false']` and exits 0. The schema accepts such strings, so a future `pytest && mypy` would silently check only pytest |
+
+### D — Assert precision
+
+False negatives — the assert passes while the control's `enforces` does not hold:
+
+| Control | Input that passes |
+| --- | --- |
+| SEC-002 | `aws-access-key-id: ${{ secrets.PROD_KEY }}` — the scan is a case-sensitive substring match over seven uppercase names |
+| TST-001 | `pip install pytest==8.0.0` with no test invocation; and a `workflow_dispatch`-only workflow, because `on:` is never read (theme T-3) |
+| SUP-003 | A job-level reusable workflow `uses: owner/repo/.github/workflows/x.yml@main` — only `jobs.*.steps` is walked |
+| LNT-001, TST-001 | `continue-on-error: "true"` as a string, and the `\|\| :` idiom, both outside the suppression set |
+| TYP-001 | `strict = true` alongside `[[tool.mypy.overrides]] module=["*"] ignore_errors=true` |
+| SUP-002 | `renovate.json` containing `{"enabled": false}` — any renovate filename is accepted unparsed |
+| SUP-001 | An unpinned `requirements.txt` counted as a lockfile; a TS repo with no workflows at all passing the frozen-install check vacuously; `pip3`, `poetry`, `pdm` unmatched |
+| BLD-001 | `ARG USERNAME=root` with `USER ${USERNAME}` — the literal token is compared, never expanded |
+
+False positives — conformant repos that fail:
+
+| Input | Cause |
+| --- | --- |
+| `pip install \` with the pinned package on a continuation line | Physical lines are iterated |
+| CI that lints via `pre-commit run --all-files` | A literal `ruff check` string is required |
+| mypy configured in `mypy.ini` | Only `[tool.mypy]` is read |
+| An editor locus via `.vscode/extensions.json`, no devcontainer | The check demands a devcontainer extension entry, inventing a hidden LNT-001 dependency on DEV-001's artefact |
+| `npm run test`, `make test`, `tox`, `gradle`, `rspec` | The test-command regex lists six spellings |
+| A devcontainer using `build.dockerfile` instead of `image` | DEV-001 demands an `image` key; the Dockerfile's own `FROM` pin is never checked |
+| `uses: docker://alpine@sha256:<64 hex>` | 40 hex characters are required |
+
+### E — Register and schema gaps
+
+**No tool version exists anywhere in the register**, while four documents state
+that one does — `03-devcontainer.md`, `06-devcontainer-setup.md`,
+`00-concepts.md` and a comment in `setup.sh` all describe pinning "from the
+version recorded in the register". The consequence is pin-many-and-hope:
+`markdownlint-cli2@0.23.2` in four places, gitleaks `8.30.1` and its checksum in
+two each, `uv==0.12.5` in two, none authoritative. A comment in `lint.yml`
+instructs humans to "change all three together" where there are four. Separately,
+`02-skill-family.md` § Version policy describes a per-control
+`pinned`/`floating-minor`/`latest` field that exists in neither the schema doc
+nor the register — and because the validator accepts unknown keys, adding it
+would be silently ignored rather than rejected.
+
+**`variance` is read by no code path**, and one of its four values cannot be
+implemented as specified: SUP-003 and IAC-001 are `tier: 1` with
+`variance: justified` and `baseline: null`, but `00-concepts.md` says a justified
+weakening *is* a baseline entry, and the validator rejects any Tier-1 control
+carrying a baseline. The mechanism that stops `justified` becoming a loophole is
+structurally unreachable for both controls that use it. `CLAUDE.md` compounds it
+by listing only two of the four values. `UNCLASSIFIED` is likewise unreachable
+from every code path.
+
+**The `kind: command` / `kind: file` taxonomy has been subverted.** Five of the
+seven `standard-check assert …` blocks are file-shape assertions declared as
+commands; ADR 0002 even describes SEC-002 as "a file-shaped assertion" while the
+register calls it a command. This is not cosmetic — GOV-001 derives reachability
+from `kind: command` blocks and ignores `kind: file` ones.
+
+**The checker has become a second source of truth** for rules recorded nowhere
+in the register: ruff/eslint/mypy/pytest as the mandated tools, the
+`charliermarsh.ruff` extension ID, the test-command spellings, a Python-and-Node
+lockfile map that lets Go, Rust and Java repos pass SUP-001 with no lockfile, the
+Dependabot ecosystem spellings, the seven-name cloud-key list, the suppression
+patterns, the predicate grammar, the `GOV-\d{3}` pattern, `rationale_adr` file
+existence, strict semver, and the Tier-1 baseline rule. Phase 2's shared assert
+implementation inherits all of it, so the boundary needs deciding here: what
+belongs in the register, and what is legitimately the checker's business.
+
+### F — Deployment and provenance
+
+`lint-md` owns both `.pre-commit-config.yaml` and `.github/workflows/lint.yml`,
+and both were hand-edited in Phase 1. Its own templates write
+`actions/checkout@v6` (a floating tag, failing SUP-003) and an unversioned
+`npm install -g markdownlint-cli2`, so a re-run reverts the pins and turns
+SUP-003 red. That implies a **fourth promotion submission** — an amend against
+`lint-md` — which [`05-promotion.md`](05-promotion.md) § Submission order does
+not list.
+
+Three of the four `lint-md`-deployed artefacts carry no `ee-control:` stamp,
+though `CLAUDE.md` states as fact that they do. The one that has a stamp reads
+`register: v0.1.0` against a v0.2.0 register, making the repo's only deployed
+artefact stale by the definition in `00-concepts.md` — and the stamp format
+carries no contract number, so the documented noise control cannot be evaluated
+from a stamp at all.
+
+Phase 1 also introduced an unrecorded weakening: `extend-exclude = [".claude"]`
+in `pyproject.toml` and `.claude/**` in the markdownlint config are what
+`00-concepts.md` names as weakening ("adding an ignore path"), applied to
+`narrowing-only` controls whose `baseline: null` the schema doc says means no
+exemptions are possible.
+
+### Decisions required before Phase 2
+
+These are not code, and they are not the author's to settle alone.
+
+| Decision | Why it cannot be deferred |
+| --- | --- |
+| This repository cannot satisfy CI-001 or SEC-001's remote half. `GET /rulesets` returns 403 ("Upgrade to GitHub Pro or make this repository public"), `security_and_analysis` is null, and `main` reports `protected: false` | Tier 1 means birth conditions, and `00-concepts.md` says a control that cannot be met at birth does not belong in Tier 1. Either the plan changes, the repo becomes public, or CI-001 is re-tiered. Phase 3 is blocked on the answer, not on code |
+| `main` is unprotected today, so every blocking gate is bypassable | The Phase 1 gates are advisory in fact until this is closed, whatever the register says |
+| Whether `SKIPPED (no credentials)` should leave a non-zero exit, a distinct exit code, or a warning | Phase 3's criteria demand a non-zero exit on that basis; Phase 2's gates inherit whichever semantics is chosen |
+| How a partially-implemented meta-control should report | GOV-001 cannot see platform state until Phase 3, yet prints an unqualified PASS today |
+
+### Carried debt — recorded, not gating
+
+- ADR 0013's unsupported line-length passage — **closed**: git history shows
+  DOC-001 was introduced already at 250, the commit message said "from the
+  previous 80", and the ADR said 120. Three numbers for one event, cited as the
+  register's canonical precedent. The passage is removed.
+- `standard-check --tier 1` is documented in `02-skill-family.md`, `CLAUDE.md`
+  and the CLI's own docstring, but only `run --tier 1` works; `--repo` must
+  precede the subcommand; `standard-check drift` is documented — including in
+  `.markdownlint.yaml`'s header — and does not exist.
+- `setup.sh` is 82 lines across seven sections. `uv` and `gitleaks` belong in
+  pinned features, which would also bring them under `devcontainer-lock.json`.
+- No repo-root `LICENSE`, though `pyproject.toml` declares Apache-2.0 and
+  `05-promotion.md` requires every plugin to ship a copy of it.
+- `.devcontainer/.env` is mode `0644` while holding a live OAuth token and two
+  PATs. A `chmod 600` in `fetch-secrets.sh` costs nothing, and the docs present
+  that file as the credential boundary (theme T-5).
+- Title-versus-mechanism drift: DEV-001's title says features only; LNT-001's
+  says "lint **and format**" while nothing checks formatting; TYP-001 enforces
+  "no per-file opt-out" without reading `[[tool.mypy.overrides]]`; SUP-002's
+  title is broader than what passes, since the npm and curl pins are precisely
+  the two Dependabot cannot propose.
+- Doc sweep: the schema doc's rung enum omits `blocking (baselined)`;
+  "validated by `standard-check schema` on every commit" is scoped to commits
+  touching the register; "every URL in the register is verified to resolve" has
+  no mechanism (all thirteen do resolve today); `03-devcontainer.md` lists a
+  `claude-user-settings.json` that does not exist; `CLAUDE.md` says the README
+  lists sixteen controls where it lists thirteen plus three in prose; the README
+  drops "third-party" from SUP-003, which the owner-exemption depends on;
+  `06-devcontainer-setup.md`'s description of `setup.sh` omits three of its jobs;
+  and the README's "remote *halves* report SKIPPED" understates the report, which
+  renders the whole of SEC-001 as `SKIPPED (no credentials)` because a control's
+  verdict is the worst of its blocks.
+
+### Exit criteria — phase 1.5
+
+- [ ] GOV-002 fails on a baseline grown in a **commit**, not only in a dirty
+      worktree
+- [ ] No assert can abort the run: a read or parse failure is a verdict naming
+      the file, and later controls are still evaluated
+- [ ] A target that is not a git repository is an error, never a page of
+      `SKIPPED (predicate)` verdicts
+- [ ] A control whose tool is absent reports `UNCLASSIFIED`, distinct from FAIL
+- [ ] A register `run:` string containing a shell operator is either rejected at
+      schema time or executed correctly — never silently truncated
+- [ ] The `container` predicate and BLD-001's assert agree on what a Dockerfile is
+- [ ] DOC-001 verifies its three loci and the ceiling its `enforces` names
+- [ ] The exit code distinguishes "no credentials" from "all clear", per the
+      decision recorded above
+- [ ] Every row in § D has a test that fails before its fix and passes after
+- [ ] The tool-version question is settled in the register, and no version
+      string exists in more than one place
+- [ ] `variance: justified` is implementable or removed from the vocabulary, and
+      `CLAUDE.md` lists whatever survives
+- [ ] Every `lint-md`-deployed artefact this repo has edited carries a
+      provenance stamp, and the amend submission against `lint-md` is raised
+- [ ] The register rejects unknown keys
+
+The § D criterion is the real gate this time. Phase 1's suite passed 48 checks
+while GOV-002 could not fail, a trailing comma could abort the run, and a
+non-git directory reported clean — it exercised the paths the author had in mind
+rather than the paths an adversary would take, which is the same critique this
+repo levels at its predecessor.
 
 ## Phase 2 — The gates and the template
 
@@ -236,11 +471,13 @@ ignored within a month and the phase has failed regardless of what else passes.
 Per [`05-promotion.md`](05-promotion.md), in the order given there: the
 `CONTRIBUTING.md` corrections first (small, independent, establishes contact),
 then `ee-standard` plus the `governance` category, then the `skill-update`
-amendment.
+amendment — plus the `lint-md` amendment identified in Phase 1.5 § F, which
+makes four.
 
 ### Exit criteria — phase 6
 
-- [ ] All three submissions raised
+- [ ] All four submissions raised (the three in `05-promotion.md`, plus the
+      `lint-md` amendment from Phase 1.5 § F)
 - [ ] `ee-standard` installable from the marketplace
 - [ ] The consumer repo re-adopts from the *marketplace* copy and still passes —
       proving the plugin works when installed, not only when developed
@@ -256,9 +493,10 @@ amendment.
 
 ## Sequencing risk
 
-The plan's dependencies are strict in two places and loose everywhere else:
-Phase 0.5 gates Phase 1, Phase 1 gates everything after it, and Phase 4 gates
-Phase 6. Phases 2 and 3 can overlap once the checker's assert interface is
+The plan's dependencies are strict in three places and loose everywhere else:
+Phase 0.5 gates Phase 1, Phase 1.5 gates Phase 2 (because Phase 2 copies the
+assert layer into six skills), Phase 1 gates everything after it, and Phase 4
+gates Phase 6. Phases 2 and 3 can overlap once the checker's assert interface is
 settled.
 
 The genuine risk is Phase 4 revealing something Phases 1–3 assumed. That is the
