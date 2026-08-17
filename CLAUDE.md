@@ -26,6 +26,10 @@ remote verify blocks report `SKIPPED (no credentials)`.
   `.github/workflows/standard-check.yml`.
 - Quality gates: `uv run ruff check .`, `uv run mypy`, `uv run pytest` — all
   configured in `pyproject.toml`, the single definition every locus reads.
+- Build-plan progress: `uv run python scripts/plan_progress.py` — a derived view
+  of the exit criteria in `docs/04-build-plan.md`, which stays the single source.
+  It stores nothing and infers no gating; it exits non-zero if a criterion is
+  marked re-opened while still ticked. Never maintain a second list of this work.
 - Lint markdown: `markdownlint-cli2 "**/*.md"` — also runs via a PostToolUse
   auto-fix hook on every file you write, a pre-commit hook, and
   `.github/workflows/lint.yml`.
@@ -95,6 +99,18 @@ a skill may install or explain a gate but cannot be one.
 
 ## Documents
 
-Read `docs/00-concepts.md` first; `docs/04-build-plan.md` has the phase exit
-criteria that define "done" for any implementation work; `README.md` § "The
-register at a glance" lists all sixteen controls.
+Read `docs/00-concepts.md` first for the vocabulary, then:
+
+| Document | What it is for |
+| --- | --- |
+| `docs/00-concepts.md` | The vocabulary every other document assumes |
+| `docs/01-register-schema.md` | Field-by-field specification of `controls.yaml` |
+| `docs/02-skill-family.md` | How the standard reaches a repo, and stays current |
+| `docs/03-devcontainer.md` | What the shipped devcontainer template must be |
+| `docs/04-build-plan.md` | The phase exit criteria that define "done" for any implementation work, and the only list of outstanding work |
+| `docs/05-promotion.md` | The route to the `ee-skills` marketplace |
+| `docs/06-devcontainer-setup.md` | Operator guide for this repo's own container |
+| `docs/adr/` | One ADR per control, plus the open decisions at `Status: Proposed` |
+
+`README.md` § "The register at a glance" lists the thirteen Tier-1 controls, with
+the three meta-controls described below the table.

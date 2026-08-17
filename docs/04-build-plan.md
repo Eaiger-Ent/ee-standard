@@ -277,14 +277,18 @@ exemptions are possible.
 
 ### Decisions required before Phase 2
 
-These are not code, and they are not the author's to settle alone.
+These are not code, and they are not the author's to settle alone. Each is
+recorded as an ADR at `Status: Proposed` — the ADR holds the options, the
+recommendation and the consequences, so this table stays an index and does not
+become a second copy of the reasoning. Ratifying one means moving it to
+`Accepted` via `/adr-approve`.
 
-| Decision | Why it cannot be deferred |
-| --- | --- |
-| This repository cannot satisfy CI-001 or SEC-001's remote half. `GET /rulesets` returns 403 ("Upgrade to GitHub Pro or make this repository public"), `security_and_analysis` is null, and `main` reports `protected: false` | Tier 1 means birth conditions, and `00-concepts.md` says a control that cannot be met at birth does not belong in Tier 1. Either the plan changes, the repo becomes public, or CI-001 is re-tiered. Phase 3 is blocked on the answer, not on code |
-| `main` is unprotected today, so every blocking gate is bypassable | The Phase 1 gates are advisory in fact until this is closed, whatever the register says |
-| Whether `SKIPPED (no credentials)` should leave a non-zero exit, a distinct exit code, or a warning | Phase 3's criteria demand a non-zero exit on that basis; Phase 2's gates inherit whichever semantics is chosen |
-| How a partially-implemented meta-control should report | GOV-001 cannot see platform state until Phase 3, yet prints an unqualified PASS today |
+| Decision | Recorded in | Why it cannot be deferred |
+| --- | --- | --- |
+| This repository cannot satisfy CI-001 or SEC-001's remote half. `GET /rulesets` returns 403 ("Upgrade to GitHub Pro or make this repository public"), `security_and_analysis` is null, and `main` reports `protected: false` | [ADR 0014](adr/0014-satisfying-remote-locus-controls.md) | Tier 1 means birth conditions, and `00-concepts.md` says a control that cannot be met at birth does not belong in Tier 1. Phase 3 is blocked on the answer, not on code |
+| `main` is unprotected today, so every blocking gate is bypassable | [ADR 0015](adr/0015-interim-branch-discipline.md) | The Phase 1 gates are advisory in fact until this is closed, whatever the register says |
+| Whether `SKIPPED (no credentials)` should leave a non-zero exit, a distinct exit code, or a warning | [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) | Phase 3's criteria demand a non-zero exit on that basis; Phase 2's gates inherit whichever semantics is chosen |
+| How a partially-implemented control reports its own incompleteness | [ADR 0017](adr/0017-partial-verification-is-reported.md) | GOV-001 cannot see platform state until Phase 3, yet prints an unqualified PASS today |
 
 ### Carried debt — recorded, not gating
 
@@ -312,9 +316,10 @@ These are not code, and they are not the author's to settle alone.
   "validated by `standard-check schema` on every commit" is scoped to commits
   touching the register; "every URL in the register is verified to resolve" has
   no mechanism (all thirteen do resolve today); `03-devcontainer.md` lists a
-  `claude-user-settings.json` that does not exist; `CLAUDE.md` says the README
-  lists sixteen controls where it lists thirteen plus three in prose; the README
-  drops "third-party" from SUP-003, which the owner-exemption depends on;
+  `claude-user-settings.json` that does not exist; CLAUDE.md's "sixteen
+  controls" miscount is **closed**, corrected when its § Documents gained a full
+  index; the README drops "third-party" from SUP-003, which the owner-exemption
+  depends on;
   `06-devcontainer-setup.md`'s description of `setup.sh` omits three of its jobs;
   and the README's "remote *halves* report SKIPPED" understates the report, which
   renders the whole of SEC-001 as `SKIPPED (no credentials)` because a control's
@@ -343,6 +348,8 @@ These are not code, and they are not the author's to settle alone.
 - [ ] Every `lint-md`-deployed artefact this repo has edited carries a
       provenance stamp, and the amend submission against `lint-md` is raised
 - [ ] The register rejects unknown keys
+- [ ] ADRs 0014–0017 are ratified — each moved from `Proposed` to `Accepted`, or
+      superseded by a recorded alternative
 
 The § D criterion is the real gate this time. Phase 1's suite passed 48 checks
 while GOV-002 could not fail, a trailing comma could abort the run, and a
