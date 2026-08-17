@@ -278,17 +278,18 @@ exemptions are possible.
 ### Decisions required before Phase 2
 
 These are not code, and they are not the author's to settle alone. Each is
-recorded as an ADR at `Status: Proposed` — the ADR holds the options, the
-recommendation and the consequences, so this table stays an index and does not
-become a second copy of the reasoning. Ratifying one means moving it to
-`Accepted` via `/adr-approve`.
+recorded as an ADR — the ADR holds the options, the recommendation and the
+consequences, so this table stays an index and does not become a second copy of
+the reasoning. Ratifying one means moving it to `Accepted` via `/adr-approve`.
+All four are now settled; none is yet fully implemented, and the exit criteria
+below — not this table — track that.
 
 | Decision | Recorded in | Why it cannot be deferred |
 | --- | --- | --- |
 | This repository cannot satisfy CI-001 or SEC-001's remote half. `GET /rulesets` returned 403 ("Upgrade to GitHub Pro or make this repository public"), `security_and_analysis` was null, and `main` reported `protected: false` | [ADR 0014](adr/0014-satisfying-remote-locus-controls.md) — **Accepted and implemented** 2026-08-17 | Settled: the repository is public and both controls stay Tier 1. The capability is confirmed live (`GET /rulesets` now returns `[]`). Two follow-on acts remain — create the ruleset, enable push protection — both blocked on a PAT lacking `Administration: write`, not on any decision |
 | `main` was unprotected, so every blocking gate was bypassable | [ADR 0015](adr/0015-interim-branch-discipline.md) — **Superseded** by [ADR 0008](adr/0008-protected-default-branch.md) 2026-08-17, never ratified | Closed by enforcement rather than by convention: the ruleset makes CI-001 mechanical, so the proposed stopgap was redundant before it was decided |
-| Whether `SKIPPED (no credentials)` should leave a non-zero exit, a distinct exit code, or a warning | [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) | Phase 3's criteria demand a non-zero exit on that basis; Phase 2's gates inherit whichever semantics is chosen |
-| How a partially-implemented control reports its own incompleteness | [ADR 0017](adr/0017-partial-verification-is-reported.md) | GOV-001 cannot see platform state until Phase 3, yet prints an unqualified PASS today |
+| Whether `SKIPPED (no credentials)` should leave a non-zero exit, a distinct exit code, or a warning | [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) — **Accepted** 2026-08-17, not yet implemented | Decided: exit `3` for a run with no violation but something it could not verify, `1` for a verified violation, `0` only when every applicable control was verified, and `--require-complete` promotes `3` to `1`. Predicate skips stay `0`. Phase 2's gates inherit these semantics, so the code follows before they are written |
+| How a partially-implemented control reports its own incompleteness | [ADR 0017](adr/0017-partial-verification-is-reported.md) — **Accepted** 2026-08-17, not yet implemented | Decided: the register — not the checker — declares a verification block partially implemented with an expiry, and the report renders the computed verdict plus a `partial:` line. The schema addition carries a `register_contract` bump, so it lands before Phase 2's skills read that contract |
 
 ### Carried debt — recorded, not gating
 
@@ -343,8 +344,11 @@ become a second copy of the reasoning. Ratifying one means moving it to
       schema time or executed correctly — never silently truncated
 - [ ] The `container` predicate and BLD-001's assert agree on what a Dockerfile is
 - [ ] DOC-001 verifies its three loci and the ceiling its `enforces` names
-- [ ] The exit code distinguishes "no credentials" from "all clear", per the
-      decision recorded above
+- [ ] The exit code distinguishes "no credentials" from "all clear", per
+      [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) — `3` for
+      unverified-but-no-violation, `1` for a verified violation, `0` only for a
+      fully verified run, and `--require-complete` promotes `3` to `1`. The
+      `Standard` workflow passes that flag
 - [ ] Every row in § D has a test that fails before its fix and passes after
 - [ ] The tool-version question is settled in the register, and no version
       string exists in more than one place
@@ -353,10 +357,16 @@ become a second copy of the reasoning. Ratifying one means moving it to
 - [ ] Every `lint-md`-deployed artefact this repo has edited carries a
       provenance stamp, and the amend submission against `lint-md` is raised
 - [ ] The register rejects unknown keys
-- [ ] ADRs 0014–0017 are ratified — each moved from `Proposed` to `Accepted`, or
-      superseded by a recorded alternative. 2 of 4 done: 0014 Accepted and
-      implemented, 0015 Superseded by 0008 without ever being ratified; 0016 and
-      0017 still `Proposed`
+- [x] ADRs 0014–0017 are ratified — each moved from `Proposed` to `Accepted`, or
+      superseded by a recorded alternative. 4 of 4 done: 0014 Accepted and
+      implemented, 0015 Superseded by 0008 without ever being ratified, 0016 and
+      0017 Accepted 2026-08-17 and not yet implemented. Ratification is not
+      implementation — the criteria above and below carry that
+- [ ] ADR 0017 is **implemented**, not merely accepted — the register can
+      declare a verification block partially implemented, with an expiry date
+      and a named unverified property; GOV-001 carries that declaration instead
+      of an unqualified `PASS`; and a declaration past its expiry fails the way
+      GOV-003's `review_by` does
 - [x] ADR 0014 is **implemented**, not merely accepted — the repository is
       public as of 2026-08-17, confirmed by the rulesets API returning `[]` where
       it returned `403 Upgrade to GitHub Pro or make this repository public`
