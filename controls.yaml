@@ -27,6 +27,55 @@ meta:
 # repo does not satisfy is SKIPPED, not failed. Predicates are evaluated by
 # standard-check against the repo's own files — never self-declared.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Pinned tool versions. ADR 0018: a version a repository might reasonably need
+# to differ, without the checker changing, is a register fact.
+#
+# Before contract 3 no version existed here at all, while four documents said
+# one did — markdownlint-cli2 was pinned in four places, gitleaks and uv in two
+# each, none authoritative, and a comment in lint.yml told humans to "change all
+# three together" where there were four. The `tool_versions_match_register`
+# assert compares every locus against this table, so drift is a verdict rather
+# than something a reader has to notice.
+# ---------------------------------------------------------------------------
+tools:
+  markdownlint-cli2:
+    version: "0.23.2"
+  gitleaks:
+    version: "8.30.1"
+    sha256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+  uv:
+    version: "0.12.5"
+
+# ---------------------------------------------------------------------------
+# Package ecosystems, and what counts as a lockfile for each. ADR 0018: this
+# was a dictionary in the checker covering Python and Node only, so a Go, Rust
+# or Java repository with no lockfile at all passed SUP-001. Nobody decided
+# that exemption — it was which keys someone wrote — and because the register
+# did not record it, no review and no `review_by` could surface it.
+# ---------------------------------------------------------------------------
+ecosystems:
+  python:
+    manifest: [pyproject.toml]
+    lockfiles: [uv.lock, poetry.lock, pdm.lock]
+    dependabot: [uv, pip]
+  node:
+    manifest: [package.json]
+    lockfiles: [package-lock.json, pnpm-lock.yaml, yarn.lock, bun.lockb]
+    dependabot: [npm]
+  go:
+    manifest: [go.mod]
+    lockfiles: [go.sum]
+    dependabot: [gomod]
+  rust:
+    manifest: [Cargo.toml]
+    lockfiles: [Cargo.lock]
+    dependabot: [cargo]
+  java:
+    manifest: [pom.xml, build.gradle, build.gradle.kts]
+    lockfiles: [gradle.lockfile, gradle/verification-metadata.xml]
+    dependabot: [maven, gradle]
+
 predicates:
   always: true
   python: "pyproject.toml exists"
@@ -110,7 +159,10 @@ controls:
     title: Dependencies resolve from a committed lockfile
     enforces: >
       A lockfile exists for every package manager in use, is committed, and CI
-      installs from it in frozen mode rather than re-resolving.
+      installs from it in frozen mode rather than re-resolving. Every tool this
+      register pins resolves to the version recorded under `tools:`, at every
+      locus that installs it — the same discipline applied to the toolchain
+      rather than to the dependency graph.
     standard:
       name: OpenSSF Baseline
       url: https://baseline.openssf.org/
@@ -123,6 +175,8 @@ controls:
         assert: lockfile_present_and_tracked
       - kind: file
         assert: ci-installs-frozen
+      - kind: file
+        assert: tool_versions_match_register
     owner: platform-engineering
     variance: narrowing-only
     baseline: null

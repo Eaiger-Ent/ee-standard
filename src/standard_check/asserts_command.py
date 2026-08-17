@@ -10,12 +10,15 @@ import re
 import tomllib
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
 from standard_check.asserts_file import AssertFn, AssertResult, _fail, _ok
 from standard_check.repo import Repo, load_jsonc
+
+if TYPE_CHECKING:  # `register` imports the assert registries — importing it
+    from standard_check.register import Register  # at runtime would be circular
 
 
 @dataclass(frozen=True)
@@ -62,7 +65,11 @@ _STATIC_KEY_NAMES = (
 )
 
 
-def no_static_cloud_keys(repo: Repo, _args: Mapping[str, object]) -> AssertResult:
+def no_static_cloud_keys(
+    repo: Repo,
+    _register: Register,
+    _args: Mapping[str, object],
+) -> AssertResult:
     findings: list[str] = []
     for path in repo.workflow_files():
         text = repo.read(path)
@@ -118,7 +125,11 @@ def _install_offences(run: str) -> Iterator[str]:
 _FROZEN_PY = re.compile(r"\buv sync\b.*--(frozen|locked)\b|\bpip install\b.*-r\s+\S+")
 
 
-def ci_installs_frozen(repo: Repo, _args: Mapping[str, object]) -> AssertResult:
+def ci_installs_frozen(
+    repo: Repo,
+    _register: Register,
+    _args: Mapping[str, object],
+) -> AssertResult:
     offences: list[str] = []
     frozen_python_install = False
     for step in _workflow_steps(repo):
@@ -135,7 +146,11 @@ def ci_installs_frozen(repo: Repo, _args: Mapping[str, object]) -> AssertResult:
 _SHA40 = re.compile(r"^[0-9a-f]{40}$")
 
 
-def actions_pinned_to_sha(repo: Repo, _args: Mapping[str, object]) -> AssertResult:
+def actions_pinned_to_sha(
+    repo: Repo,
+    _register: Register,
+    _args: Mapping[str, object],
+) -> AssertResult:
     owner = repo.owner()
     problems = []
     for step in _workflow_steps(repo):
@@ -197,7 +212,11 @@ def _pyproject(repo: Repo) -> dict[str, Any]:
     return tomllib.loads(repo.read("pyproject.toml"))
 
 
-def linter_wired_at_all_loci(repo: Repo, _args: Mapping[str, object]) -> AssertResult:
+def linter_wired_at_all_loci(
+    repo: Repo,
+    _register: Register,
+    _args: Mapping[str, object],
+) -> AssertResult:
     problems = []
     if repo.exists("pyproject.toml"):
         has_config = "ruff" in _pyproject(repo).get("tool", {}) or any(
@@ -214,9 +233,7 @@ def linter_wired_at_all_loci(repo: Repo, _args: Mapping[str, object]) -> AssertR
         if not _ci_run_mentions(repo, r"\bruff check\b"):
             problems.append("python: ci locus — no step runs ruff check")
     if repo.exists("tsconfig.json"):
-        has_config = any(
-            repo.glob_basename(p) for p in ("eslint.config.*", ".eslintrc*")
-        )
+        has_config = any(repo.glob_basename(p) for p in ("eslint.config.*", ".eslintrc*"))
         if not has_config:
             problems.append("typescript: no eslint configuration")
         if "dbaeumer.vscode-eslint" not in _devcontainer_extensions(repo):
@@ -235,7 +252,11 @@ def linter_wired_at_all_loci(repo: Repo, _args: Mapping[str, object]) -> AssertR
 _SUPPRESSION = re.compile(r"\|\|\s*true\b|\|\|\s*exit 0\b|\bset \+e\b|--exit-zero\b")
 
 
-def no_failure_suppression(repo: Repo, _args: Mapping[str, object]) -> AssertResult:
+def no_failure_suppression(
+    repo: Repo,
+    _register: Register,
+    _args: Mapping[str, object],
+) -> AssertResult:
     problems = []
     for step in _workflow_steps(repo):
         if step.suppressed:
@@ -248,7 +269,11 @@ def no_failure_suppression(repo: Repo, _args: Mapping[str, object]) -> AssertRes
     return _ok("no CI step suppresses a failure")
 
 
-def typecheck_strict_and_blocking(repo: Repo, _args: Mapping[str, object]) -> AssertResult:
+def typecheck_strict_and_blocking(
+    repo: Repo,
+    _register: Register,
+    _args: Mapping[str, object],
+) -> AssertResult:
     problems = []
     if repo.exists("pyproject.toml"):
         mypy_config = _pyproject(repo).get("tool", {}).get("mypy", {})
@@ -278,7 +303,11 @@ _TEST_COMMAND = re.compile(
 )
 
 
-def tests_run_and_block(repo: Repo, _args: Mapping[str, object]) -> AssertResult:
+def tests_run_and_block(
+    repo: Repo,
+    _register: Register,
+    _args: Mapping[str, object],
+) -> AssertResult:
     test_steps = [s for s in _workflow_steps(repo) if _TEST_COMMAND.search(s.run)]
     if not test_steps:
         return _fail("no CI step runs the test command")

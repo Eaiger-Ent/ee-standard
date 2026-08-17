@@ -135,8 +135,11 @@ def _cmd_meta(
     return exit_code([verdict], require_complete=require_complete)
 
 
-def _cmd_assert(repo_path: Path, name: str) -> int:
-    passed, message = run_command_assert(name, Repo(repo_path))
+def _cmd_assert(repo_path: Path, register_path: Path | None, name: str) -> int:
+    register, code = _load(repo_path, register_path)
+    if register is None:
+        return code
+    passed, message = run_command_assert(name, register, Repo(repo_path))
     print(f"assert {name}: {'PASS' if passed else 'FAIL'} — {message}")
     return 0 if passed else 1
 
@@ -196,7 +199,7 @@ def _dispatch(args: argparse.Namespace, repo_path: Path, register_path: Path | N
         case "meta":
             return _cmd_meta(repo_path, register_path, args.id, args.require_complete)
         case "assert":
-            return _cmd_assert(repo_path, args.name)
+            return _cmd_assert(repo_path, register_path, args.name)
         case "explain":
             return _cmd_explain(repo_path, register_path, args.id)
     raise AssertionError(f"unhandled command {args.command!r}")

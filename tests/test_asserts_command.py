@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from conftest import make_repo
+from conftest import a_register, make_repo
 from standard_check.asserts_command import (
     actions_pinned_to_sha,
     ci_installs_frozen,
@@ -35,7 +35,7 @@ def test_no_static_cloud_keys(tmp_path: Path) -> None:
     clean = make_repo(
         tmp_path / "a", {".github/workflows/ci.yml": _workflow("echo hello")}
     )
-    assert no_static_cloud_keys(clean, {}).passed
+    assert no_static_cloud_keys(clean, a_register(), {}).passed
     dirty = make_repo(
         tmp_path / "b",
         {
@@ -44,7 +44,7 @@ def test_no_static_cloud_keys(tmp_path: Path) -> None:
             )
         },
     )
-    result = no_static_cloud_keys(dirty, {})
+    result = no_static_cloud_keys(dirty, a_register(), {})
     assert not result.passed
     assert "AWS_ACCESS_KEY_ID" in result.message
 
@@ -57,7 +57,7 @@ def test_ci_installs_frozen(tmp_path: Path) -> None:
             ".github/workflows/ci.yml": _workflow("uv sync --frozen", "uv run pytest"),
         },
     )
-    assert ci_installs_frozen(frozen, {}).passed
+    assert ci_installs_frozen(frozen, a_register(), {}).passed
     resolving = make_repo(
         tmp_path / "b",
         {
@@ -65,19 +65,19 @@ def test_ci_installs_frozen(tmp_path: Path) -> None:
             ".github/workflows/ci.yml": _workflow("uv sync", "uv run pytest"),
         },
     )
-    result = ci_installs_frozen(resolving, {})
+    result = ci_installs_frozen(resolving, a_register(), {})
     assert not result.passed
     assert "uv sync --frozen" in result.message
     unpinned_tool = make_repo(
         tmp_path / "c",
         {".github/workflows/ci.yml": _workflow("npm install -g markdownlint-cli2")},
     )
-    assert not ci_installs_frozen(unpinned_tool, {}).passed
+    assert not ci_installs_frozen(unpinned_tool, a_register(), {}).passed
     pinned_tool = make_repo(
         tmp_path / "d",
         {".github/workflows/ci.yml": _workflow("npm install -g markdownlint-cli2@0.23.2")},
     )
-    assert ci_installs_frozen(pinned_tool, {}).passed
+    assert ci_installs_frozen(pinned_tool, a_register(), {}).passed
 
 
 def test_missing_python_install_fails_frozen_check(tmp_path: Path) -> None:
@@ -88,7 +88,7 @@ def test_missing_python_install_fails_frozen_check(tmp_path: Path) -> None:
             ".github/workflows/ci.yml": _workflow("echo no install here"),
         },
     )
-    result = ci_installs_frozen(repo, {})
+    result = ci_installs_frozen(repo, a_register(), {})
     assert not result.passed
     assert "frozen" in result.message
 
@@ -98,47 +98,47 @@ def test_actions_pinned_to_sha(tmp_path: Path) -> None:
         tmp_path / "a",
         {".github/workflows/ci.yml": _workflow("echo hi", uses=f"actions/checkout@{_SHA}")},
     )
-    assert actions_pinned_to_sha(pinned, {}).passed
+    assert actions_pinned_to_sha(pinned, a_register(), {}).passed
     tagged = make_repo(
         tmp_path / "b",
         {".github/workflows/ci.yml": _workflow("echo hi", uses="actions/checkout@v6")},
     )
-    result = actions_pinned_to_sha(tagged, {})
+    result = actions_pinned_to_sha(tagged, a_register(), {})
     assert not result.passed
     assert "actions/checkout@v6" in result.message
     local = make_repo(
         tmp_path / "c",
         {".github/workflows/ci.yml": _workflow("echo hi", uses="./.github/actions/mine")},
     )
-    assert actions_pinned_to_sha(local, {}).passed
+    assert actions_pinned_to_sha(local, a_register(), {}).passed
 
 
 def test_no_failure_suppression(tmp_path: Path) -> None:
     clean = make_repo(tmp_path / "a", {".github/workflows/ci.yml": _workflow("pytest")})
-    assert no_failure_suppression(clean, {}).passed
+    assert no_failure_suppression(clean, a_register(), {}).passed
     or_true = make_repo(
         tmp_path / "b", {".github/workflows/ci.yml": _workflow("pytest || true")}
     )
-    assert not no_failure_suppression(or_true, {}).passed
+    assert not no_failure_suppression(or_true, a_register(), {}).passed
     continue_on_error = make_repo(
         tmp_path / "c",
         {".github/workflows/ci.yml": _workflow("pytest", suppressed=True)},
     )
-    assert not no_failure_suppression(continue_on_error, {}).passed
+    assert not no_failure_suppression(continue_on_error, a_register(), {}).passed
 
 
 def test_tests_run_and_block(tmp_path: Path) -> None:
     good = make_repo(
         tmp_path / "a", {".github/workflows/ci.yml": _workflow("uv run pytest")}
     )
-    assert check_tests_run_and_block(good, {}).passed
+    assert check_tests_run_and_block(good, a_register(), {}).passed
     none = make_repo(tmp_path / "b", {".github/workflows/ci.yml": _workflow("echo build")})
-    assert not check_tests_run_and_block(none, {}).passed
+    assert not check_tests_run_and_block(none, a_register(), {}).passed
     absorbed = make_repo(
         tmp_path / "c",
         {".github/workflows/ci.yml": _workflow("uv run pytest", suppressed=True)},
     )
-    result = check_tests_run_and_block(absorbed, {})
+    result = check_tests_run_and_block(absorbed, a_register(), {})
     assert not result.passed
     assert "absorbed" in result.message
 
@@ -155,7 +155,7 @@ def test_typecheck_strict_and_blocking(tmp_path: Path) -> None:
             ".github/workflows/ci.yml": _workflow("uv run mypy"),
         },
     )
-    assert typecheck_strict_and_blocking(strict, {}).passed
+    assert typecheck_strict_and_blocking(strict, a_register(), {}).passed
     lax = make_repo(
         tmp_path / "b",
         {
@@ -167,6 +167,6 @@ def test_typecheck_strict_and_blocking(tmp_path: Path) -> None:
             ".github/workflows/ci.yml": _workflow("uv run mypy"),
         },
     )
-    result = typecheck_strict_and_blocking(lax, {})
+    result = typecheck_strict_and_blocking(lax, a_register(), {})
     assert not result.passed
     assert "strict" in result.message

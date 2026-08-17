@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 import yaml
 
+from standard_check.register import Register, load_register
 from standard_check.repo import Repo
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -48,6 +49,20 @@ def make_repo(root: Path, files: dict[str, str], commit: bool = True) -> Repo:
 @pytest.fixture
 def real_repo() -> Repo:
     return Repo(REPO_ROOT)
+
+
+def a_register() -> Register:
+    """This repository's own register, for asserts that read register facts.
+
+    Asserts take the register from contract 3 — a rule that decides a verdict
+    belongs there (ADR 0018), so an assert with no register would have nowhere
+    to read the rule from. Most asserts ignore it; the ones that do not
+    (lockfiles, Dependabot ecosystems, tool versions) want the real definitions
+    rather than a fixture that could drift from them.
+    """
+    register, errors = load_register(REPO_ROOT / "controls.yaml")
+    assert register is not None, errors
+    return register
 
 
 MINIMAL_CONTROL: dict[str, Any] = {
