@@ -1,12 +1,17 @@
 # ADR 0014: Make Remote-Locus Controls Satisfiable on This Repository
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-08-17
 
-Open decision from
+Ratified decision from
 [`04-build-plan.md`](../04-build-plan.md) § Phase 1.5 § Decisions required.
-This record states the recommendation; it is not ratified, and Phase 3 is
-blocked until it is.
+
+**Not yet implemented.** Acceptance settles *what* will be done; changing the
+repository's visibility is a separate, irreversible act that has not been
+performed. Its precondition — a history review — is partly discharged:
+`gitleaks detect` over the full history reports no leaks, and
+`.devcontainer/.env` has never been committed. What remains is a human read of
+the history for content that is embarrassing rather than secret.
 
 ## Background
 
@@ -87,9 +92,11 @@ and simultaneously discharges two commitments the build plan has already
 made — Phase 4's obtainable-template criterion and Phase 6's marketplace
 installability. Option 2 solves less for more, and Option 3 weakens the control
 that holds the rest of the ladder up, on grounds unrelated to the control's
-merit. Ratification requires the owning organisation to accept the disclosure
-and to confirm the history review; if disclosure is refused, Option 2 becomes
-the decision and Option 3 the fallback.
+merit.
+
+Ratified on 2026-08-17. If the disclosure is later refused at organisation
+level, this ADR is superseded by an Option 2 route rather than quietly
+abandoned — the fallback is recorded, not assumed.
 
 ## Consequences
 

@@ -19,6 +19,11 @@ not treat a ticked box in an earlier phase as settled without checking it.
 `kind: remote` verification stays deferred to Phase 3; do not stub it earlier —
 remote verify blocks report `SKIPPED (no credentials)`.
 
+Per [ADR 0014](docs/adr/0014-satisfying-remote-locus-controls.md) (**Accepted**,
+not yet implemented), this repository is to become **public**: write nothing that
+assumes privacy, and treat anything committed as publishable. CI-001 and SEC-001
+stay Tier 1 — do not re-tier a control to make a report green.
+
 ## Commands
 
 - Full conformance run: `uv run standard-check` (also: `schema`, `--tier 1`,
