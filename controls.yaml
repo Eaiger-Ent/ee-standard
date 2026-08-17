@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.3.0
+version: 0.4.0
 
 meta:
   owner: platform-engineering
@@ -20,7 +20,9 @@ meta:
   #    now `kind: file`. `variance: justified` was removed from the vocabulary
   #    (unimplementable as specified) and its two users are `narrowing-only`.
   #    Verification blocks may declare themselves partial (ADR 0017).
-  register_contract: 3
+  # 4: DOC-001 verifies through `npx`, so package-lock.json is the authority
+  #    for its tool's version rather than four hand-kept pins.
+  register_contract: 4
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -39,12 +41,22 @@ meta:
 # than something a reader has to notice.
 # ---------------------------------------------------------------------------
 tools:
+  # `source` names the authority for the version. `lockfile` means a package
+  # manager already owns it and no version belongs here — the loci invoke the
+  # tool through that manager, so there is nothing to keep in step. `literal`
+  # means no package manager owns the tool, so the version lives here and each
+  # locus repeats it; those repetitions carry a `# renovate:` annotation so a
+  # bot updates them together, and `tool_versions_match_register` fails the
+  # build if one drifts.
   markdownlint-cli2:
-    version: "0.23.2"
+    source: lockfile
+    lockfile: package-lock.json
   gitleaks:
+    source: literal
     version: "8.30.1"
     sha256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
   uv:
+    source: literal
     version: "0.12.5"
 
 # ---------------------------------------------------------------------------
@@ -455,7 +467,7 @@ controls:
     deployed_by: lint-md
     verify:
       - kind: command
-        run: markdownlint-cli2 "**/*.md"
+        run: npx --no-install markdownlint-cli2 "**/*.md"
       - kind: file
         assert: markdownlint_config_present
     owner: platform-engineering

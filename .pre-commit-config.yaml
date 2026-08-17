@@ -1,12 +1,16 @@
 # Pre-commit locus. Local hooks run through `uv run`, so every tool executes
 # at the version uv.lock pins — the same version the ci locus installs.
 repos:
-  - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.23.2
-    hooks:
-      - id: markdownlint-cli2
   - repo: local
     hooks:
+      # DOC-001 — run through npx so package-lock.json is the only pin. The
+      # upstream mirror's `rev:` was a second copy of the version, free to
+      # drift from every other locus.
+      - id: markdownlint-cli2
+        name: markdownlint-cli2 (DOC-001)
+        entry: npx --no-install markdownlint-cli2
+        language: system
+        types: [markdown]
       # SEC-001 — same pinned binary as .devcontainer/setup.sh and CI.
       - id: gitleaks
         name: gitleaks (SEC-001)

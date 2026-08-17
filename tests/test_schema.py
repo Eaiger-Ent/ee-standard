@@ -207,3 +207,34 @@ def test_unparseable_yaml_is_reported(tmp_path: Path) -> None:
     register, errors = load_register(path)
     assert register is None
     assert any("not parseable as YAML" in str(e) for e in errors)
+
+
+def test_lockfile_sourced_tool_carries_no_version(tmp_path: Path) -> None:
+    """A version beside the lockfile that owns it is the drift being prevented.
+
+    `source: lockfile` means the loci invoke the tool through a package manager,
+    so there is no version at any locus to disagree with. Recording one here
+    would recreate the copy the source field exists to remove.
+    """
+    document = minimal_register()
+    document["tools"] = {
+        "markdownlint-cli2": {
+            "source": "lockfile",
+            "lockfile": "package-lock.json",
+            "version": "0.23.2",
+        }
+    }
+    errors = _errors_for(tmp_path, document)
+    assert any("tools.markdownlint-cli2.version" in e for e in errors)
+
+
+def test_literal_tool_requires_a_version(tmp_path: Path) -> None:
+    document = minimal_register()
+    document["tools"] = {"gitleaks": {"source": "literal"}}
+    assert any("tools.gitleaks.version" in e for e in _errors_for(tmp_path, document))
+
+
+def test_tool_source_is_a_closed_set(tmp_path: Path) -> None:
+    document = minimal_register()
+    document["tools"] = {"uv": {"source": "wherever", "version": "1.0.0"}}
+    assert any("tools.uv.source" in e for e in _errors_for(tmp_path, document))

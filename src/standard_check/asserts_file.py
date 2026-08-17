@@ -357,11 +357,20 @@ def tool_versions_match_register(
         return _ok("the register pins no tool versions")
     problems: list[str] = []
     checked = 0
+    # A lockfile-sourced tool has nothing to reconcile: the loci invoke it
+    # through the package manager, so there is no version at any locus to
+    # disagree with. What must hold instead is that the lockfile is there.
+    literal = [tool for tool in register.tools.values() if tool.source == "literal"]
+    for tool in register.tools.values():
+        if tool.source == "lockfile" and tool.lockfile and tool.lockfile not in repo.tracked:
+            problems.append(
+                f"{tool.name} is sourced from {tool.lockfile}, which is not tracked"
+            )
     for path in _VERSION_SITES:
         if not repo.exists(path):
             continue
         text = repo.read(path)
-        for tool in register.tools.values():
+        for tool in literal:
             # Match the tool name next to a version-shaped token, whatever the
             # separator each locus uses: `@1.2.3`, `==1.2.3`, `=1.2.3`,
             # `v1.2.3`, `: v1.2.3`.
@@ -384,7 +393,11 @@ def tool_versions_match_register(
                 problems.append(f"{path}: {tool.name} checksum does not match the register")
     if problems:
         return _fail("; ".join(sorted(set(problems))))
-    return _ok(f"{checked} version pin(s) across {len(register.tools)} tools match the register")
+    sourced = len(register.tools) - len(literal)
+    return _ok(
+        f"{checked} version pin(s) across {len(literal)} literal tool(s) match the register; "
+        f"{sourced} sourced from a lockfile, with no version to keep in step"
+    )
 
 
 FILE_ASSERTS: dict[str, AssertFn] = {

@@ -424,14 +424,28 @@ below — not this table — track that.
       its row (the vacuous python branch caught it), and was strengthened until
       it discriminated — which is the failure mode this criterion exists to rule
       out
-- [x] The tool-version question is settled in the register, and no version
-      string exists in more than one place — the register's `tools:` section is
-      the single definition, and `tool_versions_match_register` compares every
-      locus against it, so drift is a verdict rather than something a reader has
-      to notice. Versions still *appear* at four loci; eliminating the
-      repetition needs generation, which is a gate skill's job in Phase 2, and
-      the comment in `lint.yml` telling humans to "change all three together"
-      where there were four is gone
+- [x] **Every tool has one recorded authority, and every locus is verified
+      against it.** The original wording — "no version string exists in more
+      than one place" — is not achievable and was ticked while plainly false,
+      which is the over-tick this plan exists to catch. A tool installed by a
+      package manager necessarily appears in that manager's manifest as well,
+      so "one place" was never the right target. The register's `tools:`
+      section now records a `source` per tool:
+      `lockfile` (a package manager owns the version; the loci invoke the tool
+      through it, so there is nothing to keep in step) or `literal` (nothing
+      owns it; the version lives in the register and each locus repeats it).
+      `tool_versions_match_register` verifies both cases
+- [x] Tools that *can* have their duplication eliminated, do.
+      `markdownlint-cli2` moved to `package-lock.json` as its authority:
+      `package.json` declares it, every locus runs `npx --no-install
+      markdownlint-cli2`, and the four hand-kept pins are gone — including the
+      pre-commit mirror's `rev:`, which was a copy nothing compared. Register
+      contract 4, because DOC-001's `verify` changed
+- [ ] The two remaining `literal` tools are reconciled by machine, not by a
+      human remembering. `uv` and `gitleaks` carry `# renovate:` annotations at
+      every site so one PR updates them together — **raised, not yet proven**:
+      no Renovate run has been observed updating them, and an annotation that
+      has never fired is a claim, not a mechanism
 - [x] `variance: justified` is implementable or removed from the vocabulary, and
       `CLAUDE.md` lists whatever survives — **removed** at contract 3, with
       `free`. `justified`'s anti-loophole mechanism was that a weakening becomes
