@@ -1,0 +1,57 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+
+  "description": [
+    "This repository runs two bots, deliberately, and they do not overlap.",
+    "Dependabot (.github/dependabot.yml) covers the package ecosystems it",
+    "understands: github-actions, uv, npm, devcontainers. Renovate is enabled",
+    "for `custom.regex` and nothing else, because the gap Dependabot cannot",
+    "close is a version literal embedded in a shell script or a workflow step —",
+    "it has no equivalent of a custom manager. Those two literals are `uv` and",
+    "`gitleaks`, the register's only `source: literal` tools.",
+    "Widening enabledManagers here would produce duplicate proposals for every",
+    "ecosystem Dependabot already covers. See docs/04-build-plan.md § G."
+  ],
+  "enabledManagers": ["custom.regex"],
+
+  "customManagers": [
+    {
+      "description": "Literal PyPI pins carrying a `# renovate:` annotation",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^controls\\.yaml$/",
+        "/^\\.devcontainer/setup\\.sh$/",
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>pypi) depName=(?<depName>\\S+)\\s+[^\\n]*?==(?<currentValue>\\d+\\.\\d+\\.\\d+)",
+        "# renovate: datasource=(?<datasource>pypi) depName=(?<depName>\\S+)\\s+version:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ]
+    },
+    {
+      "description": "Literal GitHub-release pins carrying a `# renovate:` annotation",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^controls\\.yaml$/",
+        "/^\\.devcontainer/setup\\.sh$/",
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>github-releases) depName=(?<depName>\\S+)\\s+[A-Z_]+=v?(?<currentValue>\\d+\\.\\d+\\.\\d+)",
+        "# renovate: datasource=(?<datasource>github-releases) depName=(?<depName>\\S+)\\s+version:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    }
+  ],
+
+  "packageRules": [
+    {
+      "description": "gitleaks ships a checksum this PR cannot update",
+      "matchPackageNames": ["gitleaks/gitleaks"],
+      "prBodyNotes": [
+        "**This PR does not update the release checksums.** `gitleaks` is verified by `sha256sum -c` at both install sites, and the register records the digest alongside the version. Update all four before merging: `tools.gitleaks.sha256` in `controls.yaml`, the two architecture digests in `.devcontainer/setup.sh`, and the digest in `.github/workflows/standard-check.yml`. Leaving them stale fails the install step rather than passing silently, which is the intended direction — but it fails the build, so do it in this PR."
+      ]
+    }
+  ]
+}

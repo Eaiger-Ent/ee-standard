@@ -160,6 +160,13 @@ exists to remove. Under `source: literal` the version lives here and each locus
 repeats it; those repetitions carry a `# renovate:` annotation so a bot updates
 them together, and `tool_versions_match_register` fails the build if one drifts.
 
+The annotation is written above the `version:` line here as well as at each
+locus, because the register is the authority: a proposal that moved the loci and
+left this table behind is one `tool_versions_match_register` rejects. The
+annotations are only worth writing if something reads them — a repository
+carrying them without the bot installed has a mechanism on paper and none in
+fact, which is what `docs/04-build-plan.md` § G records.
+
 Prefer `lockfile`. It is the only option that eliminates duplication rather than
 reconciling it, and it is available whenever the tool is installable from an
 ecosystem the repo already locks.

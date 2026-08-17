@@ -136,6 +136,24 @@ def _required_update_ecosystems(repo: Repo, register: Register) -> dict[str, tup
     return required
 
 
+def _renovate_covers_ecosystems(config: object) -> bool:
+    """Whether a Renovate config proposes package-ecosystem updates at all.
+
+    Renovate covers every ecosystem it detects *by default*, but a config may
+    narrow `enabledManagers`. This repo does exactly that — Renovate is enabled
+    for `custom.regex` only, to update the two version literals Dependabot
+    cannot see, while Dependabot keeps the ecosystems it understands. Reading
+    the file's presence as blanket coverage would report a coverage that had
+    been switched off two lines further down.
+    """
+    if not isinstance(config, dict):
+        return True  # unparseable: fall back to the default, which is coverage
+    enabled = config.get("enabledManagers")
+    if not isinstance(enabled, list):
+        return True
+    return any(str(manager).removeprefix("custom.") != "regex" for manager in enabled)
+
+
 def dependency_update_config_covers_all_ecosystems(
     repo: Repo, register: Register, _args: Mapping[str, object]
 ) -> AssertResult:
@@ -147,12 +165,20 @@ def dependency_update_config_covers_all_ecosystems(
         config = load_jsonc(repo.root / renovate)
         if isinstance(config, dict) and config.get("enabled") is False:
             return _fail(f"{renovate} sets enabled: false — no updates are proposed")
-        return _ok(f"{renovate} present (covers all ecosystems by default)")
+        if _renovate_covers_ecosystems(config):
+            return _ok(f"{renovate} present (covers all ecosystems by default)")
+        # Narrowed to custom managers: it proposes the literals, not the
+        # ecosystems, so something else must still cover those.
     dependabot = next(
         (p for p in (".github/dependabot.yml", ".github/dependabot.yaml") if repo.exists(p)),
         None,
     )
     if dependabot is None:
+        if renovate is not None:
+            return _fail(
+                f"{renovate} enables custom managers only, so it proposes no package-ecosystem "
+                "updates, and there is no .github/dependabot.yml to cover them"
+            )
         return _fail("no dependency update configuration (.github/dependabot.yml or renovate)")
     config = yaml.safe_load(repo.read(dependabot))
     if not isinstance(config, dict):

@@ -369,6 +369,49 @@ acceptable with the SUP-002 title change, because leaving the title as it stands
 is the register asserting a mechanism that is not running — theme **T-3** inside
 the register itself.
 
+**Chosen 2026-08-17: action 1**, with action 2 kept for the Phase 2 template as
+recommended. What that decision has and has not delivered:
+
+**Done — the configuration.** `renovate.json` exists at the repository root,
+enabling `custom.regex` and **nothing else**. Two custom managers read the
+`# renovate:` annotations: one for PyPI literals, one for GitHub-release
+literals with `extractVersionTemplate` stripping the tag's leading `v`. The
+register's own `tools:` table is annotated too and is named first among the
+managed files — it is the authority, so a proposal that bumped the loci and left
+it behind is a proposal `tool_versions_match_register` rejects. The gitleaks
+rule carries `prBodyNotes` telling the reviewer to update the four checksums the
+bot cannot compute; an unrevised checksum fails the install step rather than
+passing silently, which is the right direction but still a red build, so it is
+said in the PR body rather than left to be discovered.
+
+**Both bots run, and deliberately do not overlap.** Renovate covers only what
+Dependabot cannot see — the two version literals. Dependabot keeps the four
+package ecosystems it understands. Widening `enabledManagers` would duplicate
+every ecosystem proposal; retiring Dependabot before the Renovate install is
+confirmed would leave nothing proposing anything, which is the § G trap with the
+bots exchanged. `dependency_update_config_covers_all_ecosystems` was corrected
+to see this: a `renovate.json` narrowed to custom managers is no longer read as
+blanket coverage on the strength of its filename, and the repo would fail
+SUP-002 if `.github/dependabot.yml` were deleted while it stands.
+
+**Done — the check that the mechanism is not inert.** The § G failure was an
+annotation that was correct and read by nothing. A manager whose regex matched
+no line would fail in exactly the same silent way, so
+`tests/test_renovate_managers.py` compares the annotations, the manager patterns
+and the register against each other: every annotation is matched by some
+manager, every match extracts the version the register records, and every
+`literal` tool is annotated at the register **and** at every locus that pins it.
+The first of those failed on its first run — the annotations are indented inside
+a YAML mapping — which is the discrimination the test exists to prove.
+
+**Outstanding — the install itself.** The Renovate GitHub App has to be
+installed on `Eaiger-Ent` (or on this repository), which is a web-flow action no
+token here can perform. Until it is, `renovate.json` is a correct configuration
+that nothing reads — the same shape of inertness § G was written about, one
+level up. The two criteria this section gates therefore stay open, and the
+confirmation to look for is Renovate's Dependency Dashboard issue appearing,
+which also reports any error in this config.
+
 ### Decisions required before Phase 2
 
 These are not code, and they are not the author's to settle alone. Each is
@@ -498,18 +541,22 @@ below — not this table — track that.
       pre-commit mirror's `rev:`, which was a copy nothing compared. Register
       contract 4, because DOC-001's `verify` changed
 - [ ] The two remaining `literal` tools are reconciled by machine, not by a
-      human remembering — **blocked on a choice, see § G**. `uv` and `gitleaks`
-      carry `# renovate:` annotations at every site, but **Renovate is not
-      installed on this repository**: no config, no bot pull requests. Dependabot
-      is running and has no equivalent of a custom manager, so it cannot update a
-      version embedded in a shell script or a workflow step. The annotations are
-      correct and inert. Closing this means picking one of § G's three actions;
-      until then the two tools are drift-checked but never auto-proposed
+      human remembering — **choice made 2026-08-17 (§ G action 1), config
+      landed, install outstanding**. `renovate.json` enables `custom.regex` only
+      and its two managers read the `# renovate:` annotations at the register
+      and at every locus; `tests/test_renovate_managers.py` proves the patterns
+      match rather than assuming it, which is the failure mode § G recorded.
+      What remains is not a decision but an act: the Renovate GitHub App must be
+      installed on the org or this repository, a web flow no token here can
+      perform. Until its Dependency Dashboard issue appears, the configuration
+      is correct and read by nothing, and the two tools stay drift-checked but
+      never auto-proposed
 - [ ] SUP-002's title matches what it verifies. It claims dependency updates are
-      proposed automatically, and for `uv` and `gitleaks` nothing proposes them.
-      Either § G's action 1 or 2 makes the title true, or the title narrows to
-      match — leaving it is the register asserting a mechanism that is not
-      running, which is theme T-3 inside the register itself
+      proposed automatically, and for `uv` and `gitleaks` nothing proposes them
+      until the app above is installed. § G's action 1 is what makes the title
+      true; ticking this before the install would be the register asserting a
+      mechanism that is not running, which is theme T-3 inside the register
+      itself
 - [x] `variance: justified` is implementable or removed from the vocabulary, and
       `CLAUDE.md` lists whatever survives — **removed** at contract 3, with
       `free`. `justified`'s anti-loophole mechanism was that a weakening becomes

@@ -48,15 +48,26 @@ tools:
   # locus repeats it; those repetitions carry a `# renovate:` annotation so a
   # bot updates them together, and `tool_versions_match_register` fails the
   # build if one drifts.
+  #
+  # The annotation appears here too, and deliberately: the register is the
+  # authority, so a proposal that bumped the loci and left this table behind
+  # would be a proposal `tool_versions_match_register` rejects. `renovate.json`
+  # names this file first for that reason. Renovate is enabled for custom
+  # managers only — Dependabot keeps the ecosystems it understands.
   markdownlint-cli2:
     source: lockfile
     lockfile: package-lock.json
   gitleaks:
     source: literal
+    # renovate: datasource=github-releases depName=gitleaks/gitleaks
     version: "8.30.1"
+    # A bumped version needs a bumped digest, and no bot can compute one. The
+    # proposal carries that instruction in its body (renovate.json), and an
+    # unrevised digest fails the install rather than passing it.
     sha256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
   uv:
     source: literal
+    # renovate: datasource=pypi depName=uv
     version: "0.12.5"
 
 # ---------------------------------------------------------------------------

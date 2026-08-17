@@ -75,6 +75,49 @@ def test_dependency_update_config_coverage(tmp_path: Path) -> None:
     assert "python" in result.message
 
 
+def test_renovate_narrowed_to_custom_managers_is_not_blanket_coverage(tmp_path: Path) -> None:
+    """`enabledManagers: [custom.regex]` proposes literals, not ecosystems.
+
+    A renovate config used to be read as covering everything on the strength of
+    its filename. This repository narrows it on purpose — Renovate updates the
+    two version literals Dependabot cannot see, and Dependabot keeps the
+    ecosystems — so reading the file as blanket coverage would report a
+    coverage switched off two lines further down.
+    """
+    narrowed = json.dumps({"enabledManagers": ["custom.regex"]})
+    alone = make_repo(
+        tmp_path / "a",
+        {"pyproject.toml": "[project]\n", "renovate.json": narrowed},
+    )
+    result = dependency_update_config_covers_all_ecosystems(alone, a_register(), {})
+    assert not result.passed
+    assert "custom managers only" in result.message
+
+    # The same config alongside a Dependabot file that does cover the
+    # ecosystems is the shape this repository actually ships.
+    paired = make_repo(
+        tmp_path / "b",
+        {
+            "pyproject.toml": "[project]\n",
+            "renovate.json": narrowed,
+            ".github/dependabot.yml": (
+                "version: 2\nupdates:\n  - package-ecosystem: uv\n    directory: /\n"
+            ),
+        },
+    )
+    assert dependency_update_config_covers_all_ecosystems(paired, a_register(), {}).passed
+
+    # An unnarrowed renovate config still covers everything by default.
+    default = make_repo(
+        tmp_path / "c",
+        {
+            "pyproject.toml": "[project]\n",
+            "renovate.json": json.dumps({"extends": ["config:base"]}),
+        },
+    )
+    assert dependency_update_config_covers_all_ecosystems(default, a_register(), {}).passed
+
+
 def test_devcontainer_lock_coverage(tmp_path: Path) -> None:
     feature = "ghcr.io/devcontainers/features/python"
     lock = json.dumps(
