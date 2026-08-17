@@ -56,7 +56,7 @@ _DOCUMENT_ALLOWED = (
     "meta_controls",
 )
 _TOOL_ALLOWED = ("version", "sha256")
-_ECOSYSTEM_ALLOWED = ("manifest", "lockfiles", "dependabot")
+_ECOSYSTEM_ALLOWED = ("manifest", "lockfiles", "dependabot", "test_commands")
 _METADATA_ALLOWED = ("owner", "register_contract")
 _STANDARD_ALLOWED = ("name", "url")
 _BLOCK_ALLOWED = ("kind", "run", "assert", "args", "partial")
@@ -153,6 +153,7 @@ class Ecosystem:
     manifest: tuple[str, ...]
     lockfiles: tuple[str, ...]
     dependabot: tuple[str, ...]
+    test_commands: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -504,9 +505,11 @@ class _Validator:
                     self.error(at, "must be a mapping with a 'version'")
                     continue
                 self._unknown_keys(entry, _TOOL_ALLOWED, at)
-                version = entry.get("version")
-                if not isinstance(version, str) or not version.strip():
-                    self.error(f"{at}.version", f"must be a non-empty string, got {version!r}")
+                # Deliberately not named `version`: that is the register's own
+                # version, bound above and read below.
+                tool_version = entry.get("version")
+                if not isinstance(tool_version, str) or not tool_version.strip():
+                    self.error(f"{at}.version", f"must be a non-empty string, got {tool_version!r}")
                     continue
                 sha = entry.get("sha256")
                 if sha is not None and (
@@ -514,7 +517,7 @@ class _Validator:
                 ):
                     self.error(f"{at}.sha256", "must be 64 lowercase hex characters")
                     continue
-                tools[str(name)] = Tool(name=str(name), version=version.strip(), sha256=sha)
+                tools[str(name)] = Tool(name=str(name), version=tool_version.strip(), sha256=sha)
         ecosystems: dict[str, Ecosystem] = {}
         ecosystems_raw = raw.get("ecosystems") or {}
         if not isinstance(ecosystems_raw, dict):

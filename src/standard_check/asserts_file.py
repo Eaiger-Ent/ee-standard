@@ -139,8 +139,15 @@ def _required_update_ecosystems(repo: Repo, register: Register) -> dict[str, tup
 def dependency_update_config_covers_all_ecosystems(
     repo: Repo, register: Register, _args: Mapping[str, object]
 ) -> AssertResult:
-    if any(repo.exists(p) for p in _RENOVATE_CONFIGS):
-        return _ok("renovate configuration present (covers all ecosystems by default)")
+    renovate = next((p for p in _RENOVATE_CONFIGS if repo.exists(p)), None)
+    if renovate is not None:
+        # Any renovate filename used to be accepted unparsed, so a config whose
+        # entire content was `{"enabled": false}` satisfied a control about
+        # updates being proposed automatically (§ D).
+        config = load_jsonc(repo.root / renovate)
+        if isinstance(config, dict) and config.get("enabled") is False:
+            return _fail(f"{renovate} sets enabled: false — no updates are proposed")
+        return _ok(f"{renovate} present (covers all ecosystems by default)")
     dependabot = next(
         (p for p in (".github/dependabot.yml", ".github/dependabot.yaml") if repo.exists(p)),
         None,
@@ -218,11 +225,43 @@ def devcontainer_image_digest_pinned(
     if not isinstance(config, dict):
         return _fail(".devcontainer/devcontainer.json is not a mapping")
     image = config.get("image")
-    if not isinstance(image, str):
-        return _fail("devcontainer.json declares no image reference")
-    if not _DIGEST.search(image):
-        return _fail(f"image reference is not digest-pinned: {image}")
-    return _ok("devcontainer image is pinned by @sha256: digest")
+    if isinstance(image, str):
+        if not _DIGEST.search(image):
+            return _fail(f"image reference is not digest-pinned: {image}")
+        return _ok("devcontainer image is pinned by @sha256: digest")
+    # A devcontainer may build from a Dockerfile instead of naming an image.
+    # Demanding `image` failed that shape outright while never checking the
+    # Dockerfile's own `FROM` pin — the thing that actually fixes the base
+    # (§ D).
+    build = config.get("build")
+    dockerfile = build.get("dockerfile") if isinstance(build, dict) else None
+    if not isinstance(dockerfile, str):
+        return _fail("devcontainer.json declares neither an image nor a build.dockerfile")
+    context = str(build.get("context", ".")) if isinstance(build, dict) else "."
+    rel = f".devcontainer/{context}/{dockerfile}".replace("/./", "/")
+    if not repo.exists(rel):
+        rel = f".devcontainer/{dockerfile}"
+    if not repo.exists(rel):
+        return _fail(f"build.dockerfile does not exist: {dockerfile}")
+    froms = [
+        line.split()[1]
+        for line in repo.read(rel).splitlines()
+        if line.strip().upper().startswith("FROM ") and len(line.split()) > 1
+    ]
+    unpinned = [reference for reference in froms if not _DIGEST.search(reference)]
+    if unpinned:
+        return _fail(f"{rel}: FROM is not digest-pinned: {', '.join(unpinned)}")
+    return _ok(f"{rel} pins every FROM by @sha256: digest")
+
+
+def _expand(token: str, defaults: Mapping[str, str]) -> str:
+    """`${NAME}` / `$NAME` replaced by its ARG or ENV default, once."""
+
+    def replace(match: re.Match[str]) -> str:
+        name = match.group(1) or match.group(2)
+        return defaults.get(name, match.group(0))
+
+    return re.sub(r"\$\{(\w+)\}|\$(\w+)", replace, token)
 
 
 def dockerfile_final_user_is_non_root(
@@ -244,6 +283,15 @@ def dockerfile_final_user_is_non_root(
             (i for i, line in enumerate(lines) if line.upper().startswith("FROM ")),
             default=-1,
         )
+        # ARG/ENV defaults, so `ARG USERNAME=root` + `USER ${USERNAME}` is seen
+        # for what it is. Comparing the literal token meant the most common way
+        # of parameterising the user hid a root container completely (§ D).
+        defaults: dict[str, str] = {}
+        for line in lines:
+            keyword, _, rest = line.partition(" ")
+            if keyword.upper() in ("ARG", "ENV") and "=" in rest:
+                key, _, value = rest.strip().partition("=")
+                defaults[key.strip()] = value.strip().strip("\"'")
         users = [
             line.split(None, 1)[1]
             for line in lines[last_from + 1 :]
@@ -252,7 +300,7 @@ def dockerfile_final_user_is_non_root(
         if not users:
             problems.append(f"{path}: final stage declares no USER")
             continue
-        user = users[-1].split(":")[0].strip()
+        user = _expand(users[-1].split(":")[0].strip(), defaults)
         if user.lower() == "root" or user == "0":
             problems.append(f"{path}: final stage runs as {user}")
     if problems:
