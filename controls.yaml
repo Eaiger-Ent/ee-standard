@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.6.0
+version: 0.7.0
 
 meta:
   owner: platform-engineering
@@ -29,7 +29,9 @@ meta:
   #    `stacks:` section, so the mandated tools, their config locations, their
   #    pre-commit hooks and their editor extensions are register facts rather
   #    than a dictionary in the checker (ADR 0018). `suppression:` moved too.
-  register_contract: 6
+  # 7: BLD-001 verifies its property for a devcontainer as well as a
+  #    Dockerfile, and its verify blocks narrow to the shape each can read.
+  register_contract: 7
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -354,22 +356,36 @@ controls:
     title: Every container image stage ends as a non-root user
     enforces: >
       The final stage of every Dockerfile declares a USER that is not root and
-      not numeric 0.
+      not numeric 0; and a devcontainer states a non-root `containerUser` or
+      `remoteUser` rather than inheriting whatever its base image uses.
     standard:
       name: CIS Docker Benchmark §4.1
       url: https://www.cisecurity.org/benchmark/docker
     also_see:
       - name: hadolint
         url: https://github.com/hadolint/hadolint
+      - name: devcontainer.json reference — remoteUser
+        url: https://containers.dev/implementors/json_reference/
     tier: 1
     rung: blocking
     locus: [pre-commit, ci]
-    applies_to: [container]
+    # One property, two shapes. A repo may have a Dockerfile, a devcontainer, or
+    # both, and each block below names the shape it can actually read: hadolint
+    # against a repo with no Dockerfile is a category error, not a finding.
+    applies_to: [container, devcontainer]
     verify:
       - kind: file
         assert: dockerfile_final_user_is_non_root
+        applies_to: [container]
       - kind: command
         run: hadolint --failure-threshold error
+        applies_to: [container]
+      # A devcontainer built from `image:` has no Dockerfile to read. Before
+      # this block the whole control skipped here, so `remoteUser` was a JSON
+      # key nothing verified and the Phase 0.5 criterion was ticked on it.
+      - kind: file
+        assert: devcontainer_user_is_non_root
+        applies_to: [devcontainer]
     owner: platform-engineering
     variance: forbidden
     baseline: null

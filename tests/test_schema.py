@@ -238,3 +238,41 @@ def test_tool_source_is_a_closed_set(tmp_path: Path) -> None:
     document = minimal_register()
     document["tools"] = {"uv": {"source": "wherever", "version": "1.0.0"}}
     assert any("tools.uv.source" in e for e in _errors_for(tmp_path, document))
+
+
+def test_a_block_predicate_must_narrow_its_control_not_widen_it(tmp_path: Path) -> None:
+    """A block naming a predicate its control lacks can never run.
+
+    The control is skipped before the block is reached, so the verification is
+    declared and unreachable — theme T-3 in the one file written to stop it.
+    """
+    document = minimal_register(
+        applies_to=["always"],
+        verify=[
+            {
+                "kind": "file",
+                "assert": "precommit_hook_present",
+                "args": {"id": "gitleaks"},
+                "applies_to": ["python"],
+            }
+        ],
+    )
+    register, errors = load_register(write_register(tmp_path, document))
+    assert register is None
+    assert any("could never run" in e.message for e in errors), errors
+
+
+def test_a_block_predicate_must_be_a_known_predicate(tmp_path: Path) -> None:
+    document = minimal_register(
+        verify=[
+            {
+                "kind": "file",
+                "assert": "precommit_hook_present",
+                "args": {"id": "gitleaks"},
+                "applies_to": ["kotlin"],
+            }
+        ],
+    )
+    register, errors = load_register(write_register(tmp_path, document))
+    assert register is None
+    assert any("names no predicate" in e.message for e in errors), errors

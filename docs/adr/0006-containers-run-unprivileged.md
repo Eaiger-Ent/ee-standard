@@ -51,6 +51,22 @@ Explicit statement was chosen over inheritance because a security property that
 is not written down cannot be reviewed, and this register's premise is that
 unwritten properties decay.
 
+**Extended 2026-08-18 to devcontainers, at register contract 7.** The reasoning
+above is about the property, not about Dockerfiles, and a devcontainer built
+from an `image:` reaches the same property through `containerUser` /
+`remoteUser`. Restricting BLD-001 to `container` meant this repository — which
+has no Dockerfile — skipped the control entirely while stating `remoteUser` in
+`devcontainer.json`, so the Phase 0.5 criterion was ticked on a key nothing
+read.
+
+The same argument decides the absent-key case: a devcontainer naming no user
+inherits whatever its base image uses, which may be root today and may become
+root on any digest bump. That is the inheritance this ADR rejected, so an
+unstated user fails exactly as a `USER root` does.
+
+BLD-001's verify blocks now narrow to the shape each can read — `hadolint`
+against a repository with no Dockerfile is a category error, not a finding.
+
 ## Consequences
 
 **Positive outcomes:**

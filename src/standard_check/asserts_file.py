@@ -280,6 +280,56 @@ def devcontainer_image_digest_pinned(
     return _ok(f"{rel} pins every FROM by @sha256: digest")
 
 
+def devcontainer_user_is_non_root(
+    repo: Repo,
+    _register: Register,
+    _args: Mapping[str, object],
+) -> AssertResult:
+    """The devcontainer states its user, and that user is not root.
+
+    A devcontainer built from an `image:` has no Dockerfile, so
+    `dockerfile_final_user_is_non_root` has nothing to read and `hadolint` has
+    nothing to lint. The property is the same one BLD-001 states — the container
+    does not end as root — reached through `devcontainer.json` instead.
+
+    **Stated, not inherited.** A devcontainer naming neither `remoteUser` nor
+    `containerUser` runs as whatever the base image happens to use, which may be
+    root today and may become root on any digest bump. That is the difference
+    between a container that is non-root and one that is non-root by luck, and
+    it is why an absent key fails here rather than deferring to the image.
+    """
+    path = ".devcontainer/devcontainer.json"
+    if not repo.exists(path):
+        return _fail(f"{path} does not exist")
+    config = load_jsonc(repo.root / path)
+    if not isinstance(config, dict):
+        return _fail(f"{path} is not a mapping")
+
+    # `containerUser` is who the container process runs as; `remoteUser` is who
+    # the tooling and terminals act as. Either establishes a stated user, and
+    # neither may be root — a `containerUser: root` beside a `remoteUser: vscode`
+    # is still a container running as root.
+    stated = {
+        key: str(config[key]).strip()
+        for key in ("containerUser", "remoteUser")
+        if isinstance(config.get(key), str) and str(config[key]).strip()
+    }
+    if not stated:
+        return _fail(
+            f"{path} declares neither containerUser nor remoteUser, so the user is "
+            "inherited from the image and changes whenever the image does"
+        )
+    root = [
+        f"{key}: {value}"
+        for key, value in sorted(stated.items())
+        if value.split(":")[0].lower() == "root" or value.split(":")[0] == "0"
+    ]
+    if root:
+        return _fail(f"{path} runs as root — {', '.join(root)}")
+    declared = ", ".join(f"{key}: {value}" for key, value in sorted(stated.items()))
+    return _ok(f"{path} states a non-root user ({declared})")
+
+
 def _expand(token: str, defaults: Mapping[str, str]) -> str:
     """`${NAME}` / `$NAME` replaced by its ARG or ENV default, once."""
 
@@ -441,6 +491,7 @@ FILE_ASSERTS: dict[str, AssertFn] = {
     "devcontainer_lock_covers_all_features": devcontainer_lock_covers_all_features,
     "devcontainer_image_digest_pinned": devcontainer_image_digest_pinned,
     "dockerfile_final_user_is_non_root": dockerfile_final_user_is_non_root,
+    "devcontainer_user_is_non_root": devcontainer_user_is_non_root,
 }
 
 # Remote assert names are part of the closed set from Phase 1 so a typo is a

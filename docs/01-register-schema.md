@@ -101,9 +101,40 @@ verify:
     assert: github_push_protection_enabled
 ```
 
-All blocks must pass for the control to pass. The `assert` names are implemented
-in the checker and are a closed set — an unknown assert name is a schema error,
-not a skipped check, so a typo cannot silently disable a control.
+All applicable blocks must pass for the control to pass. The `assert` names are
+implemented in the checker and are a closed set — an unknown assert name is a
+schema error, not a skipped check, so a typo cannot silently disable a control.
+
+#### Block-level `applies_to`
+
+A block may narrow itself to a repository shape:
+
+```yaml
+applies_to: [container, devcontainer]   # the control's shapes
+verify:
+  - kind: command
+    run: hadolint --failure-threshold error
+    applies_to: [container]             # only where a Dockerfile exists
+  - kind: file
+    assert: devcontainer_user_is_non_root
+    applies_to: [devcontainer]
+```
+
+One control can then hold one property verified by different mechanisms for
+different repository shapes. BLD-001 states that a container does not end as
+root; a Dockerfile proves it with `USER`, a devcontainer with `remoteUser`, and
+running either check against the other shape reports on something that is not
+there — `hadolint` against a repository with no Dockerfile is a category error,
+not a finding.
+
+A block's predicates must be a **subset** of its control's. A block naming a
+predicate the control does not have could never run, because the control is
+skipped before the block is reached; that is a schema error rather than a silent
+no-op.
+
+If every block narrows itself out, the control reports `SKIPPED (predicate)` and
+never `PASS`. The control applies but nothing verified it, and a green tick over
+an empty check is the failure this distinction exists to prevent.
 
 The three kinds are distinguished by *what performs the verification*, not by
 which module implements it: `command` shells out to an external tool and reads
