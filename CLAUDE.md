@@ -8,8 +8,8 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 "conformant" means, a family of Claude skills deploys the gates, and a checker
 (`standard-check`, in `src/standard_check/`) audits them.
 
-Current status: Phases 0, 1 and **1.5 are complete** (25/25 as of 2026-08-18);
-Phase 0.5 has two re-opened criteria still outstanding. **Phase 2 is next.**
+Current status: Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
+with no re-opened criteria outstanding. **Phase 2 is next.**
 Read `docs/04-build-plan.md` § Phase 1.5 before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
