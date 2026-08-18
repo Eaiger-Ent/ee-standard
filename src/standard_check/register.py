@@ -41,6 +41,11 @@ _SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
 # string a shell-injection surface for no gain the register needs.
 _SHELL_OPERATOR = re.compile(r"(?:&&|\|\||[;|&><]|\$\(|`)")
 
+# The meta-control self-invocation, the single exception to the `kind:`
+# taxonomy. `verify_meta.py` matches the same shape and runs the check in
+# process; this pattern is what bounds where the spelling is allowed.
+_SELF_META = re.compile(r"^standard-check meta (\S+)$")
+
 # Keys the schema knows. Anything else is an error, not a silent no-op:
 # 02-skill-family.md § Version policy describes a per-control `pinned` /
 # `floating-minor` / `latest` field that exists in neither the schema doc nor
@@ -365,7 +370,9 @@ class _Validator:
             names.append(entry.strip())
         return tuple(names)
 
-    def _verify_blocks(self, raw: Any, where: str) -> tuple[VerifyBlock, ...]:
+    def _verify_blocks(
+        self, raw: Any, where: str, *, meta_id: str | None = None
+    ) -> tuple[VerifyBlock, ...]:
         if not isinstance(raw, list) or not raw:
             self.error(where, "must be a non-empty list of verification blocks")
             return ()
@@ -403,6 +410,31 @@ class _Validator:
                         "reachable CI step while the file asserts beside it were invisible",
                     )
                     continue
+                # `standard-check meta GOV-NNN` is the one in-process assertion
+                # the `kind:` taxonomy admits as a command, and only here. A
+                # meta-control carries a three-valued Verdict (ADR 0016), which
+                # a `kind: file` assert's boolean cannot express, so the shape
+                # is forced rather than chosen — see docs/01-register-schema.md
+                # § The one exception. Bounding it is what keeps it an exception
+                # rather than a hole: a *control* using this spelling would be
+                # the § E miscategorisation again, in the branch GOV-001 reads.
+                if match := _SELF_META.match(run.strip()):
+                    if meta_id is None:
+                        self.error(
+                            f"{here}.run",
+                            "only a meta-control may verify itself by self-invocation; a "
+                            "control's in-process assertion is `kind: file` with an "
+                            "`assert:` name",
+                        )
+                        continue
+                    if match.group(1) != meta_id:
+                        self.error(
+                            f"{here}.run",
+                            f"runs {match.group(1)}'s check under {meta_id}, so the verdict "
+                            "rendered would be another control's — a meta-control verifies "
+                            "itself",
+                        )
+                        continue
                 blocks.append(
                     VerifyBlock(
                         kind="command",
@@ -624,7 +656,11 @@ class _Validator:
         for text_field in ("title", "enforces", "rationale"):
             if not isinstance(raw[text_field], str) or not str(raw[text_field]).strip():
                 self.error(f"{where}.{text_field}", "must be a non-empty string")
-        verify = self._verify_blocks(raw["verify"], f"{where}.verify")
+        verify = self._verify_blocks(
+            raw["verify"],
+            f"{where}.verify",
+            meta_id=meta_id if isinstance(meta_id, str) else "",
+        )
         if len(self.errors) > before or not verify:
             return None
         return MetaControl(

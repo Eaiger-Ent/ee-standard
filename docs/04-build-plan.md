@@ -264,11 +264,11 @@ phase's forensics live there.
   which states the property (an exemption may not hide a tracked file) in place
   of the prohibition and has the checker verify it. It carried a Phase 2 exit
   criterion, which is met before the phase starts.
-- The **meta-controls are in-process assertions declared `kind: command`**
-  (§ H5). The schema rejects the `standard-check assert …` spelling and accepts
-  `standard-check meta …`, which `verify_meta.py` then runs in-process. Nothing
-  is verified wrongly — GOV-001 reads controls, not meta-controls — but it is a
-  rule with an unwritten exception, in the vocabulary Phase 2's skills inherit.
+- ~~The meta-controls are in-process assertions declared `kind: command`~~ —
+  **closed 2026-08-18** (§ H5). The exception is real and forced: a meta-control
+  returns a three-valued `Verdict` and a `kind: file` assert returns a boolean.
+  It is now written down in the schema doc and `CLAUDE.md`, and bounded by the
+  validator — only a meta-control, and only for its own id.
 - ~~`npx --no-install` falls back to `PATH`~~ — **closed 2026-08-18** by
   [ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md), at register
   contract 10. A `lockfile` tool records `invocation` — how the pinned artefact
@@ -279,9 +279,11 @@ phase's forensics live there.
   `run --tier 1` and `--repo ../other` as evidence for every blocking control
   (latent until Tier 2 exists); `standard-check --repo ../other` fails for any
   repository without its own `controls.yaml`, which is every adopter, and exits
-  `1` where the CLI reserves `2` for that class; and `runner.py`'s
-  every-block-narrowed-out path returns `SKIPPED (predicate)`, which exits 0,
-  where ADR 0016's verdict is `UNCLASSIFIED`.
+  `1` where the CLI reserves `2` for that class. The third — `runner.py`'s
+  every-block-narrowed-out path returning `SKIPPED (predicate)` — was
+  **accepted as designed on 2026-08-18**: narrowing is the feature, a repository
+  matching none of a control's shapes has nothing to run, and coverage grows by
+  adding a shape.
 - No repo-root `LICENSE`, though `pyproject.toml` declares Apache-2.0 and
   `05-promotion.md` requires every plugin to ship a copy of it. **Not gating for
   this phase, but gating for Phase 6** — `check_plugin_license.py` fails without

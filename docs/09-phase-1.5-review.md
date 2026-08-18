@@ -347,7 +347,7 @@ is § D's, turned on this phase's own output rather than on Phase 1's: run the
 gates, then run the checker against repositories built to break it — a Go repo,
 a polyglot repo, a copy of this one with one line changed at a time.
 
-Eight findings, of which **six are now closed** — the four below, plus H7 and
+Eight findings, of which **seven are now closed or decided** — the four below, plus H7 and
 H6, decided the same day as
 [ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md) and
 [ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md). **Four were exit criteria re-opened** in
@@ -355,8 +355,9 @@ H6, decided the same day as
 added — because each is the § A shape, a verdict that overstates what was
 checked. All four are closed, at register contract 8, and each carries its
 evidence below. Of the other four, H6 and H7 were decisions Phase 2 would otherwise have had to
-take and were taken here instead; H5 remains carried, and H8 is a set of small
-ones.
+take and were taken here instead; H5 was an unwritten exception and is now a
+written one; H8 is a set of small ones, of which the third was accepted as
+designed and the other two remain carried.
 
 The four re-opened all failed the same way. A rule the checker holds *about this
 repository's own filenames and stacks* was read as a rule about repositories in
@@ -549,8 +550,9 @@ have flagged, and only `controls.yaml` changes.
 
 #### H5 — the meta-controls are in-process assertions declared `kind: command`
 
-Not fixed here. Recorded because it is a decision, and because Phase 2's skills
-read the taxonomy.
+A decision rather than a defect, and Phase 2's skills read the taxonomy.
+**Closed 2026-08-18** by writing the exception down and bounding it — see the
+closing note at the end of this section.
 
 The schema rejects a `run:` whose command is `standard-check assert`, with the message
 that an in-process assertion is `kind: file`. It accepts
@@ -564,6 +566,29 @@ not meta-controls, so the miscategorisation that decided verdicts in § E cannot
 here. It is a rule with an undocumented exception, in the vocabulary six gate
 skills are about to inherit. Either the meta form is a fourth `kind`, or the rule
 is restated to name it.
+
+**Closed 2026-08-18 by restating the rule**, and the reason for the exception is
+better than "nobody got round to it": **the shape is forced**. A meta-control
+carries a three-valued `Verdict` (ADR 0016) so that GOV-002 can report "no
+comparison point" rather than fabricate a violation; a `kind: file` assert
+returns `AssertResult(passed: bool, …)`, which cannot express a third answer.
+Unifying them would mean widening every assert's return type — a cost paid by
+eight asserts to tidy three blocks. So the exception is real, and what was
+missing was writing it down.
+
+Written down in `docs/01-register-schema.md` § The one exception and in
+`CLAUDE.md`, and **bounded by the validator rather than by convention**, because
+an exception nobody checks is where the last one lived. Only a meta-control may
+use the spelling, and only for its own id:
+
+- a *control* using it is rejected — that is § E again, in the branch GOV-001
+  actually reads;
+- a meta-control whose block runs another's check is rejected — it would render
+  one control's verdict under another's name, which is the miscategorisation
+  this whole finding is about.
+
+No behaviour changed. The register as it stands is unaffected, and two schema
+tests now hold the boundary.
 
 #### H6 — `npx --no-install` falls back to `PATH`
 
@@ -707,6 +732,17 @@ artefact, so this widens the amend at
   applied and nothing verified it. `UNCLASSIFIED` is the ADR 0016 verdict for
   that. Unreachable with BLD-001's current blocks; Phase 2 adds blocks with
   `applies_to`.
+
+  **Accepted as designed, 2026-08-18, by the repository's owner.** Block
+  narrowing exists so a control can verify one property through the mechanism
+  each repository shape allows, and a repository matching none of those shapes
+  legitimately has nothing to run. Coverage grows by adding a shape, which is a
+  register edit and a visible one. The report already distinguishes the two
+  cases in its note — *"the control applies, but every verification block is
+  narrowed to a repository shape this repo does not have"* — so what is at stake
+  is the verdict label and the exit code, not whether a reader can tell. Not
+  fixed, and recorded here so the next reader finds a decision rather than an
+  oversight.
 
 ### Decisions required before Phase 2
 
