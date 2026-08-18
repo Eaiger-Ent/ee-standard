@@ -7,12 +7,13 @@ repos:
       #
       # Stamped at the hook rather than at the top of the file: `lint-md` owns
       # this entry and none of the four below it. Hand-edited since deployment
-      # to run through npx, so package-lock.json is the only pin — the upstream
-      # mirror's `rev:` was a second copy of the version, free to drift from
-      # every other locus.
+      # twice: to drop the upstream mirror's `rev:` (a second copy of the
+      # version, free to drift from every other locus), and to invoke the
+      # lockfile's own binary rather than `npx --no-install`, which falls
+      # through to PATH when the local install is missing (ADR 0020).
       - id: markdownlint-cli2
         name: markdownlint-cli2 (DOC-001)
-        entry: npx --no-install markdownlint-cli2
+        entry: node_modules/.bin/markdownlint-cli2
         language: system
         types: [markdown]
       # SEC-001 — same pinned binary as .devcontainer/setup.sh and CI.

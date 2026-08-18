@@ -347,15 +347,17 @@ is § D's, turned on this phase's own output rather than on Phase 1's: run the
 gates, then run the checker against repositories built to break it — a Go repo,
 a polyglot repo, a copy of this one with one line changed at a time.
 
-Eight findings, of which **five are now closed** — the four below plus H7,
-decided as [ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md) on the
-same day. **Four were exit criteria re-opened** in
+Eight findings, of which **seven are now closed or decided** — the four below, plus H7 and
+H6, decided the same day as
+[ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md) and
+[ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md). **Four were exit criteria re-opened** in
 [`04-build-plan.md`](04-build-plan.md) — three of them ticked by this phase, one
 added — because each is the § A shape, a verdict that overstates what was
 checked. All four are closed, at register contract 8, and each carries its
-evidence below. Of the other four, H7 was a decision Phase 2 would otherwise have
-had to take and was taken here instead; H5 and H6 remain carried, and H8 is a set
-of small ones.
+evidence below. Of the other four, H6 and H7 were decisions Phase 2 would otherwise have had to
+take and were taken here instead; H5 was an unwritten exception and is now a
+written one; H8 is a set of small ones, of which the third was accepted as
+designed and the other two remain carried.
 
 The four re-opened all failed the same way. A rule the checker holds *about this
 repository's own filenames and stacks* was read as a rule about repositories in
@@ -548,8 +550,9 @@ have flagged, and only `controls.yaml` changes.
 
 #### H5 — the meta-controls are in-process assertions declared `kind: command`
 
-Not fixed here. Recorded because it is a decision, and because Phase 2's skills
-read the taxonomy.
+A decision rather than a defect, and Phase 2's skills read the taxonomy.
+**Closed 2026-08-18** by writing the exception down and bounding it — see the
+closing note at the end of this section.
 
 The schema rejects a `run:` whose command is `standard-check assert`, with the message
 that an in-process assertion is `kind: file`. It accepts
@@ -564,10 +567,34 @@ here. It is a rule with an undocumented exception, in the vocabulary six gate
 skills are about to inherit. Either the meta form is a fourth `kind`, or the rule
 is restated to name it.
 
+**Closed 2026-08-18 by restating the rule**, and the reason for the exception is
+better than "nobody got round to it": **the shape is forced**. A meta-control
+carries a three-valued `Verdict` (ADR 0016) so that GOV-002 can report "no
+comparison point" rather than fabricate a violation; a `kind: file` assert
+returns `AssertResult(passed: bool, …)`, which cannot express a third answer.
+Unifying them would mean widening every assert's return type — a cost paid by
+eight asserts to tidy three blocks. So the exception is real, and what was
+missing was writing it down.
+
+Written down in `docs/01-register-schema.md` § The one exception and in
+`CLAUDE.md`, and **bounded by the validator rather than by convention**, because
+an exception nobody checks is where the last one lived. Only a meta-control may
+use the spelling, and only for its own id:
+
+- a *control* using it is rejected — that is § E again, in the branch GOV-001
+  actually reads;
+- a meta-control whose block runs another's check is rejected — it would render
+  one control's verdict under another's name, which is the miscategorisation
+  this whole finding is about.
+
+No behaviour changed. The register as it stands is unaffected, and two schema
+tests now hold the boundary.
+
 #### H6 — `npx --no-install` falls back to `PATH`
 
-Not fixed here; it needs a mechanism decision, and probably belongs with the
-Phase 2 template.
+A mechanism decision, taken before Phase 2 rather than inside it. **Closed
+2026-08-18** as [ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) —
+see the closing note at the end of this section.
 
 DOC-001's tool has one authority — `package-lock.json` — and nothing checks that
 the binary which ran came from it. Deleting `node_modules` and re-running leaves
@@ -579,6 +606,46 @@ pre-commit hook's entry is the same string.
 The stale global happened to match the lockfile. A different one would have
 passed identically, which is `source: lockfile` claiming an authority it does not
 enforce. `tool_versions_match_register` checks only that the lockfile is tracked.
+
+**Closed 2026-08-18** at register contract 10, by
+[ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md). Three forms
+measured in a repository with no local install:
+
+```text
+npx --no-install markdownlint-cli2 --version    exit 0   (a global answered)
+npm exec --no -- markdownlint-cli2 --version    exit 0   (the same global)
+node_modules/.bin/markdownlint-cli2 --version   exit 127
+```
+
+Only the last cannot substitute, so that is the form every locus uses, and
+`tools.<tool>.invocation` records it. The field is `pinned_at`'s mirror: a
+`literal` tool is installed onto `PATH` at each locus so the register records
+where its version is repeated; a `lockfile` tool is resolved out of a package
+tree so the register records how the artefact is reached. Required under
+`lockfile`, rejected under `literal`, and every declared locus is checked against
+it — reverting the two loci to `npx` now reports
+
+```text
+DOC-001  FAIL  ✗ pre-commit locus — no hook runs
+               'node_modules/.bin/markdownlint-cli2' (markdownlint-cli2 is
+               pinned by package-lock.json); ci locus — no gating step runs
+               'node_modules/.bin/markdownlint-cli2'
+```
+
+and a repository with no `node_modules` reports `UNCLASSIFIED — tool not
+installed, cannot verify` where it used to report a pass earned by a global.
+That is ADR 0016's verdict for an absent tool, which DOC-001 was the one control
+to evade.
+
+**It was inside a Phase 2 criterion that could not detect it.** *"The template
+pins no tool version by hand. Every tool it installs is either sourced from a
+lockfile the consumer repo already commits, or from a single toolchain file"* is
+about where a version comes from; a template with this exact hole satisfies it.
+Phase 2 gains a criterion that can fail — every locus's invocation **resolves
+to** the pinned artefact, shown by deleting the artefact and watching the locus
+fail. Finding a criterion met in letter *before* its phase rather than after is
+the only instance so far of this record being used forward rather than
+backward.
 
 #### H7 — ignore paths on a `narrowing-only` control with `baseline: null`
 
@@ -665,6 +732,17 @@ artefact, so this widens the amend at
   applied and nothing verified it. `UNCLASSIFIED` is the ADR 0016 verdict for
   that. Unreachable with BLD-001's current blocks; Phase 2 adds blocks with
   `applies_to`.
+
+  **Accepted as designed, 2026-08-18, by the repository's owner.** Block
+  narrowing exists so a control can verify one property through the mechanism
+  each repository shape allows, and a repository matching none of those shapes
+  legitimately has nothing to run. Coverage grows by adding a shape, which is a
+  register edit and a visible one. The report already distinguishes the two
+  cases in its note — *"the control applies, but every verification block is
+  narrowed to a repository shape this repo does not have"* — so what is at stake
+  is the verdict label and the exit code, not whether a reader can tell. Not
+  fixed, and recorded here so the next reader finds a decision rather than an
+  oversight.
 
 ### Decisions required before Phase 2
 

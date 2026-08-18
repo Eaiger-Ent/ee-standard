@@ -309,6 +309,37 @@ def test_an_empty_cloud_credential_list_is_a_schema_error(tmp_path: Path) -> Non
     assert any("cloud_credentials" in e for e in _errors_for(tmp_path, document))
 
 
+def test_a_control_may_not_verify_by_meta_self_invocation(tmp_path: Path) -> None:
+    """§ H5. The exception is bounded, or it is a hole.
+
+    `standard-check meta GOV-NNN` is the one in-process assertion the taxonomy
+    admits as a command, because a meta-control's three-valued Verdict has no
+    `kind: file` spelling. A *control* using it would be § E again — in the
+    branch GOV-001 actually reads.
+    """
+    document = minimal_register(
+        verify=[{"kind": "command", "run": "standard-check meta GOV-003"}]
+    )
+    errors = _errors_for(tmp_path, document)
+    assert any("only a meta-control may verify itself" in e for e in errors), errors
+
+
+def test_a_meta_control_may_not_run_another_meta_controls_check(tmp_path: Path) -> None:
+    """Rendering GOV-002's verdict under GOV-003's name is a miscategorisation too."""
+    document = minimal_register()
+    document["meta_controls"][0]["verify"] = [
+        {"kind": "command", "run": "standard-check meta GOV-002"}
+    ]
+    errors = _errors_for(tmp_path, document)
+    assert any("a meta-control verifies itself" in e for e in errors), errors
+
+
+def test_a_meta_control_may_verify_itself(tmp_path: Path) -> None:
+    """The mirror: the register as it stands uses exactly this shape."""
+    _register, errors = load_register(write_register(tmp_path, minimal_register()))
+    assert errors == [], errors
+
+
 def test_a_block_predicate_must_narrow_its_control_not_widen_it(tmp_path: Path) -> None:
     """A block naming a predicate its control lacks can never run.
 

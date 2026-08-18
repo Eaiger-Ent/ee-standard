@@ -3,6 +3,15 @@
 Meta-control verify blocks are commands like `standard-check meta GOV-001`.
 When a block is exactly that self-referential shape it runs in-process; any
 other command runs through the ordinary block runner.
+
+**This is the one in-process assertion the `kind:` taxonomy admits as a
+command**, and the schema bounds it to meta-controls naming themselves. The
+shape is forced rather than chosen: a meta-control carries a three-valued
+`Verdict` (ADR 0016) so that GOV-002 can report "no comparison point" instead of
+fabricating a violation, and a `kind: file` assert returns a boolean, which
+cannot express it. The miscategorisation that decided verdicts in § E cannot
+happen here either — GOV-001 reads `register.controls`, never `meta_controls`.
+See `docs/01-register-schema.md` § The one exception.
 """
 
 from __future__ import annotations

@@ -179,6 +179,43 @@ fails a declaration past its expiry, exactly as it fails a control past
 [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md), so it cannot exit
 `0`.
 
+#### The one exception
+
+A meta-control verifies itself by self-invocation, and that block is
+`kind: command`:
+
+```yaml
+meta_controls:
+  - id: GOV-002
+    verify:
+      - kind: command
+        run: standard-check meta GOV-002
+```
+
+It runs **in process** — `verify_meta.py` matches that exact shape and calls the
+check directly, never shelling out — so by the definition above it is a
+`file`-shaped assertion declared as a command, which the schema rejects
+everywhere else.
+
+**The shape is forced, not chosen.** A meta-control carries a three-valued
+`Verdict` ([ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md)) so that
+GOV-002 can report "no comparison point" rather than fabricating a violation. A
+`kind: file` assert returns a boolean, which cannot express that third answer, so
+unifying the two would mean widening every assert's return type to carry a
+verdict — a cost paid by eight asserts to tidy three blocks.
+
+**And it decides nothing.** The reason contract 3 rejected the
+`standard-check assert …` spelling was that GOV-001 derives reachability from
+`kind: command` blocks, so the miscategorisation chose a control's verdict.
+GOV-001 iterates `register.controls` and never `meta_controls`, so the same
+mistake here reaches no verdict at all.
+
+The exception is bounded by the validator rather than by convention: only a
+meta-control may use the spelling, and only for **its own id**. A control using
+it is rejected — that would be § E again, in the branch GOV-001 actually reads —
+and so is a meta-control whose block runs a different meta-control's check,
+which would render one control's verdict under another's name.
+
 `remote` verifications need credentials and network, so they are skipped with an
 explicit `SKIPPED (no credentials)` verdict rather than passing by default. A
 skipped remote check never counts as a pass.
@@ -223,6 +260,26 @@ ecosystem the repo already locks.
 `source: lockfile`, the same asymmetry as `version:` and for the same reason: a
 lockfile-sourced tool has no version at any locus to keep in step, so there are
 no repetitions to list.
+
+**`invocation` is its mirror** — required under `source: lockfile`, rejected
+under `source: literal`. A literal tool is installed onto `PATH` at each locus,
+so its pin is the version; a lockfile tool is resolved out of a package tree, so
+its pin is an artefact and the register records how a locus reaches it:
+
+```yaml
+  markdownlint-cli2:
+    source: lockfile
+    lockfile: package-lock.json
+    invocation: node_modules/.bin/markdownlint-cli2
+```
+
+Without it, "the lockfile owns the version" is a claim about where the number is
+written and not about which binary runs. `npx --no-install` was the invocation at
+every locus here, and `--no-install` means *do not fetch*, not *resolve locally*:
+with `node_modules` absent it exits 0 against whatever global is on `PATH`
+([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md), § H6). The gate's
+assert checks each declared locus against this form, so a locus reverting to
+`npx` fails with the locus named.
 
 ```yaml
   gitleaks:

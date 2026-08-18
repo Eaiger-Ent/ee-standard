@@ -106,7 +106,13 @@ Defined in `docs/00-concepts.md`; the schema is `docs/01-register-schema.md`.
   state). The kind names what performs the verification, not which module
   implements it — declaring an in-process assertion as `kind: command` is a
   schema error, because GOV-001 reads `kind: command` blocks and the
-  miscategorisation decided its verdict.
+  miscategorisation decided its verdict. **One exception, bounded by the
+  validator**: a meta-control verifies itself with
+  `run: standard-check meta GOV-NNN`, which runs in-process. The shape is forced
+  — a meta-control returns a three-valued `Verdict` and a `kind: file` assert
+  returns a boolean — and it decides nothing, since GOV-001 never reads
+  `meta_controls`. A control using that spelling, or a meta-control naming
+  another's id, is rejected (`docs/01-register-schema.md` § The one exception).
 - **Partial**: any verify block may declare itself not fully implemented, naming
   the unverified property and an expiry date. GOV-003 fails an expired one, and
   a partial block denies the run a `0` exit.

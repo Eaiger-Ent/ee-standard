@@ -20,7 +20,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Lint Markdown
         # DOC-001 — the version comes from package-lock.json, the single
-        # authority. No pin to keep in step with anything.
+        # authority, and the binary comes from the tree `npm ci` just wrote.
+        # `npx --no-install` was here and falls through to PATH (ADR 0020).
         run: |
           npm ci --no-audit --no-fund
-          npx --no-install markdownlint-cli2 "**/*.md"
+          node_modules/.bin/markdownlint-cli2 "**/*.md"

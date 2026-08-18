@@ -896,7 +896,7 @@ def _hidden_tracked_files(repo: Repo) -> list[str]:
 
 def markdown_gate_wired_at_all_loci(
     repo: Repo,
-    _register: Register,
+    register: Register,
     args: Mapping[str, object],
 ) -> AssertResult:
     """DOC-001's `enforces`, verified rather than assumed.
@@ -926,6 +926,14 @@ def markdown_gate_wired_at_all_loci(
         return _fail("no tracked markdownlint configuration file")
     path, rules = found
 
+    # How the pinned artefact is reached, not merely which tool is named. A
+    # lockfile is an authority only if the invocation resolves to what it pins,
+    # and `npx --no-install` falls through to PATH when the local install is
+    # missing — measured, with a global binary answering for the lockfile's
+    # (ADR 0020, § H6). A tool the register does not pin is invoked by name.
+    pinned = register.tools.get(tool)
+    invocation = pinned.invocation if pinned and pinned.invocation else tool
+
     problems: list[str] = []
     effective = _line_length_ceiling(rules)
     if isinstance(effective, str):
@@ -938,18 +946,21 @@ def markdown_gate_wired_at_all_loci(
         )
     if extension not in _devcontainer_extensions(repo):
         problems.append(f"editor locus — no editor configuration installs {extension}")
-    if not _hook_mentions(repo, tool):
-        problems.append(f"pre-commit locus — no {tool} hook")
-    if not _ci_run_mentions(repo, rf"\b{re.escape(tool)}\b", hook=tool):
-        problems.append(f"ci locus — no gating step runs {tool}")
+    if not _hook_mentions(repo, invocation):
+        problems.append(
+            f"pre-commit locus — no hook runs '{invocation}'"
+            + (f" ({tool} is pinned by {pinned.lockfile})" if pinned and pinned.lockfile else "")
+        )
+    if not _ci_run_mentions(repo, re.escape(invocation), hook=tool):
+        problems.append(f"ci locus — no gating step runs '{invocation}'")
     # An exemption that hides authored content is a weakening of a control whose
     # `baseline: null` admits none (ADR 0019).
     problems.extend(_hidden_tracked_files(repo))
     if problems:
         return _fail("; ".join(problems))
     return _ok(
-        f"{path} caps lines at {effective} (register allows {ceiling}) and {tool} "
-        "is wired at editor, pre-commit and ci"
+        f"{path} caps lines at {effective} (register allows {ceiling}), and every locus "
+        f"reaches {tool} through '{invocation}'"
     )
 
 

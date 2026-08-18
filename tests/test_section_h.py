@@ -24,7 +24,7 @@ from typing import Any
 
 import yaml
 
-from conftest import REPO_ROOT, a_register, make_repo, register_with
+from conftest import REPO_ROOT, a_register, make_repo, register_with, write_register
 from standard_check.asserts_command import (
     ci_installs_frozen,
     markdown_gate_wired_at_all_loci,
@@ -32,6 +32,7 @@ from standard_check.asserts_command import (
     typecheck_strict_and_blocking,
 )
 from standard_check.asserts_file import lockfile_present_and_tracked, tool_versions_match_register
+from standard_check.register import load_register
 from standard_check.repo import Repo
 
 _GATING = "on: [push, pull_request]\njobs:\n  job:\n    runs-on: ubuntu-latest\n    steps:\n"
@@ -264,12 +265,15 @@ def _doc_repo(root: Path, cli2: str) -> Repo:
                 '{"customizations": {"vscode": {"extensions": '
                 '["DavidAnson.vscode-markdownlint"]}}}\n'
             ),
+            # The pinned path, not npx — see the § H6 cases below. These
+            # fixtures are about exemptions, and would otherwise fail for an
+            # unrelated reason.
             ".pre-commit-config.yaml": (
                 "repos:\n  - repo: local\n    hooks:\n      - id: markdownlint-cli2\n"
-                "        entry: npx --no-install markdownlint-cli2\n"
+                "        entry: node_modules/.bin/markdownlint-cli2\n"
             ),
             ".github/workflows/ci.yml": _GATING
-            + '      - run: npx --no-install markdownlint-cli2 "**/*.md"\n',
+            + '      - run: node_modules/.bin/markdownlint-cli2 "**/*.md"\n',
         },
     )
 
@@ -404,3 +408,106 @@ def test_h7_this_repository_declares_coverage_for_every_tracked_module() -> None
     """The live assertion: `files` names every tracked Python path, not four of them."""
     result = typecheck_strict_and_blocking(Repo(REPO_ROOT), a_register(), {"role": "typecheck"})
     assert result.passed, result.message
+
+
+# --- H6 — a locus reaches the artefact the lockfile pins --------------------
+
+
+def _md_repo(root: Path, entry: str, ci: str) -> Repo:
+    """A repository wired for DOC-001, with the given pre-commit entry and CI step."""
+    return make_repo(
+        root,
+        {
+            "README.md": "# Title\n\nBody.\n",
+            "package.json": '{"devDependencies": {"markdownlint-cli2": "0.23.2"}}\n',
+            "package-lock.json": '{"lockfileVersion": 3}\n',
+            ".markdownlint.yaml": "default: true\nMD013:\n  line_length: 250\n",
+            ".markdownlint-cli2.yaml": "gitignore: true\nignores: []\n",
+            ".devcontainer/devcontainer.json": (
+                '{"customizations": {"vscode": {"extensions": '
+                '["DavidAnson.vscode-markdownlint"]}}}\n'
+            ),
+            ".pre-commit-config.yaml": (
+                "repos:\n  - repo: local\n    hooks:\n      - id: markdownlint-cli2\n"
+                f"        entry: {entry}\n"
+            ),
+            ".github/workflows/ci.yml": _GATING + f"      - run: {ci}\n",
+        },
+    )
+
+
+def test_h6_a_locus_invoking_through_npx_fails(tmp_path: Path) -> None:
+    """`--no-install` means do not fetch, not resolve locally.
+
+    With `node_modules` absent, `npx --no-install markdownlint-cli2` exits 0
+    against whatever global is on PATH — measured, against the stale global this
+    container carries. So `source: lockfile` claimed an authority that nothing
+    made the loci resolve to.
+    """
+    repo = _md_repo(
+        tmp_path / "npx",
+        "npx --no-install markdownlint-cli2",
+        'npx --no-install markdownlint-cli2 "**/*.md"',
+    )
+    result = markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS)
+    assert not result.passed
+    assert "pre-commit locus" in result.message
+    assert "ci locus" in result.message
+    assert "node_modules/.bin/markdownlint-cli2" in result.message
+
+
+def test_h6_a_locus_invoking_the_pinned_path_passes(tmp_path: Path) -> None:
+    repo = _md_repo(
+        tmp_path / "path",
+        "node_modules/.bin/markdownlint-cli2",
+        'node_modules/.bin/markdownlint-cli2 "**/*.md"',
+    )
+    result = markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS)
+    assert result.passed, result.message
+
+
+def test_h6_the_invocation_comes_from_the_register(tmp_path: Path) -> None:
+    """Only the register moves. Another ecosystem records another form."""
+    repo = _md_repo(
+        tmp_path / "elsewhere",
+        ".venv/bin/markdownlint-cli2",
+        '.venv/bin/markdownlint-cli2 "**/*.md"',
+    )
+    assert not markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS).passed
+
+    def move_the_artefact(document: dict[str, Any]) -> None:
+        document["tools"]["markdownlint-cli2"]["invocation"] = ".venv/bin/markdownlint-cli2"
+
+    register = register_with(tmp_path, move_the_artefact)
+    assert markdown_gate_wired_at_all_loci(repo, register, _DOC_ARGS).passed
+
+
+def test_h6_a_lockfile_tool_must_record_how_it_is_reached(tmp_path: Path) -> None:
+    """An authority no invocation resolves to is not an authority."""
+
+    def drop_the_invocation(document: dict[str, Any]) -> None:
+        del document["tools"]["markdownlint-cli2"]["invocation"]
+
+    path = write_register(tmp_path, _mutated(drop_the_invocation))
+    _register, errors = load_register(path)
+    assert any("tools.markdownlint-cli2.invocation" in str(e) for e in errors), errors
+
+
+def test_h6_a_literal_tool_records_no_invocation(tmp_path: Path) -> None:
+    """The mirror: a literal tool's pin is its version, not the path it is reached by."""
+
+    def add_an_invocation(document: dict[str, Any]) -> None:
+        document["tools"]["gitleaks"]["invocation"] = "/usr/local/bin/gitleaks"
+
+    path = write_register(tmp_path, _mutated(add_an_invocation))
+    _register, errors = load_register(path)
+    assert any("tools.gitleaks.invocation" in str(e) for e in errors), errors
+
+
+def _mutated(mutate: Any) -> dict[str, Any]:
+    """This repository's register as a plain document, with one edit applied."""
+    document: dict[str, Any] = yaml.safe_load(
+        (REPO_ROOT / "controls.yaml").read_text(encoding="utf-8")
+    )
+    mutate(document)
+    return document
