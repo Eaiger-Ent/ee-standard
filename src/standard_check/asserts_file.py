@@ -378,6 +378,7 @@ def tool_versions_match_register(
             problems.append(
                 f"{tool.name} is sourced from {tool.lockfile}, which is not tracked"
             )
+    seen: dict[str, int] = {tool.name: 0 for tool in literal}
     for path in _VERSION_SITES:
         if not repo.exists(path):
             continue
@@ -386,11 +387,20 @@ def tool_versions_match_register(
             # Match the tool name next to a version-shaped token, whatever the
             # separator each locus uses: `@1.2.3`, `==1.2.3`, `=1.2.3`,
             # `v1.2.3`, `: v1.2.3`.
+            #
+            # Case-insensitively, because a shell locus spells the same pin
+            # `GITLEAKS_VERSION=8.30.1`. Matching case-sensitively meant
+            # gitleaks was compared at **no** locus while this assert reported
+            # a pass: drifting setup.sh to 9.99.9 changed nothing. Renovate's
+            # own dashboard found it, by listing five managed sites where the
+            # register implies six.
             pattern = re.compile(
                 rf"{re.escape(tool.name)}[^\n]*?[@=:\s]v?(\d+\.\d+\.\d+)",
+                re.IGNORECASE,
             )
             for match in pattern.finditer(text):
                 checked += 1
+                seen[tool.name] += 1
                 if match.group(1) != tool.version:
                     problems.append(
                         f"{path}: {tool.name} pinned at {match.group(1)}, "
@@ -403,6 +413,15 @@ def tool_versions_match_register(
                 and re.search(rf"{re.escape(tool.name)}[^\n]*\.tar\.gz", text)
             ):
                 problems.append(f"{path}: {tool.name} checksum does not match the register")
+    # A literal tool nothing pins is not a tool in agreement — it is a tool this
+    # assert cannot see. Silence used to read as a pass, which is the verdict
+    # overstating what was checked (§ A).
+    problems.extend(
+        f"{name} is declared `source: literal` but is pinned at no known locus "
+        f"({', '.join(_VERSION_SITES)}), so no copy of its version was compared"
+        for name, count in sorted(seen.items())
+        if count == 0
+    )
     if problems:
         return _fail("; ".join(sorted(set(problems))))
     sourced = len(register.tools) - len(literal)

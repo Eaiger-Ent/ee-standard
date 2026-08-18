@@ -383,6 +383,15 @@ acceptable with the SUP-002 title change, because leaving the title as it stands
 is the register asserting a mechanism that is not running — theme **T-3** inside
 the register itself.
 
+**Correction, 2026-08-18: option 2 is not an escape from option 1.** The table
+above reads as though `mise` were an independent route to a proposing mechanism.
+It is not. Dependabot has no `mise` manager; Renovate does. So adopting `mise`
+replaces two custom managers with one native one — a real simplification, and
+still the right shape for the template — but it does **not** remove the need for
+Renovate to be installed. Whichever of 1 and 2 is chosen, the same app
+installation is the precondition. Only option 3 avoids it, by giving up the
+mechanism and narrowing the title to say so.
+
 **Chosen 2026-08-17: action 1**, with action 2 kept for the Phase 2 template as
 recommended. What that decision has and has not delivered:
 
@@ -561,7 +570,17 @@ below — not this table — track that.
       it discriminated — which is the failure mode this criterion exists to rule
       out
 - [x] **Every tool has one recorded authority, and every locus is verified
-      against it.** The original wording — "no version string exists in more
+      against it.** **Re-opened and re-closed 2026-08-18**: it was ticked while
+      `gitleaks` was compared at *no* locus. `tool_versions_match_register`
+      matched the tool name case-sensitively, so `GITLEAKS_VERSION=8.30.1` — the
+      spelling used at both loci that install it — never matched `gitleaks`.
+      Drifting `setup.sh` to `9.99.9` left the assert reporting PASS, and its
+      own message said "2 version pin(s)" where the register implies four. Fixed
+      by matching case-insensitively **and** by failing when a `literal` tool is
+      pinned at no known locus: silence reading as a pass is the verdict
+      overstating what was checked (§ A), which is what this phase is for. Now
+      4 pins, and drift at either gitleaks locus fails.
+      The original wording — "no version string exists in more
       than one place" — is not achievable and was ticked while plainly false,
       which is the over-tick this plan exists to catch. A tool installed by a
       package manager necessarily appears in that manager's manifest as well,
