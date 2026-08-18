@@ -422,9 +422,23 @@ a YAML mapping — which is the discrimination the test exists to prove.
 installed on `Eaiger-Ent` (or on this repository), which is a web-flow action no
 token here can perform. Until it is, `renovate.json` is a correct configuration
 that nothing reads — the same shape of inertness § G was written about, one
-level up. The two criteria this section gates therefore stay open, and the
-confirmation to look for is Renovate's Dependency Dashboard issue appearing,
-which also reports any error in this config.
+level up. The two criteria this section gates therefore stay open.
+
+To close them:
+
+1. Install the app from <https://github.com/apps/renovate> onto `Eaiger-Ent`, or
+   onto `Eaiger-Ent/ee-standard` alone. Nothing else needs configuring — the
+   repository already holds the config the app reads.
+2. Wait for Renovate's **Dependency Dashboard** issue to appear. Its arrival is
+   the confirmation that the app is running, and it reports any error in
+   `renovate.json`, which is the one thing a local test cannot check.
+3. Confirm the dashboard lists `uv` and `gitleaks` under the custom managers. If
+   it does not, the managers matched nothing at the app's end and the criteria
+   stay open — an inert manager is the § G failure repeated, not a smaller
+   version of it.
+
+Then tick both boxes below, and narrow nothing: SUP-002's title becomes true at
+that point rather than needing a change.
 
 ### Decisions required before Phase 2
 
