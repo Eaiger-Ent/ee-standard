@@ -145,13 +145,41 @@ def applies(control: Control, register: Register, repo: Repo) -> tuple[bool, str
     return False, ", ".join(control.applies_to)
 
 
+def _block_applies(block: VerifyBlock, register: Register, repo: Repo) -> bool:
+    """Whether this block's own predicates hold, if it declares any.
+
+    A control may verify one property by different mechanisms for different
+    repository shapes: BLD-001 reads a Dockerfile with hadolint and a
+    devcontainer with a file assert. Running either against the shape it was not
+    written for reports on something that is not there — `hadolint` against a
+    repository with no Dockerfile is not a finding, it is a category error.
+    """
+    return not block.applies_to or any(
+        compile_predicate(register.predicates[name])(repo) for name in block.applies_to
+    )
+
+
 def run_control(control: Control, register: Register, repo: Repo) -> ControlResult:
     satisfied, detail = applies(control, register, repo)
     if not satisfied:
         return ControlResult(
             control, Verdict.SKIPPED_PREDICATE, (), note=f"predicate not satisfied: {detail}"
         )
-    blocks = tuple(run_block(block, register, repo) for block in control.verify)
+    applicable = [b for b in control.verify if _block_applies(b, register, repo)]
+    if not applicable:
+        # Every block narrowed itself out. The control applies but nothing
+        # verified it, so it has not passed — reporting PASS here would be a
+        # green tick over an empty check, which is the § A defect exactly.
+        return ControlResult(
+            control,
+            Verdict.SKIPPED_PREDICATE,
+            (),
+            note=(
+                "the control applies, but every verification block is narrowed to a "
+                "repository shape this repo does not have"
+            ),
+        )
+    blocks = tuple(run_block(block, register, repo) for block in applicable)
     return ControlResult(control, worst([b.verdict for b in blocks]), blocks)
 
 

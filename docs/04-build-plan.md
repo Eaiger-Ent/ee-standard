@@ -63,10 +63,20 @@ Phase 1 unclosable by its own terms.
       solved and is not
 - [x] `.devcontainer/.env` is gitignored, and `git log --all -- .devcontainer/.env`
       is empty
-- [ ] The container's final user is not root, stated explicitly rather than
-      inherited from the base image — **re-opened**: `remoteUser` is stated in
-      `devcontainer.json` but read by no assert, and BLD-001 needs a Dockerfile
-      so it skips here. Ticked on a JSON key nothing verifies (Phase 1.5 § A)
+- [x] The container's final user is not root, stated explicitly rather than
+      inherited from the base image — re-opened because `remoteUser` was stated
+      in `devcontainer.json` and read by no assert: BLD-001 applied only to
+      `container`, a predicate this repo does not satisfy because it builds from
+      an `image:`, so the control skipped and a JSON key nothing verified stood
+      in for a verdict. **Closed 2026-08-18** at register contract 7.
+      BLD-001 now applies to `[container, devcontainer]` and
+      `devcontainer_user_is_non_root` reads the key. It fails an absent user as
+      well as a root one: a devcontainer naming neither `containerUser` nor
+      `remoteUser` runs as whatever its base image uses, which may be root today
+      and may become root on any digest bump — non-root by luck is not the
+      property BLD-001 states. `containerUser: root` beside `remoteUser: vscode`
+      fails too, being a container that runs as root whatever the tooling does.
+      BLD-001 reports PASS here where it reported SKIPPED
 - [ ] `setup.sh` is short enough not to need sectioning — anything longer is
       doing work that belongs in a feature — **re-opened**: 82 lines across
       seven sections (Phase 1.5 § Carried debt)

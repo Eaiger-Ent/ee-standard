@@ -70,7 +70,7 @@ _CONFIG_ALLOWED = ("file", "section")
 _GATE_ROLES = ("lint", "typecheck")
 _METADATA_ALLOWED = ("owner", "register_contract")
 _STANDARD_ALLOWED = ("name", "url")
-_BLOCK_ALLOWED = ("kind", "run", "assert", "args", "partial")
+_BLOCK_ALLOWED = ("kind", "run", "assert", "args", "partial", "applies_to")
 _PARTIAL_ALLOWED = ("unverified", "expires")
 
 _CONTROL_REQUIRED = (
@@ -127,6 +127,12 @@ class VerifyBlock:
     run: str | None = None
     assert_name: str | None = None
     args: dict[str, object] = field(default_factory=dict)
+    # Predicates under which this block runs. Empty means "whenever the control
+    # does". A control can hold one property verified by different mechanisms
+    # for different repository shapes — BLD-001's `hadolint` reads a Dockerfile
+    # and its devcontainer assert reads `devcontainer.json`, and running either
+    # against the wrong shape reports on something that is not there.
+    applies_to: tuple[str, ...] = ()
     partial: Partial | None = None
 
     def describe(self) -> str:
@@ -294,6 +300,27 @@ class _Validator:
     def error(self, where: str, message: str) -> None:
         self.errors.append(SchemaError(where, message))
 
+    def _block_predicates(self, raw: object, where: str) -> tuple[str, ...]:
+        """Predicates narrowing a single verify block to one repository shape.
+
+        Validated against the *control's* own `applies_to` afterwards, in
+        `_blocks_narrow_within_their_control` — a block naming a predicate its
+        control does not is a block that can never run, which is exactly the
+        declared-but-unreachable shape the register exists to catch.
+        """
+        if raw is None:
+            return ()
+        if not isinstance(raw, list) or not raw:
+            self.error(where, "must be a non-empty list of predicate names")
+            return ()
+        names: list[str] = []
+        for entry in raw:
+            if not isinstance(entry, str) or not entry.strip():
+                self.error(where, "must contain only predicate names")
+                return ()
+            names.append(entry.strip())
+        return tuple(names)
+
     def _verify_blocks(self, raw: Any, where: str) -> tuple[VerifyBlock, ...]:
         if not isinstance(raw, list) or not raw:
             self.error(where, "must be a non-empty list of verification blocks")
@@ -310,6 +337,7 @@ class _Validator:
                 self.error(f"{here}.kind", f"must be one of {', '.join(KINDS)}, got {kind!r}")
                 continue
             partial = self._partial(block.get("partial"), f"{here}.partial")
+            block_predicates = self._block_predicates(block.get("applies_to"), f"{here}.applies_to")
             if kind == "command":
                 run = block.get("run")
                 if not isinstance(run, str) or not run.strip():
@@ -331,7 +359,14 @@ class _Validator:
                         "reachable CI step while the file asserts beside it were invisible",
                     )
                     continue
-                blocks.append(VerifyBlock(kind="command", run=run.strip(), partial=partial))
+                blocks.append(
+                    VerifyBlock(
+                        kind="command",
+                        run=run.strip(),
+                        partial=partial,
+                        applies_to=block_predicates,
+                    )
+                )
                 continue
             name = block.get("assert")
             if not isinstance(name, str):
@@ -350,7 +385,13 @@ class _Validator:
                 self.error(f"{here}.args", "must be a mapping")
                 continue
             blocks.append(
-                VerifyBlock(kind=kind, assert_name=name, args=dict(args), partial=partial)
+                VerifyBlock(
+                    kind=kind,
+                    assert_name=name,
+                    args=dict(args),
+                    partial=partial,
+                    applies_to=block_predicates,
+                )
             )
         return tuple(blocks)
 
@@ -688,6 +729,7 @@ class _Validator:
                 self.error("controls", f"duplicate control id '{control_id}'")
             seen.add(control_id)
         self._gates_cover_declared_loci(controls, stacks)
+        self._blocks_narrow_within_their_control(controls, predicates)
         if self.errors:
             return None
         return Register(
@@ -845,6 +887,32 @@ class _Validator:
                                 f"is required: {control.id} declares a '{locus}' locus, "
                                 "which is verified through this field",
                             )
+
+    def _blocks_narrow_within_their_control(
+        self, controls: list[Control], predicates: dict[str, bool | str]
+    ) -> None:
+        """A block's `applies_to` narrows its control's — it cannot widen it.
+
+        A block naming a predicate its control does not can never run: the
+        control is skipped before the block is reached. That is a verification
+        declared and unreachable, which is theme T-3 in the one file that exists
+        to stop it, so it is a schema error rather than a silent no-op.
+        """
+        for control in controls:
+            for i, block in enumerate(control.verify):
+                at = f"{control.id}.verify[{i}].applies_to"
+                for name in block.applies_to:
+                    if name not in predicates:
+                        self.error(
+                            at,
+                            f"names no predicate — known: {', '.join(sorted(predicates))}",
+                        )
+                    elif name not in control.applies_to:
+                        self.error(
+                            at,
+                            f"names '{name}', which {control.id} does not apply to "
+                            f"({', '.join(control.applies_to)}) — the block could never run",
+                        )
 
     def _suppression(self, raw: object) -> tuple[str, ...]:
         """Patterns that count as swallowing a failure.
