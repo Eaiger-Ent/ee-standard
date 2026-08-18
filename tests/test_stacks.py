@@ -22,13 +22,19 @@ from typing import Any
 import pytest
 import yaml
 
-from conftest import MINIMAL_REGISTER, a_register, make_repo, write_register
+from conftest import (
+    MINIMAL_REGISTER,
+    a_register,
+    make_repo,
+    register_with,
+    write_register,
+)
 from standard_check.asserts_command import (
     linter_wired_at_all_loci,
     no_failure_suppression,
     typecheck_strict_and_blocking,
 )
-from standard_check.register import Register, load_register
+from standard_check.register import load_register
 from standard_check.repo import Repo
 
 _WORKFLOW = (
@@ -55,25 +61,6 @@ def _python_repo(root: Path, tool: str = "ruff", extension: str = "charliermarsh
     )
 
 
-def _register_with(tmp_path: Path, mutate: Any) -> Register:
-    """This repository's register with one edit applied, reloaded from disk."""
-    document = yaml.safe_load(Path("controls.yaml").read_text(encoding="utf-8"))
-    mutate(document)
-    root = tmp_path / "register"
-    root.mkdir(parents=True, exist_ok=True)
-    (root / "controls.yaml").write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
-    # `rationale_adr` paths are checked relative to the register, so bring them.
-    for control in document["controls"] + document.get("meta_controls", []):
-        adr = control.get("rationale_adr")
-        if adr:
-            target = root / adr
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text("# ADR\n", encoding="utf-8")
-    register, errors = load_register(root / "controls.yaml")
-    assert register is not None, errors
-    return register
-
-
 def test_mandating_a_different_linter_changes_the_verdict(tmp_path: Path) -> None:
     """The decisive test. Only the register moves; the checker is untouched.
 
@@ -96,7 +83,7 @@ def test_mandating_a_different_linter_changes_the_verdict(tmp_path: Path) -> Non
         gate["config"] = [{"file": "pyproject.toml", "section": "tool.flake8"}]
 
     against_flake8 = linter_wired_at_all_loci(
-        flake8_repo, _register_with(tmp_path, mandate_flake8), {"role": "lint"}
+        flake8_repo, register_with(tmp_path, mandate_flake8), {"role": "lint"}
     )
     assert against_flake8.passed, against_flake8.message
 
@@ -125,7 +112,7 @@ def test_a_config_location_added_to_the_register_is_honoured(tmp_path: Path) -> 
         document["stacks"]["python"]["gates"]["lint"]["config"].append({"file": "house-ruff.toml"})
 
     assert linter_wired_at_all_loci(
-        repo, _register_with(tmp_path, add_location), {"role": "lint"}
+        repo, register_with(tmp_path, add_location), {"role": "lint"}
     ).passed
 
 
@@ -149,7 +136,7 @@ def test_strict_key_comes_from_the_register(tmp_path: Path) -> None:
         document["stacks"]["python"]["gates"]["typecheck"]["strict_key"] = "very_strict"
 
     assert typecheck_strict_and_blocking(
-        repo, _register_with(tmp_path, rename_key), {"role": "typecheck"}
+        repo, register_with(tmp_path, rename_key), {"role": "typecheck"}
     ).passed
 
 
@@ -164,7 +151,7 @@ def test_suppression_idioms_come_from_the_register(tmp_path: Path) -> None:
     def add_idiom(document: dict[str, Any]) -> None:
         document["suppression"].append(r";\s*echo swallowed\b")
 
-    result = no_failure_suppression(repo, _register_with(tmp_path, add_idiom), {})
+    result = no_failure_suppression(repo, register_with(tmp_path, add_idiom), {})
     assert not result.passed
     assert "swallowed" in result.message
 

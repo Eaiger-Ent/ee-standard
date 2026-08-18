@@ -9,7 +9,7 @@ from __future__ import annotations
 import datetime
 import re
 
-from standard_check.asserts_command import _suppression_match, _workflow_steps
+from standard_check.asserts_command import WorkflowStep, _suppression_match, _workflow_steps
 from standard_check.register import Control, MetaControl, Register
 from standard_check.repo import Repo, git
 from standard_check.runner import Verdict, applies
@@ -75,31 +75,62 @@ def _reaches(control: Control, run: str, register: Register) -> bool:
 
 
 def gov_001(register: Register, repo: Repo) -> tuple[Verdict, str]:
-    """Every blocking control is reachable from a CI step that can fail."""
-    clean_steps = [
-        step for step in _workflow_steps(repo) if step.run and not step.suppressed
-    ]
-    full_run = any(
-        _FULL_RUN.search(step.run) and not _suppression_match(register, step.run)
-        for step in clean_steps
-    )
+    """Every blocking control is reachable from a CI step that can fail.
+
+    "Can fail" has two halves, and this control was ticked on one of them. A step
+    whose failure is swallowed cannot fail, and a step in a workflow that runs on
+    neither push nor pull_request cannot fail *a merge* — it runs when a human
+    clicks it, which is theme T-3 in the control written to catch T-3 (§ H1).
+    Pointing `on:` at `workflow_dispatch` and changing nothing else used to leave
+    this reporting every blocking control reachable, in the same run where
+    TST-001 read the same file correctly and failed.
+    """
+    runnable = [step for step in _workflow_steps(repo) if step.run and not step.suppressed]
+    clean_steps = [step for step in runnable if step.gating]
+    ungated = [step for step in runnable if not step.gating]
+
+    def full_run(steps: list[WorkflowStep]) -> bool:
+        return any(
+            _FULL_RUN.search(step.run) and not _suppression_match(register, step.run)
+            for step in steps
+        )
+
+    runs_everything = full_run(clean_steps)
+    runs_everything_ungated = full_run(ungated)
     unreachable = []
+    ungated_only = []
     for control in register.controls:
         if control.rung != "blocking" or "ci" not in control.locus:
             continue
         if not applies(control, register, repo)[0]:
             continue
-        if full_run:
+        if runs_everything:
             continue
-        if not any(_reaches(control, step.run, register) for step in clean_steps):
+        if any(_reaches(control, step.run, register) for step in clean_steps):
+            continue
+        if runs_everything_ungated:
+            ungated_only.append(control.id)
+            continue
+        # Named apart from the absent case: "you wired it to the wrong trigger"
+        # and "you never wired it" are different repairs, and a message that
+        # says only the second sends the reader looking for a step that is there.
+        if any(_reaches(control, step.run, register) for step in ungated):
+            ungated_only.append(control.id)
+        else:
             unreachable.append(control.id)
+    problems = []
     if unreachable:
-        return Verdict.FAIL, (
-            "blocking controls with no reachable CI step: " + ", ".join(unreachable)
+        problems.append("blocking controls with no reachable CI step: " + ", ".join(unreachable))
+    if ungated_only:
+        problems.append(
+            "blocking controls reached only from a workflow that runs on neither push nor "
+            "pull_request, so it gates no merge: " + ", ".join(ungated_only)
         )
+    if problems:
+        return Verdict.FAIL, "; ".join(problems)
     return (
         Verdict.PASS,
-        "every applicable blocking control is reachable from a CI step that can fail",
+        "every applicable blocking control is reachable from a CI step that can fail a merge",
     )
 
 

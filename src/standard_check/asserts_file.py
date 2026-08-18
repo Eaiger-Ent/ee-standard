@@ -391,16 +391,6 @@ def dockerfile_final_user_is_non_root(
 # `markdown_gate_wired_at_all_loci` in `asserts_command`, which reads all four.
 
 
-# Where a pinned tool version can appear. Each pattern captures the version, so
-# a locus that disagrees with the register is named with what it says.
-_VERSION_SITES = (
-    ".pre-commit-config.yaml",
-    ".devcontainer/setup.sh",
-    ".github/workflows/lint.yml",
-    ".github/workflows/standard-check.yml",
-)
-
-
 def tool_versions_match_register(
     repo: Repo,
     register: Register,
@@ -414,6 +404,13 @@ def tool_versions_match_register(
     markdownlint-cli2 was pinned in four separate places with nothing comparing
     them — a comment in lint.yml even told humans to "change all three
     together" where there were four.
+
+    **Which loci is a register fact** from contract 8. It was a four-entry tuple
+    here, holding this repository's own filenames: renaming a workflow took it
+    out of comparison with no verdict changing, and an adopting repository that
+    pinned the same tools in files of its own naming was told they were "pinned
+    at no known locus" — this repo's paths quoted at it as though they were the
+    standard (§ H2).
     """
     if not register.tools:
         return _ok("the register pins no tool versions")
@@ -428,12 +425,17 @@ def tool_versions_match_register(
             problems.append(
                 f"{tool.name} is sourced from {tool.lockfile}, which is not tracked"
             )
-    seen: dict[str, int] = {tool.name: 0 for tool in literal}
-    for path in _VERSION_SITES:
-        if not repo.exists(path):
-            continue
-        text = repo.read(path)
-        for tool in literal:
+    for tool in literal:
+        for path in tool.pinned_at:
+            # A declared site that is not there is the rename this check used to
+            # miss entirely: the file left the checker's list by being renamed,
+            # and silence read as agreement.
+            if not repo.exists(path):
+                problems.append(
+                    f"{tool.name} is recorded as pinned at {path}, which does not exist"
+                )
+                continue
+            text = repo.read(path)
             # Match the tool name next to a version-shaped token, whatever the
             # separator each locus uses: `@1.2.3`, `==1.2.3`, `=1.2.3`,
             # `v1.2.3`, `: v1.2.3`.
@@ -448,9 +450,16 @@ def tool_versions_match_register(
                 rf"{re.escape(tool.name)}[^\n]*?[@=:\s]v?(\d+\.\d+\.\d+)",
                 re.IGNORECASE,
             )
-            for match in pattern.finditer(text):
+            found = list(pattern.finditer(text))
+            # A declared site holding no pin is the same silence one level down:
+            # the file is there and the version is not, so nothing was compared.
+            if not found:
+                problems.append(
+                    f"{path}: no {tool.name} version pin found, though the register records "
+                    "one here"
+                )
+            for match in found:
                 checked += 1
-                seen[tool.name] += 1
                 if match.group(1) != tool.version:
                     problems.append(
                         f"{path}: {tool.name} pinned at {match.group(1)}, "
@@ -463,21 +472,14 @@ def tool_versions_match_register(
                 and re.search(rf"{re.escape(tool.name)}[^\n]*\.tar\.gz", text)
             ):
                 problems.append(f"{path}: {tool.name} checksum does not match the register")
-    # A literal tool nothing pins is not a tool in agreement — it is a tool this
-    # assert cannot see. Silence used to read as a pass, which is the verdict
-    # overstating what was checked (§ A).
-    problems.extend(
-        f"{name} is declared `source: literal` but is pinned at no known locus "
-        f"({', '.join(_VERSION_SITES)}), so no copy of its version was compared"
-        for name, count in sorted(seen.items())
-        if count == 0
-    )
     if problems:
         return _fail("; ".join(sorted(set(problems))))
     sourced = len(register.tools) - len(literal)
+    sites = sum(len(tool.pinned_at) for tool in literal)
     return _ok(
-        f"{checked} version pin(s) across {len(literal)} literal tool(s) match the register; "
-        f"{sourced} sourced from a lockfile, with no version to keep in step"
+        f"{checked} version pin(s) across {sites} declared locus/loci and {len(literal)} "
+        f"literal tool(s) match the register; {sourced} sourced from a lockfile, with no "
+        "version to keep in step"
     )
 
 

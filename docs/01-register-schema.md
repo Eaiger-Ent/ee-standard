@@ -16,9 +16,10 @@ it, so an unparseable register means no control is enforced.
 | `meta.register_contract` | yes | integer | Bumped **only** when a change alters what gets deployed. Drives staleness detection. |
 | `predicates` | yes | map | Stack predicates, evaluated against the repo. |
 | `tools` | no | map | Pinned tool versions and their authority — see [`tools`](#tools). |
-| `ecosystems` | no | map | Package ecosystems: manifests, lockfiles, Dependabot spellings, test commands. |
+| `ecosystems` | no | map | Package ecosystems: manifests, lockfiles, Dependabot spellings, test commands, frozen-install idioms. |
 | `stacks` | no | map | Per-stack gate tools — see [`stacks`](#stacks). |
 | `suppression` | no | list | Regular expressions that count as swallowing a failure. |
+| `cloud_credentials` | no | list | Static cloud credential names SEC-002 forbids — see [`cloud_credentials`](#cloud_credentials). |
 | `controls` | yes | list | The controls. |
 | `meta_controls` | yes | list | Controls that check the register itself. |
 
@@ -30,8 +31,15 @@ accepts and ignores is a field that silently does nothing, which is how
 ### `meta.register_contract`
 
 This integer is the noise control for the whole system. It is bumped when a
-control's `rung`, `verify`, or `variance` changes — never for a typo fix, a
-reworded `title`, or a new `also_see` link.
+control's `rung`, `verify`, `variance` or `applies_to` changes, and when the
+register gains a field that a skill reading it has to understand — never for a
+typo fix, a reworded `title`, or a new `also_see` link.
+
+The last clause is stated because it was already the practice and not the
+wording: contract 3 was a schema addition and so is contract 8, and a rule that
+does not describe what has been done twice is a rule nobody can apply. A field a
+skill must understand changes what deployment means, which is the test the first
+sentence is reaching for.
 
 Downstream skills recommend redeployment when the installed contract is ahead of
 the one stamped in the repo. Bumping it for cosmetic edits trains people to
@@ -210,6 +218,72 @@ fact, which is what `docs/09-phase-1.5-review.md` § G records.
 Prefer `lockfile`. It is the only option that eliminates duplication rather than
 reconciling it, and it is available whenever the tool is installable from an
 ecosystem the repo already locks.
+
+**`pinned_at` is required under `source: literal`** and rejected under
+`source: lockfile`, the same asymmetry as `version:` and for the same reason: a
+lockfile-sourced tool has no version at any locus to keep in step, so there are
+no repetitions to list.
+
+```yaml
+  gitleaks:
+    source: literal
+    version: "8.30.1"
+    pinned_at:
+      - .devcontainer/setup.sh
+      - .github/workflows/standard-check.yml
+```
+
+`tool_versions_match_register` reads exactly these paths. A declared site that
+does not exist fails, and so does one that exists but holds no pin — both are
+the same silence, and silence reading as agreement is what this field was moved
+out of the checker to stop. Until contract 8 the loci were four of this
+repository's own filenames inside `standard-check`, so renaming a workflow took
+it out of comparison with no verdict changing, and an adopting repository was
+told its tools were pinned at no known locus against paths it had never had
+(`docs/09-phase-1.5-review.md` § H2).
+
+### `ecosystems`
+
+A package ecosystem, and what counts as locked, installed and tested in it.
+
+```yaml
+ecosystems:
+  ruby:
+    manifest: [Gemfile, "*.gemspec"]   # how the ecosystem is detected
+    lockfiles: [Gemfile.lock]          # any one of these, tracked
+    dependabot: [bundler]              # accepted `package-ecosystem:` spellings
+    test_commands: [rspec, "rake test"]
+    frozen_install:                    # regexes; matched against gating CI steps
+      - '\bbundle install\b[^\n]*--(?:deployment|frozen)\b'
+```
+
+Every field is required and every list non-empty. `frozen_install` is compiled at
+schema time like `suppression`, because a pattern that matches nothing is a
+control passing vacuously rather than a crash — an ecosystem the checker knew
+nothing about is exactly how a repository with a `go.mod` came to be told that
+every CI install was frozen.
+
+The evidence must come from a step in a workflow that runs on `push` or
+`pull_request`. A frozen install in a manually-triggered workflow shows what
+somebody may choose to run, not what a merge has to pass.
+
+### `cloud_credentials`
+
+The static credential names SEC-002 forbids a workflow from referencing.
+
+```yaml
+cloud_credentials:
+  - AWS_ACCESS_KEY_ID
+  - GOOGLE_APPLICATION_CREDENTIALS
+```
+
+Matched case-insensitively, with `-` and `_` treated alike, so the same
+credential is caught as an env var (`AWS_ACCESS_KEY_ID`) and as an action input
+(`aws-access-key-id:`). That equivalence is detection and stays in the checker;
+which names to look for is a register fact, because a repository on a different
+cloud needs different ones and no checker change
+([ADR 0018](adr/0018-register-checker-boundary.md), fourth pass). Omit the
+section and the checker falls back to a built-in set, as with `suppression`.
 
 ### `stacks`
 

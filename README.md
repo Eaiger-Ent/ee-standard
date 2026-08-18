@@ -63,7 +63,7 @@ twice. Every step carries the evidence that shows it worked.
 | [`docs/05-promotion.md`](docs/05-promotion.md) | The route to the `ee-skills` marketplace. |
 | [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md) | **Start here if you are working on this repo.** Standing up its container, and the macOS values it needs. |
 | [`docs/07-inherited-conventions.md`](docs/07-inherited-conventions.md) | What the predecessor repo already knew, and which half of it transfers. |
-| [`docs/09-phase-1.5-review.md`](docs/09-phase-1.5-review.md) | Closed record of the Phase 1.5 review — the findings `§ A`–`§ G` the code cites, and the evidence behind each tick. |
+| [`docs/09-phase-1.5-review.md`](docs/09-phase-1.5-review.md) | Record of the Phase 1.5 review — the findings `§ A`–`§ H` the code cites, and the evidence behind each tick. |
 | [`controls.yaml`](controls.yaml) | The register itself. |
 
 ## The register at a glance
@@ -107,12 +107,13 @@ satisfies every control the checker can currently verify locally. Controls with
 a remote half report `SKIPPED (no credentials)` until Phase 3, which is never a
 pass.
 
-Phase 1.5, remediation, is next and gates Phase 2. A review of Phase 1 found the
-checker aborting without a verdict in some conditions and reporting green for
-things it had not examined in others; since Phase 2 copies the assert layer into
-six gate skills, those defects are fixed first. The full backlog, the decisions
-it needs, and four re-opened exit criteria are in
-[`docs/09-phase-1.5-review.md`](docs/09-phase-1.5-review.md).
+Phase 1.5, remediation, is complete as of 2026-08-18 — 26 exit criteria, seven of
+which were ticked and later found false before closing properly. It existed
+because Phase 2 copies the assert layer into six gate skills, so a defect left
+in the checker becomes six. **Phase 2 is next.** The findings, the five decisions
+they needed, and the evidence behind every tick are in
+[`docs/09-phase-1.5-review.md`](docs/09-phase-1.5-review.md); the outstanding
+work is [`docs/04-build-plan.md`](docs/04-build-plan.md).
 
 ## Relationship to existing ee-skills plugins
 

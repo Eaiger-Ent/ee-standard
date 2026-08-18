@@ -259,6 +259,23 @@ phase's forensics live there.
   records one checksum and `tool_versions_match_register` checks that one, so
   the second architecture's digest is a checksum nobody checks, which is the
   shape of problem this phase kept finding.
+- The **meta-controls are in-process assertions declared `kind: command`**
+  (§ H5). The schema rejects the `standard-check assert …` spelling and accepts
+  `standard-check meta …`, which `verify_meta.py` then runs in-process. Nothing
+  is verified wrongly — GOV-001 reads controls, not meta-controls — but it is a
+  rule with an unwritten exception, in the vocabulary Phase 2's skills inherit.
+- **`npx --no-install` falls back to `PATH`** (§ H6), so nothing checks that
+  DOC-001's tool came from `package-lock.json`. Deleting `node_modules` leaves
+  the block passing against whatever global binary is on `PATH`. Belongs with
+  the Phase 2 template, which has to answer the same question for every tool it
+  installs.
+- Three smaller ones, all § H8: GOV-001's full-run short-circuit accepts
+  `run --tier 1` and `--repo ../other` as evidence for every blocking control
+  (latent until Tier 2 exists); `standard-check --repo ../other` fails for any
+  repository without its own `controls.yaml`, which is every adopter, and exits
+  `1` where the CLI reserves `2` for that class; and `runner.py`'s
+  every-block-narrowed-out path returns `SKIPPED (predicate)`, which exits 0,
+  where ADR 0016's verdict is `UNCLASSIFIED`.
 - No repo-root `LICENSE`, though `pyproject.toml` declares Apache-2.0 and
   `05-promotion.md` requires every plugin to ship a copy of it. **Not gating for
   this phase, but gating for Phase 6** — `check_plugin_license.py` fails without
@@ -286,9 +303,14 @@ phase's forensics live there.
 
 ### Exit criteria — phase 1.5
 
-**All 25 met, 2026-08-18.** Each links to its evidence in
-[the review](09-phase-1.5-review.md#how-each-criterion-closed); three of them
-were ticked, later found false, and re-opened before closing properly.
+**All 26 met, 2026-08-18.** Each links to its evidence in
+[the review](09-phase-1.5-review.md#how-each-criterion-closed). The first 25 were
+ticked that morning; a review of the closed phase the same day
+([§ H](09-phase-1.5-review.md#h--what-a-review-of-the-closed-phase-found))
+re-opened three, added a twenty-sixth, and closed all four. **Seven criteria in
+this phase have been ticked and later found false** — that rate, not the count
+above it, is what the phase should be judged by, and it is the argument for
+reviewing Phase 2 the same way before it closes.
 
 - [x] GOV-002 fails on a baseline grown in a **commit**, not only in a dirty
       worktree
@@ -303,13 +325,20 @@ were ticked, later found false, and re-opened before closing properly.
       [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) — `3`, `1`,
       `0`, and `--require-complete`
 - [x] A control whose tool is absent reports `UNCLASSIFIED`, distinct from FAIL
-- [x] GOV-001 matches **invocations, not substrings**
+- [x] GOV-001 measures reachability from a step that **can fail a merge** —
+      matched as an invocation rather than a substring, in a workflow that runs
+      on push or pull_request. **Re-opened and re-closed 2026-08-18** (§ H1): a
+      `workflow_dispatch`-only workflow marked every blocking control reachable
+      while TST-001 read the same file correctly. Widened, not restated to fit
 - [x] Every verification block declares the `kind` it actually is
 - [x] Every row in § D has a test that fails before its fix and passes after —
       `tests/test_section_d.py`
 - [x] Every tool has one recorded authority, and every locus is verified against
-      it — **re-opened and re-closed**: `gitleaks` was compared at no locus while
-      the assert reported PASS
+      it — **re-opened and re-closed twice**: first because `gitleaks` was
+      compared at no locus while the assert reported PASS, then on 2026-08-18
+      (§ H2) because the loci were four filenames inside the checker. They are
+      `tools.<tool>.pinned_at` now, and a declared site that is missing, or that
+      holds no pin, is a verdict
 - [x] Tools that can have their duplication eliminated, do —
       `markdownlint-cli2` moved to `package-lock.json`
 - [x] The two remaining `literal` tools are reconciled by machine — Renovate
@@ -325,7 +354,14 @@ were ticked, later found false, and re-opened before closing properly.
 - [x] The register rejects unknown keys, at every level
 - [x] ADRs 0014–0018 are ratified
 - [x] [ADR 0018](adr/0018-register-checker-boundary.md) is **implemented** —
-      three passes, ending with `stacks:` at contract 6
+      every rule its ratified test moves is in the register, and every rule that
+      stays carries its reason in the ADR. **Re-opened and re-closed 2026-08-18**
+      (§ H3, § H4): the cloud-key names had never moved. Four passes now, ending
+      at contract 8
+- [x] A repository in any ecosystem the register defines is **verified** by
+      SUP-001 rather than skipped by it — added and closed 2026-08-18 (§ H3).
+      `applies_to: [always]`, and `frozen_install` per ecosystem, so a Go repo
+      with no `go.sum` fails where it used to skip
 - [x] [ADR 0017](adr/0017-partial-verification-is-reported.md) is **implemented**
 - [x] [ADR 0014](adr/0014-satisfying-remote-locus-controls.md) is **implemented**
       — the repository is public
@@ -377,6 +413,11 @@ fixed in both.
       reproduces § G's problem in every repo that adopts the standard, and the
       consumer has no `tool_versions_match_register` of their own until they
       adopt the register too
+- [ ] The rule for ignore paths on a `narrowing-only` control with
+      `baseline: null` is decided and expressible before any gate skill deploys
+      a config carrying one (§ H7). `.markdownlint-cli2.yaml` carries four; the
+      rule as written admits none, and `.claude/**` was removed on that reading
+
 - [ ] Every SKILL.md passes preflight P1–P11
 - [ ] `standard-adopt` end-to-end on a scratch repo: plan → confirm → deploy →
       verify → commit, with the verify step genuinely able to fail

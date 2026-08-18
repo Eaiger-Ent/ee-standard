@@ -27,8 +27,14 @@ def _load(root: Path, document: dict[str, Any]) -> tuple[Register, Repo]:
     return register, Repo(root)
 
 
+# Every fixture below declares `on:`. A step in a workflow that runs on neither
+# push nor pull_request cannot fail a merge, so from § H1 it is evidence for no
+# control — and these tests are about *which* step reaches a control, so without
+# a trigger they would all fail for the same unrelated reason.
+_ON = "on: [push, pull_request]\n"
+
 _WORKFLOW_FULL_RUN = (
-    "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+    _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
     "      - run: uv run standard-check\n"
 )
 
@@ -51,7 +57,7 @@ def test_gov_001_fails_with_no_reachable_step(tmp_path: Path) -> None:
 def test_gov_001_ignores_suppressed_steps(tmp_path: Path) -> None:
     register, repo = _load(tmp_path, minimal_register())
     workflow = (
-        "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
         "      - run: uv run standard-check\n"
         "        continue-on-error: true\n"
     )
@@ -71,7 +77,7 @@ def test_gov_001_full_run_survives_shell_punctuation(tmp_path: Path) -> None:
     """
     register, repo = _load(tmp_path, minimal_register())
     workflow = (
-        "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
         "      - run: |\n"
         "          uv run standard-check && status=0 || status=$?\n"
         '          if [ "$status" -ne 0 ] && [ "$status" -ne 3 ]; then\n'
@@ -94,7 +100,7 @@ def test_gov_001_does_not_count_installing_the_checker_as_running_it(
     """
     register, repo = _load(tmp_path, minimal_register())
     workflow = (
-        "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
         "      - run: pip install standard-check\n"
     )
     make_repo(tmp_path, {".github/workflows/check.yml": workflow})
@@ -113,8 +119,43 @@ def test_gov_001_reaches_a_control_verified_only_by_file_asserts(tmp_path: Path)
     """
     register, repo = _load(tmp_path, minimal_register())
     workflow = (
-        "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
         "      - run: uv run standard-check assert precommit_hook_present\n"
+    )
+    make_repo(tmp_path, {".github/workflows/check.yml": workflow})
+    verdict, message = gov_001(register, repo)
+    assert verdict is Verdict.PASS, message
+
+
+def test_gov_001_rejects_a_workflow_that_gates_no_merge(tmp_path: Path) -> None:
+    """§ H1. A step a human has to click cannot fail a merge.
+
+    Pointing `on:` at `workflow_dispatch` and changing nothing else used to
+    leave this control reporting every blocking control reachable — in the same
+    run where TST-001 read the same workflow and failed it for exactly this. The
+    verdict has to distinguish the two repairs: this control was wired to a
+    trigger that gates nothing, which is not the same as never wired.
+    """
+    register, repo = _load(tmp_path, minimal_register())
+    workflow = (
+        "on:\n  workflow_dispatch:\n"
+        "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        "      - run: uv run standard-check\n"
+    )
+    make_repo(tmp_path, {".github/workflows/check.yml": workflow})
+    verdict, message = gov_001(register, repo)
+    assert verdict is Verdict.FAIL
+    assert "SEC-001" in message
+    assert "gates no merge" in message
+
+
+def test_gov_001_accepts_a_workflow_that_gates_only_pull_requests(tmp_path: Path) -> None:
+    """The mirror of the test above: `pull_request` alone is a merge gate."""
+    register, repo = _load(tmp_path, minimal_register())
+    workflow = (
+        "on:\n  pull_request:\n"
+        "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        "      - run: uv run standard-check\n"
     )
     make_repo(tmp_path, {".github/workflows/check.yml": workflow})
     verdict, message = gov_001(register, repo)
@@ -125,7 +166,7 @@ def test_gov_001_does_not_accept_a_different_assert_as_evidence(tmp_path: Path) 
     """Reaching *an* assertion is not reaching *this* control's assertion."""
     register, repo = _load(tmp_path, minimal_register())
     workflow = (
-        "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
         "      - run: uv run standard-check assert actions-pinned-to-sha\n"
     )
     make_repo(tmp_path, {".github/workflows/check.yml": workflow})

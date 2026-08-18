@@ -6,9 +6,17 @@
 Ratified decision from
 [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
 
-**Implemented** over three passes, at register contracts 3, 5 and 6 — see the
+**Implemented** over four passes, at register contracts 3, 5, 6 and 8 — see the
 *Applied* sections below. Every rule the test moves is now in `controls.yaml`,
-and every rule that stayed carries its reason here. Acceptance settled the test
+and every rule that stayed carries its reason here.
+
+The fourth pass exists because the third claimed a completion it did not have.
+`cloud-key names` are named in the Decision below and were moved in none of the
+first three passes, while the exit criterion recording this ADR as implemented
+was ticked over them. That is the failure this record names in its own
+Decision — *an unreasoned omission is the failure this record exists to stop* —
+so it is recorded here rather than quietly corrected. See
+[`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § H4. Acceptance settled the test
 and what it classifies; these sections record what was actually moved, which is
 the part a reader can check.
 
@@ -159,6 +167,25 @@ so. DOC-001 has one tool and one extension, so it needed no per-stack model to
 move; taking it first gives the larger move a worked precedent to copy instead of
 a design argued in the abstract.
 
+### Applied — fourth pass, register contract 8
+
+Three rules: the ratified list's last unmoved item, and two found by applying the
+same test to code written after ratification. The Decision says a rule discovered
+later is classified by the same test rather than by where it happens to have been
+written, and these are the first exercise of that clause.
+
+| Rule | Where it lives now | Why |
+| --- | --- | --- |
+| The static cloud credentials SEC-002 forbids | Register, `cloud_credentials:` | Named in the Decision above and moved in none of the first three passes. A repository on a cloud the list has not heard of is one where SEC-002 passes for want of a name, and no `review_by` could surface that while the names were in Python |
+| Which loci repeat a `literal` tool's version | Register, `tools.<tool>.pinned_at` | Four of *this repository's* filenames, in a checker applied to every repository. Renaming a workflow removed it from comparison silently, and an adopting repository was told its tools were "pinned at no known locus" against a list of paths it had never had |
+| What installing from the lockfile looks like, per ecosystem | Register, `ecosystems.<name>.frozen_install` | The same two-key map — python and node — that this ADR's Background calls the measured harm, surviving inside `ci-installs-frozen` after being moved out of `lockfile_present_and_tracked`. A repository with a `go.mod` was told every CI install was frozen, with none checked |
+
+The same pass widens SUP-001's `applies_to` from `[python, typescript]` to
+`[always]`, because naming two stacks re-created in the register the exemption
+this ADR moved out of the checker. Which ecosystems a repository is in is
+detected from `ecosystems:`, and a repository with no package manager at all
+passes on that finding rather than on a predicate that never looked.
+
 ### Staying in the checker — with reasons
 
 | Rule | Why it is not a register fact |
@@ -167,6 +194,8 @@ a design argued in the abstract.
 | The predicate grammar | Expressing it in the register makes the register a program — excluded by name in the build plan |
 | `AAA-NNN` / `GOV-NNN` ID patterns, semver strictness, `rationale_adr` existence, the Tier-1 baseline rule | Properties of the register *format*, not of any repository. A repo needing them to differ is asking for a different standard |
 | Reading YAML, walking workflow steps, parsing `pyproject.toml` | Implementation of detection, not the rule being detected |
+| Which commands *re-resolve* a dependency graph — `npm install` with unpinned arguments, `uv sync` without `--frozen` | Answering it means parsing a package manager's argument grammar, and argument grammars in the register make the register a program, which is Option 2 above and rejected by name. The positive half — what a frozen install looks like — is a pattern match and moved |
+| That `AWS_ACCESS_KEY_ID` and `aws-access-key-id:` name the same credential | A spelling equivalence between an env var and an action input, not a choice any repository makes. *Which* credentials to look for is the register's |
 
 ### Applied — third pass, register contract 6
 

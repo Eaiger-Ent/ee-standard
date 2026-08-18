@@ -156,6 +156,22 @@ same configuration at every locus. Where a package manager can own a version, le
 it — every locus here runs `npx --no-install markdownlint-cli2`, so
 `package-lock.json` is the single authority and there is nothing to keep in step.
 
+### 3.1 — Your register records your own files
+
+Two things in `controls.yaml` describe **the repository being checked**, not this
+one, and are the first edits an adopter makes to their copy:
+
+| What | Where | Why it is yours and not ours |
+| --- | --- | --- |
+| Every file that repeats a pinned tool version | `tools.<tool>.pinned_at` | `tool_versions_match_register` compares exactly these paths. A path listed here that does not exist is a failure, and so is one that exists and holds no pin — which is how a renamed workflow is caught rather than silently dropped from comparison |
+| Which package ecosystems you are in, and what a frozen install looks like in them | `ecosystems:` | Detected from your manifests. If your CI installs with an idiom the register has not heard of, add it there rather than working around it in the checker |
+
+Get the first one wrong and SUP-001 tells you so by name — *"recorded as pinned
+at X, which does not exist"*. That message is the check working: this repository
+carried four of its own filenames inside `standard-check` until contract 8, so an
+adopter was told their tools were "pinned at no known locus" against a list of
+paths they had never had ([§ H2](09-phase-1.5-review.md#h--what-a-review-of-the-closed-phase-found)).
+
 Files this repository's gates deploy carry a provenance stamp naming the control,
 the deploying skill and the register contract; see
 [`00-concepts.md`](00-concepts.md) § The provenance stamp.
@@ -168,6 +184,11 @@ uv run standard-check run --tier 1       # Tier 1 only — note the `run`
 uv run standard-check explain SEC-001    # why a control exists, and what it checks
 uv run standard-check schema             # validate the register itself
 uv run standard-check --repo ../other    # `--repo` goes before the subcommand
+
+# Checking a repository that has no register of its own — every adopter, until
+# they commit one. Without `--register`, the checker looks for
+# `../other/controls.yaml` and reports that it cannot read it.
+uv run standard-check --repo ../other --register ./controls.yaml
 ```
 
 Read the exit code, not just the report

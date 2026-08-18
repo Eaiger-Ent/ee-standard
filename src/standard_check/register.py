@@ -53,13 +53,20 @@ _DOCUMENT_ALLOWED = (
     "ecosystems",
     "stacks",
     "suppression",
+    "cloud_credentials",
     "predicates",
     "controls",
     "meta_controls",
 )
-_TOOL_ALLOWED = ("source", "version", "sha256", "lockfile")
+_TOOL_ALLOWED = ("source", "version", "sha256", "lockfile", "pinned_at")
 _TOOL_SOURCES = ("lockfile", "literal")
-_ECOSYSTEM_ALLOWED = ("manifest", "lockfiles", "dependabot", "test_commands")
+_ECOSYSTEM_ALLOWED = (
+    "manifest",
+    "lockfiles",
+    "dependabot",
+    "test_commands",
+    "frozen_install",
+)
 _STACK_ALLOWED = ("gates",)
 _GATE_ALLOWED = ("tool", "invocation", "pre_commit", "editor_extension", "strict_key", "config")
 _GATE_REQUIRED = ("tool", "invocation", "config")
@@ -163,6 +170,12 @@ class Tool:
     version: str | None = None
     sha256: str | None = None
     lockfile: str | None = None
+    # Every locus that repeats a `literal` version. A register fact from
+    # contract 8 (ADR 0018, fourth pass): these were four of this repository's
+    # own filenames inside the checker, so renaming a workflow removed it from
+    # comparison silently, and an adopting repository's own loci were never in
+    # the list at all (§ H2).
+    pinned_at: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -180,6 +193,12 @@ class Ecosystem:
     lockfiles: tuple[str, ...]
     dependabot: tuple[str, ...]
     test_commands: tuple[str, ...]
+    # What installing from the lockfile looks like in CI, as regular
+    # expressions. A register fact from contract 8 (§ H3): `ci-installs-frozen`
+    # knew python and node, so every other ecosystem passed it vacuously — the
+    # same two-key map ADR 0018 moved out of `lockfile_present_and_tracked`,
+    # left standing in the assert next to it.
+    frozen_install: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -275,6 +294,10 @@ class Register:
     ecosystems: dict[str, Ecosystem] = field(default_factory=dict)
     stacks: dict[str, Stack] = field(default_factory=dict)
     suppression: tuple[str, ...] = ()
+    # Static cloud credentials SEC-002 forbids. A register fact from contract 8
+    # (ADR 0018's fourth pass): the ratified decision classified these as a
+    # register fact in the first place, and the move was never made (§ H4).
+    cloud_credentials: tuple[str, ...] = ()
 
     def gates(self, role: str) -> dict[str, Gate]:
         """Every stack's gate for `role`, keyed by stack name."""
@@ -658,12 +681,16 @@ class _Validator:
                 ):
                     self.error(f"{at}.sha256", "must be 64 lowercase hex characters")
                     continue
+                pinned_at = self._pinned_at(entry.get("pinned_at"), str(source), at)
+                if pinned_at is None:
+                    continue
                 tools[str(name)] = Tool(
                     name=str(name),
                     source=str(source),
                     version=tool_version.strip() if isinstance(tool_version, str) else None,
                     sha256=sha,
                     lockfile=str(lockfile) if isinstance(lockfile, str) else None,
+                    pinned_at=pinned_at,
                 )
         ecosystems: dict[str, Ecosystem] = {}
         ecosystems_raw = raw.get("ecosystems") or {}
@@ -685,6 +712,14 @@ class _Validator:
                     if any(not isinstance(x, str) for x in value):
                         self.error(f"{at}.{key}", "must contain only strings")
                         break
+                    # Compiled here rather than at first use: a pattern that
+                    # does not parse would otherwise be a crash mid-run, and one
+                    # that parses but is never reached is a control passing
+                    # vacuously — the failure this field was added to stop.
+                    if key == "frozen_install":
+                        broken = self._uncompilable(value, f"{at}.{key}")
+                        if broken:
+                            break
                     fields[key] = tuple(str(x) for x in value)
                 else:
                     ecosystems[str(name)] = Ecosystem(name=str(name), **fields)
@@ -705,6 +740,11 @@ class _Validator:
                 predicates[str(name)] = expr
         stacks = self._stacks(raw["stacks"], predicates) if "stacks" in raw else {}
         suppression = self._suppression(raw["suppression"]) if "suppression" in raw else ()
+        cloud_credentials = (
+            self._cloud_credentials(raw["cloud_credentials"])
+            if "cloud_credentials" in raw
+            else ()
+        )
         controls_raw = raw.get("controls")
         controls: list[Control] = []
         if not isinstance(controls_raw, list) or not controls_raw:
@@ -744,6 +784,7 @@ class _Validator:
             ecosystems=ecosystems,
             stacks=stacks,
             suppression=suppression,
+            cloud_credentials=cloud_credentials,
         )
 
     def _config_locations(self, raw: object, at: str) -> tuple[ConfigLocation, ...]:
@@ -913,6 +954,70 @@ class _Validator:
                             f"names '{name}', which {control.id} does not apply to "
                             f"({', '.join(control.applies_to)}) — the block could never run",
                         )
+
+    def _uncompilable(self, patterns: list[Any], at: str) -> bool:
+        """Report any entry that is not a valid regular expression."""
+        broken = False
+        for i, pattern in enumerate(patterns):
+            try:
+                re.compile(str(pattern))
+            except re.error as exc:
+                self.error(f"{at}[{i}]", f"is not a valid regular expression: {exc}")
+                broken = True
+        return broken
+
+    def _pinned_at(self, raw: object, source: str, at: str) -> tuple[str, ...] | None:
+        """The loci that repeat a `literal` tool's version. None on error.
+
+        Required under `source: literal` and rejected under `source: lockfile`,
+        which is the same asymmetry as `version:` and for the same reason: a
+        lockfile-sourced tool has no version at any locus to keep in step, so a
+        list of loci here would describe repetitions that do not exist.
+
+        Required rather than optional because an empty list is indistinguishable
+        from a tool nobody pins, and "nothing was compared" reading as a pass is
+        the § A defect this field was moved out of the checker to stop.
+        """
+        if source == "lockfile":
+            if raw is not None:
+                self.error(
+                    f"{at}.pinned_at",
+                    "a lockfile-sourced tool has no version at any locus to keep in step, so "
+                    "there are no loci to list",
+                )
+                return None
+            return ()
+        if not isinstance(raw, list) or not raw:
+            self.error(
+                f"{at}.pinned_at",
+                "a literal tool must list every locus that repeats its version — the loci are "
+                "a property of the repository, not of the checker (ADR 0018)",
+            )
+            return None
+        sites: list[str] = []
+        for i, entry in enumerate(raw):
+            if not isinstance(entry, str) or not entry.strip():
+                self.error(f"{at}.pinned_at[{i}]", "must be a non-empty path")
+                return None
+            sites.append(entry.strip())
+        return tuple(sites)
+
+    def _cloud_credentials(self, raw: object) -> tuple[str, ...]:
+        """Secret names SEC-002 forbids a workflow from referencing."""
+        if not isinstance(raw, list) or not raw:
+            self.error(
+                "cloud_credentials",
+                "must be a non-empty list of credential names — an empty list is a control "
+                "that looks for nothing",
+            )
+            return ()
+        names: list[str] = []
+        for i, entry in enumerate(raw):
+            if not isinstance(entry, str) or not entry.strip():
+                self.error(f"cloud_credentials[{i}]", "must be a non-empty string")
+                continue
+            names.append(entry.strip())
+        return tuple(names)
 
     def _suppression(self, raw: object) -> tuple[str, ...]:
         """Patterns that count as swallowing a failure.

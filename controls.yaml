@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.7.0
+version: 0.8.0
 
 meta:
   owner: platform-engineering
@@ -31,7 +31,13 @@ meta:
   #    than a dictionary in the checker (ADR 0018). `suppression:` moved too.
   # 7: BLD-001 verifies its property for a devcontainer as well as a
   #    Dockerfile, and its verify blocks narrow to the shape each can read.
-  register_contract: 7
+  # 8: Three rules that decided verdicts move out of the checker, and SUP-001
+  #    stops naming two stacks. `tools.<tool>.pinned_at` records the loci that
+  #    repeat a literal version, `ecosystems.<name>.frozen_install` records what
+  #    installing from the lockfile looks like, and `cloud_credentials:` records
+  #    what SEC-002 forbids — the last of these named by ADR 0018's ratified
+  #    decision and never moved. See docs/09-phase-1.5-review.md § H.
+  register_contract: 8
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -63,6 +69,15 @@ tools:
   # would be a proposal `tool_versions_match_register` rejects. `renovate.json`
   # names this file first for that reason. Renovate is enabled for custom
   # managers only — Dependabot keeps the ecosystems it understands.
+  #
+  # `pinned_at` names those loci. It was a four-path tuple inside the checker
+  # until contract 8, which meant two things: renaming a workflow took it out of
+  # comparison with nothing reporting the loss, and an adopting repository was
+  # told its tools were "pinned at no known locus" against a list of *this*
+  # repository's filenames. Which files repeat a version is a property of the
+  # repository, so it answers *yes* to ADR 0018's test. A declared site that
+  # does not exist, or that holds no pin, is a failure — silence is what this
+  # field exists to stop being read as agreement.
   markdownlint-cli2:
     source: lockfile
     lockfile: package-lock.json
@@ -74,10 +89,16 @@ tools:
     # proposal carries that instruction in its body (renovate.json), and an
     # unrevised digest fails the install rather than passing it.
     sha256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    pinned_at:
+      - .devcontainer/setup.sh
+      - .github/workflows/standard-check.yml
   uv:
     source: literal
     # renovate: datasource=pypi depName=uv
     version: "0.12.5"
+    pinned_at:
+      - .devcontainer/setup.sh
+      - .github/workflows/standard-check.yml
 
 # ---------------------------------------------------------------------------
 # Package ecosystems, and what counts as a lockfile for each. ADR 0018: this
@@ -87,36 +108,71 @@ tools:
 # did not record it, no review and no `review_by` could surface it.
 # ---------------------------------------------------------------------------
 ecosystems:
+  # `frozen_install` is what CI installing from the lockfile *looks like* for
+  # this ecosystem, as regular expressions matched against a gating CI step.
+  # Added at contract 8. `ci-installs-frozen` held a two-entry map — python and
+  # node — so a repository with a `go.mod` was told "every CI install is frozen
+  # or exact-pinned" without one ever being checked. That is the same map ADR
+  # 0018 called the measured harm, in the assert beside the one it was moved out
+  # of (§ H3).
+  #
+  # The negative half — which commands *re-resolve* — stays in the checker with
+  # its reason recorded in ADR 0018: answering it means parsing a package
+  # manager's argument grammar, and argument grammars in the register make the
+  # register a program, which ADR 0018 rejected by name.
   python:
     manifest: [pyproject.toml]
     lockfiles: [uv.lock, poetry.lock, pdm.lock]
     dependabot: [uv, pip]
     test_commands: [pytest, tox, nox, "make test"]
+    frozen_install:
+      - '\buv sync\b[^\n]*--(?:frozen|locked)\b'
+      - '\bpip3? install\b[^\n]*-r\s+\S+'
+      - '\b(?:poetry|pdm) install\b[^\n]*--(?:sync|frozen|no-update|check)\b'
   node:
     manifest: [package.json]
     lockfiles: [package-lock.json, pnpm-lock.yaml, yarn.lock, bun.lockb]
     dependabot: [npm]
     test_commands: ["npm test", "npm run test", vitest, jest]
+    frozen_install:
+      - '\bnpm ci\b'
+      - '\byarn install\b[^\n]*--immutable\b'
+      - '\bpnpm install\b[^\n]*--frozen-lockfile\b'
   go:
     manifest: [go.mod]
     lockfiles: [go.sum]
     dependabot: [gomod]
     test_commands: ["go test"]
+    # `-mod=readonly` is the default from Go 1.16, and every build verifies
+    # `go.sum`, so an ordinary `go build` already resolves from the lockfile.
+    # Stated rather than assumed: a repo that never runs the toolchain in CI
+    # has not shown that anything reads its lockfile.
+    frozen_install:
+      - '\bgo mod download\b'
+      - '\bgo (?:build|test|install|vet)\b'
   rust:
     manifest: [Cargo.toml]
     lockfiles: [Cargo.lock]
     dependabot: [cargo]
     test_commands: ["cargo test"]
+    frozen_install:
+      - '\bcargo\b[^\n]*--(?:locked|frozen)\b'
   java:
     manifest: [pom.xml, build.gradle, build.gradle.kts]
     lockfiles: [gradle.lockfile, gradle/verification-metadata.xml]
     dependabot: [maven, gradle]
     test_commands: ["gradle test", "mvn test"]
+    frozen_install:
+      - '\b(?:\./)?gradlew?\b[^\n]*--offline\b'
+      - '\bmvn\b[^\n]*(?:--offline|-o)\b'
   ruby:
     manifest: [Gemfile, "*.gemspec"]
     lockfiles: [Gemfile.lock]
     dependabot: [bundler]
     test_commands: [rspec, "bundle exec rspec", "rake test"]
+    frozen_install:
+      - '\bbundle install\b[^\n]*--(?:deployment|frozen)\b'
+      - '\bbundle config\b[^\n]*frozen[^\n]*true'
 
 # ---------------------------------------------------------------------------
 # Per-stack gate tools. ADR 0018: which linter a repository mandates, where its
@@ -182,6 +238,29 @@ stacks:
         strict_key: strict
         config:
           - {file: tsconfig.json, section: compilerOptions}
+
+# ---------------------------------------------------------------------------
+# The static cloud credentials SEC-002 forbids in a workflow. ADR 0018's
+# ratified decision named "cloud-key names" among the rules that move here, and
+# the move never landed: the list stayed a seven-name tuple in the checker
+# through three implementation passes, mentioned in none of them and reasoned
+# nowhere, while the criterion recording ADR 0018 as implemented was ticked
+# (§ H4). A repository on a cloud this list has not heard of is a repository
+# where SEC-002 passes by not knowing the name of the thing it is looking for.
+#
+# Matching is case-insensitive and treats `-` and `_` alike, because the same
+# credential is `AWS_ACCESS_KEY_ID` as an env var and `aws-access-key-id:` as an
+# action input. That spelling equivalence is detection implementation and stays
+# in the checker (ADR 0018).
+# ---------------------------------------------------------------------------
+cloud_credentials:
+  - AWS_ACCESS_KEY_ID
+  - AWS_SECRET_ACCESS_KEY
+  - GOOGLE_APPLICATION_CREDENTIALS
+  - GCP_SA_KEY
+  - SERVICE_ACCOUNT_KEY
+  - AZURE_CLIENT_SECRET
+  - AZURE_CREDENTIALS
 
 # ---------------------------------------------------------------------------
 # What counts as swallowing a failure. ADR 0018: a house idiom this list does
@@ -291,7 +370,14 @@ controls:
     tier: 1
     rung: blocking
     locus: [ci]
-    applies_to: [python, typescript]
+    # `always`, not `[python, typescript]`. Naming two stacks re-created inside
+    # the register the exemption ADR 0018 moved out of the checker: the register
+    # defines six ecosystems, and a Go, Rust, Java or Ruby repository skipped
+    # this control rather than being verified by it (§ H3). Which ecosystems a
+    # repository is in is detected from `ecosystems:` by the asserts below, and
+    # a repository with no package manager at all passes on that finding rather
+    # than on a predicate that never looked.
+    applies_to: [always]
     verify:
       - kind: file
         assert: lockfile_present_and_tracked
