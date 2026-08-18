@@ -162,7 +162,7 @@ def test_typecheck_strict_and_blocking(tmp_path: Path) -> None:
             ".github/workflows/ci.yml": _workflow("uv run mypy"),
         },
     )
-    assert typecheck_strict_and_blocking(strict, a_register(), {}).passed
+    assert typecheck_strict_and_blocking(strict, a_register(), {"role": "typecheck"}).passed
     lax = make_repo(
         tmp_path / "b",
         {
@@ -174,7 +174,7 @@ def test_typecheck_strict_and_blocking(tmp_path: Path) -> None:
             ".github/workflows/ci.yml": _workflow("uv run mypy"),
         },
     )
-    result = typecheck_strict_and_blocking(lax, a_register(), {})
+    result = typecheck_strict_and_blocking(lax, a_register(), {"role": "typecheck"})
     assert not result.passed
     assert "strict" in result.message
 

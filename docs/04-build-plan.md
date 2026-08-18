@@ -441,7 +441,7 @@ below — not this table — track that.
 | `main` was unprotected, so every blocking gate was bypassable | [ADR 0015](adr/0015-interim-branch-discipline.md) — **Superseded** by [ADR 0008](adr/0008-protected-default-branch.md) 2026-08-17, never ratified | Closed by enforcement rather than by convention: the ruleset makes CI-001 mechanical, so the proposed stopgap was redundant before it was decided |
 | Whether `SKIPPED (no credentials)` should leave a non-zero exit, a distinct exit code, or a warning | [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) — **Accepted** 2026-08-17, not yet implemented | Decided: exit `3` for a run with no violation but something it could not verify, `1` for a verified violation, `0` only when every applicable control was verified, and `--require-complete` promotes `3` to `1`. Predicate skips stay `0`. Phase 2's gates inherit these semantics, so the code follows before they are written |
 | How a partially-implemented control reports its own incompleteness | [ADR 0017](adr/0017-partial-verification-is-reported.md) — **Accepted** 2026-08-17, not yet implemented | Decided: the register — not the checker — declares a verification block partially implemented with an expiry, and the report renders the computed verdict plus a `partial:` line. The schema addition carries a `register_contract` bump, so it lands before Phase 2's skills read that contract |
-| Which verdict-deciding rules belong in the register and which are legitimately the checker's business | [ADR 0018](adr/0018-register-checker-boundary.md) — **Accepted** 2026-08-17, not yet implemented | Decided by one test: could a reasonable EE repository need this to differ without changing the checker? Yes → the register (mandated tools, lockfile ecosystems, test-command spellings, cloud-key names, Dependabot ecosystems, suppression patterns). No → the checker, with a recorded reason (predicate grammar, ID pattern, semver strictness, `rationale_adr` existence, the Tier-1 baseline rule). The move batches into ADR 0017's `register_contract` bump |
+| Which verdict-deciding rules belong in the register and which are legitimately the checker's business | [ADR 0018](adr/0018-register-checker-boundary.md) — **Accepted** 2026-08-17, **implemented** over contracts 3, 5 and 6 | Decided by one test: could a reasonable EE repository need this to differ without changing the checker? Yes → the register (mandated tools, lockfile ecosystems, test-command spellings, cloud-key names, Dependabot ecosystems, suppression patterns). No → the checker, with a recorded reason (predicate grammar, ID pattern, semver strictness, `rationale_adr` existence, the Tier-1 baseline rule). The move batches into ADR 0017's `register_contract` bump |
 
 ### Carried debt — recorded, not gating
 
@@ -637,17 +637,24 @@ below — not this table — track that.
       implemented, 0015 Superseded by 0008 without ever being ratified, 0016,
       0017 and 0018 Accepted 2026-08-17 and not yet implemented. Ratification is
       not implementation — the criteria above and below carry that
-- [ ] [ADR 0018](adr/0018-register-checker-boundary.md) is **implemented**, not
+- [x] [ADR 0018](adr/0018-register-checker-boundary.md) is **implemented**, not
       merely accepted — the rules its test moves are in the register, the rules
       that stay carry a recorded reason in the ADR, and SUP-001's lockfile
       ecosystems are register facts, so a Go, Rust or Java repo no longer passes
-      it with no lockfile at all. **First pass done 2026-08-17**: `ecosystems:`
-      and `tools:` are register sections, asserts take the register, and the
-      rules that stayed are tabulated with reasons in the ADR. Outstanding: the
-      mandated tool names and their per-locus evidence — ruff, eslint, mypy,
-      pytest, the `charliermarsh.ruff` extension ID, the test-command spellings
-      and the suppression patterns — which need per-stack tool roles modelled
-      before they can move
+      it with no lockfile at all. Three passes: `ecosystems:` and `tools:` at
+      contract 3, DOC-001's ceiling and extension id at contract 5, and at
+      **contract 6** the item this criterion was left open for — the mandated
+      tool names and their per-locus evidence. They needed a model, and the
+      model is `stacks:`, keyed by predicate, each stack carrying `gates:` keyed
+      by role. `tool`, `invocation`, `config` (with a `section` inside the file,
+      because `pyproject.toml` existing says nothing about ruff), `pre_commit`,
+      `editor_extension` and `strict_key` are all register facts now, as is the
+      `suppression:` idiom set. `tests/test_stacks.py` is the evidence the move
+      is real rather than cosmetic: every case edits **only** `controls.yaml`
+      and asserts the verdict changes with it — a repository wired end to end
+      for `flake8` fails today and passes once the register says `flake8`. The
+      validator also rejects a stack naming no predicate, and a control
+      declaring a locus its gate cannot express
 - [x] ADR 0017 is **implemented**, not merely accepted — the register can
       declare a verification block partially implemented, with an expiry date
       and a named unverified property; GOV-001 carries that declaration instead

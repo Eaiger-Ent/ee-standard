@@ -12,7 +12,7 @@ import datetime
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import yaml
 
@@ -51,6 +51,8 @@ _DOCUMENT_ALLOWED = (
     "meta",
     "tools",
     "ecosystems",
+    "stacks",
+    "suppression",
     "predicates",
     "controls",
     "meta_controls",
@@ -58,6 +60,14 @@ _DOCUMENT_ALLOWED = (
 _TOOL_ALLOWED = ("source", "version", "sha256", "lockfile")
 _TOOL_SOURCES = ("lockfile", "literal")
 _ECOSYSTEM_ALLOWED = ("manifest", "lockfiles", "dependabot", "test_commands")
+_STACK_ALLOWED = ("gates",)
+_GATE_ALLOWED = ("tool", "invocation", "pre_commit", "editor_extension", "strict_key", "config")
+_GATE_REQUIRED = ("tool", "invocation", "config")
+_CONFIG_ALLOWED = ("file", "section")
+# The roles a gate can play. Closed, and a property of the register format
+# rather than of any repository: a role the checker has no assert for could not
+# be verified however well it were declared (ADR 0018).
+_GATE_ROLES = ("lint", "typecheck")
 _METADATA_ALLOWED = ("owner", "register_contract")
 _STANDARD_ALLOWED = ("name", "url")
 _BLOCK_ALLOWED = ("kind", "run", "assert", "args", "partial")
@@ -167,6 +177,58 @@ class Ecosystem:
 
 
 @dataclass(frozen=True)
+class ConfigLocation:
+    """Where a gate tool's configuration may live.
+
+    `section` names a table within the file. A file existing is not the same as
+    the tool being configured in it — `pyproject.toml` is present in every
+    Python repository and says nothing about ruff until `[tool.ruff]` is.
+    """
+
+    file: str
+    section: str | None = None
+
+
+@dataclass(frozen=True)
+class Gate:
+    """A tool that enforces one control for one stack, and how each locus runs it.
+
+    A register fact from contract 6 (ADR 0018). Which linter is mandated, where
+    its configuration lives, which editor extension serves it and how CI invokes
+    it all answer *yes* to the boundary test: a reasonable Equal Experts
+    repository could need any of them to differ without the checker changing.
+    They were a dictionary inside the checker, so "the standard mandates ruff"
+    was a fact no reviewer could find and no `review_by` could surface.
+
+    `pre_commit` and `editor_extension` are optional in the schema but not in
+    practice: the validator requires whichever the controls that use this role
+    declare in their `locus:`, so a control claiming an editor locus cannot rest
+    on a gate that names no extension.
+    """
+
+    role: str
+    tool: str
+    invocation: str
+    config: tuple[ConfigLocation, ...]
+    pre_commit: str | None = None
+    editor_extension: str | None = None
+    strict_key: str | None = None
+
+
+@dataclass(frozen=True)
+class Stack:
+    """A technology stack, detected by the predicate its name refers to.
+
+    Keyed by predicate so that a control's `applies_to: [python, typescript]`
+    and the stacks below are the same statement made once, evaluated against
+    files and never self-declared.
+    """
+
+    name: str
+    gates: dict[str, Gate]
+
+
+@dataclass(frozen=True)
 class Control:
     id: str
     title: str
@@ -205,6 +267,14 @@ class Register:
     meta_controls: tuple[MetaControl, ...]
     tools: dict[str, Tool] = field(default_factory=dict)
     ecosystems: dict[str, Ecosystem] = field(default_factory=dict)
+    stacks: dict[str, Stack] = field(default_factory=dict)
+    suppression: tuple[str, ...] = ()
+
+    def gates(self, role: str) -> dict[str, Gate]:
+        """Every stack's gate for `role`, keyed by stack name."""
+        return {
+            name: stack.gates[role] for name, stack in self.stacks.items() if role in stack.gates
+        }
 
     def control(self, control_id: str) -> Control | MetaControl | None:
         for control in self.controls:
@@ -592,6 +662,8 @@ class _Validator:
                     self.error(f"predicates.{name}", str(exc))
                     continue
                 predicates[str(name)] = expr
+        stacks = self._stacks(raw["stacks"], predicates) if "stacks" in raw else {}
+        suppression = self._suppression(raw["suppression"]) if "suppression" in raw else ()
         controls_raw = raw.get("controls")
         controls: list[Control] = []
         if not isinstance(controls_raw, list) or not controls_raw:
@@ -615,6 +687,7 @@ class _Validator:
             if control_id in seen:
                 self.error("controls", f"duplicate control id '{control_id}'")
             seen.add(control_id)
+        self._gates_cover_declared_loci(controls, stacks)
         if self.errors:
             return None
         return Register(
@@ -627,7 +700,176 @@ class _Validator:
             meta_controls=tuple(meta_controls),
             tools=tools,
             ecosystems=ecosystems,
+            stacks=stacks,
+            suppression=suppression,
         )
+
+    def _config_locations(self, raw: object, at: str) -> tuple[ConfigLocation, ...]:
+        if not isinstance(raw, list) or not raw:
+            self.error(at, "must be a non-empty list of {file, section?} mappings")
+            return ()
+        found: list[ConfigLocation] = []
+        for i, entry in enumerate(raw):
+            here = f"{at}[{i}]"
+            if not isinstance(entry, dict):
+                self.error(here, "must be a mapping")
+                continue
+            self._unknown_keys(entry, _CONFIG_ALLOWED, here)
+            file = entry.get("file")
+            if not isinstance(file, str) or not file.strip():
+                self.error(f"{here}.file", "must name a configuration file")
+                continue
+            section = entry.get("section")
+            if section is not None and (not isinstance(section, str) or not section.strip()):
+                self.error(f"{here}.section", "must be a non-empty string when present")
+                continue
+            found.append(ConfigLocation(file=file, section=section))
+        return tuple(found)
+
+    def _gate(self, raw: object, role: str, at: str) -> Gate | None:
+        if not isinstance(raw, dict):
+            self.error(at, "must be a mapping")
+            return None
+        self._unknown_keys(raw, _GATE_ALLOWED, at)
+        for key in _GATE_REQUIRED:
+            if key not in raw:
+                self.error(f"{at}.{key}", "is required")
+                return None
+        strings: dict[str, str] = {}
+        for key in ("tool", "invocation"):
+            value = raw.get(key)
+            if not isinstance(value, str) or not value.strip():
+                self.error(f"{at}.{key}", "must be a non-empty string")
+                return None
+            strings[key] = value.strip()
+        optional: dict[str, str | None] = {}
+        for key in ("pre_commit", "editor_extension", "strict_key"):
+            value = raw.get(key)
+            if value is None:
+                optional[key] = None
+                continue
+            if not isinstance(value, str) or not value.strip():
+                self.error(f"{at}.{key}", "must be a non-empty string when present")
+                return None
+            optional[key] = value.strip()
+        config = self._config_locations(raw.get("config"), f"{at}.config")
+        if not config:
+            return None
+        return Gate(
+            role=role,
+            tool=strings["tool"],
+            invocation=strings["invocation"],
+            config=config,
+            pre_commit=optional["pre_commit"],
+            editor_extension=optional["editor_extension"],
+            strict_key=optional["strict_key"],
+        )
+
+    def _stacks(self, raw: object, predicates: dict[str, bool | str]) -> dict[str, Stack]:
+        """Per-stack gate tools, keyed by the predicate that detects the stack."""
+        if not isinstance(raw, dict):
+            self.error("stacks", "must be a mapping of stack name to its gates")
+            return {}
+        stacks: dict[str, Stack] = {}
+        for name, entry in raw.items():
+            at = f"stacks.{name}"
+            # The key is the predicate. A stack nothing can detect is a stack
+            # that never applies, which is theme T-3 in the register itself.
+            if str(name) not in predicates:
+                self.error(at, f"names no predicate — known: {', '.join(sorted(predicates))}")
+                continue
+            if not isinstance(entry, dict):
+                self.error(at, "must be a mapping")
+                continue
+            self._unknown_keys(entry, _STACK_ALLOWED, at)
+            gates_raw = entry.get("gates")
+            if not isinstance(gates_raw, dict) or not gates_raw:
+                self.error(f"{at}.gates", "must be a non-empty mapping of role to gate")
+                continue
+            gates: dict[str, Gate] = {}
+            for role, gate_raw in gates_raw.items():
+                here = f"{at}.gates.{role}"
+                if str(role) not in _GATE_ROLES:
+                    self.error(here, f"must be one of {', '.join(_GATE_ROLES)}")
+                    continue
+                gate = self._gate(gate_raw, str(role), here)
+                if gate is not None:
+                    gates[str(role)] = gate
+            if gates:
+                stacks[str(name)] = Stack(name=str(name), gates=gates)
+        return stacks
+
+    # Which gate field each locus is verified through. A control declaring a
+    # locus that its gate cannot express is the T-3 shape the register exists to
+    # stop: declared, and unverifiable by construction.
+    _LOCUS_FIELD: ClassVar[dict[str, str]] = {
+        "editor": "editor_extension",
+        "pre-commit": "pre_commit",
+    }
+
+    def _gates_cover_declared_loci(
+        self, controls: list[Control], stacks: dict[str, Stack]
+    ) -> None:
+        """Every locus a role-driven control declares is expressible by its gates.
+
+        Checked here, once, rather than at every run: a control claiming an
+        `editor` locus while its gate names no extension would otherwise either
+        fail every repository or — worse — be quietly skipped, and which of those
+        happened would depend on how the assert was written.
+        """
+        for control in controls:
+            roles = {
+                str(block.args["role"])
+                for block in control.verify
+                if isinstance(block.args.get("role"), str)
+            }
+            for role in sorted(roles):
+                for stack_name in control.applies_to:
+                    stack = stacks.get(stack_name)
+                    if stack is None:
+                        continue  # `always`, or a predicate with no gate tooling
+                    at = f"stacks.{stack_name}.gates.{role}"
+                    gate = stack.gates.get(role)
+                    if gate is None:
+                        self.error(
+                            at,
+                            f"is missing, but {control.id} applies to '{stack_name}' and "
+                            f"verifies through role '{role}'",
+                        )
+                        continue
+                    for locus in control.locus:
+                        field_name = self._LOCUS_FIELD.get(locus)
+                        if field_name and getattr(gate, field_name) is None:
+                            self.error(
+                                f"{at}.{field_name}",
+                                f"is required: {control.id} declares a '{locus}' locus, "
+                                "which is verified through this field",
+                            )
+
+    def _suppression(self, raw: object) -> tuple[str, ...]:
+        """Patterns that count as swallowing a failure.
+
+        Validated as regular expressions here rather than at first use: a
+        pattern that does not compile would otherwise surface as a crash in the
+        middle of a run, and the failure mode of a suppression list that silently
+        matches nothing is a green report over a suppressed gate.
+        """
+        if not isinstance(raw, list) or not raw:
+            self.error("suppression", "must be a non-empty list of regular expressions")
+            return ()
+        patterns: list[str] = []
+        for i, entry in enumerate(raw):
+            at = f"suppression[{i}]"
+            if not isinstance(entry, str) or not entry.strip():
+                self.error(at, "must be a non-empty string")
+                continue
+            try:
+                re.compile(entry)
+            except re.error as exc:
+                self.error(at, f"is not a valid regular expression: {exc}")
+                continue
+            patterns.append(entry)
+        return tuple(patterns)
 
 
 def load_register(path: Path) -> tuple[Register | None, list[SchemaError]]:

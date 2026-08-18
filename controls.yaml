@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.5.0
+version: 0.6.0
 
 meta:
   owner: platform-engineering
@@ -25,7 +25,11 @@ meta:
   # 5: DOC-001's file block verifies what its `enforces` says — the 250-char
   #    ceiling and all three loci — where it previously asserted only that a
   #    configuration file existed.
-  register_contract: 5
+  # 6: LNT-001 and TYP-001 verify through a `role:` naming a gate in the new
+  #    `stacks:` section, so the mandated tools, their config locations, their
+  #    pre-commit hooks and their editor extensions are register facts rather
+  #    than a dictionary in the checker (ADR 0018). `suppression:` moved too.
+  register_contract: 6
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -111,6 +115,86 @@ ecosystems:
     lockfiles: [Gemfile.lock]
     dependabot: [bundler]
     test_commands: [rspec, "bundle exec rspec", "rake test"]
+
+# ---------------------------------------------------------------------------
+# Per-stack gate tools. ADR 0018: which linter a repository mandates, where its
+# configuration lives, which editor extension serves it and how CI invokes it
+# all answer *yes* to the boundary test — a reasonable Equal Experts repository
+# could need any of them to differ without the checker changing. Before this
+# section they were a dictionary inside the checker, so "the standard mandates
+# ruff" was a fact no reviewer could find and no `review_by` could surface.
+#
+# Keyed by predicate: a stack applies to a repository exactly when its predicate
+# does, evaluated against files and never self-declared. `applies_to` on a
+# control names the same predicates, so LNT-001 applying to `[python,
+# typescript]` and the two stacks below are the same statement made once.
+#
+# `config` lists where the tool's configuration may live. A `section` names a
+# table within the file — `tool.ruff` in TOML, `mypy` in INI, `compilerOptions`
+# in JSON — because a file existing is not the same as the tool being configured
+# in it. `strict_key` is a boolean inside that section which must be true.
+# Reading a boolean at a section path in TOML, INI or JSON is detection
+# implementation and stays in the checker (ADR 0018).
+#
+# `pre_commit` and `editor_extension` are optional to the schema and required in
+# fact: the validator demands whichever locus the controls using this role
+# declare, so a control claiming an `editor` locus cannot rest on a gate that
+# names no extension.
+# ---------------------------------------------------------------------------
+stacks:
+  python:
+    gates:
+      lint:
+        tool: ruff
+        invocation: ruff check
+        pre_commit: ruff
+        editor_extension: charliermarsh.ruff
+        config:
+          - {file: pyproject.toml, section: tool.ruff}
+          - {file: ruff.toml}
+          - {file: .ruff.toml}
+      typecheck:
+        tool: mypy
+        invocation: mypy
+        pre_commit: mypy
+        strict_key: strict
+        config:
+          - {file: pyproject.toml, section: tool.mypy}
+          - {file: mypy.ini, section: mypy}
+          - {file: .mypy.ini, section: mypy}
+          - {file: setup.cfg, section: mypy}
+  typescript:
+    gates:
+      lint:
+        tool: eslint
+        invocation: eslint
+        pre_commit: eslint
+        editor_extension: dbaeumer.vscode-eslint
+        config:
+          - {file: eslint.config.*}
+          - {file: .eslintrc*}
+      typecheck:
+        tool: tsc
+        invocation: tsc
+        pre_commit: tsc
+        strict_key: strict
+        config:
+          - {file: tsconfig.json, section: compilerOptions}
+
+# ---------------------------------------------------------------------------
+# What counts as swallowing a failure. ADR 0018: a house idiom this list does
+# not know is a suppression that goes undetected, and adding one strengthens
+# detection — so the set belongs where it can be reviewed rather than inside
+# `no_failure_suppression`. `|| :` is the terse spelling of `|| true`, and its
+# absence from the checker's original set is what let the commonest short idiom
+# through (§ D).
+# ---------------------------------------------------------------------------
+suppression:
+  - '\|\|\s*true\b'
+  - '\|\|\s*:\s*(?:$|[;&|])'
+  - '\|\|\s*exit 0\b'
+  - '\bset \+e\b'
+  - '--exit-zero\b'
 
 predicates:
   always: true
@@ -373,6 +457,11 @@ controls:
     verify:
       - kind: file
         assert: linter-wired-at-all-loci
+        # `role` selects the gate under each applicable stack in `stacks:`. The
+        # tool, its config locations, its pre-commit hook and its editor
+        # extension are read from there, so mandating a different linter is a
+        # register change and not a checker change (ADR 0018).
+        args: { role: lint }
       - kind: file
         assert: no-failure-suppression
     owner: platform-engineering
@@ -399,6 +488,7 @@ controls:
     verify:
       - kind: file
         assert: typecheck-strict-and-blocking
+        args: { role: typecheck }
     owner: platform-engineering
     variance: narrowing-only
     baseline: null
