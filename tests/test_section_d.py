@@ -152,7 +152,7 @@ def test_typ_001_blanket_override_switches_strict_off(tmp_path: Path) -> None:
             ".github/workflows/ci.yml": _wf("      - run: uv run mypy\n"),
         },
     )
-    result = typecheck_strict_and_blocking(repo, a_register(), {})
+    result = typecheck_strict_and_blocking(repo, a_register(), {"role": "typecheck"})
     assert not result.passed
     assert "every module" in result.message
 
@@ -245,7 +245,7 @@ def test_lint_via_pre_commit_run_all_files(tmp_path: Path) -> None:
             ".github/workflows/ci.yml": _wf("      - run: pre-commit run --all-files\n"),
         },
     )
-    result = linter_wired_at_all_loci(repo, a_register(), {})
+    result = linter_wired_at_all_loci(repo, a_register(), {"role": "lint"})
     assert result.passed, result.message
 
 
@@ -262,7 +262,7 @@ def test_editor_locus_via_vscode_extensions(tmp_path: Path) -> None:
             ".github/workflows/ci.yml": _wf("      - run: uv run ruff check .\n"),
         },
     )
-    assert linter_wired_at_all_loci(repo, a_register(), {}).passed
+    assert linter_wired_at_all_loci(repo, a_register(), {"role": "lint"}).passed
 
 
 def test_mypy_configured_in_its_own_file(tmp_path: Path) -> None:
@@ -278,7 +278,7 @@ def test_mypy_configured_in_its_own_file(tmp_path: Path) -> None:
             ".github/workflows/ci.yml": _wf("      - run: uv run mypy\n"),
         },
     )
-    result = typecheck_strict_and_blocking(repo, a_register(), {})
+    result = typecheck_strict_and_blocking(repo, a_register(), {"role": "typecheck"})
     assert result.passed, result.message
 
 

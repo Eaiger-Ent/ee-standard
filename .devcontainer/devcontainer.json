@@ -34,9 +34,12 @@
 
   "customizations": {
     "vscode": {
-      // LNT-001's editor locus: ruff in the editor reads the same
-      // [tool.ruff] configuration that pre-commit and CI read.
-      "extensions": ["charliermarsh.ruff"],
+      // The editor locus, for the two controls that declare one. Each reads
+      // the same configuration pre-commit and CI read — pin once, reference
+      // many, rather than an editor with rules of its own.
+      //   LNT-001 — ruff, from [tool.ruff] in pyproject.toml
+      //   DOC-001 — markdownlint, from .markdownlint.yaml
+      "extensions": ["charliermarsh.ruff", "DavidAnson.vscode-markdownlint"],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh"
       }

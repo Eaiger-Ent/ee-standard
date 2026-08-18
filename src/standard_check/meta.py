@@ -9,7 +9,7 @@ from __future__ import annotations
 import datetime
 import re
 
-from standard_check.asserts_command import _SUPPRESSION, _workflow_steps
+from standard_check.asserts_command import _suppression_match, _workflow_steps
 from standard_check.register import Control, MetaControl, Register
 from standard_check.repo import Repo, git
 from standard_check.runner import Verdict, applies
@@ -47,7 +47,7 @@ def _invocation(word: str) -> re.Pattern[str]:
     return re.compile(rf"(?:^\s*|[;&|(]\s*)(?:\S+\s+run\s+)?{re.escape(word)}(?![-\w])", re.M)
 
 
-def _reaches(control: Control, run: str) -> bool:
+def _reaches(control: Control, run: str, register: Register) -> bool:
     """Whether this CI step verifies `control`.
 
     A control is reached by a step that runs one of its external tools, or that
@@ -58,7 +58,7 @@ def _reaches(control: Control, run: str) -> bool:
     verified only by file asserts (SUP-002, DEV-001) had no token at all and
     were unreachable by construction.
     """
-    if _SUPPRESSION.search(run):
+    if _suppression_match(register, run):
         return False
     for block in control.verify:
         if block.kind == "command" and block.run and _invocation(block.run.split()[0]).search(run):
@@ -80,7 +80,7 @@ def gov_001(register: Register, repo: Repo) -> tuple[Verdict, str]:
         step for step in _workflow_steps(repo) if step.run and not step.suppressed
     ]
     full_run = any(
-        _FULL_RUN.search(step.run) and not _SUPPRESSION.search(step.run)
+        _FULL_RUN.search(step.run) and not _suppression_match(register, step.run)
         for step in clean_steps
     )
     unreachable = []
@@ -91,7 +91,7 @@ def gov_001(register: Register, repo: Repo) -> tuple[Verdict, str]:
             continue
         if full_run:
             continue
-        if not any(_reaches(control, step.run) for step in clean_steps):
+        if not any(_reaches(control, step.run, register) for step in clean_steps):
             unreachable.append(control.id)
     if unreachable:
         return Verdict.FAIL, (

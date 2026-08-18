@@ -6,10 +6,11 @@
 Ratified decision from
 [`04-build-plan.md`](../04-build-plan.md) § Phase 1.5 § Decisions required.
 
-**Not yet implemented.** Acceptance settles the test and what it classifies, not
-the code: every rule listed below is still in Python, SUP-001 still exempts Go,
-Rust and Java by accident, and the register has no field for any of it. Phase
-1.5's exit criteria track that work.
+**Implemented** over three passes, at register contracts 3, 5 and 6 — see the
+*Applied* sections below. Every rule the test moves is now in `controls.yaml`,
+and every rule that stayed carries its reason here. Acceptance settled the test
+and what it classifies; these sections record what was actually moved, which is
+the part a reader can check.
 
 ## Background
 
@@ -141,6 +142,23 @@ Asserts now take the register as well as the repository. An assert that cannot
 read the register has nowhere to read a register-owned rule from, which is how
 the checker became a second source of truth in the first place.
 
+### Applied — second pass, register contract 5
+
+| Rule | Where it lives now | Why |
+| --- | --- | --- |
+| DOC-001's 250-character ceiling, its tool name, and its editor extension id | Register, in the verify block's `args:` | All three answer *yes*: a repo may tighten the ceiling under `narrowing-only`, and neither the tool nor the editor is a property of the register format |
+
+This pass also establishes **where** a per-control tool fact goes: the verify
+block's `args:`, beside the assert that reads it, rather than a new top-level
+section. The assert keeps only the shape — that the ceiling may narrow and never
+widen, and that every locus the control declares must be wired — which is a
+property of the control, not of any repository.
+
+It is the smallest instance of the *Not yet applied* item below, and deliberately
+so. DOC-001 has one tool and one extension, so it needed no per-stack model to
+move; taking it first gives the larger move a worked precedent to copy instead of
+a design argued in the abstract.
+
 ### Staying in the checker — with reasons
 
 | Rule | Why it is not a register fact |
@@ -150,15 +168,44 @@ the checker became a second source of truth in the first place.
 | `AAA-NNN` / `GOV-NNN` ID patterns, semver strictness, `rationale_adr` existence, the Tier-1 baseline rule | Properties of the register *format*, not of any repository. A repo needing them to differ is asking for a different standard |
 | Reading YAML, walking workflow steps, parsing `pyproject.toml` | Implementation of detection, not the rule being detected |
 
-### Not yet applied
+### Applied — third pass, register contract 6
 
-The mandated tool names and their per-locus evidence — ruff, eslint, mypy,
-pytest, the `charliermarsh.ruff` extension ID, the test-command spellings and
-the suppression patterns — are still in the checker. They answer *yes* to the
-test and belong in the register; moving them means modelling per-stack tool
-roles and their evidence at each locus, which is a larger design than the two
-cases above and is tracked as its own exit criterion rather than being quietly
-dropped from this list.
+The item this section previously listed as *not yet applied* — the mandated tool
+names and their per-locus evidence — is done. It needed a model, and the model
+is a `stacks:` section keyed by predicate, each stack carrying `gates:` keyed by
+role:
+
+| Rule | Where it lives now | Why |
+| --- | --- | --- |
+| Which linter and type checker are mandated (`ruff`, `eslint`, `mypy`, `tsc`) | Register, `stacks.<stack>.gates.<role>.tool` | The plainest *yes* on the list. A repository mandating `flake8` is exercising an ordinary variance, not asking for a different checker |
+| How CI invokes each | `…gates.<role>.invocation` | Same argument; `ruff check` and `ruff` are different commands and either could be a house choice |
+| Where each tool's configuration may live | `…gates.<role>.config`, as `{file, section}` | `mypy.ini` versus `[tool.mypy]` is a repository's choice. `section` exists because a file being present is not the tool being configured in it — `pyproject.toml` is in every Python repository and says nothing about ruff until `[tool.ruff]` is |
+| Which key turns strictness on | `…gates.<role>.strict_key` | Belongs to the tool, and the tool is now a register fact, so it travels with it |
+| The editor extension id and the pre-commit hook id | `…gates.<role>.editor_extension`, `…pre_commit` | The `charliermarsh.ruff` id this section previously named. A repository on a different editor needs a different id and no new checker |
+| What counts as swallowing a failure | Register, `suppression:` | A house idiom the checker has not heard of is a suppression that goes undetected, and adding a pattern strengthens detection. The set has to be reviewable |
+
+Two consequences worth stating, because both are load-bearing.
+
+**A stack is keyed by the predicate that detects it.** `applies_to: [python,
+typescript]` on a control and the two stacks are then the same statement made
+once, evaluated against files and never self-declared. A stack keyed on an
+unknown predicate is a schema error: a stack nothing can detect never applies,
+which is theme T-3 inside the register.
+
+**The validator cross-checks loci against gates.** If a control declares an
+`editor` locus and an applicable stack's gate names no `editor_extension`, the
+register is rejected. Without that, a control could claim a locus its gate had
+no way to verify, and whether that failed every repository or was quietly
+skipped would depend on how the assert happened to be written — which is the
+class of defect this ADR exists to remove, not an instance of it to tolerate.
+
+### Still staying in the checker — the second-pass and third-pass additions
+
+| Rule | Why it is not a register fact |
+| --- | --- |
+| Reading a boolean at a section path in TOML, INI, JSON or YAML | Detection implementation. The register says *where* and *which key*; how a `.ini` is parsed is not a repository's business |
+| `[[tool.mypy.overrides]]` blanket-override detection | The shape of one tool's own configuration format. It is keyed on the register's tool name rather than assumed, so a repository mandating a different checker has no such table read against it |
+| The closed set of gate roles (`lint`, `typecheck`) | A property of the register format: a role the checker has no assert for could not be verified however well it were declared |
 
 ## Consequences
 

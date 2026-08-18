@@ -15,8 +15,17 @@ it, so an unparseable register means no control is enforced.
 | `meta.owner` | yes | string | Team accountable for the register as a whole. |
 | `meta.register_contract` | yes | integer | Bumped **only** when a change alters what gets deployed. Drives staleness detection. |
 | `predicates` | yes | map | Stack predicates, evaluated against the repo. |
+| `tools` | no | map | Pinned tool versions and their authority — see [`tools`](#tools). |
+| `ecosystems` | no | map | Package ecosystems: manifests, lockfiles, Dependabot spellings, test commands. |
+| `stacks` | no | map | Per-stack gate tools — see [`stacks`](#stacks). |
+| `suppression` | no | list | Regular expressions that count as swallowing a failure. |
 | `controls` | yes | list | The controls. |
 | `meta_controls` | yes | list | Controls that check the register itself. |
+
+Unknown keys are rejected at every level — document, `meta`, control,
+`standard`, `also_see` entry, verify block and `partial`. A field the validator
+accepts and ignores is a field that silently does nothing, which is how
+`also_see` came to carry external URLs that nothing checked.
 
 ### `meta.register_contract`
 
@@ -160,9 +169,98 @@ exists to remove. Under `source: literal` the version lives here and each locus
 repeats it; those repetitions carry a `# renovate:` annotation so a bot updates
 them together, and `tool_versions_match_register` fails the build if one drifts.
 
+The annotation is written above the `version:` line here as well as at each
+locus, because the register is the authority: a proposal that moved the loci and
+left this table behind is one `tool_versions_match_register` rejects. The
+annotations are only worth writing if something reads them — a repository
+carrying them without the bot installed has a mechanism on paper and none in
+fact, which is what `docs/04-build-plan.md` § G records.
+
 Prefer `lockfile`. It is the only option that eliminates duplication rather than
 reconciling it, and it is available whenever the tool is installable from an
 ecosystem the repo already locks.
+
+### `stacks`
+
+Per-stack gate tools: which linter and type checker a stack mandates, and how
+each locus runs them. A register fact per
+[ADR 0018](adr/0018-register-checker-boundary.md) — a repository may mandate a
+different linter without the checker changing.
+
+```yaml
+stacks:
+  python:                       # the key IS a predicate name
+    gates:
+      lint:                     # role: lint | typecheck
+        tool: ruff
+        invocation: ruff check  # matched as an invocation in a gating CI step
+        pre_commit: ruff        # hook id or entry substring
+        editor_extension: charliermarsh.ruff
+        config:
+          - {file: pyproject.toml, section: tool.ruff}
+          - {file: ruff.toml}
+      typecheck:
+        tool: mypy
+        invocation: mypy
+        pre_commit: mypy
+        strict_key: strict      # a boolean in the section, which must be true
+        config:
+          - {file: pyproject.toml, section: tool.mypy}
+          - {file: mypy.ini, section: mypy}
+```
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `tool` | yes | The mandated tool's name, used in messages. |
+| `invocation` | yes | How CI runs it. Matched as an invocation, not a substring. |
+| `config` | yes | Where its configuration may live, most specific first. |
+| `pre_commit` | no | Hook id or entry substring at the pre-commit locus. |
+| `editor_extension` | no | Extension id, found in `devcontainer.json` **or** `.vscode/extensions.json`. |
+| `strict_key` | no | A boolean inside the matched section that must be true. |
+
+**The key is a predicate.** A stack applies exactly when its predicate does, so
+`applies_to: [python, typescript]` on a control and the stacks of those names are
+the same statement made once. A stack naming no predicate is a schema error: a
+stack nothing can detect never applies, which is theme T-3 inside the register.
+
+**`section` is not optional decoration.** A file being present is not the tool
+being configured in it — `pyproject.toml` exists in every Python repository and
+says nothing about ruff until `[tool.ruff]` does. A location with no `section`
+counts as configured by existing, which is right for a file that exists only to
+configure one tool.
+
+**`pre_commit` and `editor_extension` are optional to the schema and required in
+fact.** The validator demands whichever locus the controls using that role
+declare: if a control lists an `editor` locus and an applicable stack's gate
+names no extension, the register is rejected. Without that check a control could
+claim a locus its gate had no way to verify, and whether that failed every
+repository or was silently skipped would depend on how the assert was written.
+
+A control reaches its gate through the verify block's `args`:
+
+```yaml
+      - kind: file
+        assert: linter-wired-at-all-loci
+        args: { role: lint }
+```
+
+### `suppression`
+
+Regular expressions that count as swallowing a failure, used by
+`no-failure-suppression` and by GOV-001's reachability test.
+
+```yaml
+suppression:
+  - '\|\|\s*true\b'
+  - '\|\|\s*:\s*(?:$|[;&|])'
+```
+
+Each is compiled at schema time, so a pattern that does not parse is a schema
+error rather than a crash mid-run. Adding a pattern **strengthens** detection, so
+a house idiom belongs here rather than in the checker — `|| :`, the terse
+spelling of `|| true`, was missing from the checker's original set and let the
+commonest short idiom through. Omit the section and the checker falls back to a
+built-in set: an old register should detect something rather than nothing.
 
 ### `variance`
 

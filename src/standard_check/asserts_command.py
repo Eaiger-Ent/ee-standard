@@ -16,10 +16,15 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from standard_check.asserts_file import AssertFn, AssertResult, _fail, _ok
+from standard_check.predicates import compile_predicate
 from standard_check.repo import Repo, load_jsonc
 
 if TYPE_CHECKING:  # `register` imports the assert registries — importing it
-    from standard_check.register import Register  # at runtime would be circular
+    from standard_check.register import (  # at runtime would be circular
+        ConfigLocation,
+        Gate,
+        Register,
+    )
 
 
 @dataclass(frozen=True)
@@ -337,61 +342,146 @@ def _devcontainer_extensions(repo: Repo) -> list[str]:
     return found
 
 
-def _pyproject(repo: Repo) -> dict[str, Any]:
-    if not repo.exists("pyproject.toml"):
-        return {}
-    return tomllib.loads(repo.read("pyproject.toml"))
+def _read_section(repo: Repo, location: ConfigLocation) -> dict[str, Any] | None:
+    """The mapping a config location points at, or None if it is not there.
+
+    Which file and which section are register facts; knowing that a `.toml` is
+    read with tomllib, an `.ini` with configparser and a `.json` with the JSONC
+    reader is detection implementation and stays here (ADR 0018). A file with no
+    `section` counts as configured by existing — `ruff.toml` is ruff's config
+    whatever is inside it.
+    """
+    matches = [location.file] if repo.exists(location.file) else repo.glob_basename(location.file)
+    for path in matches:
+        try:
+            if path.endswith((".toml",)):
+                doc: Any = tomllib.loads(repo.read(path))
+            elif path.endswith((".ini", ".cfg")):
+                parser = configparser.ConfigParser()
+                parser.read_string(repo.read(path))
+                doc = {name: dict(parser[name]) for name in parser.sections()}
+            elif path.endswith((".json", ".jsonc")):
+                doc = load_jsonc(repo.root / path)
+            else:
+                doc = yaml.safe_load(repo.read(path))
+        except (OSError, ValueError, configparser.Error, yaml.YAMLError, tomllib.TOMLDecodeError):
+            continue
+        if location.section is None:
+            return doc if isinstance(doc, dict) else {}
+        for key in location.section.split("."):
+            if not isinstance(doc, dict) or key not in doc:
+                doc = None
+                break
+            doc = doc[key]
+        if isinstance(doc, dict):
+            return doc
+    return None
+
+
+def _configured(repo: Repo, gate: Gate) -> dict[str, Any] | None:
+    """The first config location that actually configures this gate's tool."""
+    for location in gate.config:
+        section = _read_section(repo, location)
+        if section is not None:
+            return section
+    return None
+
+
+def _truthy_setting(value: object) -> bool:
+    """A boolean as TOML, JSON, YAML or INI spell it."""
+    return value is True or (isinstance(value, str) and value.strip().lower() == "true")
+
+
+def _applicable_gates(repo: Repo, register: Register, role: str) -> dict[str, Gate]:
+    """Gates for `role` whose stack predicate this repository satisfies."""
+    return {
+        name: gate
+        for name, gate in register.gates(role).items()
+        if compile_predicate(register.predicates.get(name, False))(repo)
+    }
+
+
+def _wired_problems(repo: Repo, stack: str, gate: Gate) -> list[str]:
+    """Where this gate is not wired, across the loci it names."""
+    problems = []
+    if _configured(repo, gate) is None:
+        locations = ", ".join(
+            loc.file + (f" [{loc.section}]" if loc.section else "") for loc in gate.config
+        )
+        problems.append(f"{stack}: no {gate.tool} configuration ({locations})")
+    if gate.editor_extension and gate.editor_extension not in _devcontainer_extensions(repo):
+        problems.append(
+            f"{stack}: editor locus — no editor configuration installs {gate.editor_extension}"
+        )
+    if gate.pre_commit and not _hook_mentions(repo, gate.pre_commit):
+        problems.append(f"{stack}: pre-commit locus — no {gate.pre_commit} hook")
+    if not _ci_run_mentions(
+        repo, rf"\b{re.escape(gate.invocation)}\b", hook=gate.pre_commit
+    ):
+        problems.append(f"{stack}: ci locus — no gating step runs {gate.invocation}")
+    return problems
 
 
 def linter_wired_at_all_loci(
     repo: Repo,
-    _register: Register,
-    _args: Mapping[str, object],
+    register: Register,
+    args: Mapping[str, object],
 ) -> AssertResult:
-    problems = []
-    if repo.exists("pyproject.toml"):
-        has_config = "ruff" in _pyproject(repo).get("tool", {}) or any(
-            repo.exists(p) for p in ("ruff.toml", ".ruff.toml")
-        )
-        if not has_config:
-            problems.append("python: no ruff configuration")
-        if "charliermarsh.ruff" not in _devcontainer_extensions(repo):
-            problems.append(
-                "python: editor locus — devcontainer does not install the ruff extension"
-            )
-        if not _hook_mentions(repo, "ruff"):
-            problems.append("python: pre-commit locus — no ruff hook")
-        if not _ci_run_mentions(repo, r"\bruff check\b", hook="ruff"):
-            problems.append("python: ci locus — no step runs ruff check")
-    if repo.exists("tsconfig.json"):
-        has_config = any(repo.glob_basename(p) for p in ("eslint.config.*", ".eslintrc*"))
-        if not has_config:
-            problems.append("typescript: no eslint configuration")
-        if "dbaeumer.vscode-eslint" not in _devcontainer_extensions(repo):
-            problems.append(
-                "typescript: editor locus — devcontainer does not install the eslint extension"
-            )
-        if not _hook_mentions(repo, "eslint"):
-            problems.append("typescript: pre-commit locus — no eslint hook")
-        if not _ci_run_mentions(repo, r"\beslint\b", hook="eslint"):
-            problems.append("typescript: ci locus — no step runs eslint")
+    """The mandated linter is configured once and wired at every declared locus.
+
+    Which linter, where its configuration lives, its pre-commit hook id and its
+    editor extension id all come from the register's `stacks:` (ADR 0018). They
+    were a checker-side dictionary knowing ruff and eslint, so "the standard
+    mandates ruff" was a decision no reviewer could find.
+    """
+    role = str(args.get("role", ""))
+    if role not in ("lint", "typecheck"):
+        return _fail("assert requires a 'role' argument naming a gate in the register")
+    gates = _applicable_gates(repo, register, role)
+    if not gates:
+        return _ok("no stack with a linter gate is present")
+    problems = [
+        problem
+        for stack, gate in sorted(gates.items())
+        for problem in _wired_problems(repo, stack, gate)
+    ]
     if problems:
         return _fail("; ".join(problems))
-    return _ok("linter wired at editor, pre-commit and ci from one configuration")
+    tools = ", ".join(sorted(gate.tool for gate in gates.values()))
+    return _ok(f"{tools} wired at every declared locus from one configuration")
 
 
-# `|| :` is the terse spelling of `|| true` — `:` is the shell no-op builtin, and
-# it was outside the set, so the commonest short idiom for swallowing a failure
-# went undetected (§ D).
-_SUPPRESSION = re.compile(
-    r"\|\|\s*true\b|\|\|\s*:\s*(?:$|[;&|])|\|\|\s*exit 0\b|\bset \+e\b|--exit-zero\b",
-    re.MULTILINE,
+# The set moved into the register at contract 6 (ADR 0018): a house idiom the
+# checker has not heard of is a suppression that goes undetected, and adding one
+# strengthens detection rather than weakening it. `|| :` is the terse spelling of
+# `|| true` — `:` is the shell no-op builtin — and its absence from the original
+# checker-side set is what let the commonest short idiom through (§ D).
+#
+# The fallback exists so an older register still detects something rather than
+# nothing: a register with no `suppression:` would otherwise make every
+# suppressed step invisible, which is the direction of error this control exists
+# to catch.
+_DEFAULT_SUPPRESSION = (
+    r"\|\|\s*true\b",
+    r"\|\|\s*:\s*(?:$|[;&|])",
+    r"\|\|\s*exit 0\b",
+    r"\bset \+e\b",
+    r"--exit-zero\b",
 )
+
+
+def _suppression_match(register: Register, text: str) -> str | None:
+    """The first suppression idiom found in `text`, if any."""
+    for pattern in register.suppression or _DEFAULT_SUPPRESSION:
+        match = re.search(pattern, text, re.MULTILINE)
+        if match:
+            return match.group(0)
+    return None
 
 
 def no_failure_suppression(
     repo: Repo,
-    _register: Register,
+    register: Register,
     _args: Mapping[str, object],
 ) -> AssertResult:
     problems = []
@@ -399,39 +489,33 @@ def no_failure_suppression(
         if step.suppressed:
             target = step.run.strip().splitlines()[0] if step.run.strip() else step.uses
             problems.append(f"{step.path} ({step.job}): continue-on-error on '{target}'")
-        if match := _SUPPRESSION.search(step.run):
-            problems.append(f"{step.path} ({step.job}): '{match.group(0)}' in run")
+        if match := _suppression_match(register, step.run):
+            problems.append(f"{step.path} ({step.job}): '{match}' in run")
     if problems:
         return _fail("; ".join(problems))
     return _ok("no CI step suppresses a failure")
 
 
-def _ini_mypy_strict(repo: Repo) -> bool:
-    """mypy configured in its own file rather than in `pyproject.toml`.
+def _blanket_overrides(repo: Repo, gate: Gate) -> list[str]:
+    """Overrides that switch checking off for everything, after enabling it.
 
-    Only `[tool.mypy]` was read, so a repo configuring mypy in `mypy.ini` or
-    `setup.cfg` — both supported by mypy itself — failed a control it satisfied
-    (§ D).
+    `[[tool.mypy.overrides]]` is the shape of one tool's own configuration
+    format, so it stays in the checker (ADR 0018) — but keyed on the register's
+    tool name rather than assumed, because a repository that mandates a
+    different type checker has no such table to read.
     """
-    for path, section in ((".mypy.ini", "[mypy]"), ("mypy.ini", "[mypy]"), ("setup.cfg", "[mypy]")):
-        if not repo.exists(path):
-            continue
-        parser = configparser.ConfigParser()
-        try:
-            parser.read_string(repo.read(path))
-        except configparser.Error:
-            continue
-        if parser.has_section(section.strip("[]")) and parser.getboolean(
-            section.strip("[]"), "strict", fallback=False
-        ):
-            return True
-    return False
-
-
-def _blanket_mypy_overrides(repo: Repo) -> list[str]:
-    """Overrides that switch checking off for everything, wherever they live."""
+    if gate.tool != "mypy" or not repo.exists("pyproject.toml"):
+        return []
+    try:
+        overrides = (
+            tomllib.loads(repo.read("pyproject.toml"))
+            .get("tool", {})
+            .get("mypy", {})
+            .get("overrides", [])
+        )
+    except (OSError, tomllib.TOMLDecodeError):
+        return []
     problems: list[str] = []
-    overrides = _pyproject(repo).get("tool", {}).get("mypy", {}).get("overrides", [])
     if isinstance(overrides, list):
         for override in overrides:
             if not isinstance(override, dict):
@@ -453,37 +537,44 @@ def _blanket_mypy_overrides(repo: Repo) -> list[str]:
 
 def typecheck_strict_and_blocking(
     repo: Repo,
-    _register: Register,
-    _args: Mapping[str, object],
+    register: Register,
+    args: Mapping[str, object],
 ) -> AssertResult:
-    problems = []
-    if repo.exists("pyproject.toml"):
-        mypy_config = _pyproject(repo).get("tool", {}).get("mypy", {})
-        strict = mypy_config.get("strict") is True or _ini_mypy_strict(repo)
-        if not strict:
-            problems.append("python: mypy strict mode is not set")
-        # `strict = true` alongside a blanket override that ignores errors is
-        # not strict typing — it is strict typing switched off in a second
-        # place. TYP-001's title forbids a per-file opt-out and nothing read
-        # the overrides (§ D).
-        problems.extend(f"python: {o}" for o in _blanket_mypy_overrides(repo))
-        if not _hook_mentions(repo, "mypy"):
-            problems.append("python: pre-commit locus — no mypy hook")
-        mypy_steps = [s for s in _workflow_steps(repo) if re.search(r"\bmypy\b", s.run)]
-        if not mypy_steps:
-            problems.append("python: ci locus — no step runs mypy")
-        elif any(s.suppressed or _SUPPRESSION.search(s.run) for s in mypy_steps):
-            problems.append("python: the mypy CI step suppresses its failure")
-    if repo.exists("tsconfig.json"):
-        config = load_jsonc(repo.root / "tsconfig.json")
-        options = config.get("compilerOptions", {}) if isinstance(config, dict) else {}
-        if not (isinstance(options, dict) and options.get("strict") is True):
-            problems.append("typescript: compilerOptions.strict is not true")
-        if not _ci_run_mentions(repo, r"\btsc\b", hook="tsc"):
-            problems.append("typescript: ci locus — no step runs tsc")
+    """The mandated type checker is strict, wired, and its exit code is the verdict.
+
+    Which checker, where its configuration lives and which key turns strictness
+    on are register facts (ADR 0018). `strict_key` is read from whichever config
+    location actually configures the tool, so `mypy.ini` and `[tool.mypy]` are
+    the same statement rather than one of them being invisible (§ D).
+    """
+    role = str(args.get("role", ""))
+    if role not in ("lint", "typecheck"):
+        return _fail("assert requires a 'role' argument naming a gate in the register")
+    gates = _applicable_gates(repo, register, role)
+    if not gates:
+        return _ok("no stack with a type-checking gate is present")
+
+    problems: list[str] = []
+    for stack, gate in sorted(gates.items()):
+        problems.extend(_wired_problems(repo, stack, gate))
+        section = _configured(repo, gate)
+        if section is not None and gate.strict_key:
+            if not _truthy_setting(section.get(gate.strict_key)):
+                problems.append(f"{stack}: {gate.tool} {gate.strict_key} mode is not set")
+            # Strict alongside a blanket override that ignores errors is not
+            # strict typing — it is strict typing switched off in a second
+            # place, which TYP-001's title forbids and nothing read (§ D).
+            problems.extend(f"{stack}: {o}" for o in _blanket_overrides(repo, gate))
+        steps = [s for s in _workflow_steps(repo) if re.search(
+            rf"\b{re.escape(gate.invocation)}\b", s.run)]
+        if steps and any(
+            s.suppressed or _suppression_match(register, s.run) for s in steps
+        ):
+            problems.append(f"{stack}: the {gate.tool} CI step suppresses its failure")
     if problems:
         return _fail("; ".join(problems))
-    return _ok("type checking is strict and blocks in CI")
+    tools = ", ".join(sorted(gate.tool for gate in gates.values()))
+    return _ok(f"{tools} runs in strict mode and blocks in CI")
 
 
 _DEFAULT_TEST_COMMANDS = (
@@ -554,11 +645,135 @@ def tests_run_and_block(
             )
         return _fail("no CI step runs the test command")
     absorbed = [
-        f"{s.path} ({s.job})" for s in test_steps if s.suppressed or _SUPPRESSION.search(s.run)
+        f"{s.path} ({s.job})"
+        for s in test_steps
+        if s.suppressed or _suppression_match(register, s.run)
     ]
     if absorbed:
         return _fail("the test step's exit code is absorbed: " + "; ".join(absorbed))
     return _ok("the test command runs in CI and its exit code is the verdict")
+
+
+_MARKDOWNLINT_CONFIGS = (
+    ".markdownlint.yaml",
+    ".markdownlint.yml",
+    ".markdownlint.jsonc",
+    ".markdownlint.json",
+    ".markdownlint-cli2.yaml",
+    ".markdownlint-cli2.jsonc",
+)
+
+# markdownlint's own default when the rule is enabled but unconfigured. A repo
+# that never names a ceiling still has one, and it is tighter than any register
+# value we would set — which `narrowing-only` permits.
+_MARKDOWNLINT_DEFAULT_LINE_LENGTH = 80
+
+
+def _markdownlint_rules(repo: Repo) -> tuple[str, dict[str, Any]] | None:
+    """The rule set, from whichever of the six config spellings holds it.
+
+    A `.markdownlint-cli2.*` file wraps its rules in a `config:` key; the plain
+    `.markdownlint.*` files are the rules themselves.
+    """
+    for path in _MARKDOWNLINT_CONFIGS:
+        if path not in repo.tracked:
+            continue
+        text = repo.read(path)
+        doc = load_jsonc(repo.root / path) if path.endswith(("json", "jsonc")) else yaml.safe_load(
+            text
+        )
+        if not isinstance(doc, dict):
+            continue
+        if "markdownlint-cli2" in path:
+            nested = doc.get("config")
+            if not isinstance(nested, dict):
+                continue  # a cli2 file holding only `ignores:` is not the rule set
+            return path, nested
+        return path, doc
+    return None
+
+
+def _line_length_ceiling(rules: Mapping[str, Any]) -> int | str:
+    """The effective MD013 ceiling, or a sentence saying why there is none.
+
+    Both spellings are accepted because markdownlint accepts both: `MD013` is
+    the rule id and `line-length` its alias, and a config using the alias is no
+    less configured for it.
+    """
+    md013: Any = None
+    for key in ("MD013", "line-length"):
+        if key in rules:
+            md013 = rules[key]
+            break
+    if md013 is False:
+        return "the line-length rule (MD013) is switched off"
+    if md013 is None:
+        if rules.get("default") is False:
+            return "MD013 is not enabled and `default: false` leaves it off"
+        return _MARKDOWNLINT_DEFAULT_LINE_LENGTH
+    if not isinstance(md013, dict):
+        return _MARKDOWNLINT_DEFAULT_LINE_LENGTH  # `MD013: true` — enabled, unconfigured
+    for key in ("line_length", "line-length"):
+        value = md013.get(key)
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+    return _MARKDOWNLINT_DEFAULT_LINE_LENGTH
+
+
+def markdown_gate_wired_at_all_loci(
+    repo: Repo,
+    _register: Register,
+    args: Mapping[str, object],
+) -> AssertResult:
+    """DOC-001's `enforces`, verified rather than assumed.
+
+    The assert this replaces checked only that a configuration file existed. A
+    config setting `line_length: 100000` passed it, and so did deleting the CI
+    step, the pre-commit hook or the editor extension — an existence check
+    standing in for a control about one rule set wired at three loci (§ A).
+
+    Every value a repository could reasonably need to differ comes from the
+    register's `args` (ADR 0018): the ceiling, the tool name and the editor
+    extension id. What stays here is the shape — that the ceiling must not be
+    loosened and that all three loci must be wired — which is a property of the
+    control, not of any repository.
+    """
+    tool = str(args.get("tool", ""))
+    extension = str(args.get("editor_extension", ""))
+    ceiling = args.get("max_line_length")
+    if not tool or not extension or not isinstance(ceiling, int):
+        return _fail(
+            "assert requires 'tool', 'editor_extension' and an integer "
+            "'max_line_length' argument from the register"
+        )
+
+    found = _markdownlint_rules(repo)
+    if found is None:
+        return _fail("no tracked markdownlint configuration file")
+    path, rules = found
+
+    problems: list[str] = []
+    effective = _line_length_ceiling(rules)
+    if isinstance(effective, str):
+        problems.append(f"{path}: {effective}")
+    elif effective > ceiling:
+        # `narrowing-only` — a repo may tighten below the register's number and
+        # may never raise above it (docs/00-concepts.md § Variance).
+        problems.append(
+            f"{path}: line length ceiling is {effective}, above the register's {ceiling}"
+        )
+    if extension not in _devcontainer_extensions(repo):
+        problems.append(f"editor locus — no editor configuration installs {extension}")
+    if not _hook_mentions(repo, tool):
+        problems.append(f"pre-commit locus — no {tool} hook")
+    if not _ci_run_mentions(repo, rf"\b{re.escape(tool)}\b", hook=tool):
+        problems.append(f"ci locus — no gating step runs {tool}")
+    if problems:
+        return _fail("; ".join(problems))
+    return _ok(
+        f"{path} caps lines at {effective} (register allows {ceiling}) and {tool} "
+        "is wired at editor, pre-commit and ci"
+    )
 
 
 COMMAND_ASSERTS: dict[str, AssertFn] = {
@@ -569,4 +784,5 @@ COMMAND_ASSERTS: dict[str, AssertFn] = {
     "no-failure-suppression": no_failure_suppression,
     "typecheck-strict-and-blocking": typecheck_strict_and_blocking,
     "tests-run-and-block": tests_run_and_block,
+    "markdown_gate_wired_at_all_loci": markdown_gate_wired_at_all_loci,
 }

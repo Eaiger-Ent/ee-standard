@@ -152,7 +152,7 @@ what Phase 1 delivered.
 | Defect | Now | Required |
 | --- | --- | --- |
 | GOV-002 cannot fail in CI. `_previous_content` falls back `origin/main` → `main` → `HEAD`, so once a growth is committed, "previous" *is* the grown file. Confirmed: growth uncommitted → FAIL; same growth committed → PASS | Catches dirty worktrees only | Compare against the default branch's merge-base, and fail closed when no comparison point exists |
-| DOC-001 asserts only that a config file exists. Confirmed: `line_length: 100000` plus a 1600-character line passes; deleting the CI step, the pre-commit hook or the editor hook also passes | Existence check | A `doc_gate_wired_at_all_loci` assert mirroring LNT-001's, plus an assertion on the ceiling the register names |
+| DOC-001 asserts only that a config file exists. Confirmed: `line_length: 100000` plus a 1600-character line passes; deleting the CI step, the pre-commit hook or the editor hook also passes | **Closed** at contract 5 — `markdown_gate_wired_at_all_loci` | A `doc_gate_wired_at_all_loci` assert mirroring LNT-001's, plus an assertion on the ceiling the register names |
 | A control whose tool is missing reports FAIL. `hadolint`, `checkov` and `tflint` are absent from this container, so any repo with a `Dockerfile` or a `.tf` gets "command not found" | "Cannot verify" is indistinguishable from "violates" | `UNCLASSIFIED` — the verdict already exists for exactly this |
 | GOV-001 derives reachability from a substring test, and any bare `standard-check` step short-circuits every control | `pip install standard-check` would mark all controls reachable | Match invocations, not substrings; see § Decisions for how loudly it should admit being partial |
 | `SKIPPED (no credentials)` leaves the exit code at 0 | CI is green while SEC-001's remote half and all of CI-001 are unverified | See § Decisions |
@@ -300,6 +300,15 @@ artefact stale by the definition in `00-concepts.md` — and the stamp format
 carries no contract number, so the documented noise control cannot be evaluated
 from a stamp at all.
 
+**Closed.** All five artefacts are stamped, the format now carries
+`register-contract:`, and each stamp records the hand-edits made since
+deployment — which is the amend's scope written down rather than remembered.
+The amend was raised on 2026-08-18 as
+[ee-skills-incubator#530](https://github.com/EqualExperts/ee-skills-incubator/issues/530),
+the fourth submission Phase 6 tracks. It is a submission, not a merge: until a
+maintainer ships it, re-running `lint-md` here still reverts the pins, so the
+deployment stays un-refreshable and Phase 6's criterion holds the follow-up.
+
 That last clause is a **Phase 5 dependency, not a cosmetic one**. Phase 5's first
 two exit criteria — a version bump must produce no redeployment recommendation, a
 contract bump must — are the whole noise argument expressed as a test, and
@@ -312,6 +321,124 @@ in `pyproject.toml` and `.claude/**` in the markdownlint config are what
 `00-concepts.md` names as weakening ("adding an ignore path"), applied to
 `narrowing-only` controls whose `baseline: null` the schema doc says means no
 exemptions are possible.
+
+**Closed by removal.** Both are gone, and the file behind them conforms. The
+count of four artefacts above was itself a consequence of the exclusion: there
+are five, and `.claude/hooks/md-lint.py` was invisible to a search that ruff had
+been told to skip. An exemption hides more than the rule it exempts.
+
+### G — Tool version reconciliation
+
+Closed at register contract 4, except for one part that turned out to rest on a
+tool nobody had checked was installed.
+
+**What holds now.** The register's `tools:` section records a `source` per tool
+rather than a bare version, because "the version exists in exactly one place" is
+not achievable — a tool installed by a package manager necessarily appears in
+that manager's manifest too. Two sources:
+
+| `source` | Meaning | Duplication | Here |
+| --- | --- | --- | --- |
+| `lockfile` | A package manager owns the version; every locus invokes the tool through it | **Eliminated** | `markdownlint-cli2`, via `package-lock.json` |
+| `literal` | Nothing owns it; the version lives in the register and each locus repeats it | Reconciled, not removed | `uv`, `gitleaks` |
+
+`markdownlint-cli2` went from five hand-kept pins to the manifest/lockfile pair
+that owns it. `uv` bootstraps the Python environment so it cannot come from it,
+and `gitleaks` is a release binary — neither has an ecosystem this repo locks.
+
+**The finding.** The `literal` half was written to rely on Renovate custom
+managers: a `# renovate: datasource=…` annotation above each literal, so one PR
+updates every site together. **Renovate is not installed on this repository** —
+no config, no bot pull requests. What *is* running is Dependabot (PR #1, bumping
+`actions/checkout`), and Dependabot has no equivalent of a custom manager: it
+updates ecosystems it recognises and will not touch `GITLEAKS_VERSION=8.30.1` in
+a shell script or `uv==0.12.5` in a workflow step.
+
+So the annotations are syntactically correct and currently inert. `uv` and
+`gitleaks` are held by exactly one mechanism — `tool_versions_match_register`
+failing the build when the copies disagree. That catches drift between loci; it
+does not propose the upgrade, so nobody is told when a new version ships.
+
+This is the same defect already recorded under § Carried debt as
+title-versus-mechanism drift: *"SUP-002's title is broader than what passes,
+since the npm and curl pins are precisely the two Dependabot cannot propose."*
+That entry predates this work and is now the live constraint rather than a
+footnote.
+
+**Actions, one of which must be chosen.** This is not deferrable past Phase 2:
+the shipped devcontainer template inherits whichever pattern is chosen, and
+every consumer repo in Phase 4 inherits it again.
+
+| Action | What it costs | What it buys |
+| --- | --- | --- |
+| **1. Install Renovate** on the org or this repo | An app installation and a `renovate.json`; optionally retires Dependabot so one bot runs | The annotations already written start working, with no further change. Cheapest path to a proposing mechanism |
+| **2. Adopt `mise`** — a `mise.toml` pinning `uv` and `gitleaks`, read by the devcontainer and by `jdx/mise-action` in CI | New tooling in the template, and a devcontainer feature to install it | Collapses both literals into one authority that a bot *can* update, and gives consumer repos a toolchain file rather than pins scattered through scripts. The answer that scales to Phase 4 |
+| **3. Accept it** | Nothing | The two tools stay drift-checked but never auto-proposed. Honest, provided SUP-002's title is narrowed to match, so the register stops claiming a coverage it does not have |
+
+Recommended: **1 now, 2 when the Phase 2 template is built.** Option 1 makes the
+existing annotations live for the cost of an install; option 2 is the shape the
+template should ship, because a consumer repo that pins tools inside `setup.sh`
+reproduces this problem in every repo that adopts the standard. Option 3 is only
+acceptable with the SUP-002 title change, because leaving the title as it stands
+is the register asserting a mechanism that is not running — theme **T-3** inside
+the register itself.
+
+**Chosen 2026-08-17: action 1**, with action 2 kept for the Phase 2 template as
+recommended. What that decision has and has not delivered:
+
+**Done — the configuration.** `renovate.json` exists at the repository root,
+enabling `custom.regex` and **nothing else**. Two custom managers read the
+`# renovate:` annotations: one for PyPI literals, one for GitHub-release
+literals with `extractVersionTemplate` stripping the tag's leading `v`. The
+register's own `tools:` table is annotated too and is named first among the
+managed files — it is the authority, so a proposal that bumped the loci and left
+it behind is a proposal `tool_versions_match_register` rejects. The gitleaks
+rule carries `prBodyNotes` telling the reviewer to update the four checksums the
+bot cannot compute; an unrevised checksum fails the install step rather than
+passing silently, which is the right direction but still a red build, so it is
+said in the PR body rather than left to be discovered.
+
+**Both bots run, and deliberately do not overlap.** Renovate covers only what
+Dependabot cannot see — the two version literals. Dependabot keeps the four
+package ecosystems it understands. Widening `enabledManagers` would duplicate
+every ecosystem proposal; retiring Dependabot before the Renovate install is
+confirmed would leave nothing proposing anything, which is the § G trap with the
+bots exchanged. `dependency_update_config_covers_all_ecosystems` was corrected
+to see this: a `renovate.json` narrowed to custom managers is no longer read as
+blanket coverage on the strength of its filename, and the repo would fail
+SUP-002 if `.github/dependabot.yml` were deleted while it stands.
+
+**Done — the check that the mechanism is not inert.** The § G failure was an
+annotation that was correct and read by nothing. A manager whose regex matched
+no line would fail in exactly the same silent way, so
+`tests/test_renovate_managers.py` compares the annotations, the manager patterns
+and the register against each other: every annotation is matched by some
+manager, every match extracts the version the register records, and every
+`literal` tool is annotated at the register **and** at every locus that pins it.
+The first of those failed on its first run — the annotations are indented inside
+a YAML mapping — which is the discrimination the test exists to prove.
+
+**Outstanding — the install itself.** The Renovate GitHub App has to be
+installed on `Eaiger-Ent` (or on this repository), which is a web-flow action no
+token here can perform. Until it is, `renovate.json` is a correct configuration
+that nothing reads — the same shape of inertness § G was written about, one
+level up. The two criteria this section gates therefore stay open.
+
+To close them:
+
+1. Install the app from <https://github.com/apps/renovate> onto `Eaiger-Ent`, or
+   onto `Eaiger-Ent/ee-standard` alone. Nothing else needs configuring — the
+   repository already holds the config the app reads.
+2. Wait for Renovate's **Dependency Dashboard** issue to appear. Its arrival is
+   the confirmation that the app is running, and it reports any error in
+   `renovate.json`, which is the one thing a local test cannot check.
+3. Confirm the dashboard lists `uv` and `gitleaks` under the custom managers. If
+   it does not, the managers matched nothing at the app's end and the criteria
+   stay open — an inert manager is the § G failure repeated, not a smaller
+   version of it.
+
+Then tick both boxes below, and narrow nothing: SUP-002's title becomes true at
+that point rather than needing a change.
 
 ### Decisions required before Phase 2
 
@@ -328,7 +455,7 @@ below — not this table — track that.
 | `main` was unprotected, so every blocking gate was bypassable | [ADR 0015](adr/0015-interim-branch-discipline.md) — **Superseded** by [ADR 0008](adr/0008-protected-default-branch.md) 2026-08-17, never ratified | Closed by enforcement rather than by convention: the ruleset makes CI-001 mechanical, so the proposed stopgap was redundant before it was decided |
 | Whether `SKIPPED (no credentials)` should leave a non-zero exit, a distinct exit code, or a warning | [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) — **Accepted** 2026-08-17, not yet implemented | Decided: exit `3` for a run with no violation but something it could not verify, `1` for a verified violation, `0` only when every applicable control was verified, and `--require-complete` promotes `3` to `1`. Predicate skips stay `0`. Phase 2's gates inherit these semantics, so the code follows before they are written |
 | How a partially-implemented control reports its own incompleteness | [ADR 0017](adr/0017-partial-verification-is-reported.md) — **Accepted** 2026-08-17, not yet implemented | Decided: the register — not the checker — declares a verification block partially implemented with an expiry, and the report renders the computed verdict plus a `partial:` line. The schema addition carries a `register_contract` bump, so it lands before Phase 2's skills read that contract |
-| Which verdict-deciding rules belong in the register and which are legitimately the checker's business | [ADR 0018](adr/0018-register-checker-boundary.md) — **Accepted** 2026-08-17, not yet implemented | Decided by one test: could a reasonable EE repository need this to differ without changing the checker? Yes → the register (mandated tools, lockfile ecosystems, test-command spellings, cloud-key names, Dependabot ecosystems, suppression patterns). No → the checker, with a recorded reason (predicate grammar, ID pattern, semver strictness, `rationale_adr` existence, the Tier-1 baseline rule). The move batches into ADR 0017's `register_contract` bump |
+| Which verdict-deciding rules belong in the register and which are legitimately the checker's business | [ADR 0018](adr/0018-register-checker-boundary.md) — **Accepted** 2026-08-17, **implemented** over contracts 3, 5 and 6 | Decided by one test: could a reasonable EE repository need this to differ without changing the checker? Yes → the register (mandated tools, lockfile ecosystems, test-command spellings, cloud-key names, Dependabot ecosystems, suppression patterns). No → the checker, with a recorded reason (predicate grammar, ID pattern, semver strictness, `rationale_adr` existence, the Tier-1 baseline rule). The move batches into ADR 0017's `register_contract` bump |
 
 ### Carried debt — recorded, not gating
 
@@ -385,7 +512,16 @@ below — not this table — track that.
       schema time: giving the register a shell would make every `run:` string an
       injection surface for no gain the register needs
 - [x] The `container` predicate and BLD-001's assert agree on what a Dockerfile is
-- [ ] DOC-001 verifies its three loci and the ceiling its `enforces` names
+- [x] DOC-001 verifies its three loci and the ceiling its `enforces` names —
+      `markdown_gate_wired_at_all_loci` replaces the existence check at register
+      contract 5. The ceiling may narrow and never widen, per the control's
+      `narrowing-only` variance, and all three declared loci are read. The
+      ceiling, the tool name and the editor extension id come from the verify
+      block's `args:` (ADR 0018, second pass) rather than from the checker. Its
+      first run failed this repository, correctly: DOC-001 declares an `editor`
+      locus and the devcontainer installed only `charliermarsh.ruff`, so the
+      locus had never been wired at all — a gap the existence check could not
+      have found
 - [x] The exit code distinguishes "no credentials" from "all clear", per
       [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) — `3` for
       unverified-but-no-violation, `1` for a verified violation, `0` only for a
@@ -442,28 +578,69 @@ below — not this table — track that.
       pre-commit mirror's `rev:`, which was a copy nothing compared. Register
       contract 4, because DOC-001's `verify` changed
 - [ ] The two remaining `literal` tools are reconciled by machine, not by a
-      human remembering. `uv` and `gitleaks` carry `# renovate:` annotations at
-      every site so one PR updates them together — **raised, not yet proven**:
-      no Renovate run has been observed updating them, and an annotation that
-      has never fired is a claim, not a mechanism
+      human remembering — **choice made 2026-08-17 (§ G action 1), config
+      landed, install outstanding**. `renovate.json` enables `custom.regex` only
+      and its two managers read the `# renovate:` annotations at the register
+      and at every locus; `tests/test_renovate_managers.py` proves the patterns
+      match rather than assuming it, which is the failure mode § G recorded.
+      What remains is not a decision but an act: the Renovate GitHub App must be
+      installed on the org or this repository, a web flow no token here can
+      perform. Until its Dependency Dashboard issue appears, the configuration
+      is correct and read by nothing, and the two tools stay drift-checked but
+      never auto-proposed
+- [ ] SUP-002's title matches what it verifies. It claims dependency updates are
+      proposed automatically, and for `uv` and `gitleaks` nothing proposes them
+      until the app above is installed. § G's action 1 is what makes the title
+      true; ticking this before the install would be the register asserting a
+      mechanism that is not running, which is theme T-3 inside the register
+      itself
 - [x] `variance: justified` is implementable or removed from the vocabulary, and
       `CLAUDE.md` lists whatever survives — **removed** at contract 3, with
       `free`. `justified`'s anti-loophole mechanism was that a weakening becomes
       a baseline entry, and the validator rejects any Tier-1 baseline, so it was
       structurally unreachable for both users. SUP-003 and IAC-001 are now
       `narrowing-only`, which is stricter, so nothing was loosened
-- [ ] Every `lint-md`-deployed artefact this repo has edited carries a
-      provenance stamp, and the amend submission against `lint-md` is raised
-- [ ] The stamp format carries the **register contract number**, not only the
+- [x] Every `lint-md`-deployed artefact this repo has edited carries a
+      provenance stamp, and the amend submission against `lint-md` is raised —
+      raised 2026-08-18 as
+      [ee-skills-incubator#530](https://github.com/EqualExperts/ee-skills-incubator/issues/530).
+      **Five** artefacts are stamped, not four:
+      `.markdownlint.yaml`, `.markdownlint-cli2.yaml`, `.github/workflows/lint.yml`,
+      `.claude/hooks/md-lint.py`, and — at the hook rather than at the top of the
+      file — `.pre-commit-config.yaml`, which holds hooks for five controls and
+      whose whole-file stamp would have claimed the other four. Each names the
+      hand-edits made since deployment, which is what gave the amend a written
+      scope rather than a remembered one. The submission proposes
+      `package-lock.json` as the single authority at every locus, a SHA-pinned
+      `actions/checkout`, and a `ruff`/`mypy --strict`-clean hook script
+- [x] The stamp format carries the **register contract number**, not only the
       register version, so Phase 5's first two criteria are evaluable from a
-      stamp. The one existing stamp reads `register: v0.1.0` against a v0.2.0
-      register and is corrected
-- [ ] The unrecorded weakening is closed: `extend-exclude = [".claude"]` in
+      stamp. Format is now
+      `ee-control: ID  ee-skill: name@version  register: vX.Y.Z  register-contract: N`
+      — the version moves for a typo in a comment, the contract only when what
+      gets deployed could differ, so a stamp carrying only the version goes
+      stale on every release and tells a reader nothing. `tests/test_provenance_stamps.py`
+      checks that every stamp parses, names a control the register defines, and
+      does not claim a contract the register has not reached. It deliberately
+      does **not** fail a stale stamp: staleness is a redeployment
+      recommendation, and a test that failed the build on one would be enforcing
+      redeployment, which "notify, never redeploy" rules out. Reporting the
+      stale-but-valid case stays Phase 5's sweep
+- [x] The unrecorded weakening is closed: `extend-exclude = [".claude"]` in
       `pyproject.toml` and `.claude/**` in the markdownlint config are either
       removed, or recorded in the register as the variance they are. A
       `narrowing-only` control with `baseline: null` admits no exemptions, so
       leaving them undeclared is the repository that authored the variance rule
-      breaking it
+      breaking it. **Removed, not recorded** — recording was not available: both
+      controls are Tier 1 with `baseline: null`, and the schema rejects a Tier-1
+      baseline, so there was no honest place to put an exemption. The exclusion
+      rested on "lint-md owns that file", which was already false in fact — this
+      repository edited it at `bd23bfb` — and it was hiding **eleven** LNT-001
+      violations. `.claude/hooks/md-lint.py` now conforms to ruff and to strict
+      mypy, which `[tool.mypy] files` was widened to cover, and its three paths
+      (clean file, unfixable file, missing file) were exercised after the
+      rewrite. It is also a **fifth** deployed artefact: § F counted four
+      because the exclusion made this one invisible to the count
 - [x] The register rejects unknown keys — at every level: document, `meta`,
       control, `standard`, `also_see` entry, verify block and `partial`. It
       immediately earned its place by surfacing `also_see`, a real field
@@ -474,17 +651,24 @@ below — not this table — track that.
       implemented, 0015 Superseded by 0008 without ever being ratified, 0016,
       0017 and 0018 Accepted 2026-08-17 and not yet implemented. Ratification is
       not implementation — the criteria above and below carry that
-- [ ] [ADR 0018](adr/0018-register-checker-boundary.md) is **implemented**, not
+- [x] [ADR 0018](adr/0018-register-checker-boundary.md) is **implemented**, not
       merely accepted — the rules its test moves are in the register, the rules
       that stay carry a recorded reason in the ADR, and SUP-001's lockfile
       ecosystems are register facts, so a Go, Rust or Java repo no longer passes
-      it with no lockfile at all. **First pass done 2026-08-17**: `ecosystems:`
-      and `tools:` are register sections, asserts take the register, and the
-      rules that stayed are tabulated with reasons in the ADR. Outstanding: the
-      mandated tool names and their per-locus evidence — ruff, eslint, mypy,
-      pytest, the `charliermarsh.ruff` extension ID, the test-command spellings
-      and the suppression patterns — which need per-stack tool roles modelled
-      before they can move
+      it with no lockfile at all. Three passes: `ecosystems:` and `tools:` at
+      contract 3, DOC-001's ceiling and extension id at contract 5, and at
+      **contract 6** the item this criterion was left open for — the mandated
+      tool names and their per-locus evidence. They needed a model, and the
+      model is `stacks:`, keyed by predicate, each stack carrying `gates:` keyed
+      by role. `tool`, `invocation`, `config` (with a `section` inside the file,
+      because `pyproject.toml` existing says nothing about ruff), `pre_commit`,
+      `editor_extension` and `strict_key` are all register facts now, as is the
+      `suppression:` idiom set. `tests/test_stacks.py` is the evidence the move
+      is real rather than cosmetic: every case edits **only** `controls.yaml`
+      and asserts the verdict changes with it — a repository wired end to end
+      for `flake8` fails today and passes once the register says `flake8`. The
+      validator also rejects a stack naming no predicate, and a control
+      declaring a locus its gate cannot express
 - [x] ADR 0017 is **implemented**, not merely accepted — the register can
       declare a verification block partially implemented, with an expiry date
       and a named unverified property; GOV-001 carries that declaration instead
@@ -541,6 +725,13 @@ fixed in both.
 - [ ] Gates and checker share one assert implementation — verified by there
       being one copy, not by comparing two
 - [ ] The devcontainer template builds, and DEV-001 passes against it
+- [ ] The template pins no tool version by hand. Every tool it installs is
+      either sourced from a lockfile the consumer repo already commits, or from
+      a single toolchain file (§ G's action 2) — never a literal inside
+      `setup.sh`. A template that scatters pins through a shell script
+      reproduces § G's problem in every repo that adopts the standard, and the
+      consumer has no `tool_versions_match_register` of their own until they
+      adopt the register too
 - [ ] Every SKILL.md passes preflight P1–P11
 - [ ] `standard-adopt` end-to-end on a scratch repo: plan → confirm → deploy →
       verify → commit, with the verify step genuinely able to fail

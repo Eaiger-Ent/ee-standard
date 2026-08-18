@@ -1,35 +1,61 @@
 #!/usr/bin/env python3
-import json, sys, subprocess, os
+# ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.5.0  register-contract: 5
+#
+# Deployed artefact — DOC-001's editor locus, as a PostToolUse hook. Hand-edited
+# since deployment: it invokes markdownlint-cli2 through npx from the repository
+# root so package-lock.json owns the version, it skips Claude's own memory
+# files, and it conforms to this repository's ruff and mypy rules rather than
+# sitting behind an exclusion. See docs/00-concepts.md § The provenance stamp.
+"""Lint (and auto-fix) a markdown file after Claude writes it."""
 
-d = json.load(sys.stdin)
-f = d.get('tool_input', {}).get('file_path', '')
+from __future__ import annotations
 
-if not f.endswith('.md') or not os.path.exists(f):
-    sys.exit(0)
+import json
+import subprocess
+import sys
+from pathlib import Path
 
-# Claude's auto-memory files (~/.claude/projects/*/memory/*.md) are managed
-# by Claude's memory system, not this repo's markdown conventions.
-memory_root = os.path.join(os.path.expanduser('~'), '.claude', 'projects')
-if f.startswith(memory_root) and f'{os.sep}memory{os.sep}' in f:
-    sys.exit(0)
+MARKDOWNLINT = ["npx", "--no-install", "markdownlint-cli2"]
 
-name = os.path.basename(f)
 
-# DOC-001's tool resolves from package-lock.json, so npx must run with the repo
-# root as cwd — this hook is invoked on files anywhere, including outside it.
-repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-mdl = ['npx', '--no-install', 'markdownlint-cli2']
+def main() -> int:
+    payload = json.load(sys.stdin)
+    target = payload.get("tool_input", {}).get("file_path", "")
+    if not target.endswith(".md"):
+        return 0
+    path = Path(target)
+    if not path.exists():
+        return 0
 
-# Auto-fix what markdownlint can repair on its own.
-subprocess.run([*mdl, '--fix', f], capture_output=True, cwd=repo_root)
+    # Claude's auto-memory files (~/.claude/projects/*/memory/*.md) are managed
+    # by Claude's memory system, not by this repo's markdown conventions.
+    memory_root = Path.home() / ".claude" / "projects"
+    if path.is_relative_to(memory_root) and "memory" in path.parts:
+        return 0
 
-# Re-check for anything that couldn't be auto-fixed.
-r = subprocess.run([*mdl, f], capture_output=True, text=True, cwd=repo_root)
-out = (r.stdout + r.stderr).strip()
+    # DOC-001's tool resolves from package-lock.json, so npx must run with the
+    # repository root as cwd — the hook fires on files anywhere, including
+    # outside it.
+    repo_root = Path(__file__).resolve().parents[2]
 
-if r.returncode != 0:
-    print(f'\n\n⚠ STOP: markdownlint [{name}] has unfixable errors — do not proceed until resolved.\n'
-          f'Fix each issue listed below by editing {f}, then re-save:\n\n{out}\n')
-    sys.exit(1)
-else:
-    print(f'markdownlint [{name}]: OK')
+    # Auto-fix what markdownlint can repair on its own, then re-check for what
+    # it cannot.
+    subprocess.run([*MARKDOWNLINT, "--fix", str(path)], capture_output=True, cwd=repo_root)
+    result = subprocess.run(
+        [*MARKDOWNLINT, str(path)], capture_output=True, text=True, cwd=repo_root
+    )
+    output = (result.stdout + result.stderr).strip()
+
+    if result.returncode != 0:
+        print(
+            f"\n\n⚠ STOP: markdownlint [{path.name}] has unfixable errors — "
+            f"do not proceed until resolved.\n"
+            f"Fix each issue listed below by editing {path}, then re-save:\n\n{output}\n"
+        )
+        return 1
+    print(f"markdownlint [{path.name}]: OK")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

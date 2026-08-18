@@ -136,6 +136,24 @@ def _required_update_ecosystems(repo: Repo, register: Register) -> dict[str, tup
     return required
 
 
+def _renovate_covers_ecosystems(config: object) -> bool:
+    """Whether a Renovate config proposes package-ecosystem updates at all.
+
+    Renovate covers every ecosystem it detects *by default*, but a config may
+    narrow `enabledManagers`. This repo does exactly that — Renovate is enabled
+    for `custom.regex` only, to update the two version literals Dependabot
+    cannot see, while Dependabot keeps the ecosystems it understands. Reading
+    the file's presence as blanket coverage would report a coverage that had
+    been switched off two lines further down.
+    """
+    if not isinstance(config, dict):
+        return True  # unparseable: fall back to the default, which is coverage
+    enabled = config.get("enabledManagers")
+    if not isinstance(enabled, list):
+        return True
+    return any(str(manager).removeprefix("custom.") != "regex" for manager in enabled)
+
+
 def dependency_update_config_covers_all_ecosystems(
     repo: Repo, register: Register, _args: Mapping[str, object]
 ) -> AssertResult:
@@ -147,12 +165,20 @@ def dependency_update_config_covers_all_ecosystems(
         config = load_jsonc(repo.root / renovate)
         if isinstance(config, dict) and config.get("enabled") is False:
             return _fail(f"{renovate} sets enabled: false — no updates are proposed")
-        return _ok(f"{renovate} present (covers all ecosystems by default)")
+        if _renovate_covers_ecosystems(config):
+            return _ok(f"{renovate} present (covers all ecosystems by default)")
+        # Narrowed to custom managers: it proposes the literals, not the
+        # ecosystems, so something else must still cover those.
     dependabot = next(
         (p for p in (".github/dependabot.yml", ".github/dependabot.yaml") if repo.exists(p)),
         None,
     )
     if dependabot is None:
+        if renovate is not None:
+            return _fail(
+                f"{renovate} enables custom managers only, so it proposes no package-ecosystem "
+                "updates, and there is no .github/dependabot.yml to cover them"
+            )
         return _fail("no dependency update configuration (.github/dependabot.yml or renovate)")
     config = yaml.safe_load(repo.read(dependabot))
     if not isinstance(config, dict):
@@ -308,25 +334,11 @@ def dockerfile_final_user_is_non_root(
     return _ok(f"final stage of {len(dockerfiles)} Dockerfile(s) is non-root")
 
 
-_MARKDOWNLINT_CONFIGS = (
-    ".markdownlint.yaml",
-    ".markdownlint.yml",
-    ".markdownlint.jsonc",
-    ".markdownlint.json",
-    ".markdownlint-cli2.yaml",
-    ".markdownlint-cli2.jsonc",
-)
-
-
-def markdownlint_config_present(
-    repo: Repo,
-    _register: Register,
-    _args: Mapping[str, object],
-) -> AssertResult:
-    found = [p for p in _MARKDOWNLINT_CONFIGS if p in repo.tracked]
-    if not found:
-        return _fail("no tracked markdownlint configuration file")
-    return _ok(f"markdownlint configuration present: {', '.join(found)}")
+# `markdownlint_config_present` lived here and asserted exactly what its name
+# said: that a file existed. DOC-001's `enforces` names a ceiling and three
+# loci, none of which it read, so `line_length: 100000` passed and so did
+# deleting the CI step (§ A). It is superseded by
+# `markdown_gate_wired_at_all_loci` in `asserts_command`, which reads all four.
 
 
 # Where a pinned tool version can appear. Each pattern captures the version, so
@@ -410,7 +422,6 @@ FILE_ASSERTS: dict[str, AssertFn] = {
     "devcontainer_lock_covers_all_features": devcontainer_lock_covers_all_features,
     "devcontainer_image_digest_pinned": devcontainer_image_digest_pinned,
     "dockerfile_final_user_is_non_root": dockerfile_final_user_is_non_root,
-    "markdownlint_config_present": markdownlint_config_present,
 }
 
 # Remote assert names are part of the closed set from Phase 1 so a typo is a

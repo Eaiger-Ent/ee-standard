@@ -8,6 +8,7 @@ from conftest import a_register, make_repo
 from standard_check.asserts_command import (
     actions_pinned_to_sha,
     ci_installs_frozen,
+    markdown_gate_wired_at_all_loci,
     no_failure_suppression,
     no_static_cloud_keys,
     typecheck_strict_and_blocking,
@@ -15,6 +16,7 @@ from standard_check.asserts_command import (
 from standard_check.asserts_command import (
     tests_run_and_block as check_tests_run_and_block,  # aliased: pytest would collect the name
 )
+from standard_check.repo import Repo
 
 _SHA = "a" * 40
 
@@ -160,7 +162,7 @@ def test_typecheck_strict_and_blocking(tmp_path: Path) -> None:
             ".github/workflows/ci.yml": _workflow("uv run mypy"),
         },
     )
-    assert typecheck_strict_and_blocking(strict, a_register(), {}).passed
+    assert typecheck_strict_and_blocking(strict, a_register(), {"role": "typecheck"}).passed
     lax = make_repo(
         tmp_path / "b",
         {
@@ -172,6 +174,100 @@ def test_typecheck_strict_and_blocking(tmp_path: Path) -> None:
             ".github/workflows/ci.yml": _workflow("uv run mypy"),
         },
     )
-    result = typecheck_strict_and_blocking(lax, a_register(), {})
+    result = typecheck_strict_and_blocking(lax, a_register(), {"role": "typecheck"})
     assert not result.passed
     assert "strict" in result.message
+
+
+# DOC-001's args as the register carries them. The assert takes the ceiling, the
+# tool name and the extension id from here rather than holding them, so a repo
+# may tighten or re-tool without the checker changing (ADR 0018).
+_DOC_ARGS = {
+    "max_line_length": 250,
+    "tool": "markdownlint-cli2",
+    "editor_extension": "DavidAnson.vscode-markdownlint",
+}
+
+
+def _markdown_repo(root: Path, **overrides: str) -> Repo:
+    """A repo wired for DOC-001 at all three loci, with the ceiling in force."""
+    files = {
+        ".markdownlint.yaml": "default: true\nMD013:\n  line_length: 250\n",
+        ".devcontainer/devcontainer.json": (
+            '{"customizations": {"vscode": {"extensions": '
+            '["DavidAnson.vscode-markdownlint"]}}}\n'
+        ),
+        ".pre-commit-config.yaml": (
+            "repos:\n  - repo: local\n    hooks:\n      - id: markdownlint-cli2\n"
+            "        entry: npx --no-install markdownlint-cli2\n"
+        ),
+        ".github/workflows/lint.yml": _workflow('npx --no-install markdownlint-cli2 "**/*.md"'),
+    }
+    files.update(overrides)
+    return make_repo(root, {k: v for k, v in files.items() if v})
+
+
+def test_markdown_gate_wired_at_all_loci(tmp_path: Path) -> None:
+    repo = _markdown_repo(tmp_path / "ok")
+    result = markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS)
+    assert result.passed, result.message
+    assert "250" in result.message
+
+
+def test_markdown_ceiling_may_not_be_loosened(tmp_path: Path) -> None:
+    """`line_length: 100000` plus a 1600-character line used to pass (§ A).
+
+    DOC-001 is `narrowing-only`, so a repo may cap lines below the register's
+    250 and may never raise the cap above it.
+    """
+    loosened = _markdown_repo(
+        tmp_path / "loose",
+        **{".markdownlint.yaml": "default: true\nMD013:\n  line_length: 100000\n"},
+    )
+    result = markdown_gate_wired_at_all_loci(loosened, a_register(), _DOC_ARGS)
+    assert not result.passed
+    assert "100000" in result.message and "250" in result.message
+
+    tightened = _markdown_repo(
+        tmp_path / "tight",
+        **{".markdownlint.yaml": "default: true\nMD013:\n  line_length: 100\n"},
+    )
+    assert markdown_gate_wired_at_all_loci(tightened, a_register(), _DOC_ARGS).passed
+
+
+def test_markdown_ceiling_switched_off_is_no_ceiling(tmp_path: Path) -> None:
+    for config in ("default: true\nMD013: false\n", "default: false\nMD024: {}\n"):
+        repo = _markdown_repo(tmp_path / str(abs(hash(config))), **{".markdownlint.yaml": config})
+        result = markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS)
+        assert not result.passed, config
+        assert "MD013" in result.message
+
+
+def test_markdown_gate_missing_at_each_locus_is_caught(tmp_path: Path) -> None:
+    """Deleting the CI step, the hook or the extension each used to pass (§ A)."""
+    cases = {
+        ".github/workflows/lint.yml": "ci locus",
+        ".pre-commit-config.yaml": "pre-commit locus",
+        ".devcontainer/devcontainer.json": "editor locus",
+    }
+    for path, expected in cases.items():
+        repo = _markdown_repo(tmp_path / expected.replace(" ", "-"), **{path: ""})
+        result = markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS)
+        assert not result.passed, path
+        assert expected in result.message
+
+
+def test_markdown_gate_reads_the_cli2_config_shape(tmp_path: Path) -> None:
+    """A `.markdownlint-cli2.*` file wraps its rules in a `config:` key."""
+    repo = _markdown_repo(
+        tmp_path / "cli2",
+        **{
+            ".markdownlint.yaml": "",
+            ".markdownlint-cli2.yaml": (
+                "ignores:\n  - '**/node_modules/**'\nconfig:\n  MD013:\n    line_length: 120\n"
+            ),
+        },
+    )
+    result = markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS)
+    assert result.passed, result.message
+    assert "120" in result.message

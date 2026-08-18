@@ -9,6 +9,15 @@ set -euo pipefail
 # The named volume mounts root-owned on first create.
 sudo chown -R vscode:vscode /home/vscode/.claude
 
+# The claude-code feature runs `npm install -g` as root, so the package tree it
+# writes is root-owned while the container's user is vscode (BLD-001) — and
+# `claude update` then fails with "Insufficient permissions to install update"
+# on a release cadence of roughly one a day. Hand the one package it owns to
+# vscode; the surrounding node_modules and bin are already group-writable.
+for d in /usr/local/share/nvm/versions/node/*/lib/node_modules/@anthropic-ai; do
+  [ -d "$d" ] && sudo chown -R vscode:vscode "$d"
+done
+
 # DOC-001's tool, from the one authority that owns its version:
 # package-lock.json. Every locus runs `npx markdownlint-cli2`, so there is no
 # version to keep in step here — the lockfile is the pin, and SUP-001 already

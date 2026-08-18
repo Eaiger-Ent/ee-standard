@@ -1,6 +1,15 @@
+# .markdownlint-cli2.yaml
+# ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.5.0  register-contract: 5
+#
+# Deployed artefact — the runner's configuration. The rule set itself lives in
+# .markdownlint.yaml. See docs/00-concepts.md § The provenance stamp.
+# Every entry is a directory of third-party or generated content that this
+# repository does not author. `.claude/**` was here too and is gone: it held
+# authored files, and DOC-001 is `narrowing-only` with `baseline: null`, which
+# admits no exemptions. An ignore path is a weakening (docs/00-concepts.md
+# § Variance), and that one was recorded nowhere.
 ignores:
   - "**/node_modules/**"
   - "**/.venv/**"
   - "**/.terraform/**"
   - "**/.pnpm-store/**"
-  - .claude/**
