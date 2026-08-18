@@ -123,8 +123,23 @@ variance happens; it is whether variance is **visible and directional**.
 
 Because configs are typed and declarative, a delta usually has a knowable
 direction — adding a lint rule strengthens, raising a coverage floor
-strengthens, adding an ignore path weakens. A permitted weakening **is** a
+strengthens, excluding authored content weakens. A permitted weakening **is** a
 baseline entry: it inherits the owner, the expiry, and the may-only-shrink rule.
+
+**An exemption is judged by what it hides, not by whether it exists**
+([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)). A deployed gate
+config may exclude a path git does not track — third-party trees, build output,
+a virtualenv — because that is scoping the tool to the repository rather than
+weakening the control; many linters resolve their globs against the filesystem
+and would otherwise report on files nobody here wrote. It may **never** exclude a
+path git tracks: that is authored content, and a `narrowing-only` control with
+`baseline: null` admits no exemption from it.
+
+The distinction is the one predicates already use — git-visible files, never
+self-declared — and it is verified rather than trusted. Stated as a flat "no
+ignore path", the rule was both unkeepable (this repository broke it on its first
+day) and too weak to catch `.claude/**`, which hid eleven authored violations in
+the same list until somebody read the file.
 
 **`justified` and `free` were removed at register contract 3.** `justified`
 allowed any direction given a recorded reason, owner and expiry — and the

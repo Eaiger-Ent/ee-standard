@@ -259,6 +259,11 @@ phase's forensics live there.
   records one checksum and `tool_versions_match_register` checks that one, so
   the second architecture's digest is a checksum nobody checks, which is the
   shape of problem this phase kept finding.
+- ~~Ignore paths on a `narrowing-only` control with `baseline: null`~~ —
+  **closed 2026-08-18** by [ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md),
+  which states the property (an exemption may not hide a tracked file) in place
+  of the prohibition and has the checker verify it. It carried a Phase 2 exit
+  criterion, which is met before the phase starts.
 - The **meta-controls are in-process assertions declared `kind: command`**
   (§ H5). The schema rejects the `standard-check assert …` spelling and accepts
   `standard-check meta …`, which `verify_meta.py` then runs in-process. Nothing
@@ -413,10 +418,11 @@ fixed in both.
       reproduces § G's problem in every repo that adopts the standard, and the
       consumer has no `tool_versions_match_register` of their own until they
       adopt the register too
-- [ ] The rule for ignore paths on a `narrowing-only` control with
-      `baseline: null` is decided and expressible before any gate skill deploys
-      a config carrying one (§ H7). `.markdownlint-cli2.yaml` carries four; the
-      rule as written admits none, and `.claude/**` was removed on that reading
+- [x] The rule for exemptions in a deployed config is decided and **checkable**
+      before any gate skill deploys one (§ H7) — closed 2026-08-18 by
+      [ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md): an exemption
+      may scope a gate to what git does not track, and may never hide a file it
+      does. DOC-001's config now carries none at all
 
 - [ ] Every SKILL.md passes preflight P1–P11
 - [ ] `standard-adopt` end-to-end on a scratch repo: plan → confirm → deploy →

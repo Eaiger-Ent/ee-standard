@@ -232,7 +232,9 @@ Each row is done when its evidence exists, not when the step has been performed.
 
 If a control cannot be satisfied for a reason that is about the control rather
 than about your repository, that is a finding, not a workaround. Raise it. Do not
-re-tier the control, and do not add an ignore path to make a report green — a
-`narrowing-only` control with `baseline: null` admits no exemptions, and the
-repository that authored that rule has broken it once already and had to
+re-tier the control, and do not exclude your own files to make a report green.
+An exemption may scope a gate to what git tracks — it may never hide a file git
+is tracking, and the checker fails you if it does
+([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)). The repository
+that authored that rule broke it once already and had to
 [record the fix](04-build-plan.md).

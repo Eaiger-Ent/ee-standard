@@ -7,6 +7,7 @@ They read workflow and configuration files; none of them executes anything.
 from __future__ import annotations
 
 import configparser
+import fnmatch
 import re
 import tomllib
 from collections.abc import Iterator, Mapping
@@ -754,6 +755,58 @@ def _line_length_ceiling(rules: Mapping[str, Any]) -> int | str:
     return _MARKDOWNLINT_DEFAULT_LINE_LENGTH
 
 
+# The runner configs, as opposed to the rule-set configs above. Only these carry
+# an exemption list; `.markdownlint.*` holds rules and nothing else.
+_MARKDOWNLINT_RUNNER_CONFIGS = (
+    ".markdownlint-cli2.yaml",
+    ".markdownlint-cli2.jsonc",
+)
+
+
+def _hidden_tracked_files(repo: Repo) -> list[str]:
+    """Markdown files the gate's own exemptions would exclude from linting.
+
+    ADR 0019. The rule was "no ignore path", which this repository broke on its
+    first day — markdownlint-cli2 globs the filesystem, so without exemptions it
+    lints every third-party README in `node_modules`. Stated that way it was also
+    too weak to catch what it was for: `.claude/**` sat in the same list hiding
+    eleven authored violations, and a person found it, not a check.
+
+    The property is what an exemption *hides*. A path git does not track is not
+    this repository's content, and excluding it is scoping the tool rather than
+    weakening the control; a path git tracks is authored here, and no
+    `narrowing-only` control with `baseline: null` admits excluding it.
+    """
+    hidden: list[str] = []
+    tracked = sorted(path for path in repo.tracked if path.endswith(".md"))
+    for config in _MARKDOWNLINT_RUNNER_CONFIGS:
+        if config not in repo.tracked:
+            continue
+        doc = (
+            load_jsonc(repo.root / config)
+            if config.endswith(("json", "jsonc"))
+            else yaml.safe_load(repo.read(config))
+        )
+        if not isinstance(doc, dict):
+            continue
+        for pattern in doc.get("ignores") or []:
+            # fnmatch's `*` crosses `/`, which is what a `**/…/**` glob means
+            # here anyway, so the two spellings agree on directory trees.
+            matched = [path for path in tracked if fnmatch.fnmatch(path, str(pattern))]
+            if not matched:
+                continue
+            # Named, then counted. One offending pattern can match a whole tree,
+            # and a verdict that lists every file buries the pattern that caused
+            # it under the evidence for it.
+            shown = ", ".join(matched[:3])
+            more = f" and {len(matched) - 3} more" if len(matched) > 3 else ""
+            hidden.append(
+                f"{config}: '{pattern}' excludes {len(matched)} tracked file(s) "
+                f"the repository authors ({shown}{more})"
+            )
+    return hidden
+
+
 def markdown_gate_wired_at_all_loci(
     repo: Repo,
     _register: Register,
@@ -802,6 +855,9 @@ def markdown_gate_wired_at_all_loci(
         problems.append(f"pre-commit locus — no {tool} hook")
     if not _ci_run_mentions(repo, rf"\b{re.escape(tool)}\b", hook=tool):
         problems.append(f"ci locus — no gating step runs {tool}")
+    # An exemption that hides authored content is a weakening of a control whose
+    # `baseline: null` admits none (ADR 0019).
+    problems.extend(_hidden_tracked_files(repo))
     if problems:
         return _fail("; ".join(problems))
     return _ok(

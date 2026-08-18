@@ -22,8 +22,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from conftest import a_register, make_repo, register_with
-from standard_check.asserts_command import ci_installs_frozen, no_static_cloud_keys
+import yaml
+
+from conftest import REPO_ROOT, a_register, make_repo, register_with
+from standard_check.asserts_command import (
+    ci_installs_frozen,
+    markdown_gate_wired_at_all_loci,
+    no_static_cloud_keys,
+)
 from standard_check.asserts_file import lockfile_present_and_tracked, tool_versions_match_register
 from standard_check.repo import Repo
 
@@ -232,3 +238,65 @@ def test_h4_the_spelling_equivalence_stays_in_the_checker(tmp_path: Path) -> Non
     result = no_static_cloud_keys(repo, a_register(), {})
     assert not result.passed
     assert "AWS_ACCESS_KEY_ID" in result.message
+
+
+# --- H7 — an exemption may not hide a file the repository tracks -------------
+
+
+_DOC_ARGS = {
+    "max_line_length": 250,
+    "tool": "markdownlint-cli2",
+    "editor_extension": "DavidAnson.vscode-markdownlint",
+}
+
+
+def _doc_repo(root: Path, cli2: str) -> Repo:
+    """A repository wired for DOC-001 at all three loci, plus the given runner config."""
+    return make_repo(
+        root,
+        {
+            "README.md": "# Title\n\nBody.\n",
+            "docs/guide.md": "# Guide\n\nBody.\n",
+            ".markdownlint.yaml": "default: true\nMD013:\n  line_length: 250\n",
+            ".markdownlint-cli2.yaml": cli2,
+            ".devcontainer/devcontainer.json": (
+                '{"customizations": {"vscode": {"extensions": '
+                '["DavidAnson.vscode-markdownlint"]}}}\n'
+            ),
+            ".pre-commit-config.yaml": (
+                "repos:\n  - repo: local\n    hooks:\n      - id: markdownlint-cli2\n"
+                "        entry: npx --no-install markdownlint-cli2\n"
+            ),
+            ".github/workflows/ci.yml": _GATING
+            + '      - run: npx --no-install markdownlint-cli2 "**/*.md"\n',
+        },
+    )
+
+
+def test_h7_an_exemption_hiding_a_tracked_file_fails(tmp_path: Path) -> None:
+    """ADR 0019. The `.claude/**` case, which a person found and no check did.
+
+    The rule was "no ignore path", which this repository broke on its first day
+    and which still could not tell `node_modules` from authored content.
+    """
+    repo = _doc_repo(tmp_path / "hidden", 'ignores:\n  - "docs/**"\n')
+    result = markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS)
+    assert not result.passed
+    assert "docs/**" in result.message
+    assert "docs/guide.md" in result.message
+
+
+def test_h7_an_exemption_over_untracked_content_is_not_a_weakening(tmp_path: Path) -> None:
+    """The mirror. Excluding what git does not track scopes the tool, not the control."""
+    repo = _doc_repo(tmp_path / "scoped", 'ignores:\n  - "**/node_modules/**"\n')
+    result = markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS)
+    assert result.passed, result.message
+
+
+def test_h7_this_repository_carries_no_exemption_at_all() -> None:
+    """The derived list, in place: `gitignore: true` and nothing to review."""
+    config = yaml.safe_load((REPO_ROOT / ".markdownlint-cli2.yaml").read_text(encoding="utf-8"))
+    assert config.get("gitignore") is True, "the exemption list must be derived, not kept"
+    assert not config.get("ignores"), (
+        "an entry here is a real exemption and needs a reason in the register"
+    )
