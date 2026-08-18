@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Installed to /usr/local/bin by .devcontainer/setup.sh.
+#
+# GITHUB_TOKEN is scoped to Eaiger-Ent and shadows gh's ambient auth for every
+# host, so a second PAT for the EqualExperts org (ee-skills, ee-skills-incubator)
+# cannot simply be a second environment variable — gh honours one
+# GH_TOKEN/GITHUB_TOKEN at a time. This scopes it to a single invocation:
+#
+#   gh-ee-skills issue create --repo EqualExperts/ee-skills-incubator ...
+#
+# It lives here rather than in a heredoc inside setup.sh because it is an
+# executable that lands on PATH: it should be reviewable in a diff, and lintable
+# by the same gates as everything else in this repository.
+set -euo pipefail
+if [ -z "${EE_SKILLS_GITHUB_TOKEN:-}" ]; then
+  echo "gh-ee-skills: EE_SKILLS_GITHUB_TOKEN not set (see docs/06-devcontainer-setup.md)" >&2
+  exit 1
+fi
+exec env -u GITHUB_TOKEN GH_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" gh "$@"

@@ -77,9 +77,32 @@ Phase 1 unclosable by its own terms.
       property BLD-001 states. `containerUser: root` beside `remoteUser: vscode`
       fails too, being a container that runs as root whatever the tooling does.
       BLD-001 reports PASS here where it reported SKIPPED
-- [ ] `setup.sh` is short enough not to need sectioning — anything longer is
-      doing work that belongs in a feature — **re-opened**: 82 lines across
-      seven sections (Phase 1.5 § Carried debt)
+- [x] `setup.sh` installs nothing unpinned and nothing unverified —
+      **restated 2026-08-18, and closed on the restatement**. The original
+      wording was "short enough not to need sectioning — anything longer is
+      doing work that belongs in a feature", and the carried-debt note named
+      `uv` and `gitleaks` as the work to move. That premise was measured and
+      found false: **neither** community feature available for those tools
+      verifies what it downloads. Each `curl`s a GitHub release tarball and
+      extracts it — no checksum, no signature, no attestation — so moving
+      `gitleaks` would have replaced a checksum-verified install with an
+      unverified one while *appearing* to strengthen provenance, because
+      `devcontainer-lock.json` would then pin the feature.
+      It pins the installer, not the artefact. `03-devcontainer.md`'s preference
+      ladder was corrected for the same reason: a feature earns rank 1 only if
+      it verifies its own download, otherwise it ranks where its install method
+      ranks.
+      **Restating a criterion in order to close it is the move that most
+      resembles cheating**, so three things guard this one. The evidence is
+      recorded rather than asserted. The property is now machine-checked —
+      `tests/test_devcontainer_setup.py` fails if a package install loses its
+      pin, if a downloaded artefact loses its checksum, or if anything pipes
+      curl to a shell, all three confirmed by breaking them. And the change was
+      put to the repository's owner rather than taken unilaterally.
+      Length was reduced where doing so cost nothing: the `gh-ee-skills` heredoc
+      is now a reviewed file at `.devcontainer/bin/gh-ee-skills`, because an
+      executable that lands on `PATH` belongs in a diff. 95 lines to 83 — but
+      length is a symptom, not the property, and nothing checks it
 - [x] DEV-001's `enforces` text in `controls.yaml` covers the image digest as
       well as the lock file, matching what
       [`03-devcontainer.md`](03-devcontainer.md) already claims it verifies
@@ -490,8 +513,16 @@ below — not this table — track that.
   and the CLI's own docstring, but only `run --tier 1` works; `--repo` must
   precede the subcommand; `standard-check drift` is documented — including in
   `.markdownlint.yaml`'s header — and does not exist.
-- `setup.sh` is 82 lines across seven sections. `uv` and `gitleaks` belong in
-  pinned features, which would also bring them under `devcontainer-lock.json`.
+- ~~`uv` and `gitleaks` belong in pinned features~~ — **withdrawn 2026-08-18,
+  on measurement.** Neither available community feature verifies what it
+  downloads, so the move would have brought both under `devcontainer-lock.json`
+  while removing the checksum that makes the gitleaks install trustworthy. The
+  Phase 0.5 criterion was restated as the property this note was reaching for,
+  and is now machine-checked. What survives as debt is smaller and real: the
+  **arm64 gitleaks digest in `setup.sh` is compared by nothing** — the register
+  records one checksum and `tool_versions_match_register` checks that one, so
+  the second architecture's digest is a checksum nobody checks, which is the
+  shape of problem this phase kept finding.
 - No repo-root `LICENSE`, though `pyproject.toml` declares Apache-2.0 and
   `05-promotion.md` requires every plugin to ship a copy of it. **Not gating for
   this phase, but gating for Phase 6** — `check_plugin_license.py` fails without

@@ -91,13 +91,35 @@ observation arriving as flakiness rather than as risk.
 
 **Fix, in preference order:**
 
-1. A devcontainer feature, version-pinned, so `devcontainer-lock.json` covers it.
+1. A devcontainer feature that **itself verifies what it installs**,
+   version-pinned, so `devcontainer-lock.json` covers it.
 2. A distribution package from a keyring installed by digest.
 3. A pinned release artefact with a verified checksum.
 4. `curl | sh` — only with a recorded justification and an expiry.
 
-The new repo's `setup.sh` should be short. Anything long enough to need
-sectioning is doing work that belongs in the image or a feature.
+**Corrected 2026-08-18.** Rank 1 previously read "a devcontainer feature,
+version-pinned", and that ranking was wrong in a way worth spelling out, because
+it is the mistake the whole ladder exists to prevent.
+
+`devcontainer-lock.json` pins the feature's **installer** by digest. It says
+nothing about the artefact that installer then fetches. Both community features
+available for the tools this repository installs — `uv` and `gitleaks` — were
+measured on 2026-08-18: each `curl`s a GitHub release tarball and extracts it,
+with no checksum, no signature and no attestation. A feature that does that is a
+rank-4 install wearing a rank-1 badge, and adopting one would have replaced this
+repository's checksum-verified gitleaks install with an unverified one while
+appearing to strengthen provenance.
+
+So a feature earns rank 1 only if it verifies its own download. Otherwise it
+ranks where its install method ranks, and the lock file's digest is a fact about
+the wrong artefact.
+
+The new repo's `setup.sh` should install nothing unpinned and nothing
+unverified. Length is a symptom worth watching — a long script usually means
+installs that a feature or the image should own — but it is not the property:
+a short script that pipes curl to a shell is worse than a long one that verifies
+every artefact it fetches. `tests/test_devcontainer_setup.py` checks the
+property; nothing checks the length.
 
 ### Global installs are unversioned
 
