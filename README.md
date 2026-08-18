@@ -42,15 +42,26 @@ Three properties follow:
 
 ## Documents
 
+Two starting points, depending on who you are.
+
+**Adopting the standard for your own repository** →
+[`docs/08-adopting.md`](docs/08-adopting.md). It leads with the steps no tool can
+take for you — repository visibility, branch rulesets, push protection, and the
+dependency-update bots — because those are the ones discovered late and paid for
+twice. Every step carries the evidence that shows it worked.
+
+**Working on this repository** → [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md).
+
 | Document | What it covers |
 | --- | --- |
+| [`docs/08-adopting.md`](docs/08-adopting.md) | **Start here if you are adopting.** The platform state, the gates, and reading a verdict. |
 | [`docs/00-concepts.md`](docs/00-concepts.md) | The vocabulary. Read first. |
 | [`docs/01-register-schema.md`](docs/01-register-schema.md) | Field-by-field spec for `controls.yaml`. |
 | [`docs/02-skill-family.md`](docs/02-skill-family.md) | The plugin: dispatcher, gates, checker, staleness. |
 | [`docs/03-devcontainer.md`](docs/03-devcontainer.md) | The clean devcontainer, and how it composes with `project-init`. |
 | [`docs/04-build-plan.md`](docs/04-build-plan.md) | Seven phases with checkable exit criteria. |
 | [`docs/05-promotion.md`](docs/05-promotion.md) | The route to the `ee-skills` marketplace. |
-| [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md) | **Start here.** Standing up this repo's own container, and the macOS values it needs. |
+| [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md) | **Start here if you are working on this repo.** Standing up its container, and the macOS values it needs. |
 | [`docs/07-inherited-conventions.md`](docs/07-inherited-conventions.md) | What the predecessor repo already knew, and which half of it transfers. |
 | [`controls.yaml`](controls.yaml) | The register itself. |
 

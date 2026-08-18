@@ -14,6 +14,30 @@ not govern **this repo's own environment**, which comes first — see Phase 0.5.
 The two are different artefacts and conflating them is what put the devcontainer
 in the wrong phase originally.
 
+## A standing requirement: the adopter's steps are written down as they are found
+
+**Every phase carries the same extra exit criterion**: any step an adopting
+repository would have to take, that this phase discovered or introduced, is in
+[`08-adopting.md`](08-adopting.md), with the evidence that shows it worked.
+
+This is not a documentation preference. Phase 4's criterion — *"no step required
+knowledge held only by the author"* — is a test applied at the end, and a test
+applied at the end cannot recover knowledge nobody wrote down at the time. This
+plan is a ledger of **our** work; an adopter should never have to read it. When
+§ G's Renovate work finished, the word "Renovate" appeared twenty-three times in
+this file, once in the schema doc, and **nowhere** in the README or any
+adopter-facing page. Everything learned in a day of it — that the config must be
+on the default branch, that the onboarding pull request must be left alone
+rather than closed, that a community feature may fetch without verifying — was
+recorded only as our own history.
+
+The test for the criterion is not "is it documented" but **"could someone who
+has never seen this repository do it, and know that they had?"** So each step in
+`08-adopting.md` carries how you know it worked, because a step performed is not
+a step that succeeded. Adopter-facing steps are, in practice, the ones no tool
+can take: platform state, app installations, account permissions, and token
+scopes.
+
 ## Phase 0 — The register
 
 **Done.** `controls.yaml` exists with 13 Tier-1 controls and 3 meta-controls,
@@ -509,10 +533,15 @@ below — not this table — track that.
   DOC-001 was introduced already at 250, the commit message said "from the
   previous 80", and the ADR said 120. Three numbers for one event, cited as the
   register's canonical precedent. The passage is removed.
-- `standard-check --tier 1` is documented in `02-skill-family.md`, `CLAUDE.md`
-  and the CLI's own docstring, but only `run --tier 1` works; `--repo` must
-  precede the subcommand; `standard-check drift` is documented — including in
-  `.markdownlint.yaml`'s header — and does not exist.
+- ~~`standard-check --tier 1` and `standard-check drift` are documented and do
+  not work~~ — **closed 2026-08-18**, by correcting the documents rather than
+  the code. `02-skill-family.md` and `CLAUDE.md` now say `run --tier 1`, the
+  non-existent `drift` subcommand is gone from both, and
+  [`08-adopting.md`](08-adopting.md) documents the working forms including that
+  `--repo` precedes the subcommand. Found by testing every command in the new
+  adoption guide before publishing it: a guide that documents a command which
+  prints usage is worse than no guide, and would have been the first thing a new
+  adopter hit.
 - ~~`uv` and `gitleaks` belong in pinned features~~ — **withdrawn 2026-08-18,
   on measurement.** Neither available community feature verifies what it
   downloads, so the move would have brought both under `devcontainer-lock.json`
@@ -790,6 +819,11 @@ fixed in both.
 
 ### Exit criteria — phase 2
 
+- [ ] Every adopter-facing step this phase introduces is in
+      [`08-adopting.md`](08-adopting.md) with its evidence — the gate skills'
+      prerequisites, what `standard-adopt` needs before it can run, and what the
+      template requires of a repository that copies it
+
 - [ ] `gate-secrets` deploys onto a repo with none of its config, and
       `standard-check` then reports SEC-001 PASS for its local loci
 - [ ] Every gate writes a provenance stamp its own verify step reads back
@@ -826,6 +860,11 @@ that exists but is not a required check is precisely theme **T-3** — declared 
 unreachable — and only a remote check catches it.
 
 ### Exit criteria — phase 3
+
+- [ ] Every adopter-facing step this phase introduces is in
+      [`08-adopting.md`](08-adopting.md) with its evidence — the credentials
+      `kind: remote` needs, the token scopes that create a ruleset, and how an
+      adopter confirms their conformance run is a *required* status check
 
 - [ ] Remote verification passes against a real repository
 - [ ] With no credentials, remote checks report `SKIPPED (no credentials)` and
@@ -864,6 +903,12 @@ Sequence, per [`03-devcontainer.md`](03-devcontainer.md):
 
 ### Exit criteria — phase 4
 
+- [ ] Every step the consumer repo needed is in
+      [`08-adopting.md`](08-adopting.md) **before** the criterion below is
+      judged. This phase is the one that measures the guide: anything the
+      operator had to ask about, work out, or already know is a gap in it, and
+      the fix belongs in the guide rather than in a reply to the question
+
 - [ ] The consumer repo reaches full Tier-1 conformance
 - [ ] No step required knowledge held only by the author
 - [ ] `project-init` and `standard-adopt` compose without fighting over
@@ -889,6 +934,10 @@ Wire the mechanism that keeps deployments current.
 
 ### Exit criteria — phase 5
 
+- [ ] Every adopter-facing step this phase introduces is in
+      [`08-adopting.md`](08-adopting.md) with its evidence — how a repository
+      opts into the sweep, and how its owner reads a staleness report
+
 - [ ] Bumping a gate's version *without* changing its output produces **no**
       redeployment recommendation
 - [ ] Bumping its contract version *does*
@@ -911,6 +960,11 @@ amendment — plus the `lint-md` amendment identified in Phase 1.5 § F, which
 makes four.
 
 ### Exit criteria — phase 6
+
+- [ ] [`08-adopting.md`](08-adopting.md) describes installing from the
+      marketplace, and its § Status table is true on the day of release — a
+      guide that still calls the shipped machinery "not built" is the mirror of
+      one that describes tooling which does not exist
 
 - [ ] A repo-root `LICENSE` exists and is copied into the plugin —
       `check_plugin_license.py` fails without it, and `pyproject.toml` already

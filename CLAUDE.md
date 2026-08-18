@@ -35,7 +35,7 @@ implementation **in the register**, with an expiry — never in the checker.
 
 ## Commands
 
-- Full conformance run: `uv run standard-check` (also: `schema`, `--tier 1`,
+- Full conformance run: `uv run standard-check` (also: `schema`, `run --tier 1`,
   `meta GOV-001`, `assert <name>`, `explain <ID>`). CI runs it in
   `.github/workflows/standard-check.yml`.
 - Quality gates: `uv run ruff check .`, `uv run mypy`, `uv run pytest` — all
@@ -150,6 +150,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/02-skill-family.md` | How the standard reaches a repo, and stays current |
 | `docs/03-devcontainer.md` | What the shipped devcontainer template must be |
 | `docs/04-build-plan.md` | The phase exit criteria that define "done" for any implementation work, and the only list of outstanding work |
+| `docs/08-adopting.md` | What a repository that did not author the standard must do to satisfy it. **Every phase owes this file the adopter-facing steps it introduces** — see `04-build-plan.md` § A standing requirement |
 | `docs/05-promotion.md` | The route to the `ee-skills` marketplace |
 | `docs/06-devcontainer-setup.md` | Operator guide for this repo's own container |
 | `docs/07-inherited-conventions.md` | What the predecessor repo knew, sorted by whether it transfers — including what must **not** be copied |

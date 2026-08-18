@@ -113,8 +113,7 @@ binary, and explain a failure in context with a proposed fix.
 
 ```bash
 standard-check                 # all applicable controls; exit 1 on any failure
-standard-check --tier 1        # subset
-standard-check drift           # deployed artefacts vs. what the register implies
+standard-check run --tier 1    # subset — the subcommand is required
 standard-check explain SEC-001 # what it checks, why, and the standard it cites
 standard-check meta GOV-001    # the meta-controls
 standard-check schema          # validate controls.yaml itself
