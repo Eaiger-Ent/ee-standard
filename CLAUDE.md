@@ -75,7 +75,8 @@ exists to prevent.
 **implemented** over contracts 3, 5, 6 and 8), before writing a rule into
 `src/standard_check/` ask: *could a reasonable Equal Experts repository need this
 to differ without changing the checker?* If yes, it belongs in `controls.yaml` —
-mandated tool names and their per-locus evidence live in `stacks:`, lockfile
+mandated tool names and their per-locus evidence live in `stacks:` — including which files a stack's gates must cover and where each
+tool's allow-list lives — lockfile
 ecosystems, test-command spellings and frozen-install idioms in `ecosystems:`,
 tool versions **and the loci that repeat them** in `tools:`,
 failure-suppression idioms in `suppression:`, the credential names SEC-002

@@ -152,6 +152,40 @@ repository.
   [ee-skills-incubator#530](https://github.com/EqualExperts/ee-skills-incubator/issues/530)
   and the file stays un-refreshable until a maintainer ships it.
 
+## Applied — TYP-001, register contract 9
+
+The rule was written for exemption lists and applies unchanged to allow-lists,
+which are exemption lists whose entries are everything they do not name.
+`[tool.mypy] files = ["src", "tests", "scripts", ".claude/hooks"]` was the four
+paths that existed when somebody wrote the line, against a control claiming *all
+first-party source*.
+
+Measured, not reasoned about: a tracked module with a genuine type error, which
+nothing under those four paths imported, left `uv run mypy` reporting *"Success:
+no issues found in 31 source files"* and `standard-check` reporting TYP-001
+**PASS**. mypy found the error the moment it was pointed at the file.
+
+`stacks.<stack>.source_globs` names the tracked files a stack's gates must cover
+and `gates.<role>.coverage_key` names where the allow-list lives, so the same
+comparison runs: what the list leaves out must be something git does not track.
+The same repository now reports
+
+```text
+TYP-001  FAIL  ✗ python: pyproject.toml: tool.mypy.files does not cover 1 tracked
+               python file(s) (tools/deploy.py) — mypy runs over what this list
+               names, and the control claims all first-party source
+```
+
+Two consequences are deliberate. **Import-reachable files are not credited.**
+mypy follows imports out of the allow-list, so such a module is checked today by
+accident of somebody importing it, and unchecked again the day that import goes;
+coverage withdrawable without editing the coverage list is not declared coverage.
+And **an absent allow-list is not an exemption** — `tsc` with no `include`
+compiles everything below its tsconfig, so there is nothing to judge.
+
+`pyproject.toml` is unchanged. Its list covers every tracked module today, which
+is the point: an exemption may exist, and may not hide anything.
+
 ## Related ADRs
 
 - [ADR 0013: One Markdown Rule Set, Deployed Not Duplicated](0013-one-markdown-rule-set.md)

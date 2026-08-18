@@ -628,8 +628,18 @@ That is the `.claude/**` case, which a phase's criterion closed by deleting the
 entry — fixing the instance and not the class. `00-concepts.md` § Variance,
 `CLAUDE.md` and [`08-adopting.md`](08-adopting.md) now state the property instead
 of the prohibition, so the six Phase 2 gate skills inherit a rule they can
-implement rather than one none of them could honour. The mypy allow-list is
-untouched and stays recorded above.
+implement rather than one none of them could honour.
+
+**The mypy allow-list went with it**, at register contract 9. It was recorded
+above as the same shape inverted, and it is: `[tool.mypy] files` excludes
+`tools/` by not naming it, so unlike `.claude/**` there is no line to read and no
+diff on the day coverage stops matching the codebase. A tracked module with a
+real type error, imported by nothing under those four paths, left `uv run mypy`
+reporting *"Success: no issues found"* and TYP-001 reporting PASS — while mypy
+found the error the moment it was pointed at the file. `source_globs` on the
+stack and `coverage_key` on the gate make the comparison the same one: what the
+list leaves out must be something git does not track. `pyproject.toml` needed no
+change, which is the point — an exemption may exist and may not hide anything.
 
 The register did not change, so there is no contract bump: DOC-001's verify block,
 rung and variance are as they were, and what moved is what the assert checks and

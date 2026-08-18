@@ -67,8 +67,16 @@ _ECOSYSTEM_ALLOWED = (
     "test_commands",
     "frozen_install",
 )
-_STACK_ALLOWED = ("gates",)
-_GATE_ALLOWED = ("tool", "invocation", "pre_commit", "editor_extension", "strict_key", "config")
+_STACK_ALLOWED = ("gates", "source_globs")
+_GATE_ALLOWED = (
+    "tool",
+    "invocation",
+    "pre_commit",
+    "editor_extension",
+    "strict_key",
+    "coverage_key",
+    "config",
+)
 _GATE_REQUIRED = ("tool", "invocation", "config")
 _CONFIG_ALLOWED = ("file", "section")
 # The roles a gate can play. Closed, and a property of the register format
@@ -238,6 +246,11 @@ class Gate:
     pre_commit: str | None = None
     editor_extension: str | None = None
     strict_key: str | None = None
+    # Where the tool's allow-list lives, as a dotted path from the config file's
+    # root. ADR 0019 applied to a coverage list: `files = [...]` is an exemption
+    # whose entries are what it does *not* name, so nothing to read means
+    # nothing to check. Omitting it asserts the tool has no allow-list.
+    coverage_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -251,6 +264,8 @@ class Stack:
 
     name: str
     gates: dict[str, Gate]
+    # The tracked files this stack's gates are claimed to cover.
+    source_globs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -826,7 +841,7 @@ class _Validator:
                 return None
             strings[key] = value.strip()
         optional: dict[str, str | None] = {}
-        for key in ("pre_commit", "editor_extension", "strict_key"):
+        for key in ("pre_commit", "editor_extension", "strict_key", "coverage_key"):
             value = raw.get(key)
             if value is None:
                 optional[key] = None
@@ -846,6 +861,7 @@ class _Validator:
             pre_commit=optional["pre_commit"],
             editor_extension=optional["editor_extension"],
             strict_key=optional["strict_key"],
+            coverage_key=optional["coverage_key"],
         )
 
     def _stacks(self, raw: object, predicates: dict[str, bool | str]) -> dict[str, Stack]:
@@ -878,8 +894,21 @@ class _Validator:
                 gate = self._gate(gate_raw, str(role), here)
                 if gate is not None:
                     gates[str(role)] = gate
+            globs = entry.get("source_globs")
+            if not isinstance(globs, list) or not globs or any(
+                not isinstance(g, str) or not g.strip() for g in globs
+            ):
+                # Required, because a gate that declares a `coverage_key` has
+                # nothing to compare its allow-list against without it — and an
+                # uncomparable allow-list is the silence ADR 0019 removes.
+                self.error(f"{at}.source_globs", "must be a non-empty list of file globs")
+                continue
             if gates:
-                stacks[str(name)] = Stack(name=str(name), gates=gates)
+                stacks[str(name)] = Stack(
+                    name=str(name),
+                    gates=gates,
+                    source_globs=tuple(g.strip() for g in globs),
+                )
         return stacks
 
     # Which gate field each locus is verified through. A control declaring a

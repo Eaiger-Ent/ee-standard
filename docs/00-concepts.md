@@ -135,6 +135,13 @@ and would otherwise report on files nobody here wrote. It may **never** exclude 
 path git tracks: that is authored content, and a `narrowing-only` control with
 `baseline: null` admits no exemption from it.
 
+A gate that names what it *does* check is judged the same way. `files`,
+`include` and their kin are exemption lists whose entries are everything they do
+not name, so the rule reads identically: whatever the list leaves out must be
+something git does not track. This is the harder half, because an allow-list
+excludes by silence — no line to read, and no diff on the day coverage stops
+matching the codebase.
+
 The distinction is the one predicates already use — git-visible files, never
 self-declared — and it is verified rather than trusted. Stated as a flat "no
 ignore path", the rule was both unkeepable (this repository broke it on its first

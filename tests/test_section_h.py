@@ -29,6 +29,7 @@ from standard_check.asserts_command import (
     ci_installs_frozen,
     markdown_gate_wired_at_all_loci,
     no_static_cloud_keys,
+    typecheck_strict_and_blocking,
 )
 from standard_check.asserts_file import lockfile_present_and_tracked, tool_versions_match_register
 from standard_check.repo import Repo
@@ -300,3 +301,106 @@ def test_h7_this_repository_carries_no_exemption_at_all() -> None:
     assert not config.get("ignores"), (
         "an entry here is a real exemption and needs a reason in the register"
     )
+
+
+# --- H7, applied to a coverage allow-list ------------------------------------
+
+
+def _typecheck_repo(root: Path, files: str, extra: dict[str, str] | None = None) -> Repo:
+    """A repository wired for TYP-001, whose mypy allow-list is `files`."""
+    return make_repo(
+        root,
+        {
+            "pyproject.toml": (
+                "[project]\nname = 'x'\nversion = '0.1.0'\n"
+                f"[tool.mypy]\nstrict = true\nfiles = {files}\n"
+            ),
+            "src/app.py": "def ok() -> int:\n    return 1\n",
+            ".pre-commit-config.yaml": (
+                "repos:\n  - repo: local\n    hooks:\n      - id: mypy\n"
+                "        entry: uv run mypy\n"
+            ),
+            ".github/workflows/ci.yml": _GATING + "      - run: uv run mypy\n",
+            **(extra or {}),
+        },
+    )
+
+
+def test_h7_a_tracked_module_outside_the_allow_list_fails(tmp_path: Path) -> None:
+    """The measured case. An allow-list excludes by *not naming*, so nothing reads.
+
+    A tracked module with a genuine type error, which nothing under the
+    allow-listed paths imports, left `uv run mypy` reporting "Success: no issues
+    found" and TYP-001 reporting PASS — while mypy found the error the moment it
+    was pointed at the file.
+    """
+    repo = _typecheck_repo(
+        tmp_path / "uncovered",
+        '["src"]',
+        {"tools/deploy.py": 'def region() -> int:\n    return "eu-west-1"\n'},
+    )
+    result = typecheck_strict_and_blocking(repo, a_register(), {"role": "typecheck"})
+    assert not result.passed
+    assert "tools/deploy.py" in result.message
+    assert "tool.mypy.files" in result.message
+
+
+def test_h7_naming_the_path_in_the_allow_list_passes(tmp_path: Path) -> None:
+    """The mirror: coverage has to be declared, and declaring it is enough."""
+    repo = _typecheck_repo(
+        tmp_path / "covered",
+        '["src", "tools"]',
+        {"tools/deploy.py": "def region() -> str:\n    return 'eu-west-1'\n"},
+    )
+    result = typecheck_strict_and_blocking(repo, a_register(), {"role": "typecheck"})
+    assert result.passed, result.message
+
+
+def test_h7_no_allow_list_is_not_an_exemption(tmp_path: Path) -> None:
+    """An absent allow-list excludes nothing, so there is nothing to judge.
+
+    ADR 0019 judges the exemption that *exists*. `tsc` with no `include`
+    compiles everything below its tsconfig; reporting that as uncovered would
+    fail a repository that excluded nothing at all.
+    """
+    repo = make_repo(
+        tmp_path / "nolist",
+        {
+            "pyproject.toml": (
+                "[project]\nname = 'x'\nversion = '0.1.0'\n[tool.mypy]\nstrict = true\n"
+            ),
+            "src/app.py": "def ok() -> int:\n    return 1\n",
+            "tools/deploy.py": "def region() -> str:\n    return 'eu-west-1'\n",
+            ".pre-commit-config.yaml": (
+                "repos:\n  - repo: local\n    hooks:\n      - id: mypy\n"
+                "        entry: uv run mypy\n"
+            ),
+            ".github/workflows/ci.yml": _GATING + "      - run: uv run mypy\n",
+        },
+    )
+    result = typecheck_strict_and_blocking(repo, a_register(), {"role": "typecheck"})
+    assert result.passed, result.message
+
+
+def test_h7_which_files_count_as_source_comes_from_the_register(tmp_path: Path) -> None:
+    """Only the register moves: teach it an extension and coverage widens with it."""
+    repo = _typecheck_repo(
+        tmp_path / "globs",
+        '["src"]',
+        {"tools/fast.pyx": "cdef int x\n"},
+    )
+    assert typecheck_strict_and_blocking(repo, a_register(), {"role": "typecheck"}).passed
+
+    def add_the_extension(document: dict[str, Any]) -> None:
+        document["stacks"]["python"]["source_globs"].append("*.pyx")
+
+    register = register_with(tmp_path, add_the_extension)
+    result = typecheck_strict_and_blocking(repo, register, {"role": "typecheck"})
+    assert not result.passed
+    assert "tools/fast.pyx" in result.message
+
+
+def test_h7_this_repository_declares_coverage_for_every_tracked_module() -> None:
+    """The live assertion: `files` names every tracked Python path, not four of them."""
+    result = typecheck_strict_and_blocking(Repo(REPO_ROOT), a_register(), {"role": "typecheck"})
+    assert result.passed, result.message

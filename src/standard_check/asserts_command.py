@@ -12,6 +12,7 @@ import re
 import tomllib
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 import yaml
@@ -31,6 +32,7 @@ if TYPE_CHECKING:  # `register` imports the assert registries — importing it
         ConfigLocation,
         Gate,
         Register,
+        Stack,
     )
 
 
@@ -377,6 +379,98 @@ def _devcontainer_extensions(repo: Repo) -> list[str]:
     return found
 
 
+def _config_files(repo: Repo, location: ConfigLocation) -> list[str]:
+    """Paths this config location resolves to, in the repository."""
+    if repo.exists(location.file):
+        return [location.file]
+    return repo.glob_basename(location.file)
+
+
+def _load_config(repo: Repo, path: str) -> Any:
+    """A config file parsed by its extension, or None if it cannot be read.
+
+    Knowing that a `.toml` is read with tomllib, an `.ini` with configparser and
+    a `.json` with the JSONC reader is detection implementation and stays in the
+    checker (ADR 0018).
+    """
+    try:
+        if path.endswith(".toml"):
+            return tomllib.loads(repo.read(path))
+        if path.endswith((".ini", ".cfg")):
+            parser = configparser.ConfigParser()
+            parser.read_string(repo.read(path))
+            return {name: dict(parser[name]) for name in parser.sections()}
+        if path.endswith((".json", ".jsonc")):
+            return load_jsonc(repo.root / path)
+        return yaml.safe_load(repo.read(path))
+    except (OSError, ValueError, configparser.Error, yaml.YAMLError, tomllib.TOMLDecodeError):
+        return None
+
+
+def _walk(doc: Any, dotted: str) -> Any:
+    """The value at a dotted path from a document's root, or None."""
+    for key in dotted.split("."):
+        if not isinstance(doc, dict) or key not in doc:
+            return None
+        doc = doc[key]
+    return doc
+
+
+def _uncovered_sources(repo: Repo, stack: Stack, gate: Gate) -> list[str]:
+    """Tracked source files the gate's own allow-list leaves unchecked.
+
+    ADR 0019 applied to a coverage list rather than an exemption list. An
+    exemption list makes an exclusion into a line you can read: `.claude/**` is a
+    string, so it can be compared against what git tracks. An allow-list makes an
+    exclusion into an *absence* — `files = ["src", "tests"]` excludes `tools/` by
+    not mentioning it, so there is nothing to read and no diff when coverage
+    shrinks relative to the codebase.
+
+    Measured here rather than reasoned about: a tracked module with a genuine
+    type error, which nothing under the four allow-listed paths imported, left
+    `uv run mypy` reporting "Success: no issues found" and TYP-001 reporting
+    PASS. mypy found the error the moment it was pointed at the file. The config
+    chose not to look, and the control claimed "all first-party source".
+
+    Import-reachable files are deliberately *not* credited. mypy does follow
+    imports out of the allow-list, so such a file is checked today — by accident
+    of somebody importing it, and unchecked again the day that import goes.
+    Coverage that can be withdrawn without editing the coverage list is not
+    declared coverage.
+    """
+    if not gate.coverage_key:
+        return []  # the tool has no allow-list; its own default is the coverage
+    location = next((loc for loc in gate.config if _config_files(repo, loc)), None)
+    if location is None:
+        return []  # unconfigured: `_wired_problems` already reports that
+    path = _config_files(repo, location)[0]
+    doc = _load_config(repo, path)
+    roots = _walk(doc, gate.coverage_key)
+    if not isinstance(roots, list) or not roots:
+        return []  # no allow-list set, so nothing is excluded by one
+    prefixes = tuple(str(root).rstrip("/") for root in roots)
+    uncovered = sorted(
+        tracked
+        for tracked in repo.tracked
+        if any(fnmatch.fnmatch(PurePosixPath(tracked).name, glob) for glob in stack.source_globs)
+        and not any(
+            tracked == prefix
+            or tracked.startswith(f"{prefix}/")
+            or fnmatch.fnmatch(tracked, prefix)
+            for prefix in prefixes
+        )
+    )
+    if not uncovered:
+        return []
+    shown = ", ".join(uncovered[:3])
+    more = f" and {len(uncovered) - 3} more" if len(uncovered) > 3 else ""
+    return [
+        f"{path}: {gate.coverage_key} does not cover {len(uncovered)} tracked "
+        f"{stack.name} file(s) ({shown}{more}) — {gate.tool} runs over what this "
+        "list names, and the control claims all first-party source"
+    ]
+
+
 def _read_section(repo: Repo, location: ConfigLocation) -> dict[str, Any] | None:
     """The mapping a config location points at, or None if it is not there.
 
@@ -386,20 +480,9 @@ def _read_section(repo: Repo, location: ConfigLocation) -> dict[str, Any] | None
     `section` counts as configured by existing — `ruff.toml` is ruff's config
     whatever is inside it.
     """
-    matches = [location.file] if repo.exists(location.file) else repo.glob_basename(location.file)
-    for path in matches:
-        try:
-            if path.endswith((".toml",)):
-                doc: Any = tomllib.loads(repo.read(path))
-            elif path.endswith((".ini", ".cfg")):
-                parser = configparser.ConfigParser()
-                parser.read_string(repo.read(path))
-                doc = {name: dict(parser[name]) for name in parser.sections()}
-            elif path.endswith((".json", ".jsonc")):
-                doc = load_jsonc(repo.root / path)
-            else:
-                doc = yaml.safe_load(repo.read(path))
-        except (OSError, ValueError, configparser.Error, yaml.YAMLError, tomllib.TOMLDecodeError):
+    for path in _config_files(repo, location):
+        doc = _load_config(repo, path)
+        if doc is None:
             continue
         if location.section is None:
             return doc if isinstance(doc, dict) else {}
@@ -600,6 +683,10 @@ def typecheck_strict_and_blocking(
             # strict typing — it is strict typing switched off in a second
             # place, which TYP-001's title forbids and nothing read (§ D).
             problems.extend(f"{stack}: {o}" for o in _blanket_overrides(repo, gate))
+        problems.extend(
+            f"{stack}: {problem}"
+            for problem in _uncovered_sources(repo, register.stacks[stack], gate)
+        )
         steps = [s for s in _workflow_steps(repo) if re.search(
             rf"\b{re.escape(gate.invocation)}\b", s.run)]
         if steps and any(
