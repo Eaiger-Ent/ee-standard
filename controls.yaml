@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.9.0
+version: 0.10.0
 
 meta:
   owner: platform-engineering
@@ -42,7 +42,11 @@ meta:
   #    `coverage_key` names where its allow-list lives — so a tracked module
   #    outside `[tool.mypy] files`, which nothing imports, fails TYP-001 rather
   #    than passing it silently.
-  register_contract: 9
+  # 10: DOC-001 invokes its tool through the path the lockfile owns rather than
+  #     through `npx`, which falls through to PATH. `tools.<tool>.invocation`
+  #     records that form for a lockfile-sourced tool, and every locus is
+  #     verified against it (ADR 0020, § H6).
+  register_contract: 10
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -86,6 +90,18 @@ tools:
   markdownlint-cli2:
     source: lockfile
     lockfile: package-lock.json
+    # How a locus reaches the pin. `npx --no-install markdownlint-cli2` was the
+    # invocation at every locus and it does not fail when the local install is
+    # missing — it falls through to PATH and runs whatever global binary is
+    # there, so `source: lockfile` asserted an authority nothing enforced
+    # (§ H6). Measured: with node_modules deleted, `npx --no-install` and
+    # `npm exec --no --` both exit 0 against a global, and the path below
+    # exits 127.
+    #
+    # The pair is symmetric. A `literal` tool records `pinned_at` — where its
+    # version is repeated. A `lockfile` tool records `invocation` — how the
+    # pinned artefact is reached, so that a locus cannot silently run another.
+    invocation: node_modules/.bin/markdownlint-cli2
   gitleaks:
     source: literal
     # renovate: datasource=github-releases depName=gitleaks/gitleaks
@@ -699,7 +715,10 @@ controls:
     deployed_by: lint-md
     verify:
       - kind: command
-        run: npx --no-install markdownlint-cli2 "**/*.md"
+        # Not `npx`: it falls through to PATH (§ H6). An absent local install is
+        # now `tool not installed — cannot verify` (UNCLASSIFIED, ADR 0016)
+        # rather than a pass earned by a global nobody pinned.
+        run: node_modules/.bin/markdownlint-cli2 "**/*.md"
       - kind: file
         # The ceiling, the tool name and the editor extension id are register
         # facts (ADR 0018): a repository may reasonably tighten the ceiling or

@@ -197,11 +197,16 @@ def _markdown_repo(root: Path, **overrides: str) -> Repo:
             '{"customizations": {"vscode": {"extensions": '
             '["DavidAnson.vscode-markdownlint"]}}}\n'
         ),
+        # The path package-lock.json owns, not `npx`, which falls through to
+        # PATH — ADR 0020. These cases are about the rule set and the loci, and
+        # would otherwise all fail for that one unrelated reason.
         ".pre-commit-config.yaml": (
             "repos:\n  - repo: local\n    hooks:\n      - id: markdownlint-cli2\n"
-            "        entry: npx --no-install markdownlint-cli2\n"
+            "        entry: node_modules/.bin/markdownlint-cli2\n"
         ),
-        ".github/workflows/lint.yml": _workflow('npx --no-install markdownlint-cli2 "**/*.md"'),
+        ".github/workflows/lint.yml": _workflow(
+            'node_modules/.bin/markdownlint-cli2 "**/*.md"'
+        ),
     }
     files.update(overrides)
     return make_repo(root, {k: v for k, v in files.items() if v})

@@ -269,11 +269,12 @@ phase's forensics live there.
   `standard-check meta …`, which `verify_meta.py` then runs in-process. Nothing
   is verified wrongly — GOV-001 reads controls, not meta-controls — but it is a
   rule with an unwritten exception, in the vocabulary Phase 2's skills inherit.
-- **`npx --no-install` falls back to `PATH`** (§ H6), so nothing checks that
-  DOC-001's tool came from `package-lock.json`. Deleting `node_modules` leaves
-  the block passing against whatever global binary is on `PATH`. Belongs with
-  the Phase 2 template, which has to answer the same question for every tool it
-  installs.
+- ~~`npx --no-install` falls back to `PATH`~~ — **closed 2026-08-18** by
+  [ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md), at register
+  contract 10. A `lockfile` tool records `invocation` — how the pinned artefact
+  is reached — the way a `literal` tool records `pinned_at`, and every locus is
+  verified against it. It carries a new Phase 2 criterion above, because the
+  template has to answer the same question for every tool it installs.
 - Three smaller ones, all § H8: GOV-001's full-run short-circuit accepts
   `run --tier 1` and `--repo ../other` as evidence for every blocking control
   (latent until Tier 2 exists); `standard-check --repo ../other` fails for any
@@ -423,6 +424,12 @@ fixed in both.
       [ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md): an exemption
       may scope a gate to what git does not track, and may never hide a file it
       does. DOC-001's config now carries none at all
+
+- [ ] Every locus's invocation **resolves to** the pinned artefact, shown by
+      deleting the artefact and watching that locus fail — not inferred from
+      where the version is recorded ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)).
+      The criterion above is about the *source* of a version; `npx --no-install`
+      satisfied it while falling through to `PATH` (§ H6)
 
 - [ ] Every SKILL.md passes preflight P1–P11
 - [ ] `standard-adopt` end-to-end on a scratch repo: plan → confirm → deploy →

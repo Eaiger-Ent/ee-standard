@@ -58,7 +58,7 @@ _DOCUMENT_ALLOWED = (
     "controls",
     "meta_controls",
 )
-_TOOL_ALLOWED = ("source", "version", "sha256", "lockfile", "pinned_at")
+_TOOL_ALLOWED = ("source", "version", "sha256", "lockfile", "pinned_at", "invocation")
 _TOOL_SOURCES = ("lockfile", "literal")
 _ECOSYSTEM_ALLOWED = (
     "manifest",
@@ -184,6 +184,12 @@ class Tool:
     # comparison silently, and an adopting repository's own loci were never in
     # the list at all (§ H2).
     pinned_at: tuple[str, ...] = ()
+    # How a locus reaches a `lockfile`-sourced tool's pinned artefact. The pair
+    # is symmetric: a `literal` tool records where its version is repeated, a
+    # `lockfile` tool records how the pin is reached — because "the lockfile
+    # owns the version" is worth nothing if the invocation can resolve
+    # elsewhere, which `npx --no-install` silently does (ADR 0020, § H6).
+    invocation: str | None = None
 
 
 @dataclass(frozen=True)
@@ -699,6 +705,23 @@ class _Validator:
                 pinned_at = self._pinned_at(entry.get("pinned_at"), str(source), at)
                 if pinned_at is None:
                     continue
+                invocation = entry.get("invocation")
+                if source == "lockfile" and (
+                    not isinstance(invocation, str) or not invocation.strip()
+                ):
+                    self.error(
+                        f"{at}.invocation",
+                        "a lockfile-sourced tool must record how a locus reaches the pinned "
+                        "artefact — an authority no invocation resolves to is not an authority",
+                    )
+                    continue
+                if source == "literal" and invocation is not None:
+                    self.error(
+                        f"{at}.invocation",
+                        "a literal tool is installed onto PATH at each locus, so its pin is the "
+                        "version recorded here and not the path it is reached by",
+                    )
+                    continue
                 tools[str(name)] = Tool(
                     name=str(name),
                     source=str(source),
@@ -706,6 +729,7 @@ class _Validator:
                     sha256=sha,
                     lockfile=str(lockfile) if isinstance(lockfile, str) else None,
                     pinned_at=pinned_at,
+                    invocation=invocation.strip() if isinstance(invocation, str) else None,
                 )
         ecosystems: dict[str, Ecosystem] = {}
         ecosystems_raw = raw.get("ecosystems") or {}

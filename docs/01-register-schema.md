@@ -224,6 +224,26 @@ ecosystem the repo already locks.
 lockfile-sourced tool has no version at any locus to keep in step, so there are
 no repetitions to list.
 
+**`invocation` is its mirror** — required under `source: lockfile`, rejected
+under `source: literal`. A literal tool is installed onto `PATH` at each locus,
+so its pin is the version; a lockfile tool is resolved out of a package tree, so
+its pin is an artefact and the register records how a locus reaches it:
+
+```yaml
+  markdownlint-cli2:
+    source: lockfile
+    lockfile: package-lock.json
+    invocation: node_modules/.bin/markdownlint-cli2
+```
+
+Without it, "the lockfile owns the version" is a claim about where the number is
+written and not about which binary runs. `npx --no-install` was the invocation at
+every locus here, and `--no-install` means *do not fetch*, not *resolve locally*:
+with `node_modules` absent it exits 0 against whatever global is on `PATH`
+([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md), § H6). The gate's
+assert checks each declared locus against this form, so a locus reverting to
+`npx` fails with the locus named.
+
 ```yaml
   gitleaks:
     source: literal

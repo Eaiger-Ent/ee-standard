@@ -153,8 +153,17 @@ repository's own artefacts, which are the reference implementation:
 
 The discipline is **pin once, reference many**: the same tool version and the
 same configuration at every locus. Where a package manager can own a version, let
-it — every locus here runs `npx --no-install markdownlint-cli2`, so
-`package-lock.json` is the single authority and there is nothing to keep in step.
+it — `package-lock.json` pins `markdownlint-cli2` here, so there is no version to
+keep in step.
+
+**Invoke the artefact, not the name.** Every locus here runs
+`node_modules/.bin/markdownlint-cli2`, because `npx --no-install` does *not* mean
+"resolve locally" — with no local install it falls through to `PATH` and runs
+whatever global it finds, which makes the lockfile an authority in name only
+([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)). The register
+records that path as `tools.<tool>.invocation` and the checker holds every locus
+to it. A missing local install is then `UNCLASSIFIED — cannot verify`, which is
+the honest answer, rather than a pass earned by a binary nobody pinned.
 
 ### 3.1 — Your register records your own files
 
