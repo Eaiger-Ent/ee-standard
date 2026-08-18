@@ -13,9 +13,12 @@ with no re-opened criteria outstanding. **Phase 2 is next.**
 Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
-as settled without checking it — three boxes were re-opened after being ticked,
-the most recent on 2026-08-18, when a tool's version turned out to be compared
-at no locus while its assert reported PASS.
+as settled without checking it — **seven** boxes have been re-opened after being
+ticked, four of them on 2026-08-18 by the review recorded as
+`docs/09-phase-1.5-review.md` § H, which found GOV-001 passing a workflow that
+ran on neither push nor pull_request, a tool compared only at filenames the
+checker itself named, and ADR 0018 recorded as implemented with one of its
+ratified moves never made.
 `kind: remote` verification stays deferred to Phase 3; do not stub it earlier —
 remote verify blocks report `SKIPPED (no credentials)`.
 
@@ -69,12 +72,14 @@ exists to prevent.
 
 **Python counts as a second copy.** Per
 [ADR 0018](docs/adr/0018-register-checker-boundary.md) (**Accepted** 2026-08-17,
-**implemented** over contracts 3, 5 and 6), before writing a rule into
+**implemented** over contracts 3, 5, 6 and 8), before writing a rule into
 `src/standard_check/` ask: *could a reasonable Equal Experts repository need this
 to differ without changing the checker?* If yes, it belongs in `controls.yaml` —
 mandated tool names and their per-locus evidence live in `stacks:`, lockfile
-ecosystems and test-command spellings in `ecosystems:`, tool versions in
-`tools:`, failure-suppression idioms in `suppression:`, and anything specific to
+ecosystems, test-command spellings and frozen-install idioms in `ecosystems:`,
+tool versions **and the loci that repeat them** in `tools:`,
+failure-suppression idioms in `suppression:`, the credential names SEC-002
+forbids in `cloud_credentials:`, and anything specific to
 one control in its verify block's `args:`. If no, the checker may hold it, but
 the reason must be recorded in ADR 0018 — the predicate grammar, the ID pattern, semver
 strictness, `rationale_adr` existence and the Tier-1 baseline rule are
@@ -111,8 +116,9 @@ Defined in `docs/00-concepts.md`; the schema is `docs/01-register-schema.md`.
 
 ## Rules for editing `controls.yaml`
 
-- Bump `meta.register_contract` only when a control's `rung`, `verify`, or
-  `variance` changes — skills read it to detect stale deployments.
+- Bump `meta.register_contract` when a control's `rung`, `verify`, `variance` or
+  `applies_to` changes, or when the register gains a field a skill reading it
+  must understand — skills read it to detect stale deployments.
 - Every control must cite an external, resolving standard URL; verify URLs
   before committing them.
 - An unknown `assert` name is a schema error, not a skipped check (Phase 1 exit
@@ -154,7 +160,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/05-promotion.md` | The route to the `ee-skills` marketplace |
 | `docs/06-devcontainer-setup.md` | Operator guide for this repo's own container |
 | `docs/07-inherited-conventions.md` | What the predecessor repo knew, sorted by whether it transfers — including what must **not** be copied |
-| `docs/09-phase-1.5-review.md` | Closed record of the Phase 1.5 review. **`§ A`–`§ G` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
+| `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
 | `docs/adr/` | One ADR per control, plus the open decisions at `Status: Proposed` |
 
 `README.md` § "The register at a glance" lists the thirteen Tier-1 controls, with

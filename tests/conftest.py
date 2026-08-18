@@ -111,6 +111,31 @@ def write_register(root: Path, register: dict[str, Any] | None = None) -> Path:
     return path
 
 
+def register_with(tmp_path: Path, mutate: Any) -> Register:
+    """This repository's register with one edit applied, reloaded from disk.
+
+    The shape every "only the register moved" test needs: the checker is
+    untouched, one field of `controls.yaml` changes, and the verdict has to
+    change with it. An assert still holding the rule privately passes the
+    happy path and fails here.
+    """
+    document = yaml.safe_load((REPO_ROOT / "controls.yaml").read_text(encoding="utf-8"))
+    mutate(document)
+    root = tmp_path / "register"
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "controls.yaml").write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+    # `rationale_adr` paths are checked relative to the register, so bring them.
+    for control in document["controls"] + document.get("meta_controls", []):
+        adr = control.get("rationale_adr")
+        if adr:
+            target = root / adr
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("# ADR\n", encoding="utf-8")
+    register, errors = load_register(root / "controls.yaml")
+    assert register is not None, errors
+    return register
+
+
 def minimal_register(**overrides: Any) -> dict[str, Any]:
     """A deep copy of the minimal register with control-level overrides applied."""
     document = copy.deepcopy(MINIMAL_REGISTER)

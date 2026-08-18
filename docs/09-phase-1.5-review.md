@@ -1,10 +1,14 @@
 # Phase 1.5 — the review, and how it closed
 
-A closed record. Phase 1.5 finished on 2026-08-18 with all 25 exit criteria met;
-this document is what it found and what each fix was, kept because the code still
-cites it.
+Phase 1.5 finished on 2026-08-18 with all 25 exit criteria met, and was
+re-opened the same day: a review of the closed phase, recorded below as
+[`§ H`](#h--what-a-review-of-the-closed-phase-found), found four of those
+criteria met in letter rather than in substance. Four are re-opened in
+[`04-build-plan.md`](04-build-plan.md) and closed again here; the rest of this
+document is what the phase originally found and what each fix was, kept because
+the code still cites it.
 
-**`§ A` through `§ G` anywhere in this repository — in an assert's docstring, a
+**`§ A` through `§ H` anywhere in this repository — in an assert's docstring, a
 test, an ADR — refer to the sections below.** They were sections of
 [`04-build-plan.md`](04-build-plan.md) until 2026-08-18, and were moved here when
 that file had grown to 65k with two thirds of it describing finished work. The
@@ -336,6 +340,281 @@ derived from the register and asserted in `tests/test_renovate_managers.py`, so
 the next missing annotation is a failing test rather than a number someone
 happens to read.
 
+### H — what a review of the closed phase found
+
+Dated 2026-08-18, hours after the twenty-fifth criterion was ticked. The method
+is § D's, turned on this phase's own output rather than on Phase 1's: run the
+gates, then run the checker against repositories built to break it — a Go repo,
+a polyglot repo, a copy of this one with one line changed at a time.
+
+Eight findings. **Four were exit criteria re-opened** in
+[`04-build-plan.md`](04-build-plan.md) — three of them ticked by this phase, one
+added — because each is the § A shape, a verdict that overstates what was
+checked. All four are closed, at register contract 8, and each carries its
+evidence below. The other four are recorded and carried: three are decisions
+Phase 2 has to take rather than defects it can be handed, and the fourth is a
+set of small ones.
+
+The four re-opened all failed the same way. A rule the checker holds *about this
+repository's own filenames and stacks* was read as a rule about repositories in
+general, so the assert measured this repo and reported on any repo. That is the
+same finding as § E, at the level below the one § E fixed: contract 6 moved the
+mandated tools out of the checker, and left the paths and the ecosystem map that
+tell the asserts where to look.
+
+#### H1 — GOV-001 accepts a workflow that never runs on push or pull_request
+
+Changing `on:` in `.github/workflows/standard-check.yml` to `workflow_dispatch:`
+and changing nothing else produces this report:
+
+```text
+LNT-001  FAIL  ✗ python: ci locus — no gating step runs ruff check
+TST-001  FAIL  ✗ the only step running the test command is in a workflow that
+               does not run on push or pull_request, so it gates nothing
+GOV-001  PASS  every applicable blocking control is reachable from a CI step
+               that can fail
+```
+
+Two asserts read that workflow correctly and the meta-control written to catch
+exactly this reads it wrongly, in the same run. `gov_001` filters its steps by
+`suppressed` and not by `gating`; `_is_gating` already existed and was wired
+into `tests-run-and-block` by § D, and into nothing else. A step in a
+manual-dispatch workflow cannot fail a merge, so this is theme **T-3** inside the
+control the register calls its guard against T-3.
+
+It also makes GOV-001's ADR 0017 declaration overstate itself. The declaration
+says *"reachability from a step that can fail is verified, being required is
+not"*. Reachability from a step that can fail was the half not verified.
+
+`ci-installs-frozen` has the same gap: SUP-001 passed in that same run on the
+strength of a `uv sync --frozen` in a workflow that gates nothing.
+
+**Required:** every assert that reads a CI step as *evidence of enforcement*
+filters on `gating`, and a step that matches but does not gate is reported as
+that rather than as absence.
+
+**Closed 2026-08-18.** `gov_001` partitions its steps rather than filtering them,
+so "wired to a trigger that gates nothing" and "never wired" are different
+verdicts — they are different repairs, and a message naming only the second sends
+the reader looking for a step that is there. `ci-installs-frozen` takes its
+frozen-install evidence from gating steps only; an *offence* is still an offence
+wherever it runs, because a step that re-resolves is not made safe by a trigger
+that gates nothing. The same one-line edit to `on:` now reports:
+
+```text
+LNT-001  FAIL  ✗ python: ci locus — no gating step runs ruff check
+SUP-001  FAIL  ✗ no gating CI step installs the dependency graph in frozen mode
+               for: python
+TST-001  FAIL  ✗ the only step running the test command is in a workflow that
+               does not run on push or pull_request, so it gates nothing
+GOV-001  FAIL  ✗ blocking controls reached only from a workflow that runs on
+               neither push nor pull_request, so it gates no merge: SEC-001,
+               SEC-002, SUP-001, SUP-002, SUP-003, BLD-001, DEV-001, LNT-001,
+               TYP-001, TST-001
+```
+
+Three GOV-001 tests failed when the fix landed, all of them fixtures with no
+`on:` at all — they had been asserting reachability against workflows that gated
+nothing, which is how the gap survived a suite written to catch it.
+`test_gov_001_rejects_a_workflow_that_gates_no_merge` and its `pull_request`-only
+mirror are the guards.
+
+#### H2 — the loci a tool is pinned at were a list in the checker
+
+`_VERSION_SITES` in `asserts_file.py` named four paths. Renaming
+`.github/workflows/standard-check.yml` to `conformance.yml` and drifting both of
+its pins to `9.9.9` left SUP-001 reporting PASS: the file was no longer one of
+the four, so nothing compared it. This is § G's defect — gitleaks compared at no
+locus — one refactor away from returning, and the § G fix (fail when a `literal`
+tool is pinned at *no* known locus) cannot see it, because the tool was still
+pinned at the three sites that kept their names.
+
+The same list points the other way for anyone else. A repository that installs
+gitleaks from a workflow of its own naming fails SUP-001 with *"gitleaks is
+declared `source: literal` but is pinned at no known locus
+(.pre-commit-config.yaml, .devcontainer/setup.sh, .github/workflows/lint.yml,
+.github/workflows/standard-check.yml)"* — this repository's four filenames,
+quoted at an adopter as though they were the standard. By
+[ADR 0018](adr/0018-register-checker-boundary.md)'s test the answer is not close:
+a reasonable Equal Experts repository needs these to differ without the checker
+changing.
+
+**Required:** the sites are a register fact, per tool. A declared site that does
+not exist is a failure, so the rename above becomes a verdict rather than a
+silence.
+
+**Closed 2026-08-18** at register contract 8, as `tools.<tool>.pinned_at` —
+required under `source: literal`, rejected under `source: lockfile`, the same
+asymmetry as `version:` and for the same reason. The rename that used to pass now
+reports:
+
+```text
+SUP-001  FAIL  ✗ gitleaks is recorded as pinned at
+               .github/workflows/standard-check.yml, which does not exist
+```
+
+A declared site holding no pin fails too: the file being there and the version
+not being in it is the same silence one level down. That rule immediately shrank
+the list from four sites to four *pins across two files* — `.pre-commit-config.yaml`
+and `.github/workflows/lint.yml` were in the checker's tuple and pin neither
+tool, because both invoke binaries installed elsewhere. Two of the four names
+being unable to match anything is what a list nobody could review looks like. The list existed in a third
+place as well — `tests/test_renovate_managers.py` carried its own copy of the
+managed files — and that now derives from `pinned_at`, so adding a locus to the
+register is what puts it under the Renovate test rather than a second edit
+somebody has to remember.
+
+#### H3 — the ecosystem map ADR 0018 called the measured harm survived
+
+ADR 0018's Background names it: *"SUP-001's lockfile map knows Python and Node,
+so a Go, Rust or Java repository with no lockfile at all passes a Tier-1
+control."* `lockfile_present_and_tracked` was moved onto the register's
+`ecosystems:` and does read all six. `ci_installs_frozen`, in the same control,
+kept a private copy:
+
+```python
+for stack, manifest in (("python", "pyproject.toml"), ("node", "package.json"))
+```
+
+A repository with `go.mod` and a `go build` step is told *"every CI install is
+frozen or exact-pinned"*.
+
+Behind it, the same exemption a second time and in the register's own hand:
+SUP-001 is `applies_to: [python, typescript]`, and `predicates:` defines no `go`,
+`rust`, `java` or `ruby`. So the four ecosystems added at contract 3 are
+unreachable from the control they were added for — a Go repository with no
+`go.sum` reports `SKIPPED (predicate)` and the run exits 0. Moving the dictionary
+into the register did not undo the exemption; it moved where the exemption is
+written.
+
+**Required:** the positive evidence — what a frozen install looks like for an
+ecosystem — is a register fact like the lockfile names beside it, and SUP-001
+applies wherever a package manager is detected rather than to two named stacks.
+
+**Closed 2026-08-18** at contract 8. `ecosystems.<name>.frozen_install` holds the
+idioms, compiled at schema time like `suppression`, and all six ecosystems carry
+them; SUP-001's `applies_to` is `[always]`, so a repository with no package
+manager passes on `lockfile_present_and_tracked` finding none rather than on a
+predicate that never looked. The Go repository that reported
+`SKIPPED (predicate)` now reports:
+
+```text
+SUP-001  FAIL  ✗ lockfile_present_and_tracked — no tracked lockfile for:
+               go (one of go.sum)
+```
+
+The negative half — which commands *re-resolve* — stays in the checker, with its
+reason recorded in ADR 0018 rather than left implicit: answering it means parsing
+a package manager's argument grammar, and argument grammars in the register make
+the register a program, which ADR 0018 rejected by name as Option 2.
+
+**Flagged, because it is newly asserted policy.** The idioms for `go`, `rust`,
+`java` and `ruby` had no prior art here — nothing was checking those ecosystems
+at all — so they are this work's judgement rather than a move of something
+already decided. `go build` counts as frozen because `-mod=readonly` has been
+Go's default since 1.16 and every build verifies `go.sum`; `cargo` requires
+`--locked` or `--frozen`; Gradle and Maven require `--offline`; Bundler requires
+`--deployment` or `--frozen`. They are in the register precisely so that someone
+who runs those stacks can correct them without touching the checker, and they
+should be reviewed by someone who does.
+
+#### H4 — ADR 0018's cloud-key move never landed, and carries no reason
+
+The ratified Decision lists the rules that move to the register: *"mandated
+tools, lockfile ecosystems, test-command spellings, **cloud-key names**,
+Dependabot ecosystems and suppression patterns"*. Five of the six moved.
+`_STATIC_KEY_NAMES` — seven names, deciding SEC-002's verdict — is still in
+`asserts_command.py`, appears in none of the three *Applied* passes, and is
+absent from the *Staying in the checker — with reasons* table.
+
+The ADR anticipated exactly this: *"A rule that stays in the checker must carry
+its reason in this ADR — an unreasoned omission is the failure this record exists
+to stop, not an application of it."* The criterion "ADR 0018 is **implemented**"
+was ticked over it.
+
+**Required:** move it, since the ratified decision already classified it, and
+record the pass in the ADR like the three before it.
+
+**Closed 2026-08-18** at contract 8, as `cloud_credentials:`, with a fourth
+*Applied* section in [ADR 0018](adr/0018-register-checker-boundary.md) recording
+it and the two rules found beside it. The spelling equivalence — that
+`AWS_ACCESS_KEY_ID` and `aws-access-key-id:` are one credential — stays in the
+checker and is now reasoned there too. `tests/test_section_h.py` proves the move
+is real the way `test_stacks.py` did for contract 6: adding a name to the
+register turns SEC-002 red against a workflow the checker's own list would never
+have flagged, and only `controls.yaml` changes.
+
+#### H5 — the meta-controls are in-process assertions declared `kind: command`
+
+Not fixed here. Recorded because it is a decision, and because Phase 2's skills
+read the taxonomy.
+
+The schema rejects a `run:` whose command is `standard-check assert`, with the message
+that an in-process assertion is `kind: file`. It accepts
+`standard-check meta GOV-001`, and `verify_meta.py` then matches that string and
+runs the check **in-process** — the same shape, exempted by nothing written
+down. `CLAUDE.md` states the rule with no exception: *"declaring an in-process
+assertion as `kind: command` is a schema error"*.
+
+Nothing is verified wrongly today: GOV-001's reachability test reads controls,
+not meta-controls, so the miscategorisation that decided verdicts in § E cannot
+here. It is a rule with an undocumented exception, in the vocabulary six gate
+skills are about to inherit. Either the meta form is a fourth `kind`, or the rule
+is restated to name it.
+
+#### H6 — `npx --no-install` falls back to `PATH`
+
+Not fixed here; it needs a mechanism decision, and probably belongs with the
+Phase 2 template.
+
+DOC-001's tool has one authority — `package-lock.json` — and nothing checks that
+the binary which ran came from it. Deleting `node_modules` and re-running leaves
+DOC-001's command block exiting 0, against a global `markdownlint-cli2@0.23.2`
+left on `PATH` by the `setup.sh` that predates `bd23bfb`. `--no-install` means
+"do not fetch", not "resolve locally": npx falls through to `PATH`, and the
+pre-commit hook's entry is the same string.
+
+The stale global happened to match the lockfile. A different one would have
+passed identically, which is `source: lockfile` claiming an authority it does not
+enforce. `tool_versions_match_register` checks only that the lockfile is tracked.
+
+#### H7 — ignore paths on a `narrowing-only` control with `baseline: null`
+
+Not fixed here. It is the rule that needs deciding, not the file.
+
+`.markdownlint-cli2.yaml` carries four `ignores:` entries. `CLAUDE.md` says *"no
+ignore path may be added to a `narrowing-only` control with `baseline: null`,
+which is all of them"*, and `.claude/**` was removed from that same file on that
+same reasoning, recorded as *"there was no honest place to put an exemption"*.
+The four that remain are load-bearing — `node_modules`, `.venv`, `.terraform`,
+`.pnpm-store` are not files this repository authors — so the rule as written is
+one this repository cannot keep.
+
+Either the rule admits a class of path that is not a weakening because the files
+are not ours, or every gate skill in Phase 2 deploys a config that breaks it six
+times over. Adjacent, and the same shape inverted: `[tool.mypy] files` is an
+allow-list, so a new top-level directory is silently untyped rather than
+explicitly exempted.
+
+#### H8 — three smaller findings
+
+- GOV-001's full-run short-circuit matches `standard-check run --tier 1` and
+  `standard-check --repo ../other`. A narrowed run, or a run against a different
+  directory, marks every blocking control reachable. No such step exists today
+  and all controls are Tier 1, so this is latent until Tier 2 — but Tier 2 is the
+  first thing that makes it wrong.
+- `standard-check --repo ../other`, the form
+  [`08-adopting.md`](08-adopting.md) § 4 documents, fails for any repository that
+  does not contain its own `controls.yaml`, which is every adopter. The guide
+  does not mention `--register`. It also exits `1` — "a verified violation" — for
+  an unreadable register, where the CLI's own docstring reserves `2` for that
+  class.
+- `runner.py`'s "every verification block narrowed itself out" path returns
+  `SKIPPED (predicate)`, which exits 0, while its own comment says the control
+  applied and nothing verified it. `UNCLASSIFIED` is the ADR 0016 verdict for
+  that. Unreachable with BLD-001's current blocks; Phase 2 adds blocks with
+  `applies_to`.
+
 ### Decisions required before Phase 2
 
 These are not code, and they are not the author's to settle alone. Each is
@@ -365,6 +644,14 @@ read by no assert, and a feature-preference ladder that would have made an
 install worse. The evidence is what makes the next tick trustworthy.
 
 ### The criteria, as they read on closing
+
+Historical: this is the wording each criterion had when Phase 1.5 first closed on
+the morning of 2026-08-18. Three of them — GOV-001's reachability, the tool
+authority, and ADR 0018's implementation — were re-opened by § H later that day
+and are now recorded in [`04-build-plan.md`](04-build-plan.md) in their widened
+form. The entries below are left as they stood, because a record that quietly
+becomes what we later wished it had said is the ledger this repository exists to
+prevent.
 
 - [x] GOV-002 fails on a baseline grown in a **commit**, not only in a dirty
       worktree — it now compares against the merge-base with the default branch

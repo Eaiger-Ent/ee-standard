@@ -15,7 +15,13 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 
-from standard_check.asserts_file import AssertFn, AssertResult, _fail, _ok
+from standard_check.asserts_file import (
+    AssertFn,
+    AssertResult,
+    _ecosystems_present,
+    _fail,
+    _ok,
+)
 from standard_check.predicates import compile_predicate
 from standard_check.repo import Repo, load_jsonc
 
@@ -103,7 +109,11 @@ def _workflow_steps(repo: Repo) -> Iterator[WorkflowStep]:
                 )
 
 
-_STATIC_KEY_NAMES = (
+# The fallback set, used only when the register names none. It exists for the
+# same reason `suppression`'s does: an older register should detect something
+# rather than nothing, and a SEC-002 that looks for no credential at all is the
+# green-over-nothing this repository exists to prevent.
+_DEFAULT_CLOUD_CREDENTIALS = (
     "AWS_ACCESS_KEY_ID",
     "AWS_SECRET_ACCESS_KEY",
     "GOOGLE_APPLICATION_CREDENTIALS",
@@ -113,31 +123,41 @@ _STATIC_KEY_NAMES = (
     "AZURE_CREDENTIALS",
 )
 
-# Matched case-insensitively, and with `-`/`_` treated alike: the same key is
-# spelled `aws-access-key-id:` as an action input and `AWS_ACCESS_KEY_ID` as an
-# env var. A case-sensitive substring test over the uppercase spellings missed
-# `aws-access-key-id: ${{ secrets.PROD_KEY }}` entirely (§ D) — the commonest
-# way the credential actually appears.
-_STATIC_KEY_PATTERNS = tuple(
-    (name, re.compile(name.replace("_", "[-_]"), re.IGNORECASE)) for name in _STATIC_KEY_NAMES
-)
+
+def _credential_patterns(register: Register) -> tuple[tuple[str, re.Pattern[str]], ...]:
+    """Each credential name, matched however a workflow spells it.
+
+    Which names to look for is the register's (ADR 0018, fourth pass — § H4);
+    that `AWS_ACCESS_KEY_ID` and `aws-access-key-id:` are the same credential is
+    detection implementation and stays here. A case-sensitive substring test
+    over the uppercase spellings missed `aws-access-key-id: ${{ secrets.PROD_KEY }}`
+    entirely (§ D) — the commonest way the credential actually appears.
+    """
+    names = register.cloud_credentials or _DEFAULT_CLOUD_CREDENTIALS
+    return tuple(
+        (name, re.compile(re.escape(name).replace("_", "[-_]"), re.IGNORECASE))
+        for name in names
+    )
 
 
 def no_static_cloud_keys(
     repo: Repo,
-    _register: Register,
+    register: Register,
     _args: Mapping[str, object],
 ) -> AssertResult:
+    patterns = _credential_patterns(register)
     findings: list[str] = []
     for path in repo.workflow_files():
         text = repo.read(path)
         findings.extend(
-            f"{path}: references {name}" for name, pattern in _STATIC_KEY_PATTERNS
-            if pattern.search(text)
+            f"{path}: references {name}" for name, pattern in patterns if pattern.search(text)
         )
     if findings:
         return _fail("; ".join(findings))
-    return _ok("no workflow references a static cloud key secret")
+    return _ok(
+        f"no workflow references any of the {len(patterns)} static cloud credentials the "
+        "register names"
+    )
 
 
 _EXACT_PIN_NPM = re.compile(r"@\d[\w.\-]*$")
@@ -204,45 +224,59 @@ def _install_offences(run: str) -> Iterator[str]:
                 yield f"'{text}' re-resolves — use pnpm install --frozen-lockfile"
 
 
-_FROZEN_PY = re.compile(
-    r"\buv sync\b.*--(frozen|locked)\b"
-    r"|\bpip3? install\b.*-r\s+\S+"
-    r"|\b(?:poetry|pdm) install\b.*--(?:sync|frozen|no-update|check)\b"
-)
-_FROZEN_NODE = re.compile(
-    r"\bnpm ci\b|\byarn install\b.*--immutable\b|\bpnpm install\b.*--frozen-lockfile\b"
-)
-
-
 def ci_installs_frozen(
     repo: Repo,
-    _register: Register,
+    register: Register,
     _args: Mapping[str, object],
 ) -> AssertResult:
+    """Every ecosystem present installs from its lockfile in a step that gates.
+
+    Both halves were checker-side constants and both are register facts now.
+    What a frozen install *looks like* is `ecosystems.<name>.frozen_install`
+    (contract 8): this held a two-entry map — python and node — so a repository
+    with a `go.mod`, a `Cargo.toml` or a `Gemfile` was told "every CI install is
+    frozen or exact-pinned" with nothing checked, which is the map ADR 0018
+    called the measured harm surviving in the assert beside the one it was moved
+    out of (§ H3).
+
+    The evidence must also come from a step that can fail a merge (§ H1): a
+    `uv sync --frozen` in a `workflow_dispatch`-only workflow shows what a human
+    can choose to run, not what a merge has to pass.
+    """
     offences: list[str] = []
     frozen: set[str] = set()
+    present = _ecosystems_present(repo, register)
+    compiled = {
+        name: [re.compile(pattern) for pattern in ecosystem.frozen_install]
+        for name, ecosystem in present.items()
+    }
     for step in _workflow_steps(repo):
+        # An offence is an offence wherever it runs: a step that re-resolves is
+        # not made safe by running on a trigger that gates nothing.
         offences.extend(f"{step.path} ({step.job}): {o}" for o in _install_offences(step.run))
+        if not step.gating:
+            continue
         for line in _logical_lines(step.run):
-            if _FROZEN_PY.search(line):
-                frozen.add("python")
-            if _FROZEN_NODE.search(line):
-                frozen.add("node")
+            frozen.update(
+                name for name, patterns in compiled.items()
+                if any(pattern.search(line) for pattern in patterns)
+            )
     if offences:
         return _fail("; ".join(offences))
-    # A stack whose graph is never installed frozen has not satisfied this
+    # An ecosystem whose graph is never installed frozen has not satisfied this
     # control — a TypeScript repo with no workflows at all used to pass it
     # vacuously, because only python was ever required (§ D).
-    missing = [
-        stack
-        for stack, manifest in (("python", "pyproject.toml"), ("node", "package.json"))
-        if repo.exists(manifest) and stack not in frozen
-    ]
+    missing = sorted(name for name in present if name not in frozen)
     if missing:
         return _fail(
-            "no CI step installs the dependency graph in frozen mode for: " + ", ".join(missing)
+            "no gating CI step installs the dependency graph in frozen mode for: "
+            + ", ".join(missing)
         )
-    return _ok("every CI install is frozen or exact-pinned")
+    if not present:
+        return _ok("no package manager detected — nothing to install")
+    return _ok(
+        "every CI install is frozen or exact-pinned, for: " + ", ".join(sorted(present))
+    )
 
 
 _SHA40 = re.compile(r"^[0-9a-f]{40}$")

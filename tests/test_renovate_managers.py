@@ -25,10 +25,23 @@ import re
 
 from conftest import REPO_ROOT, a_register
 
-# Files Renovate's custom managers are pointed at. Documentation that merely
-# discusses an annotation is not managed and must not be scanned — the prose in
-# `04-build-plan.md` describes the mechanism rather than pinning anything.
-_MANAGED = ("controls.yaml", ".devcontainer/setup.sh", ".github/workflows/standard-check.yml")
+
+def _managed() -> tuple[str, ...]:
+    """Files Renovate's custom managers are pointed at, from the register.
+
+    Documentation that merely discusses an annotation is not managed and must
+    not be scanned — the prose in `04-build-plan.md` describes the mechanism
+    rather than pinning anything.
+
+    Derived from `tools.<tool>.pinned_at` plus the register itself, rather than
+    listed here. It was a third copy of the same list — the checker had one, the
+    register's loci were another — and a copy is what let a renamed workflow
+    drop out of comparison unnoticed (§ H2). Now adding a locus to the register
+    is what puts it under this test.
+    """
+    register = a_register()
+    sites = {site for tool in register.tools.values() for site in tool.pinned_at}
+    return ("controls.yaml", *sorted(sites))
 
 # The annotation may be indented — it sits inside a YAML mapping in the
 # register and at column zero in the shell script. The group starts at the `#`
@@ -69,7 +82,7 @@ def _pins(text: str, name: str, version: str) -> bool:
 def test_every_annotation_in_the_repository_is_matched_by_a_manager() -> None:
     """No annotation is decorative. This is the § G failure, generalised."""
     patterns = _patterns()
-    for relative in _MANAGED:
+    for relative in _managed():
         text = (REPO_ROOT / relative).read_text(encoding="utf-8")
         for annotation in _ANNOTATION.finditer(text):
             tail = text[annotation.start("hash") :]
@@ -88,7 +101,7 @@ def test_every_match_extracts_the_version_the_register_records() -> None:
     }
     patterns = _patterns()
     seen: set[tuple[str, str]] = set()
-    for relative in _MANAGED:
+    for relative in _managed():
         text = (REPO_ROOT / relative).read_text(encoding="utf-8")
         for pattern in patterns:
             for match in pattern.finditer(text):
@@ -124,7 +137,7 @@ def test_every_literal_tool_is_annotated_at_the_register_and_at_every_locus() ->
 
     for name, tool in literals.items():
         assert tool.version is not None
-        for relative in _MANAGED:
+        for relative in _managed():
             text = (REPO_ROOT / relative).read_text(encoding="utf-8")
             if not _pins(text, name, tool.version):
                 continue
@@ -156,14 +169,14 @@ def test_the_manager_count_matches_the_sites_the_register_implies() -> None:
     expected = 0
     for name, tool in literals.items():
         assert tool.version is not None
-        for relative in _MANAGED:
+        for relative in _managed():
             text = (REPO_ROOT / relative).read_text(encoding="utf-8")
             if _pins(text, name, tool.version):
                 expected += 1
 
     matched = sum(
         1
-        for relative in _MANAGED
+        for relative in _managed()
         for pattern in patterns
         for _ in pattern.finditer((REPO_ROOT / relative).read_text(encoding="utf-8"))
     )

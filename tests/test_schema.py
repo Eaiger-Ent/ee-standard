@@ -240,6 +240,75 @@ def test_tool_source_is_a_closed_set(tmp_path: Path) -> None:
     assert any("tools.uv.source" in e for e in _errors_for(tmp_path, document))
 
 
+def test_literal_tool_requires_the_loci_that_repeat_its_version(tmp_path: Path) -> None:
+    """§ H2. A literal tool with no loci is a tool nothing compares.
+
+    Required rather than optional because an empty list and a missing one are
+    indistinguishable from a tool nobody pins, and "nothing was compared"
+    reading as a pass is the § A defect this field was moved out of the checker
+    to stop.
+    """
+    document = minimal_register()
+    document["tools"] = {"gitleaks": {"source": "literal", "version": "8.30.1"}}
+    assert any("tools.gitleaks.pinned_at" in e for e in _errors_for(tmp_path, document))
+
+
+def test_lockfile_sourced_tool_carries_no_loci(tmp_path: Path) -> None:
+    """The mirror of the version rule: no repetitions, so nothing to list."""
+    document = minimal_register()
+    document["tools"] = {
+        "markdownlint-cli2": {
+            "source": "lockfile",
+            "lockfile": "package-lock.json",
+            "pinned_at": [".github/workflows/lint.yml"],
+        }
+    }
+    errors = _errors_for(tmp_path, document)
+    assert any("tools.markdownlint-cli2.pinned_at" in e for e in errors)
+
+
+def test_an_uncompilable_frozen_install_pattern_is_a_schema_error(tmp_path: Path) -> None:
+    """Compiled at schema time, like `suppression`, and for the same reason.
+
+    A pattern that does not parse would otherwise surface as a crash in the
+    middle of a run, and one that parses but matches nothing is a control
+    passing vacuously — which is § H3.
+    """
+    document = minimal_register()
+    document["ecosystems"] = {
+        "python": {
+            "manifest": ["pyproject.toml"],
+            "lockfiles": ["uv.lock"],
+            "dependabot": ["uv"],
+            "test_commands": ["pytest"],
+            "frozen_install": ["uv sync ("],
+        }
+    }
+    errors = _errors_for(tmp_path, document)
+    assert any("ecosystems.python.frozen_install[0]" in e for e in errors)
+
+
+def test_an_ecosystem_without_frozen_install_is_a_schema_error(tmp_path: Path) -> None:
+    document = minimal_register()
+    document["ecosystems"] = {
+        "python": {
+            "manifest": ["pyproject.toml"],
+            "lockfiles": ["uv.lock"],
+            "dependabot": ["uv"],
+            "test_commands": ["pytest"],
+        }
+    }
+    errors = _errors_for(tmp_path, document)
+    assert any("ecosystems.python.frozen_install" in e for e in errors)
+
+
+def test_an_empty_cloud_credential_list_is_a_schema_error(tmp_path: Path) -> None:
+    """A control that looks for nothing passes everything (§ H4)."""
+    document = minimal_register()
+    document["cloud_credentials"] = []
+    assert any("cloud_credentials" in e for e in _errors_for(tmp_path, document))
+
+
 def test_a_block_predicate_must_narrow_its_control_not_widen_it(tmp_path: Path) -> None:
     """A block naming a predicate its control lacks can never run.
 
