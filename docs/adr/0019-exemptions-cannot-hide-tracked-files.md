@@ -134,8 +134,11 @@ repository.
 **Trade-offs and risks:**
 
 - `gitignore: true` requires the linter to run inside a git working tree.
-  Every locus does — editor, pre-commit and CI all run against a clone — but a
-  tarball extract would lint its vendored content and fail.
+  **Accepted 2026-08-18, not carried as a risk:** development happens in a
+  git-controlled environment by premise — [`03-devcontainer.md`](../03-devcontainer.md)
+  makes a clone the unit of work, and this whole standard evaluates a repository
+  through `git ls-files`. A tarball extract would lint its vendored content and
+  fail, and that is not an environment we support.
 - A repository that deliberately commits vendored markdown (a `third_party/`
   tree) now has no way to exempt it without a register change. That is the
   intended direction: such an exemption should be visible in the register rather
