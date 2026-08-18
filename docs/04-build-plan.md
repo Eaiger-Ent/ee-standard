@@ -427,27 +427,31 @@ manager, every match extracts the version the register records, and every
 The first of those failed on its first run — the annotations are indented inside
 a YAML mapping — which is the discrimination the test exists to prove.
 
-**Outstanding — the install itself.** The Renovate GitHub App has to be
-installed on `Eaiger-Ent` (or on this repository), which is a web-flow action no
-token here can perform. Until it is, `renovate.json` is a correct configuration
-that nothing reads — the same shape of inertness § G was written about, one
-level up. The two criteria this section gates therefore stay open.
+**Closed 2026-08-18.** The app was installed on this repository and the
+mechanism is confirmed running, not assumed: Dependency Dashboard
+[#14](https://github.com/Eaiger-Ent/ee-standard/issues/14) reports `regex (6)`
+and no other manager. Renovate auto-closed its own onboarding PR once
+`renovate.json` reached the default branch, which is what proves it read this
+config rather than the default one it proposed.
 
-To close them:
+**Two things this taught, worth keeping.**
 
-1. Install the app from <https://github.com/apps/renovate> onto `Eaiger-Ent`, or
-   onto `Eaiger-Ent/ee-standard` alone. Nothing else needs configuring — the
-   repository already holds the config the app reads.
-2. Wait for Renovate's **Dependency Dashboard** issue to appear. Its arrival is
-   the confirmation that the app is running, and it reports any error in
-   `renovate.json`, which is the one thing a local test cannot check.
-3. Confirm the dashboard lists `uv` and `gitleaks` under the custom managers. If
-   it does not, the managers matched nothing at the app's end and the criteria
-   stay open — an inert manager is the § G failure repeated, not a smaller
-   version of it.
+*Config on a branch is config that does not exist.* Renovate reads from the
+default branch. While `renovate.json` sat unmerged on a feature branch the app
+saw an unconfigured repository and opened an onboarding PR carrying a **default**
+config — every manager enabled, duplicating Dependabot exactly as
+`enabledManagers` was written to prevent. Merging that PR would have installed
+the opposite of the intent. It must be left alone rather than closed, because
+closing an onboarding PR unmerged is Renovate's signal to disable itself.
 
-Then tick both boxes below, and narrow nothing: SUP-002's title becomes true at
-that point rather than needing a change.
+*The count is the check.* The dashboard first reported **five** managed sites
+where the register implies six. That single digit found a missing annotation in
+`.devcontainer/setup.sh` and, behind it, `tool_versions_match_register`
+comparing gitleaks at no locus at all while reporting PASS — the § A defect, in
+the assert a Phase 1.5 criterion had already been ticked on. The count is now
+derived from the register and asserted in `tests/test_renovate_managers.py`, so
+the next missing annotation is a failing test rather than a number someone
+happens to read.
 
 ### Decisions required before Phase 2
 
@@ -596,23 +600,30 @@ below — not this table — track that.
       markdownlint-cli2`, and the four hand-kept pins are gone — including the
       pre-commit mirror's `rev:`, which was a copy nothing compared. Register
       contract 4, because DOC-001's `verify` changed
-- [ ] The two remaining `literal` tools are reconciled by machine, not by a
-      human remembering — **choice made 2026-08-17 (§ G action 1), config
-      landed, install outstanding**. `renovate.json` enables `custom.regex` only
-      and its two managers read the `# renovate:` annotations at the register
-      and at every locus; `tests/test_renovate_managers.py` proves the patterns
-      match rather than assuming it, which is the failure mode § G recorded.
-      What remains is not a decision but an act: the Renovate GitHub App must be
-      installed on the org or this repository, a web flow no token here can
-      perform. Until its Dependency Dashboard issue appears, the configuration
-      is correct and read by nothing, and the two tools stay drift-checked but
-      never auto-proposed
-- [ ] SUP-002's title matches what it verifies. It claims dependency updates are
-      proposed automatically, and for `uv` and `gitleaks` nothing proposes them
-      until the app above is installed. § G's action 1 is what makes the title
-      true; ticking this before the install would be the register asserting a
-      mechanism that is not running, which is theme T-3 inside the register
-      itself
+- [x] The two remaining `literal` tools are reconciled by machine, not by a
+      human remembering — **closed 2026-08-18**. § G action 1 was chosen, the
+      Renovate app was installed, and the mechanism is confirmed running rather
+      than assumed: Dependency Dashboard
+      [#14](https://github.com/Eaiger-Ent/ee-standard/issues/14) reports
+      **`regex (6)`** — `uv` and `gitleaks` each managed at the register and at
+      both loci that pin them — and reports no other manager, so Dependabot's
+      four ecosystems are not duplicated. Renovate closed its own onboarding PR
+      once `renovate.json` reached the default branch, which is the confirmation
+      that it read *this* config rather than a default one.
+      The verification earned its keep. The dashboard first reported **five**
+      sites where the register implies six, and that one-digit discrepancy found
+      two defects: a missing annotation in `.devcontainer/setup.sh`, and — far
+      worse — `tool_versions_match_register` comparing gitleaks at **no** locus
+      while reporting PASS. Both fixed; see the authority criterion above, which
+      was re-opened and re-closed for it
+- [x] SUP-002's title matches what it verifies — **closed 2026-08-18** by the
+      mechanism existing, not by narrowing the words. It claims dependency
+      updates are proposed automatically; Dependabot proposes the four package
+      ecosystems and Renovate proposes the two literals, which between them is
+      every dependency this repository pins. The title needed no change because
+      it is now true. Ticking it before the install would have been the register
+      asserting a mechanism that was not running — theme T-3 inside the register
+      itself, and the reason this box stayed open through three sessions
 - [x] `variance: justified` is implementable or removed from the vocabulary, and
       `CLAUDE.md` lists whatever survives — **removed** at contract 3, with
       `free`. `justified`'s anti-loophole mechanism was that a weakening becomes
