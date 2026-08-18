@@ -4,7 +4,7 @@
 **Date:** 2026-08-17
 
 Ratified decision from
-[`04-build-plan.md`](../04-build-plan.md) § Phase 1.5 § Decisions required.
+[`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
 
 **Not yet implemented.** Acceptance settles the mechanism, not the code: the
 register has no field for a partial declaration, GOV-001 still prints an

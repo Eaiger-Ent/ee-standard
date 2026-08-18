@@ -4,7 +4,7 @@
 **Date:** 2026-08-17
 
 Ratified decision from
-[`04-build-plan.md`](../04-build-plan.md) § Phase 1.5 § Decisions required.
+[`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
 
 **Not yet implemented.** Acceptance settles the semantics, not the code:
 `standard-check` still exits `0` on `SKIPPED (no credentials)`, still reports an

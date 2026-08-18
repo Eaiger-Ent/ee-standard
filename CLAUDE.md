@@ -10,7 +10,7 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 
 Current status: Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
 with no re-opened criteria outstanding. **Phase 2 is next.**
-Read `docs/04-build-plan.md` § Phase 1.5 before touching `src/standard_check/`:
+Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
 as settled without checking it — three boxes were re-opened after being ticked,
@@ -154,6 +154,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/05-promotion.md` | The route to the `ee-skills` marketplace |
 | `docs/06-devcontainer-setup.md` | Operator guide for this repo's own container |
 | `docs/07-inherited-conventions.md` | What the predecessor repo knew, sorted by whether it transfers — including what must **not** be copied |
+| `docs/09-phase-1.5-review.md` | Closed record of the Phase 1.5 review. **`§ A`–`§ G` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
 | `docs/adr/` | One ADR per control, plus the open decisions at `Status: Proposed` |
 
 `README.md` § "The register at a glance" lists the thirteen Tier-1 controls, with

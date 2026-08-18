@@ -1,4 +1,4 @@
-"""One test per row of `docs/04-build-plan.md` § D — assert precision.
+"""One test per row of `docs/09-phase-1.5-review.md` § D — assert precision.
 
 Every test here encodes an input the checker got wrong: a **false negative**
 where an assert passed while the control's `enforces` did not hold, or a **false

@@ -4,7 +4,7 @@
 **Date:** 2026-08-17
 
 Ratified decision from
-[`04-build-plan.md`](../04-build-plan.md) § Phase 1.5 § Decisions required.
+[`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
 
 **Implemented** over three passes, at register contracts 3, 5 and 6 — see the
 *Applied* sections below. Every rule the test moves is now in `controls.yaml`,

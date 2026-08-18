@@ -153,7 +153,7 @@ The family is one plugin, so it is one submission — but the two changes to
 
 Submission 4 was identified by this repository deploying `lint-md` and then
 having to hand-edit every artefact it wrote — recorded in
-[`04-build-plan.md`](04-build-plan.md) § F. It is listed here because a
+[`09-phase-1.5-review.md`](09-phase-1.5-review.md) § F. It is listed here because a
 submission tracked in a build plan and absent from the promotion order is a
 submission that gets forgotten at promotion time.
 

@@ -63,6 +63,7 @@ twice. Every step carries the evidence that shows it worked.
 | [`docs/05-promotion.md`](docs/05-promotion.md) | The route to the `ee-skills` marketplace. |
 | [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md) | **Start here if you are working on this repo.** Standing up its container, and the macOS values it needs. |
 | [`docs/07-inherited-conventions.md`](docs/07-inherited-conventions.md) | What the predecessor repo already knew, and which half of it transfers. |
+| [`docs/09-phase-1.5-review.md`](docs/09-phase-1.5-review.md) | Closed record of the Phase 1.5 review — the findings `§ A`–`§ G` the code cites, and the evidence behind each tick. |
 | [`controls.yaml`](controls.yaml) | The register itself. |
 
 ## The register at a glance
@@ -111,7 +112,7 @@ checker aborting without a verdict in some conditions and reporting green for
 things it had not examined in others; since Phase 2 copies the assert layer into
 six gate skills, those defects are fixed first. The full backlog, the decisions
 it needs, and four re-opened exit criteria are in
-[`docs/04-build-plan.md`](docs/04-build-plan.md) § Phase 1.5.
+[`docs/09-phase-1.5-review.md`](docs/09-phase-1.5-review.md).
 
 ## Relationship to existing ee-skills plugins
 
