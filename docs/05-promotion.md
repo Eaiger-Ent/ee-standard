@@ -149,6 +149,13 @@ The family is one plugin, so it is one submission — but the two changes to
 | 1. `ee-standard` | `/skill-submit-new` | The new plugin, plus the `governance` category. |
 | 2. `skill-update` widening | `/skill-submit-amend` against `ee-skills-manage` | Changes an existing, widely installed skill. Reviewers assessing a new plugin and reviewers assessing a behaviour change to a shipped one are asking different questions. |
 | 3. `CONTRIBUTING.md` corrections | Direct PR (Lane B) | Documentation fix, explicitly permitted as a direct PR. Useful to land first — it is small, independent, and establishes contact before the large submission arrives. |
+| 4. `lint-md` amendment | `/skill-submit-amend` against `ee-skills-incubator` | Raised 2026-08-18 as [issue #530](https://github.com/EqualExperts/ee-skills-incubator/issues/530). Independent of the three above and raised ahead of them, because it blocks something already in use: `lint-md@1.0.6` pins markdownlint-cli2's version at none of the four loci it wires, and its CI template writes a floating `actions/checkout@v6`. Until it ships, re-running the skill on a conformant repository reverts both corrections, so a deployed gate cannot be refreshed without losing conformance. |
+
+Submission 4 was identified by this repository deploying `lint-md` and then
+having to hand-edit every artefact it wrote — recorded in
+[`04-build-plan.md`](04-build-plan.md) § F. It is listed here because a
+submission tracked in a build plan and absent from the promotion order is a
+submission that gets forgotten at promotion time.
 
 Submission 2 is not optional dressing. Without it, `skill-update` computes the
 owed-deployment report and then prints *"Already done"* underneath it whenever

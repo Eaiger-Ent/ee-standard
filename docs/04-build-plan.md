@@ -300,12 +300,14 @@ artefact stale by the definition in `00-concepts.md` — and the stamp format
 carries no contract number, so the documented noise control cannot be evaluated
 from a stamp at all.
 
-**Closed for the stamps, open for the submission.** All four artefacts are
-stamped and the format now carries `register-contract:`; each stamp also records
-the hand-edits made since deployment, which is the amend's scope written down
-rather than remembered. What remains is raising the amend against `lint-md`
-itself — an issue in another organisation's repository, and the fourth
-submission Phase 6 tracks.
+**Closed.** All five artefacts are stamped, the format now carries
+`register-contract:`, and each stamp records the hand-edits made since
+deployment — which is the amend's scope written down rather than remembered.
+The amend was raised on 2026-08-18 as
+[ee-skills-incubator#530](https://github.com/EqualExperts/ee-skills-incubator/issues/530),
+the fourth submission Phase 6 tracks. It is a submission, not a merge: until a
+maintainer ships it, re-running `lint-md` here still reverts the pins, so the
+deployment stays un-refreshable and Phase 6's criterion holds the follow-up.
 
 That last clause is a **Phase 5 dependency, not a cosmetic one**. Phase 5's first
 two exit criteria — a version bump must produce no redeployment recommendation, a
@@ -584,15 +586,19 @@ below — not this table — track that.
       a baseline entry, and the validator rejects any Tier-1 baseline, so it was
       structurally unreachable for both users. SUP-003 and IAC-001 are now
       `narrowing-only`, which is stricter, so nothing was loosened
-- [ ] Every `lint-md`-deployed artefact this repo has edited carries a
+- [x] Every `lint-md`-deployed artefact this repo has edited carries a
       provenance stamp, and the amend submission against `lint-md` is raised —
-      **stamps done, submission outstanding**. All four artefacts are stamped:
-      `.markdownlint.yaml`, `.markdownlint-cli2.yaml`, `.github/workflows/lint.yml`
-      and — at the hook rather than at the top of the file —
-      `.pre-commit-config.yaml`, which holds hooks for five controls and whose
-      whole-file stamp would have claimed the other four. Each names the
-      hand-edits made since deployment, so the amend has a written scope. The
-      submission against `lint-md` is the outstanding half
+      raised 2026-08-18 as
+      [ee-skills-incubator#530](https://github.com/EqualExperts/ee-skills-incubator/issues/530).
+      **Five** artefacts are stamped, not four:
+      `.markdownlint.yaml`, `.markdownlint-cli2.yaml`, `.github/workflows/lint.yml`,
+      `.claude/hooks/md-lint.py`, and — at the hook rather than at the top of the
+      file — `.pre-commit-config.yaml`, which holds hooks for five controls and
+      whose whole-file stamp would have claimed the other four. Each names the
+      hand-edits made since deployment, which is what gave the amend a written
+      scope rather than a remembered one. The submission proposes
+      `package-lock.json` as the single authority at every locus, a SHA-pinned
+      `actions/checkout`, and a `ruff`/`mypy --strict`-clean hook script
 - [x] The stamp format carries the **register contract number**, not only the
       register version, so Phase 5's first two criteria are evaluable from a
       stamp. Format is now
