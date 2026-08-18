@@ -347,13 +347,15 @@ is § D's, turned on this phase's own output rather than on Phase 1's: run the
 gates, then run the checker against repositories built to break it — a Go repo,
 a polyglot repo, a copy of this one with one line changed at a time.
 
-Eight findings. **Four were exit criteria re-opened** in
+Eight findings, of which **five are now closed** — the four below plus H7,
+decided as [ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md) on the
+same day. **Four were exit criteria re-opened** in
 [`04-build-plan.md`](04-build-plan.md) — three of them ticked by this phase, one
 added — because each is the § A shape, a verdict that overstates what was
 checked. All four are closed, at register contract 8, and each carries its
-evidence below. The other four are recorded and carried: three are decisions
-Phase 2 has to take rather than defects it can be handed, and the fourth is a
-set of small ones.
+evidence below. Of the other four, H7 was a decision Phase 2 would otherwise have
+had to take and was taken here instead; H5 and H6 remain carried, and H8 is a set
+of small ones.
 
 The four re-opened all failed the same way. A rule the checker holds *about this
 repository's own filenames and stacks* was read as a rule about repositories in
@@ -580,7 +582,9 @@ enforce. `tool_versions_match_register` checks only that the lockfile is tracked
 
 #### H7 — ignore paths on a `narrowing-only` control with `baseline: null`
 
-Not fixed here. It is the rule that needs deciding, not the file.
+The rule needed deciding, not the file. **Decided and closed 2026-08-18** as
+[ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md) — see the closing
+note at the end of this section.
 
 `.markdownlint-cli2.yaml` carries four `ignores:` entries. `CLAUDE.md` says *"no
 ignore path may be added to a `narrowing-only` control with `baseline: null`,
@@ -595,6 +599,53 @@ are not ours, or every gate skill in Phase 2 deploys a config that breaks it six
 times over. Adjacent, and the same shape inverted: `[tool.mypy] files` is an
 allow-list, so a new top-level directory is silently untyped rather than
 explicitly exempted.
+
+**Closed 2026-08-18** by [ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md):
+an exemption is judged by what it hides, not by whether it exists. A path git
+does not track is not this repository's content, so excluding it scopes the tool;
+a path git tracks is authored here, and no `narrowing-only` control with
+`baseline: null` admits excluding it.
+
+Two measurements decided it. The gate resolves its globs against the filesystem,
+not against git — 30 tracked markdown files here, and 164 more under
+`node_modules` — so the four entries were load-bearing and the prohibition was
+never keepable. And two of the four, `.terraform` and `.pnpm-store`, named
+directories this repository neither contains nor gitignores: they came from
+`lint-md`'s template and could not have been noticed by review, which is what a
+list nobody can check looks like.
+
+So the list is derived rather than kept. `.markdownlint-cli2.yaml` sets
+`gitignore: true` and carries `ignores: []`, which lints exactly the files git
+knows about, and `markdown_gate_wired_at_all_loci` fails any entry added to it
+that matches a tracked file:
+
+```text
+DOC-001  FAIL  ✗ .markdownlint-cli2.yaml: 'docs/**' excludes 28 tracked file(s)
+               the repository authors (docs/00-concepts.md, … and 25 more)
+```
+
+That is the `.claude/**` case, which a phase's criterion closed by deleting the
+entry — fixing the instance and not the class. `00-concepts.md` § Variance,
+`CLAUDE.md` and [`08-adopting.md`](08-adopting.md) now state the property instead
+of the prohibition, so the six Phase 2 gate skills inherit a rule they can
+implement rather than one none of them could honour.
+
+**The mypy allow-list went with it**, at register contract 9. It was recorded
+above as the same shape inverted, and it is: `[tool.mypy] files` excludes
+`tools/` by not naming it, so unlike `.claude/**` there is no line to read and no
+diff on the day coverage stops matching the codebase. A tracked module with a
+real type error, imported by nothing under those four paths, left `uv run mypy`
+reporting *"Success: no issues found"* and TYP-001 reporting PASS — while mypy
+found the error the moment it was pointed at the file. `source_globs` on the
+stack and `coverage_key` on the gate make the comparison the same one: what the
+list leaves out must be something git does not track. `pyproject.toml` needed no
+change, which is the point — an exemption may exist and may not hide anything.
+
+The register did not change, so there is no contract bump: DOC-001's verify block,
+rung and variance are as they were, and what moved is what the assert checks and
+what the deployed config contains. `.markdownlint-cli2.yaml` is a `lint-md`
+artefact, so this widens the amend at
+[ee-skills-incubator#530](https://github.com/EqualExperts/ee-skills-incubator/issues/530).
 
 #### H8 — three smaller findings
 

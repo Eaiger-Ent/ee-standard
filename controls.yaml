@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.8.0
+version: 0.9.0
 
 meta:
   owner: platform-engineering
@@ -37,7 +37,12 @@ meta:
   #    installing from the lockfile looks like, and `cloud_credentials:` records
   #    what SEC-002 forbids — the last of these named by ADR 0018's ratified
   #    decision and never moved. See docs/09-phase-1.5-review.md § H.
-  register_contract: 8
+  # 9: ADR 0019 applied to a coverage allow-list. `stacks.<stack>.source_globs`
+  #    names the tracked files a stack's gates must cover, and a gate's
+  #    `coverage_key` names where its allow-list lives — so a tracked module
+  #    outside `[tool.mypy] files`, which nothing imports, fails TYP-001 rather
+  #    than passing it silently.
+  register_contract: 9
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -201,6 +206,10 @@ ecosystems:
 # ---------------------------------------------------------------------------
 stacks:
   python:
+    # The tracked files this stack's gates are claimed to cover. A gate naming a
+    # `coverage_key` must cover every one of them — see the comment on that
+    # field below.
+    source_globs: ["*.py", "*.pyi"]
     gates:
       lint:
         tool: ruff
@@ -216,12 +225,24 @@ stacks:
         invocation: mypy
         pre_commit: mypy
         strict_key: strict
+        # Where the tool's *allow-list* lives, as a dotted path from the config
+        # file's root. ADR 0019 applied to a coverage list rather than an
+        # exemption list: `files = ["src", "tests", …]` is an exemption whose
+        # entries are the things it does **not** name, so a tracked module
+        # nothing imports is silently unchecked while TYP-001 claims "all
+        # first-party source". Every file matching `source_globs` must be under
+        # one of the roots named here.
+        #
+        # Omitting this field asserts that the tool has no allow-list to check.
+        # That has to be a deliberate statement about the tool, not an oversight.
+        coverage_key: tool.mypy.files
         config:
           - {file: pyproject.toml, section: tool.mypy}
           - {file: mypy.ini, section: mypy}
           - {file: .mypy.ini, section: mypy}
           - {file: setup.cfg, section: mypy}
   typescript:
+    source_globs: ["*.ts", "*.tsx"]
     gates:
       lint:
         tool: eslint
@@ -236,6 +257,11 @@ stacks:
         invocation: tsc
         pre_commit: tsc
         strict_key: strict
+        # `include` sits at the document root, not under `compilerOptions`,
+        # which is why the path is absolute within the file. Absent, tsc
+        # compiles everything below the tsconfig — no allow-list, nothing to
+        # check, which the assert treats as coverage rather than as silence.
+        coverage_key: include
         config:
           - {file: tsconfig.json, section: compilerOptions}
 

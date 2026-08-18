@@ -295,6 +295,7 @@ different linter without the checker changing.
 ```yaml
 stacks:
   python:                       # the key IS a predicate name
+    source_globs: ["*.py"]      # the tracked files its gates must cover
     gates:
       lint:                     # role: lint | typecheck
         tool: ruff
@@ -309,6 +310,7 @@ stacks:
         invocation: mypy
         pre_commit: mypy
         strict_key: strict      # a boolean in the section, which must be true
+        coverage_key: tool.mypy.files   # where the tool's allow-list lives
         config:
           - {file: pyproject.toml, section: tool.mypy}
           - {file: mypy.ini, section: mypy}
@@ -322,6 +324,7 @@ stacks:
 | `pre_commit` | no | Hook id or entry substring at the pre-commit locus. |
 | `editor_extension` | no | Extension id, found in `devcontainer.json` **or** `.vscode/extensions.json`. |
 | `strict_key` | no | A boolean inside the matched section that must be true. |
+| `coverage_key` | no | Dotted path, **from the config file's root**, to the tool's allow-list. |
 
 **The key is a predicate.** A stack applies exactly when its predicate does, so
 `applies_to: [python, typescript]` on a control and the stacks of those names are
@@ -333,6 +336,27 @@ being configured in it — `pyproject.toml` exists in every Python repository an
 says nothing about ruff until `[tool.ruff]` does. A location with no `section`
 counts as configured by existing, which is right for a file that exists only to
 configure one tool.
+
+**`coverage_key` is [ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)
+applied to a coverage list.** An exemption list makes an exclusion into a line
+you can read — `.claude/**` is a string, so it can be compared against what git
+tracks. An allow-list makes an exclusion into an *absence*: `files = ["src",
+"tests"]` excludes `tools/` by not mentioning it, so there is nothing to read and
+no diff when coverage shrinks relative to the codebase. Where one exists, every
+tracked file matching the stack's `source_globs` must be under one of its roots.
+
+The path is dotted from the file's **root**, not from the `section` — `include`
+sits at the top level of a `tsconfig.json` while `strict` sits under
+`compilerOptions`. Omitting the field asserts the tool has no allow-list at all,
+which is true of `tsc` with no `include` (it compiles everything below its
+tsconfig); that has to be a deliberate statement about the tool rather than an
+oversight. An allow-list the config does not set is likewise not an exemption,
+and is not reported as one.
+
+Import-reachable files are not credited as covered. mypy follows imports out of
+its allow-list, so a module something imports is checked today — by accident of
+that import, and unchecked again the day it goes. Coverage that can be withdrawn
+without editing the coverage list is not declared coverage.
 
 **`pre_commit` and `editor_extension` are optional to the schema and required in
 fact.** The validator demands whichever locus the controls using that role
