@@ -34,6 +34,7 @@ uv run pre-commit install
 
 # gitleaks at SEC-001's shared pin, verified by checksum (a pinned release
 # artefact — preference 3 in docs/03-devcontainer.md). Same version as CI.
+# renovate: datasource=github-releases depName=gitleaks/gitleaks
 GITLEAKS_VERSION=8.30.1
 case "$(uname -m)" in
   aarch64|arm64) GL_ARCH=arm64 GL_SHA=e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080 ;;
