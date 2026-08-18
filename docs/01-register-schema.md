@@ -205,7 +205,7 @@ locus, because the register is the authority: a proposal that moved the loci and
 left this table behind is one `tool_versions_match_register` rejects. The
 annotations are only worth writing if something reads them — a repository
 carrying them without the bot installed has a mechanism on paper and none in
-fact, which is what `docs/04-build-plan.md` § G records.
+fact, which is what `docs/09-phase-1.5-review.md` § G records.
 
 Prefer `lockfile`. It is the only option that eliminates duplication rather than
 reconciling it, and it is available whenever the tool is installable from an
