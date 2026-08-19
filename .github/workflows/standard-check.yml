@@ -27,6 +27,11 @@ jobs:
         # SUP-001 — install from the committed lockfile, never re-resolve.
         run: uv sync --frozen
 
+      # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  register: v0.11.0  register-contract: 11
+      #
+      # Adopted, not deployed: hand-written in Phase 0.5 and stamped when the
+      # gate that owns it was built. The version and digest below are the
+      # register's, and `tool_versions_match_register` holds them to it.
       - name: Install gitleaks
         # SEC-001 — same pinned version as .devcontainer/setup.sh.
         run: |
@@ -53,6 +58,7 @@ jobs:
       - name: Tests
         run: uv run pytest
 
+      # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  register: v0.11.0  register-contract: 11
       - name: Secret scan
         run: gitleaks detect --no-banner --redact
 

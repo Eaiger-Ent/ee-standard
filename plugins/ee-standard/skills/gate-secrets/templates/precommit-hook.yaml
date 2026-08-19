@@ -1,5 +1,5 @@
 # Written into the target repository's `.pre-commit-config.yaml`, under the
-# `repos: - repo: local` entry's `hooks:` list. Placeholders in {{BRACES}} are
+# `repos: - repo: local` entry's `hooks:` list. Double-brace placeholders are
 # substituted from the register before the block is written; none of them is a
 # value this file is allowed to decide.
 #

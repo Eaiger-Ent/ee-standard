@@ -56,11 +56,15 @@ def _stamped_files() -> list[str]:
 
 
 def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
-    """All five `lint-md` artefacts, where only one used to be stamped.
+    """Every artefact a gate deployed, and no other.
 
-    § F counted four. The fifth, `.claude/hooks/md-lint.py`, was invisible to
-    that count because it sat behind a ruff exclusion — which is the same
-    exclusion that hid eleven LNT-001 violations in it.
+    Five are `lint-md`'s, where only one used to be stamped. § F counted four;
+    the fifth, `.claude/hooks/md-lint.py`, was invisible to that count because
+    it sat behind a ruff exclusion — the same exclusion that hid eleven LNT-001
+    violations in it.
+
+    The sixth is SEC-001's CI locus, stamped in Phase 2. `.pre-commit-config.yaml`
+    is on both lists: it holds a hook for each control, stamped at the hook.
     """
     assert set(_stamped_files()) == {
         ".markdownlint.yaml",
@@ -68,6 +72,10 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
         ".pre-commit-config.yaml",
         ".github/workflows/lint.yml",
         ".claude/hooks/md-lint.py",
+        # SEC-001's two, from Phase 2. Both were hand-wired in Phase 0.5 and
+        # adopted by `gate-secrets` rather than deployed from nothing — the
+        # stamps say so, which is what keeps them from claiming otherwise.
+        ".github/workflows/standard-check.yml",
     }
 
 

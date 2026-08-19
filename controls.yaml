@@ -52,6 +52,9 @@ meta:
   #     `secrets_gate_wired_at_all_loci` subsumes the hook check and adds the
   #     job, `provenance_stamp_present` reads back the stamp `gate-secrets`
   #     writes, and `deployed_by` names the gate that owns those artefacts.
+  #     `tools.<tool>.release_repo` records where a literal tool's release is
+  #     fetched from — the one value `gate-secrets` needed and could not derive,
+  #     because it existed only inside a `# renovate: depName=` annotation.
   register_contract: 11
 
 # ---------------------------------------------------------------------------
@@ -110,6 +113,11 @@ tools:
     invocation: node_modules/.bin/markdownlint-cli2
   gitleaks:
     source: literal
+    # Where the release is fetched from. It lived only inside the `depName=`
+    # annotation below — a value for a bot to read, which `gate-secrets` then
+    # could not. A fork or an internal mirror is a reasonable thing for a
+    # repository to differ on without the checker changing (ADR 0018).
+    release_repo: gitleaks/gitleaks
     # renovate: datasource=github-releases depName=gitleaks/gitleaks
     version: "8.30.1"
     # A bumped version needs a bumped digest, and no bot can compute one. The

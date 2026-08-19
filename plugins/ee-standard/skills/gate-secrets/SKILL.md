@@ -81,6 +81,7 @@ verify block names in `args.tool`:
 | `IGNORE_FILE` | the same block, `args.ignore_file` |
 | `TOOL_VERSION` | `tools.<TOOL>.version` |
 | `TOOL_SHA256` | `tools.<TOOL>.sha256` |
+| `TOOL_REPO` | `tools.<TOOL>.release_repo` — `owner/name`, where the release is fetched from |
 | `PINNED_AT` | `tools.<TOOL>.pinned_at` — the paths that must repeat the version |
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
