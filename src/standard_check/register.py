@@ -612,6 +612,8 @@ class _Validator:
             if not isinstance(raw[text_field], str) or not str(raw[text_field]).strip():
                 self.error(f"{where}.{text_field}", "must be a non-empty string")
         verify = self._verify_blocks(raw["verify"], f"{where}.verify")
+        deployed_by = str(raw["deployed_by"]) if raw.get("deployed_by") is not None else None
+        self._stamp_names_the_deploying_gate(verify, deployed_by, where)
 
         if len(self.errors) > before or not verify:
             return None
@@ -630,8 +632,39 @@ class _Validator:
             baseline=baseline,
             review_by=review_by,
             rationale_adr=str(rationale_adr),
-            deployed_by=str(raw["deployed_by"]) if raw.get("deployed_by") is not None else None,
+            deployed_by=deployed_by,
         )
+
+    def _stamp_names_the_deploying_gate(
+        self, verify: tuple[VerifyBlock, ...], deployed_by: str | None, where: str
+    ) -> None:
+        """`provenance_stamp_present` reads back the gate `deployed_by` names.
+
+        Two fields in one control entry would otherwise say who deploys it, free
+        to drift apart — a second copy of a rule inside the register itself,
+        which is theme T-2 in the one file that exists to prevent it. That the
+        two must agree is a property of the register format rather than of any
+        repository, so it is the checker's (ADR 0018): no reasonable Equal
+        Experts repository needs a stamp assert to read back a different gate
+        from the one recorded as writing its artefacts.
+        """
+        for i, block in enumerate(verify):
+            if block.assert_name != "provenance_stamp_present":
+                continue
+            named = block.args.get("skill")
+            if deployed_by is None:
+                self.error(
+                    f"{where}.verify[{i}].args.skill",
+                    "reads back a provenance stamp, but the control names no "
+                    "`deployed_by` — the gate that writes an artefact is what the "
+                    "stamp records",
+                )
+            elif named != deployed_by:
+                self.error(
+                    f"{where}.verify[{i}].args.skill",
+                    f"is {named!r}, but the control is deployed_by {deployed_by!r} — "
+                    "a stamp is read back from the gate that writes it",
+                )
 
     def _meta_control(self, raw: Any, where: str) -> MetaControl | None:
         if not isinstance(raw, dict):

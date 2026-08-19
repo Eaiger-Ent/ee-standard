@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import yaml
 
+from standard_check.provenance import EXPECTED, stamps_by_file
 from standard_check.repo import Repo, load_jsonc
 
 if TYPE_CHECKING:  # `register` imports the assert registries — importing it
@@ -483,6 +484,69 @@ def tool_versions_match_register(
     )
 
 
+def provenance_stamp_present(
+    repo: Repo,
+    register: Register,
+    args: Mapping[str, object],
+) -> AssertResult:
+    """The gate that deploys this control left a stamp, and the stamp is sound.
+
+    Phase 2's criterion is that every gate writes a provenance stamp *its own
+    verify step reads back*. A gate that writes a stamp nothing reads has
+    recorded a claim, not established one — which is how three of the four
+    `lint-md` artefacts came to carry no stamp at all while `CLAUDE.md` stated
+    as fact that they did (§ F).
+
+    Read back here, deliberately, is **soundness and not currency**. A stamp
+    behind the register is staleness, which `docs/00-concepts.md` § Notify,
+    never redeploy says is reported and never enforced; failing a build over one
+    would be enforcing redeployment. A stamp that names a control the register
+    does not define, or claims a contract the register has not reached, is a
+    defect in the deployment, and those fail.
+
+    The deploying skill comes from the register (`args.skill`, which the schema
+    holds equal to the control's `deployed_by`): which skill owns a control's
+    artefacts is a fact about a repository's tooling, not about the checker
+    (ADR 0018).
+    """
+    skill = str(args.get("skill", ""))
+    if not skill:
+        return _fail("assert requires a 'skill' argument naming the deploying gate")
+
+    known = {control.id for control in register.controls} | {
+        control.id for control in register.meta_controls
+    }
+    mine = {
+        path: [stamp for stamp in stamps if stamp.skill == skill]
+        for path, stamps in stamps_by_file(repo).items()
+    }
+    mine = {path: stamps for path, stamps in mine.items() if stamps}
+    if not mine:
+        return _fail(
+            f"no tracked file carries a provenance stamp naming '{skill}' — "
+            f"expected `{EXPECTED}` in each artefact the gate deploys"
+        )
+
+    problems = [
+        f"{path}: stamp names {stamp.control}, which the register does not define"
+        for path, stamps in mine.items()
+        for stamp in stamps
+        if stamp.control not in known
+    ] + [
+        f"{path}: stamp claims register contract {stamp.register_contract}, "
+        f"but the register is at {register.register_contract}"
+        for path, stamps in mine.items()
+        for stamp in stamps
+        if stamp.register_contract > register.register_contract
+    ]
+    if problems:
+        return _fail("; ".join(sorted(problems)))
+    return _ok(
+        f"{skill} stamped {len(mine)} artefact{'s' if len(mine) != 1 else ''} "
+        f"({', '.join(sorted(mine))}), each naming a control the register defines"
+    )
+
+
 FILE_ASSERTS: dict[str, AssertFn] = {
     "tool_versions_match_register": tool_versions_match_register,
     "precommit_hook_present": precommit_hook_present,
@@ -494,6 +558,7 @@ FILE_ASSERTS: dict[str, AssertFn] = {
     "devcontainer_image_digest_pinned": devcontainer_image_digest_pinned,
     "dockerfile_final_user_is_non_root": dockerfile_final_user_is_non_root,
     "devcontainer_user_is_non_root": devcontainer_user_is_non_root,
+    "provenance_stamp_present": provenance_stamp_present,
 }
 
 # Remote assert names are part of the closed set from Phase 1 so a typo is a

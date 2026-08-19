@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.10.0
+version: 0.11.0
 
 meta:
   owner: platform-engineering
@@ -46,7 +46,13 @@ meta:
   #     through `npx`, which falls through to PATH. `tools.<tool>.invocation`
   #     records that form for a lockfile-sourced tool, and every locus is
   #     verified against it (ADR 0020, § H6).
-  register_contract: 10
+  # 11: SEC-001 is verified at both its local loci. Three were declared and one
+  #     was read — `precommit_hook_present` checked the hook and nothing read
+  #     the ci locus, so deleting the secret-scan job kept the control green.
+  #     `secrets_gate_wired_at_all_loci` subsumes the hook check and adds the
+  #     job, `provenance_stamp_present` reads back the stamp `gate-secrets`
+  #     writes, and `deployed_by` names the gate that owns those artefacts.
+  register_contract: 11
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -361,12 +367,29 @@ controls:
     verify:
       - kind: command
         run: gitleaks detect --no-banner --redact
+      # Three loci are declared above, and until contract 11 one was read:
+      # `precommit_hook_present` checked the hook, the remote block defers to
+      # Phase 3, and nothing at all read the ci locus. Deleting the secret-scan
+      # job left SEC-001 green. `secrets_gate_wired_at_all_loci` subsumes the
+      # hook check and adds the job, so both local loci now fail when deleted.
+      #
+      # `ignore_file` is here rather than in the checker because where a
+      # scanner keeps its suppressions is a property of the scanner a repository
+      # chose (ADR 0018). SEC-001 is `variance: forbidden` with `baseline: null`,
+      # so an entry hiding a file git tracks is a weakening (ADR 0019); one
+      # naming nothing tracked scopes the tool and is allowed.
       - kind: file
-        assert: precommit_hook_present
-        args: { id: gitleaks }
+        assert: secrets_gate_wired_at_all_loci
+        args: { tool: gitleaks, ignore_file: .gitleaksignore }
+      # The gate's own deployment, read back by the gate that wrote it — a
+      # stamp nothing reads records a claim rather than establishing one (§ F).
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-secrets }
       - kind: remote
         assert: github_push_protection_enabled
     owner: platform-engineering
+    deployed_by: gate-secrets
     variance: forbidden
     baseline: null
     review_by: 2027-08-16

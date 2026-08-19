@@ -113,6 +113,32 @@ All applicable blocks must pass for the control to pass. The `assert` names are
 implemented in the checker and are a closed set — an unknown assert name is a
 schema error, not a skipped check, so a typo cannot silently disable a control.
 
+#### `provenance_stamp_present` and `deployed_by`
+
+A control whose artefacts a gate skill writes names that gate in `deployed_by`,
+and reads its stamp back with a `provenance_stamp_present` block:
+
+```yaml
+deployed_by: gate-secrets
+verify:
+  - kind: file
+    assert: provenance_stamp_present
+    args: { skill: gate-secrets }
+```
+
+The two must name the same skill, and the schema rejects a register where they
+do not — two fields in one entry saying who deploys a control, free to drift
+apart, would be theme T-2 inside the file that exists to prevent it. A
+`provenance_stamp_present` block on a control with no `deployed_by` is rejected
+for the same reason: the stamp records the gate that writes the artefact, so
+there has to be one.
+
+What the block checks is **soundness, not currency**. A stamp behind the
+register is staleness, which is reported and never enforced
+([`00-concepts.md`](00-concepts.md) § Notify, never redeploy); a stamp naming a
+control the register does not define, or claiming a contract the register has
+not reached, is a defect in the deployment and fails.
+
 #### Block-level `applies_to`
 
 A block may narrow itself to a repository shape:
