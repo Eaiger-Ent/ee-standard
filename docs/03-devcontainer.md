@@ -27,10 +27,17 @@ Three structural patterns from the existing template are genuinely good and are
 kept without change in shape:
 
 **Secrets fetched, never committed.** `initializeCommand` runs a script that
-fetches secrets into `.devcontainer/.env`, which `runArgs` passes via
-`--env-file`. The `.env` is gitignored. This is the right shape: the container
-gets its secrets, the repository never holds them, and SEC-001 has nothing to
-find.
+fetches secrets into `.devcontainer/.env`, and derives `.devcontainer/.env.docker`
+from it for `runArgs` to pass via `--env-file`. Both are gitignored. This is the
+right shape: the container gets its secrets, the repository never holds them, and
+SEC-001 has nothing to find.
+
+The two files exist because two parsers read the same values and disagree about
+quoting. The `.env` is sourced as shell by the start-up check, so a value
+containing a space has to be quoted; `--env-file` does no shell parsing and would
+read those quotes as part of the value. A template that fetches only tokens will
+not notice, but one that fetches a person's name will. Derive the second file
+from the first rather than writing both, so there is one fetch to keep correct.
 
 **Auth verified on every start.** `postStartCommand` runs a check script that
 reports which CLIs are present and authenticated. This is the same job the
@@ -150,7 +157,7 @@ Minimal, and honest about what it does not yet know:
   },
 
   "initializeCommand": "bash .devcontainer/fetch-secrets.sh",
-  "runArgs": ["--env-file", ".devcontainer/.env"],
+  "runArgs": ["--env-file", ".devcontainer/.env.docker"],
   "postCreateCommand": "bash .devcontainer/setup.sh",
   "postStartCommand": "bash .devcontainer/check-auth.sh",
 

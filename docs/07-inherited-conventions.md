@@ -44,7 +44,7 @@ Tier-3 controls once Tier 1 is proven.
 | "This rubric applies to every test file, **with no directory-based carve-out**… exclusion from CI is a decision about *where* a test runs, not about the quality bar it must meet" | § Testing | The sharpest governance statement in the source, and it has a live instance here. See [§ Scope exemption is not standard exemption](#scope-exemption-is-not-standard-exemption) |
 | "Do not propose workarounds or fallbacks unless explicitly requested" | § Root Cause Discipline | |
 | "Prefer apt-based installs over `curl` scripts" | § Devcontainer | Independently reaches [`03-devcontainer.md`](03-devcontainer.md)'s preference order — level 2 over level 4 |
-| "Verify availability with `which <tool>` before relying on it" | § Devcontainer | The shape [`check-auth.sh`](../.devcontainer/check-auth.sh) already implements |
+| "Verify availability with `which <tool>` before relying on it" | § Devcontainer | The right instinct, one notch too weak: [`check-auth.sh`](../.devcontainer/check-auth.sh) now probes by *invoking* each tool as its loci do, because `which` reported DOC-001's `npx`-resolved markdownlint missing on a container where every locus ran it |
 | "`infra/` is the single source of truth… never create ad-hoc provisioning scripts" | § Infrastructure | This register's own premise, one domain over |
 | edit → validate → plan → **review** → apply; changes require explicit approval before apply | § Infrastructure | The confirm-before-mutate rule Phase 3 needs for `gate-repo` |
 | "Never rename resources without checking if it triggers destroy/recreate; use `moved` blocks" | § Infrastructure | Generic to any infrastructure-as-code |

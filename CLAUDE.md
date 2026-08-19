@@ -58,8 +58,9 @@ implementation **in the register**, with an expiry — never in the checker.
 
 All development happens inside the devcontainer (`docs/06-devcontainer-setup.md`
 is the operator guide). Host secrets arrive via `.devcontainer/fetch-secrets.sh`
-(macOS Keychain → `.devcontainer/.env`, which is gitignored and must stay so —
-SEC-001 depends on that line).
+(macOS Keychain → `.devcontainer/.env`, from which `.devcontainer/.env.docker`
+is derived for `--env-file`; both are gitignored and must stay so — SEC-001
+depends on those lines).
 
 ## The core invariant
 
