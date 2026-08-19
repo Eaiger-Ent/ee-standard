@@ -19,7 +19,11 @@
   },
 
   "initializeCommand": "bash .devcontainer/fetch-secrets.sh",
-  "runArgs": ["--env-file", ".devcontainer/.env"],
+
+  // The .docker copy, not the .env itself: --env-file does no shell parsing,
+  // so it would take a quoted value's quotes as part of the value. Both files
+  // come from one Keychain fetch — see .devcontainer/fetch-secrets.sh.
+  "runArgs": ["--env-file", ".devcontainer/.env.docker"],
   "postCreateCommand": "bash .devcontainer/setup.sh",
   "postStartCommand": "bash .devcontainer/check-auth.sh",
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs on the HOST before container start (devcontainer.json initializeCommand).
-# Fetches secrets from the macOS Keychain into .devcontainer/.env, which
-# runArgs --env-file injects into the container. The .env is gitignored.
+# Fetches secrets from the macOS Keychain into .devcontainer/.env, and derives
+# .devcontainer/.env.docker from it for runArgs --env-file to inject into the
+# container. Both are gitignored.
 #
 # Service names are generic (no per-repo prefix) so one host-side credential
 # store is reused across projects. Prefix any name with the checkout directory
@@ -76,4 +77,16 @@ if [ -n "$GIT_AUTHOR_EMAIL" ]; then
   echo "  ✓ GIT_AUTHOR_EMAIL [${LAST_SECRET_KEY}]"
 fi
 
-echo "  ✓ Written to .devcontainer/.env"
+# Two consumers read these values with incompatible parsers, so they get two
+# files. `.env` is sourced as shell by check-auth.sh (`set -a; . .env`), where a
+# value containing a space must be quoted or the shell splits it — that is what
+# the quotes above are for. Docker's --env-file does no shell parsing at all: it
+# takes everything after the `=` verbatim, so those same quotes would land
+# inside the value. It therefore reads a copy with the surrounding pair removed.
+# Derived rather than written twice, so the Keychain lookups above stay the one
+# source of both files.
+sed -E 's/^([A-Za-z_][A-Za-z0-9_]*)="(.*)"$/\1=\2/' \
+  .devcontainer/.env > .devcontainer/.env.docker
+chmod 600 .devcontainer/.env.docker
+
+echo "  ✓ Written to .devcontainer/.env (sourced) and .env.docker (--env-file)"

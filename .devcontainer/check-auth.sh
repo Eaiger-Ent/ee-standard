@@ -5,6 +5,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_FILE="$SCRIPT_DIR/.env"
 
 # runArgs --env-file applies only at create; this hook makes restarts enough.
@@ -47,16 +48,36 @@ else
   echo "  ✗ Claude Code — no OAuth token. See docs/06-devcontainer-setup.md"
 fi
 
-for tool in claude python3 node markdownlint-cli2; do
-  if command -v "$tool" &>/dev/null; then
-    echo "  ✓ ${tool} — $("$tool" --version 2>/dev/null | head -1)"
+# Probe each tool the way its loci actually invoke it. DOC-001's markdownlint is
+# pinned by package-lock.json and run as `npx markdownlint-cli2` at every locus,
+# so it lives in node_modules/.bin and never on PATH — probing for a bare binary
+# reported it missing on a container where every locus runs it fine. npx resolves
+# it from the repository, not from wherever this hook happens to be invoked.
+check_tool() {
+  local label="$1" out first
+  shift
+  if out=$(cd "$REPO_DIR" && "$@" --version 2>/dev/null); then
+    first=$(printf '%s\n' "$out" | head -1)
   else
-    echo "  ✗ ${tool} — missing (re-run: bash .devcontainer/setup.sh)"
+    first=""
   fi
-done
+  if [ -n "$first" ]; then
+    echo "  ✓ ${label} — ${first}"
+  else
+    echo "  ✗ ${label} — missing (re-run: bash .devcontainer/setup.sh)"
+  fi
+}
 
-if git config user.email &>/dev/null; then
-  echo "  ✓ git — $(git config user.name) <$(git config user.email)>"
+check_tool claude claude
+check_tool python3 python3
+check_tool node node
+check_tool markdownlint-cli2 npx --no-install markdownlint-cli2
+
+# Identity may come from git config or from GIT_AUTHOR_* in the environment
+# (fetch-secrets.sh supplies the latter). `git var` is the question actually
+# being asked — can git name an author? — and answers it whichever way it is set.
+if ident=$(git var GIT_AUTHOR_IDENT 2>/dev/null); then
+  echo "  ✓ git — ${ident% * *}"
 else
   echo "  ✗ git — identity not configured"
 fi

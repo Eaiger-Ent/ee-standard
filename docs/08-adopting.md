@@ -135,9 +135,10 @@ What matters when you adapt it:
   preference ladder in [`03-devcontainer.md`](03-devcontainer.md), which was
   corrected for exactly this reason: a lock file pins the *installer's* digest,
   not the artefact that installer fetches.
-- **Keep secrets out of the repository.** This repo's `.env` is gitignored and
-  populated from the host keychain by `fetch-secrets.sh`. SEC-001 depends on that
-  line staying in `.gitignore`.
+- **Keep secrets out of the repository.** This repo's `.env` — and the
+  `.env.docker` derived from it for `--env-file` — are gitignored and populated
+  from the host keychain by `fetch-secrets.sh`. SEC-001 depends on those lines
+  staying in `.gitignore`, so a second secrets file means a second line.
 
 ## 3 — The gates
 

@@ -1,6 +1,9 @@
-# Host-fetched secrets. SEC-001 depends on this line — see
-# docs/06-devcontainer-setup.md § "The macOS Keychain values".
+# Host-fetched secrets. SEC-001 depends on these lines — see
+# docs/06-devcontainer-setup.md § "The macOS Keychain values". The .docker
+# copy is derived from the .env and holds the same credentials, so it is
+# listed in its own right rather than left to a glob.
 .devcontainer/.env
+.devcontainer/.env.docker
 
 # Python
 __pycache__/

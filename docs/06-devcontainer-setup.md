@@ -53,11 +53,19 @@ and a node toolchain are both installed.
 [`.devcontainer/fetch-secrets.sh`](../.devcontainer/fetch-secrets.sh) runs **on
 the host** as `initializeCommand`. It reads each secret with
 `security find-generic-password -a "$USER" -s <NAME> -w` and writes the resolved
-values to `.devcontainer/.env`, which `runArgs` passes into the container via
+values to `.devcontainer/.env`. It then derives `.devcontainer/.env.docker` from
+that file, and `runArgs` passes *the derived copy* into the container via
 `--env-file`.
 
+Two files, because two parsers read the same values. `check-auth.sh` sources the
+`.env` as shell, where `GIT_AUTHOR_NAME=Nathan Carney` would split into a command
+— so the script quotes any value that can contain a space. Docker's `--env-file`
+does no shell parsing at all, taking everything after the `=` verbatim, so it
+reads the copy with that surrounding pair of quotes removed. Edit the fetch, not
+the copy: `.env.docker` is regenerated on every host-side run.
+
 This is the "secrets fetched, never committed" pattern from
-[`03-devcontainer.md`](03-devcontainer.md). The `.env` is gitignored, so SEC-001
+[`03-devcontainer.md`](03-devcontainer.md). Both files are gitignored, so SEC-001
 has nothing to find.
 
 Service names are **generic**, with no repo prefix, so one host-side credential
@@ -155,7 +163,7 @@ Four files, plus the lock file you generate in step 4.
 | File | Runs | Does |
 | --- | --- | --- |
 | [`devcontainer.json`](../.devcontainer/devcontainer.json) | — | Digest-pinned image, four pinned features, `remoteUser: vscode`, one persistent volume |
-| [`fetch-secrets.sh`](../.devcontainer/fetch-secrets.sh) | Host, before start | Keychain → `.devcontainer/.env` |
+| [`fetch-secrets.sh`](../.devcontainer/fetch-secrets.sh) | Host, before start | Keychain → `.devcontainer/.env`, then → `.env.docker` |
 | [`setup.sh`](../.devcontainer/setup.sh) | Container, on create | Volume ownership, `markdownlint-cli2` pin, git credential helper |
 | [`check-auth.sh`](../.devcontainer/check-auth.sh) | Container, every start | Re-sources `.env`, prints the auth banner |
 
@@ -179,9 +187,11 @@ unversioned-global-install problem the spec calls out.
 DOC-001. Change that pin and CI's together, never one alone; two unversioned
 copies of one tool is the drift this repo exists to prevent.
 
-The `.gitignore` entry for `.devcontainer/.env` is load-bearing, not hygiene —
-it is the half of the "secrets fetched, never committed" pattern that does the
-*never committed* part.
+The `.gitignore` entries for `.devcontainer/.env` and `.devcontainer/.env.docker`
+are load-bearing, not hygiene — they are the half of the "secrets fetched, never
+committed" pattern that does the *never committed* part. Both hold the same
+credentials, so adding a value to the fetch never means adding a path here, but
+adding a *file* to it does.
 
 ## 4 — Build, and generate the lock file
 
@@ -223,8 +233,8 @@ grep -q '@sha256:' .devcontainer/devcontainer.json && echo "image pinned"
 # The lock file exists and names every feature
 grep -c '"resolved"' .devcontainer/devcontainer-lock.json   # expect 4
 
-# The .env has never been committed
-git log --all --oneline -- .devcontainer/.env               # expect empty
+# Neither secrets file has ever been committed
+git log --all --oneline -- .devcontainer/.env .devcontainer/.env.docker  # expect empty
 ```
 
 For reference, the digests resolved on 2026-08-16:
