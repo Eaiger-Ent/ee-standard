@@ -406,13 +406,25 @@ fixed in both.
 - [ ] Every adopter-facing step this phase introduces is in
       [`08-adopting.md`](08-adopting.md) with its evidence — the gate skills'
       prerequisites, what `standard-adopt` needs before it can run, and what the
-      template requires of a repository that copies it
+      template requires of a repository that copies it. `gate-secrets`'
+      prerequisites are written down; the other two are not
 
-- [ ] `gate-secrets` deploys onto a repo with none of its config, and
-      `standard-check` then reports SEC-001 PASS for its local loci
-- [ ] Every gate writes a provenance stamp its own verify step reads back
-- [ ] Gates and checker share one assert implementation — verified by there
-      being one copy, not by comparing two
+- [x] `gate-secrets` deploys onto a repo with none of its config, and
+      `standard-check` then reports SEC-001 PASS for its local loci — closed
+      2026-08-19 against a throwaway repository, since this one has wired
+      `gitleaks` by hand since Phase 0.5. Evidence, including each artefact
+      deleted in turn and watched failing, in
+      [`10-phase-2-review.md`](10-phase-2-review.md)
+- [ ] Every gate writes a provenance stamp its own verify step reads back —
+      holds for `gate-secrets`, and the mechanism the rest inherit is in place:
+      `provenance_stamp_present`, and a schema rule that rejects a register
+      where it and `deployed_by` name different gates. Open until the gates
+      exist
+- [x] Gates and checker share one assert implementation — verified by there
+      being one copy, not by comparing two. Closed 2026-08-19: the copy is
+      `standard_check.asserts`, a gate reaches it only through
+      `standard-check run --control <ID>`, and a gate that deploys a control it
+      does not name there fails a test
 - [ ] The devcontainer template builds, and DEV-001 passes against it
 - [ ] The template pins no tool version by hand. Every tool it installs is
       either sourced from a lockfile the consumer repo already commits, or from
@@ -433,7 +445,9 @@ fixed in both.
       The criterion above is about the *source* of a version; `npx --no-install`
       satisfied it while falling through to `PATH` (§ H6)
 
-- [ ] Every SKILL.md passes preflight P1–P11
+- [ ] Every SKILL.md passes preflight P1–P11 — `gate-secrets` passes with zero
+      failures (`10-phase-2-review.md` § Preflight P1–P11). Open until the other
+      eight skills exist
 - [ ] `standard-adopt` end-to-end on a scratch repo: plan → confirm → deploy →
       verify → commit, with the verify step genuinely able to fail
 

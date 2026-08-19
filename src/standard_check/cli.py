@@ -2,6 +2,7 @@
 
     standard-check                 # all applicable controls
     standard-check run --tier 1    # subset
+    standard-check run --control SEC-001   # one control, as a gate verifies itself
     standard-check schema          # validate controls.yaml itself
     standard-check meta GOV-001    # one meta-control
     standard-check assert <name>   # one command assert
@@ -56,6 +57,13 @@ def _parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command")
     run = sub.add_parser("run", help="run all applicable controls (the default)")
     run.add_argument("--tier", type=int, choices=(1, 2, 3), default=None)
+    run.add_argument(
+        "--control",
+        action="append",
+        metavar="ID",
+        default=None,
+        help="verify only this control (repeatable); the gate skills' verify step",
+    )
     sub.add_parser("schema", help="validate controls.yaml itself")
     meta = sub.add_parser("meta", help="run one meta-control")
     meta.add_argument("id", metavar="GOV-NNN")
@@ -94,14 +102,44 @@ def _cmd_run(
     register_path: Path | None,
     tier: int | None,
     require_complete: bool,
+    ids: list[str] | None = None,
 ) -> int:
+    """A conformance run, optionally narrowed to a tier or to named controls.
+
+    `--control` is the entry point a `gate-*` skill's verify step uses. It runs
+    the control's own verify blocks through `run_control` — the same function
+    the full audit calls — so a gate and the auditor cannot disagree about what
+    the control means. A gate that verified itself some other way would be the
+    second copy this repository exists to prevent.
+    """
     register, code = _load(repo_path, register_path)
     if register is None:
         return code
     repo = Repo(repo_path)
     controls = [c for c in register.controls if tier is None or c.tier == tier]
+    if ids is not None:
+        wanted = list(dict.fromkeys(ids))
+        known = {c.id for c in controls}
+        # An id nobody defines is a usage error, never an empty green run: a
+        # gate that misspells its own control would otherwise report success
+        # having verified nothing, which is § A's defect with a typo for a cause.
+        unknown = [i for i in wanted if i not in known]
+        if unknown:
+            print(
+                f"no control {', '.join(unknown)} in the selected set — "
+                f"known: {', '.join(sorted(known))}",
+                file=sys.stderr,
+            )
+            return 2
+        controls = [c for c in controls if c.id in wanted]
     results = [run_control(control, register, repo) for control in controls]
-    meta_results = [run_meta_control(meta, register, repo) for meta in register.meta_controls]
+    # Meta-controls audit the register as a whole, so they are not part of
+    # verifying one control's deployment. Narrowing the run drops them.
+    meta_results = (
+        []
+        if ids is not None
+        else [run_meta_control(meta, register, repo) for meta in register.meta_controls]
+    )
     print(render(register, results, meta_results))
     verdicts = [r.verdict for r in results] + [m[2] for m in meta_results]
     # A predicate-skipped control ran nothing, so its partial declarations say
@@ -113,7 +151,9 @@ def _cmd_run(
         if result.verdict is not Verdict.SKIPPED_PREDICATE
         for block in result.blocks
     ) or any(
-        block.partial is not None for meta in register.meta_controls for block in meta.verify
+        block.partial is not None
+        for meta in (register.meta_controls if ids is None else [])
+        for block in meta.verify
     )
     return exit_code(verdicts, require_complete=require_complete, partial=partial)
 
@@ -193,7 +233,9 @@ def _dispatch(args: argparse.Namespace, repo_path: Path, register_path: Path | N
         case None:
             return _cmd_run(repo_path, register_path, None, args.require_complete)
         case "run":
-            return _cmd_run(repo_path, register_path, args.tier, args.require_complete)
+            return _cmd_run(
+                repo_path, register_path, args.tier, args.require_complete, args.control
+            )
         case "schema":
             return _cmd_schema(repo_path, register_path)
         case "meta":

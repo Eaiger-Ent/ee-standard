@@ -1,0 +1,10 @@
+{
+  "name": "ee-standard",
+  "description": "Deploys and verifies the Equal Experts control standard. The register in controls.yaml defines what conformant means; the gate skills write the artefacts, and standard-check audits them.",
+  "dependencies": [],
+  "author": {
+    "name": "Equal Experts",
+    "email": "nathan.carney@equalexperts.com"
+  },
+  "version": "0.1.0"
+}

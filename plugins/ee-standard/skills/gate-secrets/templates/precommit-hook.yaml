@@ -1,0 +1,15 @@
+# Written into the target repository's `.pre-commit-config.yaml`, under the
+# `repos: - repo: local` entry's `hooks:` list. Double-brace placeholders are
+# substituted from the register before the block is written; none of them is a
+# value this file is allowed to decide.
+#
+# The stamp sits at the hook rather than at the top of the file. A
+# `.pre-commit-config.yaml` holds hooks for several controls, and a whole-file
+# stamp would claim the ones this gate does not own
+# (docs/00-concepts.md § The provenance stamp).
+      # ee-control: SEC-001  ee-skill: gate-secrets@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      - id: {{TOOL}}
+        name: {{TOOL}} (SEC-001)
+        entry: {{TOOL}} protect --staged --no-banner --redact
+        language: system
+        pass_filenames: false

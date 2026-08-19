@@ -59,7 +59,11 @@ def render(
             for block in result.blocks
             if block.block.partial is not None
         )
-    lines.append("Meta")
+    # A narrowed run (`--control`) audits one deployment, not the register, so
+    # it carries no meta-controls. Printing an empty heading over nothing would
+    # read as three meta-controls that passed silently.
+    if meta_results:
+        lines.append("Meta")
     meta_by_id = {meta.id: meta for meta in register.meta_controls}
     for meta_id, title, verdict, message in meta_results:
         lines.append(f"  {meta_id:<8} {verdict!s:<25} {title}")

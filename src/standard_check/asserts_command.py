@@ -964,6 +964,83 @@ def markdown_gate_wired_at_all_loci(
     )
 
 
+def _fingerprint_paths(line: str, tracked: set[str]) -> list[str]:
+    """Tracked paths named by one gitleaks ignore entry.
+
+    A fingerprint is `commit:path:rule-id:line`, or `path:rule-id:line` for a
+    no-git scan, and a bare path is also accepted by the tool. Rather than
+    committing to one spelling, every colon-separated field is tested against
+    what git tracks — a field that is a tracked path is a tracked path whichever
+    position it occupies, and one that is not cannot be mistaken for one.
+    """
+    return [field for field in line.split(":") if field in tracked]
+
+
+def secrets_gate_wired_at_all_loci(
+    repo: Repo,
+    register: Register,
+    args: Mapping[str, object],
+) -> AssertResult:
+    """SEC-001's `enforces`, verified at each locus it names.
+
+    SEC-001 declares `locus: [pre-commit, ci, remote]` and, until this assert,
+    verified one of them: `precommit_hook_present` read the hook, the remote
+    block deferred to Phase 3, and **nothing at all read the CI locus**. A
+    repository could delete its secret-scanning job and keep a green SEC-001 —
+    a control declared at three loci and checked at one, which is § A's defect
+    and the same shape § H found in GOV-001.
+
+    Deleting the pre-commit hook was caught; deleting the CI job was not. Both
+    are now failures, and the remote locus stays honestly deferred rather than
+    being quietly folded in here.
+
+    Everything a repository could reasonably need to differ comes from the
+    register (ADR 0018): the tool's name, how a locus reaches it, and where its
+    exemption list lives. What stays here is the shape — that a control naming a
+    locus must be reachable at it.
+    """
+    tool = str(args.get("tool", ""))
+    if not tool:
+        return _fail("assert requires a 'tool' argument naming the scanner")
+    ignore_file = str(args.get("ignore_file", ""))
+
+    # How the pinned artefact is reached, not merely which tool is named
+    # (ADR 0020). A tool the register pins by invocation is looked for by that
+    # invocation; one it pins by version is installed onto PATH and invoked by
+    # name, and `tool_versions_match_register` is what holds those pins in step.
+    pinned = register.tools.get(tool)
+    invocation = pinned.invocation if pinned and pinned.invocation else tool
+
+    problems: list[str] = []
+    if not _hook_mentions(repo, invocation):
+        problems.append(f"pre-commit locus — no hook runs '{invocation}'")
+    if not _ci_run_mentions(repo, re.escape(invocation), hook=tool):
+        problems.append(f"ci locus — no gating step runs '{invocation}'")
+
+    # ADR 0019, applied to the one exemption list this gate has. SEC-001 is
+    # `variance: forbidden` with `baseline: null`: an entry that suppresses a
+    # finding in a file git tracks hides authored content from a control that
+    # admits no tolerated violations. An entry naming nothing tracked suppresses
+    # a finding about content this repository does not author, which scopes the
+    # tool rather than weakening the control.
+    if ignore_file and ignore_file in repo.tracked:
+        for number, raw in enumerate(repo.read(ignore_file).splitlines(), start=1):
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            hidden = _fingerprint_paths(line, repo.tracked)
+            if hidden:
+                problems.append(
+                    f"{ignore_file}:{number} suppresses findings in "
+                    f"{', '.join(sorted(hidden))}, which git tracks (ADR 0019)"
+                )
+
+    if problems:
+        return _fail("; ".join(problems))
+    scoped = f", and {ignore_file} hides nothing git tracks" if ignore_file in repo.tracked else ""
+    return _ok(f"pre-commit and ci loci both reach {tool} through '{invocation}'{scoped}")
+
+
 COMMAND_ASSERTS: dict[str, AssertFn] = {
     "no-static-cloud-keys": no_static_cloud_keys,
     "ci-installs-frozen": ci_installs_frozen,
@@ -973,4 +1050,5 @@ COMMAND_ASSERTS: dict[str, AssertFn] = {
     "typecheck-strict-and-blocking": typecheck_strict_and_blocking,
     "tests-run-and-block": tests_run_and_block,
     "markdown_gate_wired_at_all_loci": markdown_gate_wired_at_all_loci,
+    "secrets_gate_wired_at_all_loci": secrets_gate_wired_at_all_loci,
 }

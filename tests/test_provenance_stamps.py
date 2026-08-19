@@ -19,19 +19,12 @@ Reporting the stale-but-valid case is Phase 5's sweep.
 
 from __future__ import annotations
 
-import re
 import subprocess
 
 import pytest
 
 from conftest import REPO_ROOT, a_register
-
-_STAMP = re.compile(
-    r"ee-control:\s*(?P<control>\S+)\s+"
-    r"ee-skill:\s*(?P<skill>\S+)\s+"
-    r"register:\s*v(?P<version>\d+\.\d+\.\d+)\s+"
-    r"register-contract:\s*(?P<contract>\d+)"
-)
+from standard_check.provenance import EXPECTED, MARKER, stamps_in
 
 
 def _stamped_files() -> list[str]:
@@ -41,24 +34,37 @@ def _stamped_files() -> list[str]:
     stamp that is present but malformed must be found and failed, not missed.
     """
     found = subprocess.run(
-        ["git", "-C", str(REPO_ROOT), "grep", "-l", "ee-control:"],
+        ["git", "-C", str(REPO_ROOT), "grep", "-l", MARKER],
         capture_output=True,
         text=True,
         check=False,
     )
-    # Prose that defines or discusses the format is not a deployed artefact. No
-    # document is, so the whole of `docs/` is out along with the two files that
-    # quote the marker: this repository's guide, and this test.
-    excluded = ("docs/", "CLAUDE.md", "tests/test_provenance_stamps.py")
+    # A stamp is evidence only where it sits in an artefact deployed *into this
+    # repository*. Four kinds of file carry the marker without being one, and
+    # each is excluded for its own reason rather than by accumulation:
+    #
+    #   docs/, CLAUDE.md  prose that defines or discusses the format
+    #   src/              the parser's own docstring, which shows an example
+    #   tests/            fixtures, including the malformed ones on purpose
+    #   plugins/          templates a gate writes into *other* repositories,
+    #                     whose placeholders are unfilled here — that they parse
+    #                     once the register fills them is tests/test_plugin.py's
+    #
+    # Anything else holding the marker is a deployed artefact and is checked.
+    excluded = ("docs/", "CLAUDE.md", "src/", "tests/", "plugins/")
     return [p for p in found.stdout.split() if not p.startswith(excluded)]
 
 
 def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
-    """All five `lint-md` artefacts, where only one used to be stamped.
+    """Every artefact a gate deployed, and no other.
 
-    § F counted four. The fifth, `.claude/hooks/md-lint.py`, was invisible to
-    that count because it sat behind a ruff exclusion — which is the same
-    exclusion that hid eleven LNT-001 violations in it.
+    Five are `lint-md`'s, where only one used to be stamped. § F counted four;
+    the fifth, `.claude/hooks/md-lint.py`, was invisible to that count because
+    it sat behind a ruff exclusion — the same exclusion that hid eleven LNT-001
+    violations in it.
+
+    The sixth is SEC-001's CI locus, stamped in Phase 2. `.pre-commit-config.yaml`
+    is on both lists: it holds a hook for each control, stamped at the hook.
     """
     assert set(_stamped_files()) == {
         ".markdownlint.yaml",
@@ -66,30 +72,43 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
         ".pre-commit-config.yaml",
         ".github/workflows/lint.yml",
         ".claude/hooks/md-lint.py",
+        # SEC-001's two, from Phase 2. Both were hand-wired in Phase 0.5 and
+        # adopted by `gate-secrets` rather than deployed from nothing — the
+        # stamps say so, which is what keeps them from claiming otherwise.
+        ".github/workflows/standard-check.yml",
     }
 
 
 @pytest.mark.parametrize("path", _stamped_files())
 def test_stamp_is_well_formed_and_names_a_real_control(path: str) -> None:
     text = (REPO_ROOT / path).read_text(encoding="utf-8")
-    stamp = _STAMP.search(text)
-    assert stamp is not None, (
-        f"{path} carries an `ee-control:` marker that does not parse as a stamp — "
-        "expected `ee-control: ID  ee-skill: name@version  register: vX.Y.Z  "
-        "register-contract: N` (docs/00-concepts.md)"
+    # One parser, shared with the assert that reads a stamp back and with
+    # Phase 5's sweep. A regex copied into a test is a second definition of the
+    # format, free to accept what the checker rejects.
+    stamps = stamps_in(text)
+    assert stamps, (
+        f"{path} carries an `{MARKER}` marker that does not parse as a stamp — "
+        f"expected `{EXPECTED}` (docs/00-concepts.md)"
+    )
+    # Every marker in the file parsed, not merely the first: a partly-owned file
+    # carries one stamp per section, and a malformed second one would hide
+    # behind a well-formed first.
+    assert len(stamps) == text.count(MARKER), (
+        f"{path} carries {text.count(MARKER)} `{MARKER}` markers but only "
+        f"{len(stamps)} parse as stamps — expected `{EXPECTED}`"
     )
 
     register = a_register()
     known = {control.id for control in register.controls} | {
         control.id for control in register.meta_controls
     }
-    assert stamp.group("control") in known, (
-        f"{path}: stamp names {stamp.group('control')}, which the register does not define"
-    )
-
-    # Ahead of the register is a defect; behind it is staleness, which is
-    # reported rather than failed.
-    assert int(stamp.group("contract")) <= register.register_contract, (
-        f"{path}: stamp claims register contract {stamp.group('contract')}, "
-        f"but the register is at {register.register_contract}"
-    )
+    for stamp in stamps:
+        assert stamp.control in known, (
+            f"{path}: stamp names {stamp.control}, which the register does not define"
+        )
+        # Ahead of the register is a defect; behind it is staleness, which is
+        # reported rather than failed.
+        assert stamp.register_contract <= register.register_contract, (
+            f"{path}: stamp claims register contract {stamp.register_contract}, "
+            f"but the register is at {register.register_contract}"
+        )

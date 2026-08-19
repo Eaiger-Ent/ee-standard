@@ -16,6 +16,13 @@ repos:
         entry: node_modules/.bin/markdownlint-cli2
         language: system
         types: [markdown]
+      # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  register: v0.11.0  register-contract: 11
+      #
+      # Adopted rather than deployed from nothing: this hook was hand-wired in
+      # Phase 0.5, before there was a gate to write it, and the stamp records
+      # that rather than claiming a deployment that never happened. Its content
+      # is byte-identical to what templates/precommit-hook.yaml renders.
+      #
       # SEC-001 — same pinned binary as .devcontainer/setup.sh and CI.
       - id: gitleaks
         name: gitleaks (SEC-001)

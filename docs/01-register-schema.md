@@ -113,6 +113,32 @@ All applicable blocks must pass for the control to pass. The `assert` names are
 implemented in the checker and are a closed set — an unknown assert name is a
 schema error, not a skipped check, so a typo cannot silently disable a control.
 
+#### `provenance_stamp_present` and `deployed_by`
+
+A control whose artefacts a gate skill writes names that gate in `deployed_by`,
+and reads its stamp back with a `provenance_stamp_present` block:
+
+```yaml
+deployed_by: gate-secrets
+verify:
+  - kind: file
+    assert: provenance_stamp_present
+    args: { skill: gate-secrets }
+```
+
+The two must name the same skill, and the schema rejects a register where they
+do not — two fields in one entry saying who deploys a control, free to drift
+apart, would be theme T-2 inside the file that exists to prevent it. A
+`provenance_stamp_present` block on a control with no `deployed_by` is rejected
+for the same reason: the stamp records the gate that writes the artefact, so
+there has to be one.
+
+What the block checks is **soundness, not currency**. A stamp behind the
+register is staleness, which is reported and never enforced
+([`00-concepts.md`](00-concepts.md) § Notify, never redeploy); a stamp naming a
+control the register does not define, or claiming a contract the register has
+not reached, is a defect in the deployment and fails.
+
 #### Block-level `applies_to`
 
 A block may narrow itself to a repository shape:
@@ -234,6 +260,7 @@ tools:
     lockfile: package-lock.json
   gitleaks:
     source: literal               # nothing owns it; the value lives here
+    release_repo: gitleaks/gitleaks
     version: "8.30.1"
     sha256: 551f6f...
 ```
@@ -260,6 +287,16 @@ ecosystem the repo already locks.
 `source: lockfile`, the same asymmetry as `version:` and for the same reason: a
 lockfile-sourced tool has no version at any locus to keep in step, so there are
 no repetitions to list.
+
+**`release_repo` names where a literal tool's release is fetched from**, as
+`owner/name`. It is optional, and rejected under `source: lockfile` — a
+lockfile-sourced tool is installed by its package manager and has no release to
+download. It exists because a gate skill that installs the tool has to know, and
+the value previously lived only inside the `# renovate: … depName=` annotation,
+which is written for a bot rather than as a field anything can read. A fork or
+an internal mirror is a reasonable thing for a repository to differ on without
+the checker changing, so it answers *yes* to
+[ADR 0018](adr/0018-register-checker-boundary.md)'s test.
 
 **`invocation` is its mirror** — required under `source: lockfile`, rejected
 under `source: literal`. A literal tool is installed onto `PATH` at each locus,

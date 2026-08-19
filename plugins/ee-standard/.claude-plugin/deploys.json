@@ -1,0 +1,8 @@
+{
+  "contractVersion": 1,
+  "artifacts": [
+    ".pre-commit-config.yaml#gitleaks",
+    ".github/workflows/standard-check.yml#secret-scan"
+  ],
+  "controls": ["SEC-001", "SEC-002"]
+}
