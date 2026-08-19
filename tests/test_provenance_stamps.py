@@ -39,10 +39,19 @@ def _stamped_files() -> list[str]:
         text=True,
         check=False,
     )
-    # Prose that defines or discusses the format is not a deployed artefact. No
-    # document is, so the whole of `docs/` is out along with the two files that
-    # quote the marker: this repository's guide, and this test.
-    excluded = ("docs/", "CLAUDE.md", "tests/test_provenance_stamps.py")
+    # A stamp is evidence only where it sits in an artefact deployed *into this
+    # repository*. Four kinds of file carry the marker without being one, and
+    # each is excluded for its own reason rather than by accumulation:
+    #
+    #   docs/, CLAUDE.md  prose that defines or discusses the format
+    #   src/              the parser's own docstring, which shows an example
+    #   tests/            fixtures, including the malformed ones on purpose
+    #   plugins/          templates a gate writes into *other* repositories,
+    #                     whose placeholders are unfilled here — that they parse
+    #                     once the register fills them is tests/test_plugin.py's
+    #
+    # Anything else holding the marker is a deployed artefact and is checked.
+    excluded = ("docs/", "CLAUDE.md", "src/", "tests/", "plugins/")
     return [p for p in found.stdout.split() if not p.startswith(excluded)]
 
 
