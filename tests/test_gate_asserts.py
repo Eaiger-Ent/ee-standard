@@ -299,3 +299,19 @@ def test_the_schema_rejects_a_stamp_block_with_no_deployed_by(tmp_path: Path) ->
     register, errors = load_register(root / "controls.yaml")
     assert register is None
     assert any("deployed_by" in str(error) for error in errors), errors
+
+
+def test_a_stamp_is_found_without_reading_the_whole_tree(tmp_path: Path) -> None:
+    """The lookup is `git grep`, and it agrees with reading every file.
+
+    Reading the whole tracked tree on every run is correct and does not scale.
+    What this holds is that the faster path returns the same answer: a stamp in
+    one file among many is found, and files without the marker are not consulted.
+    """
+    files = {f"pkg/mod{i}.py": f"VALUE = {i}\n" for i in range(50)}
+    files[".pre-commit-config.yaml"] = _STAMP + _HOOK
+    repo = make_repo(tmp_path, files)
+    result = provenance_stamp_present(repo, a_register(), {"skill": "gate-secrets"})
+    assert result.passed, result.message
+    assert ".pre-commit-config.yaml" in result.message
+    assert "pkg/mod0.py" not in result.message

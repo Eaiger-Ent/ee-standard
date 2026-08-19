@@ -24,7 +24,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from standard_check.repo import Repo
+from standard_check.repo import Repo, git
 
 #: The bare marker. Searched for on its own where a stamp that is *present but
 #: malformed* must be found rather than missed — a defect in the deployment, not
@@ -73,6 +73,22 @@ def stamps_in(text: str) -> list[Stamp]:
     ]
 
 
+def _files_with_marker(repo: Repo) -> list[str]:
+    """Tracked files containing the marker, found by git rather than by reading.
+
+    `git grep` is the whole repository in one subprocess. Reading every tracked
+    file instead is correct and does not scale: a monorepo would pay a full-tree
+    read on every conformance run, for a marker that appears in a handful of
+    files. Falling back to the read is deliberate — a grep that fails for a
+    reason this code cannot anticipate must not turn into "no artefact was
+    stamped", which is a verdict rather than an error.
+    """
+    result = git(repo.root, "grep", "-l", "-I", "--cached", "-e", MARKER)
+    if result.returncode not in (0, 1):  # 1 is "no matches", not a failure
+        return sorted(repo.tracked)
+    return [path for path in result.stdout.split("\n") if path]
+
+
 def stamps_by_file(repo: Repo) -> dict[str, list[Stamp]]:
     """Well-formed stamps in the repository's tracked files, by path.
 
@@ -81,13 +97,11 @@ def stamps_by_file(repo: Repo) -> dict[str, list[Stamp]]:
     scratch file is not evidence of anything.
     """
     found: dict[str, list[Stamp]] = {}
-    for path in sorted(repo.tracked):
+    for path in sorted(_files_with_marker(repo)):
         try:
             text = repo.read(path)
         except (OSError, UnicodeDecodeError):
             continue  # a binary or unreadable file carries no stamp
-        if MARKER not in text:
-            continue
         stamps = stamps_in(text)
         if stamps:
             found[path] = stamps
