@@ -127,3 +127,28 @@ def test_no_skill_repeats_a_version_the_register_pins(field: str, literal: str) 
         if path.is_file() and literal in path.read_text(encoding="utf-8", errors="ignore")
     ]
     assert not offenders, f"{field} ({literal}) is repeated in: {', '.join(offenders)}"
+
+
+@pytest.mark.parametrize("skill", SKILLS, ids=lambda p: p.name)
+def test_the_gate_verifies_through_the_checker_and_not_otherwise(skill: Path) -> None:
+    """One assert implementation, established rather than asserted.
+
+    Phase 2's criterion is "verified by there being one copy, not by comparing
+    two". The one copy is `standard_check.asserts`; the only way a skill reaches
+    it is `standard-check run --control <ID>`, which evaluates the control's own
+    verify blocks through the same `run_control` the full audit calls.
+
+    So what is checked here is that every control the skill claims to deploy is
+    named on that command line. A gate that verified itself by reading its files
+    back would pass every other test in this file and disagree with the auditor
+    the first time the register moved.
+    """
+    text = (skill / "SKILL.md").read_text(encoding="utf-8")
+    sidecar = json.loads((PLUGIN / ".claude-plugin/deploys.json").read_text(encoding="utf-8"))
+    verify = [line for line in text.splitlines() if "standard-check" in line and "run" in line]
+    assert verify, f"{skill.name} has no verify step that calls the checker"
+    joined = " ".join(verify)
+    for control in sidecar["controls"]:
+        assert f"--control {control}" in joined, (
+            f"{skill.name} deploys {control} and does not verify it through the checker"
+        )

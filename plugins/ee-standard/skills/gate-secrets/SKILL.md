@@ -194,7 +194,7 @@ version. If the workflow you just wrote is not among them, the register and the
 repository now disagree, and `tool_versions_match_register` will say so. Add the
 path to `tools.<TOOL>.pinned_at` in the register and tell the user you did — it
 is their register recording their files
-(`docs/08-adopting.md` § 3.1), so it is an edit to report, not one to hide.
+(`docs/08-adopting.md` § 3.2), so it is an edit to report, not one to hide.
 
 ---
 

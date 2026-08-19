@@ -23,13 +23,15 @@ prevent, so the gaps are stated rather than glossed.
 | `standard-check` — the checker | **Exists** | `src/standard_check/`, run with `uv run standard-check` |
 | Platform prerequisites (this document, § 1) | **Exists**, manual | Below |
 | A devcontainer you can copy | **Exists** for this repo; the generalised template is Phase 2 | `.devcontainer/` |
-| `gate-*` skills that deploy the gates for you | **Phase 2 — not built** | `docs/02-skill-family.md` |
+| `gate-secrets` — deploys SEC-001, checks SEC-002 | **Exists** | `plugins/ee-standard/skills/gate-secrets/` |
+| The other five `gate-*` skills | **Phase 2 — not built** | `docs/02-skill-family.md` |
 | `standard-adopt` — one command to deploy everything | **Phase 2 — not built** | `docs/02-skill-family.md` |
 | `kind: remote` verification of platform state | **Phase 3 — not built** | Reports `SKIPPED (no credentials)` |
 
-So today, adoption is: do § 1 by hand, copy the devcontainer, wire the gates by
-hand using this repository as the worked example, and run the checker. When
-Phase 2 lands, most of § 2 and § 3 becomes one command.
+So today, adoption is: do § 1 by hand, copy the devcontainer, run
+`/gate-secrets` for the secrets gate, wire the remaining gates by hand using
+this repository as the worked example, and run the checker. When Phase 2
+finishes, most of § 2 and § 3 becomes one command.
 
 ## 1 — Platform state: what only a human with admin can do
 
@@ -142,8 +144,9 @@ What matters when you adapt it:
 
 ## 3 — The gates
 
-Until Phase 2 ships the `gate-*` skills, wire the gates by copying this
-repository's own artefacts, which are the reference implementation:
+One gate is built — see § 3.1. For the rest, until Phase 2 ships them, wire the
+gates by copying this repository's own artefacts, which are the reference
+implementation:
 
 | Locus | File here | What it gives you |
 | --- | --- | --- |
@@ -166,7 +169,48 @@ records that path as `tools.<tool>.invocation` and the checker holds every locus
 to it. A missing local install is then `UNCLASSIFIED — cannot verify`, which is
 the honest answer, rather than a pass earned by a binary nobody pinned.
 
-### 3.1 — Your register records your own files
+### 3.1 — `gate-secrets`, and what it needs from you first
+
+`/gate-secrets` wires SEC-001 at both its local loci and checks SEC-002. It
+takes `--repo` and `--register`, the same two flags as `standard-check`, so a
+deployment and its audit cannot be pointed at different things by accident.
+
+**Three prerequisites, and how you know each is met.**
+
+| Prerequisite | Why | How you know it worked |
+| --- | --- | --- |
+| A register the skill can read | Every value it writes — the scanner's name, version, checksum and release repository — comes from `controls.yaml`. There is no default, because a default is a decision nobody recorded | `standard-check --repo . --register <path> explain SEC-001` prints the control |
+| `tools.<scanner>.release_repo` set in your register | The skill downloads a pinned release and needs `owner/name`. Before Phase 2 this value existed only inside a `# renovate: depName=` comment, which is an annotation for a bot rather than a field anything can read | `standard-check schema` accepts the register; a malformed value is rejected as *must be an owner/name repository reference* |
+| A workflow that runs on `push` or `pull_request` | A workflow triggered only by `workflow_dispatch` runs when a human clicks it, and a control reachable only that way is declared and unreachable | The verify step reports `ci locus — no gating step runs '<scanner>'` if you have none |
+
+**Expect exit `3`, not `0`, and read it as a result rather than a problem.**
+SEC-001's remote block — GitHub secret scanning push protection — reports
+`SKIPPED (no credentials)` until Phase 3. The two local loci are verified; the
+remote one is not, and is not claimed. Enabling push protection is the platform
+act in § 1 that only an admin can take.
+
+**Two ways an adopter who already had SEC-001 passing can now fail it.**
+
+1. **The CI locus is checked.** SEC-001 declares three loci and, before Phase 2,
+   only the pre-commit hook was read — a repository could delete its
+   secret-scanning job and stay green. If your scanner runs only at pre-commit,
+   SEC-001 now fails naming the ci locus. That is the check working.
+2. **Your ignore file is judged by what it hides.** An entry whose fingerprint
+   names a file **git tracks** hides authored content from a control with
+   `variance: forbidden` and `baseline: null`, and fails
+   ([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)). An entry
+   naming a path git does not track — a vendored directory, a fixture outside
+   the repository's own content — scopes the scanner and is fine. Deal with what
+   the first kind was hiding; do not move it somewhere quieter.
+
+**Wiring by hand instead?** Then stamp what you write. SEC-001's verify reads
+back a provenance stamp naming the gate that deploys it, so a hand-wired hook
+with no stamp fails. Say in the stamp's comment that it was adopted rather than
+deployed — this repository's own two artefacts do exactly that, because they
+were written in Phase 0.5 before there was a gate to write them, and a stamp
+claiming otherwise would be a record of something that did not happen.
+
+### 3.2 — Your register records your own files
 
 Two things in `controls.yaml` describe **the repository being checked**, not this
 one, and are the first edits an adopter makes to their copy:
@@ -175,6 +219,7 @@ one, and are the first edits an adopter makes to their copy:
 | --- | --- | --- |
 | Every file that repeats a pinned tool version | `tools.<tool>.pinned_at` | `tool_versions_match_register` compares exactly these paths. A path listed here that does not exist is a failure, and so is one that exists and holds no pin — which is how a renamed workflow is caught rather than silently dropped from comparison |
 | Which package ecosystems you are in, and what a frozen install looks like in them | `ecosystems:` | Detected from your manifests. If your CI installs with an idiom the register has not heard of, add it there rather than working around it in the checker |
+| Where a literal-pinned tool's release comes from | `tools.<tool>.release_repo` | A fork or an internal mirror is a reasonable thing to differ on. A gate skill downloads from exactly this repository, so a wrong value fails at the checksum rather than installing something else |
 
 Get the first one wrong and SUP-001 tells you so by name — *"recorded as pinned
 at X, which does not exist"*. That message is the check working: this repository
@@ -191,6 +236,7 @@ the deploying skill and the register contract; see
 ```bash
 uv run standard-check                    # the whole register
 uv run standard-check run --tier 1       # Tier 1 only — note the `run`
+uv run standard-check run --control SEC-001   # one control — what a gate verifies through
 uv run standard-check explain SEC-001    # why a control exists, and what it checks
 uv run standard-check schema             # validate the register itself
 uv run standard-check --repo ../other    # `--repo` goes before the subcommand
@@ -236,6 +282,7 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 5 | Renovate installed, if any version is a literal | Its Dependency Dashboard lists the expected number of sites |
 | 6 | Devcontainer image digest-pinned, lock file complete, user stated | `uv run standard-check` reports DEV-001 and BLD-001 passing |
 | 7 | Gates wired at every locus the control declares | LNT-001, TYP-001, DOC-001, TST-001 passing |
+| 7a | Secrets gate wired at pre-commit **and** CI, and stamped | `standard-check run --control SEC-001` shows both local blocks ✓ and exits `3` — the remote block is Phase 3, not a failure |
 | 8 | The conformance run is a required status check | GOV-001 passing without its partial declaration (Phase 3) |
 
 ## When something is wrong with the standard itself

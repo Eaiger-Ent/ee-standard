@@ -9,7 +9,12 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 (`standard-check`, in `src/standard_check/`) audits them.
 
 Current status: Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
-with no re-opened criteria outstanding. **Phase 2 is next.**
+with no re-opened criteria outstanding. **Phase 2 is in progress** — its first
+slice landed 2026-08-19: the `plugins/ee-standard/` skeleton, `gate-secrets` as
+the reference gate, and `standard-check run --control <ID>`, the one entry point
+a gate verifies through. `docs/10-phase-2-review.md` holds the evidence.
+Outstanding: the other five gates, `standard-adopt`, and the devcontainer
+template.
 Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
@@ -138,11 +143,15 @@ Defined in `docs/00-concepts.md`; the schema is `docs/01-register-schema.md`.
 Files deployed by ee-skills plugins carry an `ee-control:` provenance header
 naming the control, the deploying skill and version, the register version **and
 the register contract** — `docs/00-concepts.md` § The provenance stamp has the
-format, and `tests/test_provenance_stamps.py` checks every stamp parses and
-names a real control. Five files carry one: `.markdownlint.yaml`,
+format, one parser lives at `src/standard_check/provenance.py` (never write a
+second), and `tests/test_provenance_stamps.py` checks every stamp parses and
+names a real control. Six files carry one: `.markdownlint.yaml`,
 `.markdownlint-cli2.yaml`, `.github/workflows/lint.yml`,
-`.claude/hooks/md-lint.py`, and — at the hook it owns rather than at the top of
-the file — `.pre-commit-config.yaml`. Keep the header when editing such files,
+`.claude/hooks/md-lint.py`, `.github/workflows/standard-check.yml`, and — with
+one stamp per hook it owns rather than one at the top of the file —
+`.pre-commit-config.yaml`. A control whose artefacts a gate writes names it in
+`deployed_by`, and `provenance_stamp_present` reads that stamp back; the schema
+rejects a register where the two disagree. Keep the header when editing such files,
 note the edit in it, and respect the control's variance direction. An exemption
 in a deployed config is judged by what it hides
 ([ADR 0019](docs/adr/0019-exemptions-cannot-hide-tracked-files.md)): excluding a
@@ -173,7 +182,16 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/06-devcontainer-setup.md` | Operator guide for this repo's own container |
 | `docs/07-inherited-conventions.md` | What the predecessor repo knew, sorted by whether it transfers — including what must **not** be copied |
 | `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
+| `docs/10-phase-2-review.md` | Record of Phase 2, and the evidence behind every criterion it ticks |
 | `docs/adr/` | One ADR per control, plus the open decisions at `Status: Proposed` |
 
 `README.md` § "The register at a glance" lists the thirteen Tier-1 controls, with
 the three meta-controls described below the table.
+
+Gate skills live in `plugins/ee-standard/skills/`. A gate verifies itself with
+`standard-check run --control <ID>` and never by reading its own files back —
+that command runs the control's verify blocks through the same `run_control` the
+full audit calls, which is what makes "one assert implementation" true rather
+than intended. A gate holds **no** pinned version of its own; templates carry
+placeholders and `tests/test_plugin.py` fails if any value the register pins
+appears anywhere under `plugins/`.
