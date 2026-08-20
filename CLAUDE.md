@@ -169,9 +169,11 @@ never enforced. 1.0.7 shipped most of the amend at
 [#530](https://github.com/EqualExperts/ee-skills-incubator/issues/530) but still
 writes `npx --no-install` at every locus, which ADR 0020 measured falling
 through to `PATH`, and still writes `.claude/**` into `ignores`, which ADR 0019
-forbids. Its presence checks mean a re-run would skip all four artefacts today
-rather than revert them, but that is idempotency rather than agreement — refresh
-the deployment only once those two rows ship
+forbids. Its presence checks mean a re-run would skip four of the five artefacts
+today rather than revert them — but that is idempotency rather than agreement,
+one of the four greps matches only a comment, and the fifth
+(`.markdownlint.yaml`) prompts to overwrite rather than skipping. Refresh the
+deployment only once those two rows ship
 (`docs/09-phase-1.5-review.md` § F, Update 2026-08-20).
 
 Enforcement is never Claude: gates are pinned binaries reading pinned configs;

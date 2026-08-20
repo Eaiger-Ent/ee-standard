@@ -207,12 +207,19 @@ marketplace copy after `/skill-update` moved this container from 1.0.6:
 | Invocation resolves to the pinned artefact (ADR 0020) | **Not shipped.** Every locus is still `npx --no-install markdownlint-cli2`, which is the precise thing § H6 measured falling through to `PATH` |
 | An exemption may not hide a tracked file (ADR 0019) | **Not shipped.** A fresh deployment still writes `.claude/**` into `ignores` |
 
-**And "un-refreshable" was the wrong word, or has become so.** 1.0.7 decides
-every write by a presence grep — `markdownlint-cli2` in the config, the hook and
-the workflow, `node_modules` in the runner config — so re-running it *here* now
-skips all four and reverts nothing. What the two unshipped rows describe is what
-a **fresh** deployment writes, which is an adopter's problem rather than this
-repository's. The stamps still read `lint-md@1.0.6` and are now genuinely stale;
+**And "un-refreshable" was the wrong word, or has become so.** Four of the five
+artefacts are decided by a presence grep — `markdownlint-cli2` in the runner
+config, the hook and the workflow, `node_modules` in the ignores file — so a
+re-run here skips them and reverts nothing. The fifth, `.markdownlint.yaml`,
+does not skip: it prompts *"already exists. Overwrite and reconfigure, or
+abort?"*, and answering Overwrite rewrites the rule set. So a re-run is not a
+silent revert, but it is one answer away from being one.
+
+The `node_modules` grep is worth naming too, because it holds by accident:
+`.markdownlint-cli2.yaml` here sets `gitignore: true` with `ignores: []` and
+matches only because the word appears in a **comment** explaining why the list
+was removed. What the two unshipped rows describe is otherwise what a **fresh**
+deployment writes, which is an adopter's problem rather than this repository's. The stamps still read `lint-md@1.0.6` and are now genuinely stale;
 that is reported and not enforced, and refreshing them means re-deploying, which
 is the act nobody should perform here while ADR 0020's row is open.
 
