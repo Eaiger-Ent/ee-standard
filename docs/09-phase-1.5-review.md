@@ -196,6 +196,31 @@ the fourth submission Phase 6 tracks. It is a submission, not a merge: until a
 maintainer ships it, re-running `lint-md` here still reverts the pins, so the
 deployment stays un-refreshable and Phase 6's criterion holds the follow-up.
 
+**Update, 2026-08-20 — `lint-md@1.0.7` ships most of the amend.** Read from the
+marketplace copy after `/skill-update` moved this container from 1.0.6:
+
+| What § F found | 1.0.7 |
+| --- | --- |
+| CI template writes `actions/checkout@v6`, a floating tag failing SUP-003 | **Shipped.** `actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6`, with the mutable-tag argument written into the skill |
+| Unversioned `npm install -g markdownlint-cli2` | **Shipped.** `npm install --save-dev --save-exact`, `npm ci` at the devcontainer and CI loci, and the lockfile named as the single authority |
+| The upstream mirror's `rev:` is a second copy of the version | **Shipped**, structurally: the hook is `repo: local`, `detect-version.sh` is gone from the plugin, and a `LEGACY_PINNED` block is migrated rather than left |
+| Invocation resolves to the pinned artefact (ADR 0020) | **Not shipped.** Every locus is still `npx --no-install markdownlint-cli2`, which is the precise thing § H6 measured falling through to `PATH` |
+| An exemption may not hide a tracked file (ADR 0019) | **Not shipped.** A fresh deployment still writes `.claude/**` into `ignores` |
+
+**And "un-refreshable" was the wrong word, or has become so.** 1.0.7 decides
+every write by a presence grep — `markdownlint-cli2` in the config, the hook and
+the workflow, `node_modules` in the runner config — so re-running it *here* now
+skips all four and reverts nothing. What the two unshipped rows describe is what
+a **fresh** deployment writes, which is an adopter's problem rather than this
+repository's. The stamps still read `lint-md@1.0.6` and are now genuinely stale;
+that is reported and not enforced, and refreshing them means re-deploying, which
+is the act nobody should perform here while ADR 0020's row is open.
+
+The remaining amend is therefore one argument, not four: a locus must reach the
+artefact the lockfile pins, and `npx --no-install` does not. It is narrower than
+what #530 was raised for, and Phase 6 tracks the follow-up rather than a fresh
+submission.
+
 That last clause is a **Phase 5 dependency, not a cosmetic one**. Phase 5's first
 two exit criteria — a version bump must produce no redeployment recommendation, a
 contract bump must — are the whole noise argument expressed as a test, and
