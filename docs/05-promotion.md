@@ -214,13 +214,15 @@ plugins are separate again and should not be bundled with any of it:
 | 1. `ee-standard` | `/skill-submit-new`, once per skill | The new plugin, plus the `governance` category. Every issue must name the same `promote-config.json` entry — `"ee-standard": {"skills": [ … ]}` — or the skills are promoted as separate single-skill plugins, which is what the tool's generated entry says by default. |
 | 2. `skill-update` widening | `/skill-submit-amend` against `ee-skills-manage` | Changes an existing, widely installed skill. Reviewers assessing a new plugin and reviewers assessing a behaviour change to a shipped one are asking different questions. |
 | 3. `CONTRIBUTING.md` corrections | Direct PR (Lane B) | Documentation fix, explicitly permitted as a direct PR. Useful to land first — it is small, independent, and establishes contact before the large submission arrives. |
-| 4. `lint-md` amendment | `/skill-submit-amend` against `ee-skills-incubator` | Raised 2026-08-18 as [issue #530](https://github.com/EqualExperts/ee-skills-incubator/issues/530). Independent of the three above and raised ahead of them, because it blocks something already in use: `lint-md@1.0.6` pins markdownlint-cli2's version at none of the four loci it wires, and its CI template writes a floating `actions/checkout@v6`. Until it ships, re-running the skill on a conformant repository reverts both corrections, so a deployed gate cannot be refreshed without losing conformance. |
+| 4. `lint-md` amendment | `/skill-submit-amend` against `ee-skills-incubator` | Raised 2026-08-18 as [issue #530](https://github.com/EqualExperts/ee-skills-incubator/issues/530), and **mostly shipped in `lint-md@1.0.7`** on 2026-08-20: the CI template now pins `actions/checkout` to a SHA, the tool installs as an exact-pinned dev dependency with `npm ci` at the other loci, and the pre-commit hook is `repo: local` with no `rev:` copy. Two rows remain open, and both are this repository's own ADRs rather than the original report: a locus must reach the artefact the lockfile pins, where 1.0.7 still writes `npx --no-install` ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)); and an exemption may not hide a tracked file, where a fresh deployment still writes `.claude/**` into `ignores` ([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)). This is a follow-up on an open issue, not a fresh submission. |
 
 Submission 4 was identified by this repository deploying `lint-md` and then
 having to hand-edit every artefact it wrote — recorded in
-[`09-phase-1.5-review.md`](09-phase-1.5-review.md) § F. It is listed here because a
-submission tracked in a build plan and absent from the promotion order is a
-submission that gets forgotten at promotion time.
+[`09-phase-1.5-review.md`](09-phase-1.5-review.md) § F, including what 1.0.7
+subsequently shipped. It is listed here because a submission tracked in a build
+plan and absent from the promotion order is a submission that gets forgotten at
+promotion time — and one that is *partly* shipped is the easiest of all to close
+prematurely, because most of the report is answered.
 
 Submission 2 is not optional dressing. Without it, `skill-update` computes the
 owed-deployment report and then prints *"Already done"* underneath it whenever

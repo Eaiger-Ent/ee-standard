@@ -173,7 +173,9 @@ to stop reading only the first stamp in a file.
 
 Run against `plugins/ee-standard/skills/gate-secrets` with
 `preflight-check.sh`, which ships in `ee-skills` and cannot run in this
-repository's CI:
+repository's CI. Re-run on 2026-08-20 against `skill-preflight@0.1.15` after
+`/skill-update` moved it three versions — same result, and the check script is
+byte-identical to 0.1.12's, so the version jump was in the skill around it:
 
 ```text
 P1 line count           PASS  305 / 500

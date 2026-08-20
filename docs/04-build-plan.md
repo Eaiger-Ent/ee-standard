@@ -591,7 +591,10 @@ makes four.
       nine issues is nine single-skill plugins rather than one
 - [ ] All the submissions raised: the family (one issue per skill), the
       `governance` category, the `skill-update` widening, the `CONTRIBUTING.md`
-      corrections, and the `lint-md` amendment from Phase 1.5 § F
+      corrections, and what remains of the `lint-md` amendment from Phase 1.5
+      § F — `lint-md@1.0.7` shipped most of #530 on 2026-08-20, leaving the
+      ADR 0020 invocation and the ADR 0019 exemption, so this is a follow-up on
+      an open issue and closing it means naming those two
 - [ ] `ee-standard` installable from the marketplace **as one plugin**, with
       every skill in it — not as one plugin per skill
 - [ ] The consumer repo re-adopts from the *marketplace* copy and still passes —

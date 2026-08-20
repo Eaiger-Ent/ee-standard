@@ -163,6 +163,19 @@ lifecycle — this repo does not write its own markdown gate, and `lint-md`'s
 shape (pre-flight → install → write config → wire every locus → migrate →
 verify) is the template every future gate skill copies (`docs/02-skill-family.md`).
 
+**Do not re-run `/lint-md` here.** The stamps read `lint-md@1.0.6` and the
+installed skill is 1.0.7, so the deployment is stale — which is reported and
+never enforced. 1.0.7 shipped most of the amend at
+[#530](https://github.com/EqualExperts/ee-skills-incubator/issues/530) but still
+writes `npx --no-install` at every locus, which ADR 0020 measured falling
+through to `PATH`, and still writes `.claude/**` into `ignores`, which ADR 0019
+forbids. Its presence checks mean a re-run would skip four of the five artefacts
+today rather than revert them — but that is idempotency rather than agreement,
+one of the four greps matches only a comment, and the fifth
+(`.markdownlint.yaml`) prompts to overwrite rather than skipping. Refresh the
+deployment only once those two rows ship
+(`docs/09-phase-1.5-review.md` § F, Update 2026-08-20).
+
 Enforcement is never Claude: gates are pinned binaries reading pinned configs;
 a skill may install or explain a gate but cannot be one.
 
