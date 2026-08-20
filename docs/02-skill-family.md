@@ -57,6 +57,13 @@ Gates are grouped by the artefact they write, not one-per-control. `gate-quality
 writes one pre-commit config and one CI workflow covering three controls; three
 separate skills would fight over the same two files.
 
+That tree is the **marketplace's** layout — `ee-skills/plugins/adr-toolkit` has
+exactly this shape — and it is what this repository builds. It is not the
+incubator's, which stores skills flat and groups them in a config file, and it
+is not what `/skill-submit-new` reads. Both differences are Phase 6's and are
+recorded in [`05-promotion.md`](05-promotion.md) § What the incubator actually
+holds rather than restated here.
+
 ## The dispatcher: `standard-adopt`
 
 The only entry point a user needs.
