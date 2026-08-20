@@ -11,21 +11,21 @@ contains**, not what its documentation says.
             │
             ▼
   /skill-submit-new  (new)   or   /skill-submit-amend  (update)
-            │
+            │                     one issue per SKILL, not per plugin
             ▼
   GitHub issue on EqualExperts/ee-skills-incubator
             │
             ▼
-  maintainer review → skill lands in incubator skills/<name>/
-            │
+  maintainer review → each skill lands flat at incubator skills/<skill>/
+            │           and skills/promote-config.json groups them into a plugin
             ▼
-  maintainer promotes to EqualExperts/ee-skills plugins/<name>/
+  maintainer promotes to EqualExperts/ee-skills plugins/<plugin>/skills/<skill>/
             │
             ▼
   marketplace.json + readme-meta.json → installable
 ```
 
-Two properties of this route shape the build plan:
+Three properties of this route shape the build plan:
 
 **Submission is an issue, not a pull request.** Both `skill-submit-new` and
 `skill-submit-amend` open a GitHub issue against `EqualExperts/ee-skills-incubator`
@@ -37,6 +37,65 @@ promotion is attempted at all.
 
 **Promotion is a maintainer action.** Whatever the incubator-to-marketplace step
 is mechanically, it is not yours to run. Budget calendar time for it.
+
+**The unit of submission is a skill, not a plugin.** `/skill-submit-new` takes a
+skill name, reads one `SKILL.md`, and opens one issue. A plugin shipping nine
+skills is nine issues. This is the correction that matters most to Phase 6's
+shape, and § What the incubator actually holds sets out what follows from it.
+
+## What the incubator actually holds
+
+Read from `EqualExperts/ee-skills-incubator` on 2026-08-20, because the shape of
+the destination decides how much of this repository's tree can go as it stands.
+
+**Grouping is a config file, not a directory.** `adr-toolkit` ships eight skills
+and `skills/adr-toolkit` **404s** — the eight sit flat as `skills/adr-create`,
+`skills/adr-new` and so on, and `skills/promote-config.json` is the only thing
+that says they are one plugin:
+
+```json
+"adr-toolkit": {
+  "skills": ["adr-create", "adr-new", "adr-refine", "adr-check",
+             "adr-review", "adr-approve", "adr-status", "adr-consistency"],
+  "description": "Full ADR lifecycle: create, refine, check, review, approve, status, consistency."
+}
+```
+
+So a multi-skill plugin is ordinary rather than exotic — `git-summary-plugin`
+declares ten. What is *not* ordinary is getting one out of `/skill-submit-new`,
+which writes `"<name>": { "skills": ["<name>"] }`: a single-skill entry, once per
+issue. The consolidated entry naming all of `ee-standard`'s skills has to be
+written deliberately and asked for in the issues, or nine plugins arrive where
+one was intended.
+
+**Three layouts coexist there.** This is worth knowing before assuming the
+incubator will accept the tree as-is:
+
+| Shape | Example | What it looks like |
+| --- | --- | --- |
+| Flat skill | `skills/domain-model/` | `SKILL.md` and its supporting files; grouping only in `promote-config.json` |
+| Plugin metadata beside flat skills | `skills/corpus/`, `skills/issue-workflow/` | `.claude-plugin/`, `LICENSE`, `README.md` and **no** skills — those sit flat alongside, as `skills/corpus-query/` |
+| Self-contained plugin | `skills/git-summary-plugin/` | `.claude-plugin/`, `LICENSE`, `README.md` and every skill nested inside |
+
+Three shapes in one directory is a repository mid-convention, not a rule to
+follow confidently. Ask which one is wanted rather than picking; the answer
+costs a sentence in an issue and the wrong guess costs a resubmission.
+
+**The marketplace layout, by contrast, is settled — and is the one built here.**
+`ee-skills/plugins/adr-toolkit/` holds exactly `.claude-plugin/`, `LICENSE`,
+`README.md` and `skills/`, with one directory per skill inside. That is
+`plugins/ee-standard/` in this repository, field for field, with `LICENSE` the
+one piece still missing. Nothing about the local tree needs rearranging for the
+destination; what needs deciding is only how it is handed over.
+
+**`/skill-submit-new` will not find these skills.** It resolves
+`<name>/SKILL.md` in the project Claude skills directory or the user-level one.
+This repository has no `.claude/skills/` at all, and the skills live at
+`plugins/ee-standard/skills/<name>/`. Something has to bridge that at submission
+time — a copy, a symlink, or an amendment to the submission skill that teaches
+it the plugin layout. **This is undecided**, and it is recorded here rather than
+settled because the third option is a fifth submission and that is not a
+decision to make silently.
 
 ## Corrections to `CONTRIBUTING.md`
 
@@ -83,6 +142,10 @@ six gates and could trivially exceed 500 lines if per-control detail is inlined
 and in `templates/` files the skill reads.
 
 ## What ships with the plugin
+
+The directory layout these sit in is the marketplace's, verified against
+`ee-skills/plugins/adr-toolkit` and already matched by `plugins/ee-standard/` —
+see § What the incubator actually holds rather than a second description here.
 
 | Artefact | Requirement |
 | --- | --- |
@@ -141,12 +204,14 @@ Two consequences to handle in the same PR:
 
 ## Submission order
 
-The family is one plugin, so it is one submission — but the two changes to
-*existing* plugins are separate and should not be bundled with it:
+The family is one plugin, and it is **not** one submission: `/skill-submit-new`
+is per skill, so submission 1 is one issue per skill in the family, asking in
+each for the shared `promote-config.json` entry. The two changes to *existing*
+plugins are separate again and should not be bundled with any of it:
 
 | Submission | Target | Why separate |
 | --- | --- | --- |
-| 1. `ee-standard` | `/skill-submit-new` | The new plugin, plus the `governance` category. |
+| 1. `ee-standard` | `/skill-submit-new`, once per skill | The new plugin, plus the `governance` category. Every issue must name the same `promote-config.json` entry — `"ee-standard": {"skills": [ … ]}` — or the skills are promoted as separate single-skill plugins, which is what the tool's generated entry says by default. |
 | 2. `skill-update` widening | `/skill-submit-amend` against `ee-skills-manage` | Changes an existing, widely installed skill. Reviewers assessing a new plugin and reviewers assessing a behaviour change to a shipped one are asking different questions. |
 | 3. `CONTRIBUTING.md` corrections | Direct PR (Lane B) | Documentation fix, explicitly permitted as a direct PR. Useful to land first — it is small, independent, and establishes contact before the large submission arrives. |
 | 4. `lint-md` amendment | `/skill-submit-amend` against `ee-skills-incubator` | Raised 2026-08-18 as [issue #530](https://github.com/EqualExperts/ee-skills-incubator/issues/530). Independent of the three above and raised ahead of them, because it blocks something already in use: `lint-md@1.0.6` pins markdownlint-cli2's version at none of the four loci it wires, and its CI template writes a floating `actions/checkout@v6`. Until it ships, re-running the skill on a conformant repository reverts both corrections, so a deployed gate cannot be refreshed without losing conformance. |

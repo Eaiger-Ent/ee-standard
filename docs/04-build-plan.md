@@ -579,9 +579,21 @@ makes four.
 - [ ] A repo-root `LICENSE` exists and is copied into the plugin —
       `check_plugin_license.py` fails without it, and `pyproject.toml` already
       declares Apache-2.0. Carried as debt since Phase 1.5, gating here
-- [ ] All four submissions raised (the three in `05-promotion.md`, plus the
-      `lint-md` amendment from Phase 1.5 § F)
-- [ ] `ee-standard` installable from the marketplace
+- [ ] How `/skill-submit-new` reaches skills that live in a plugin directory is
+      decided and done. It resolves `<name>/SKILL.md` in the project or
+      user-level Claude skills directory, and this repository's are in
+      `plugins/ee-standard/skills/` — a copy, a symlink, or a fifth submission
+      teaching it the plugin layout ([`05-promotion.md`](05-promotion.md) §
+      What the incubator actually holds)
+- [ ] Every skill in the family is submitted, and every issue names the **same**
+      `promote-config.json` entry. `/skill-submit-new` is per skill and its
+      generated entry is `{"skills": ["<name>"]}`, so the default outcome of
+      nine issues is nine single-skill plugins rather than one
+- [ ] All the submissions raised: the family (one issue per skill), the
+      `governance` category, the `skill-update` widening, the `CONTRIBUTING.md`
+      corrections, and the `lint-md` amendment from Phase 1.5 § F
+- [ ] `ee-standard` installable from the marketplace **as one plugin**, with
+      every skill in it — not as one plugin per skill
 - [ ] The consumer repo re-adopts from the *marketplace* copy and still passes —
       proving the plugin works when installed, not only when developed
 
