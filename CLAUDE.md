@@ -34,9 +34,13 @@ anything, a suppressed step and the step that *installs* a tool rather than
 running it. Its seventh landed at contract 17: `gate-repo`, the only gate whose
 effect is not a file, which records the branch ruleset before applying it so
 that something is verifiable before Phase 3 — as **intent**, never as
-enforcement. `docs/10-phase-2-review.md` holds the evidence for all seven. **All
-six gates now exist.** Outstanding: `standard-adopt` and the devcontainer
-template.
+enforcement. Its eighth shipped the devcontainer template at
+`plugins/ee-standard/templates/devcontainer/`, which pins its image and features
+by digest and — checked by a grep rather than a reading — no tool version by
+hand. `docs/10-phase-2-review.md` holds the evidence for all eight. **All six
+gates and the template now exist.** Outstanding: `standard-adopt`, and the half
+of the template's criterion that needs an operator with Docker to *build* it —
+this devcontainer has none, so nothing here has.
 Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
