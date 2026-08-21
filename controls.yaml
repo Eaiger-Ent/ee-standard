@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.15.0
+version: 0.16.0
 
 meta:
   owner: platform-engineering
@@ -112,7 +112,16 @@ meta:
   #     the loci *it* installs the linter at — an absent linter is
   #     UNCLASSIFIED (ADR 0016) rather than a pass, and this register does not
   #     pin one because this repository has no Dockerfile to lint.
-  register_contract: 15
+  # 16: IAC-001 names the gate that writes its artefacts and is verified at both
+  #     loci it declares — the last of the four the contract-14 survey listed.
+  #     Its gate is the checker, as BLD-001's is and for the same reason: the
+  #     control's two `kind: command` blocks run checkov and tflint through the
+  #     path the audit uses, so one hook enforces both without a second wiring
+  #     for either. A repository with Terraform pins those two tools in its own
+  #     register; an absent analyser is UNCLASSIFIED (ADR 0016) rather than a
+  #     pass, and this register pins neither because this repository has no
+  #     `*.tf` to analyse.
+  register_contract: 16
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -986,7 +995,25 @@ controls:
         run: checkov --directory . --compact --quiet
       - kind: command
         run: tflint --recursive
+      # Two loci were declared from Phase 0 and neither was read: the blocks
+      # above run the analysers over the files, which is a different claim from
+      # something enforcing them before a commit lands and before a merge does.
+      # The last of the four controls the contract-14 survey listed (SUP-003,
+      # BLD-001, DEV-001, IAC-001), and the same move as the other three.
+      #
+      # One hook covers both analysers, because the hook runs the control and
+      # the control runs both. A repository with Terraform still has to pin
+      # `checkov` and `tflint` in its own `tools:` — an absent analyser is
+      # UNCLASSIFIED (ADR 0016) rather than a pass, and this register pins
+      # neither because this repository has no `*.tf` to analyse.
+      - kind: file
+        assert: gate_wired_at_declared_loci
+        args: { tool: standard-check }
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-iac }
     owner: platform-engineering
+    deployed_by: gate-iac
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16

@@ -146,7 +146,7 @@ What matters when you adapt it:
 
 ## 3 — The gates
 
-Four gates are built — see § 3.1 to § 3.4. For the rest, until Phase 2
+Five gates are built — see § 3.1 to § 3.5. For the rest, until Phase 2
 ships them, wire the gates by copying this repository's own artefacts, which are
 the reference implementation:
 
@@ -341,7 +341,7 @@ being fixed.
 | A `tools.standard-check` entry with an `invocation` | Both controls' pre-commit gate is the checker, and a locus running a bare name resolves from `PATH` — what answered would be auditing your repository ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) | The gate stops before writing anything and says the invocation is missing |
 | A `tools.hadolint` entry, **if you have a Dockerfile** | BLD-001's container half runs the linter. An absent linter is `UNCLASSIFIED — cannot verify`, not a pass ([ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md)) | `standard-check run --control BLD-001` stops reporting UNCLASSIFIED for that block |
 
-That last row is § 3.5 in miniature — *your register records your own files*.
+That last row is § 3.6 in miniature — *your register records your own files*.
 This standard's register pins no `hadolint`, because this repository has no
 Dockerfile to lint, and a `pinned_at` naming a site that does not exist is a
 failure rather than a placeholder. A repository that does have one adds the
@@ -374,7 +374,52 @@ the same — but it needs **two** stamps. The read-back matches on the control
 being evaluated, so a hook stamped for BLD-001 alone leaves DEV-001's pre-commit
 locus unrecorded even though the same command enforces it.
 
-### 3.5 — Your register records your own files
+### 3.5 — `gate-iac`, and the verdict that is not a pass
+
+`/gate-iac` wires IAC-001 (*infrastructure code is statically analysed before
+apply*). It applies only if you have `*.tf` files: the predicate is evaluated
+against files and never self-declared, so a repository without them skips the
+control and there is nothing to deploy.
+
+**One hook runs both analysers.** IAC-001's verify blocks are
+`checkov --directory . --compact --quiet` and `tflint --recursive`, and the hook
+runs the *control* — `standard-check run --control IAC-001` executes both
+through the same path the audit uses. Two hooks each invoking one analyser would
+be two statements of what "analysed" means, free to drift from each other and
+from the register.
+
+**Two prerequisites, and how you know each is met.**
+
+| Prerequisite | Why | How you know it worked |
+| --- | --- | --- |
+| A `tools.checkov` and `tools.tflint` entry in your register | Without them the analysers are unpinned, and an absent analyser is `UNCLASSIFIED — cannot verify`, not a pass | `standard-check run --control IAC-001` stops reporting UNCLASSIFIED for those blocks |
+| A `tools.standard-check` entry with an `invocation` | The pre-commit gate is the checker, and a locus running a bare name resolves from `PATH` ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) | The gate stops before writing anything and says the invocation is missing |
+
+**Expect `UNCLASSIFIED` on the first run, and do not treat it as a pass.** This
+standard's register pins neither analyser, because this repository has no `*.tf`
+to analyse. The gate will **not** make the report green by installing an
+unpinned tool — that leaves the version unrecorded, which is exactly the
+condition `tool_versions_match_register` exists to fail.
+
+**Exit `1` has two causes and they are not the same.** A failing wiring or stamp
+block is a failed deployment. A failing `checkov` or `tflint` block is a
+*successful* deployment finding real problems in your Terraform — the gate
+working on its first run. Conflating them is how a working gate gets rolled
+back, so the skill reports which and quotes the block.
+
+**What it leaves alone.** `terraform validate` checks syntax and provider
+schema, which neither analyser does — a different check, not a predecessor. A
+second analyser such as `tfsec` is not a violation, but two analysers means two
+suppression files and only one of them is a place this standard checks
+([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)); the skill shows
+what each is configured to do and asks.
+
+**A suppressed step is not a locus.** From register contract 16, a CI step
+carrying `continue-on-error: true` does not satisfy any control's ci locus. The
+tool runs, the job succeeds whatever it reports, and the merge is not gated on
+it. The same tightening applies to every gate, not only this one.
+
+### 3.6 — Your register records your own files
 
 Two things in `controls.yaml` describe **the repository being checked**, not this
 one, and are the first edits an adopter makes to their copy:

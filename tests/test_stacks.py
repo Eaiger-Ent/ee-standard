@@ -77,7 +77,12 @@ def test_mandating_a_different_linter_changes_the_verdict(tmp_path: Path) -> Non
     def mandate_flake8(document: dict[str, Any]) -> None:
         gate = document["stacks"]["python"]["gates"]["lint"]
         gate["tool"] = "flake8"
-        gate["invocation"] = "flake8 check"
+        # The invocation the repository actually runs, not the bare name. From
+        # contract 16 a tool counts as run by a step only when it is the
+        # *command* — `uv run flake8 check` starts with `uv`, so a register
+        # naming `flake8 check` describes an invocation this repository does not
+        # make. That is ADR 0020's point stated the other way round.
+        gate["invocation"] = "uv run flake8 check"
         gate["pre_commit"] = "flake8"
         gate["editor_extension"] = "ms-python.flake8"
         gate["config"] = [{"file": "pyproject.toml", "section": "tool.flake8"}]

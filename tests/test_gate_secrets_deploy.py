@@ -197,6 +197,60 @@ def test_deleting_the_pre_commit_hook_is_caught(
     assert "pre-commit locus" in out
 
 
+def test_installing_the_scanner_is_not_running_it(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Found while building `gate-iac`, and it is this gate's own template.
+
+    Before register contract 16 the ci-locus check was a substring search over a
+    step's whole `run:` text — and `templates/ci-steps.yaml` mentions the tool
+    six times in its *install* step: in a URL, in a tarball name, and as an
+    argument to `tar`, `install` and `rm`. So a workflow that installed the
+    scanner and never ran it satisfied SEC-001's ci locus, and deleting the
+    secret-scan step left the control green.
+
+    Contract 11 added that check to close a locus nothing read. This is the same
+    defect one level in: a locus read by something that could not tell running a
+    tool from mentioning it.
+    """
+    workflow = deployed / ".github/workflows/ci.yml"
+    text = workflow.read_text(encoding="utf-8")
+    # Delete the scan step and keep the install step — the state that used to
+    # pass.
+    workflow.write_text(text[: text.index("      - name: Secret scan")], encoding="utf-8")
+    make_repo(deployed, {})
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert "ci locus" in out
+    # The install step is still there, and is still not the locus.
+    assert "Install gitleaks" in workflow.read_text(encoding="utf-8")
+
+
+def test_a_suppressed_ci_step_is_not_the_ci_locus(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Found while building `gate-iac`, and it applies here too.
+
+    SEC-001 has no `no-failure-suppression` block of its own, so before register
+    contract 16 a secret-scan step carrying `continue-on-error: true` counted as
+    the ci locus being wired. The scanner ran, the job succeeded whatever it
+    found, and the control reported PASS — *declared and unreachable* one level
+    in from the `workflow_dispatch` case § D caught.
+    """
+    workflow = deployed / ".github/workflows/ci.yml"
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8").replace(
+            "      - name: Secret scan",
+            "      - name: Secret scan\n        continue-on-error: true",
+        ),
+        encoding="utf-8",
+    )
+    make_repo(deployed, {})
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert "ci locus" in out
+
+
 def test_removing_the_stamps_is_caught(
     deployed: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

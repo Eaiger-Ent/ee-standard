@@ -28,9 +28,11 @@ already green — and SUP-003 was green for the wrong reason, declaring
 contract 15: `gate-build`, which closed the same defect in BLD-001 and DEV-001,
 gave `.devcontainer/setup.sh` an owner per region, and replaced three near-copies
 of one assert with `gate_wired_at_declared_loci`, which reads the control's own
-`locus:` list. IAC-001 still carries the defect and closes with `gate-iac`.
-`docs/10-phase-2-review.md` holds the evidence for all five. Outstanding: the
-other two gates, `standard-adopt`, and the devcontainer template.
+`locus:` list. Its sixth landed at contract 16: `gate-iac`, closing the last of the four — and
+finding two more ways a CI step could be credited as a locus without gating
+anything, a suppressed step and the step that *installs* a tool rather than
+running it. `docs/10-phase-2-review.md` holds the evidence for all six.
+Outstanding: `standard-adopt` and the devcontainer template.
 Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
@@ -178,7 +180,7 @@ files, note the edit in it, and respect the control's variance direction.
 
 A stamp *behind* the register is staleness, reported and never enforced —
 `gate-secrets`' and `gate-quality`'s older stamps read contracts 11 and 12
-against a register at 15, deliberately, because nothing they wrote here needs
+against a register at 16, deliberately, because nothing they wrote here needs
 rewriting and doing it by hand would record a redeployment that did not happen. A stamp *ahead* of the
 register is a defect, and fails. An exemption
 in a deployed config is judged by what it hides
@@ -230,7 +232,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 the three meta-controls described below the table.
 
 Gate skills live in `plugins/ee-standard/skills/` — `gate-secrets`,
-`gate-quality`, `gate-supply-chain` and `gate-build` today. A gate verifies itself with
+`gate-quality`, `gate-supply-chain`, `gate-build` and `gate-iac` today. A gate verifies itself with
 `standard-check run --control <ID>` and never by reading its own files back —
 that command runs the control's verify blocks through the same `run_control` the
 full audit calls, which is what makes "one assert implementation" true rather

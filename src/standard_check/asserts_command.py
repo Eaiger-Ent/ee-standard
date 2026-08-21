@@ -344,11 +344,50 @@ def _hook_mentions(repo: Repo, token: str) -> bool:
 _PRE_COMMIT_RUN = re.compile(r"\bpre-commit run\b[^\n]*--all-files\b")
 
 
+#: Words that precede a command without being one. Stripped before asking
+#: whether a tool is what a command *runs*, so `sudo gitleaks detect` and
+#: `CI=1 ruff check` are the invocations they plainly are.
+_COMMAND_PREFIXES = ("sudo", "env", "time", "exec", "nohup")
+_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def _commands(run: str) -> Iterator[str]:
+    """Each command in a `run:` block, with its prefix words stripped.
+
+    A tool is run by a step when it is the **command**, not when its name
+    appears in one. Before contract 16 this was a substring search over the
+    whole `run:` text, and `gate-secrets`' own CI template defeated it: the
+    install step mentions `gitleaks` six times — in a URL, in a tarball name, as
+    an argument to `tar`, `install` and `rm` — so a workflow that installed the
+    scanner and never ran it satisfied SEC-001's ci locus. Deleting the secret
+    scan step left the control green.
+    """
+    for line in _logical_lines(run):
+        for command in re.split(r"&&|\|\||;|\|", line):
+            words = command.strip().split()
+            while words and (words[0] in _COMMAND_PREFIXES or _ASSIGNMENT.match(words[0])):
+                words.pop(0)
+            if words:
+                yield " ".join(words)
+
+
 def _ci_run_mentions(repo: Repo, pattern: str, *, hook: str | None = None) -> bool:
+    """Whether a gating step *runs* `pattern` — anchored at command position.
+
+    `pattern` is matched with `re.match` against each command in each step, so a
+    tool named inside a command's arguments is not that command. Callers pass an
+    escaped invocation or one wrapped in `\b`; both anchor cleanly.
+    """
     for step in _workflow_steps(repo):
-        if not step.gating:
+        # A suppressed step is not the ci locus. `continue-on-error: true` means
+        # the job succeeds whatever the gate reports, so the tool runs and the
+        # merge is not gated on it — which is the *declared and unreachable*
+        # shape (theme T-3) one level in from the one `_is_gating` catches.
+        # SEC-001 and SUP-003 have no `no-failure-suppression` block of their
+        # own, so without this a suppressed secret-scan step counted as wiring.
+        if not step.gating or step.suppressed:
             continue
-        if re.search(pattern, step.run):
+        if any(re.match(pattern, command) for command in _commands(step.run)):
             return True
         if hook and _PRE_COMMIT_RUN.search(step.run) and _hook_mentions(repo, hook):
             return True
@@ -1109,8 +1148,12 @@ def gate_wired_at_declared_loci(
                 for hook in _precommit_hooks(repo)
             )
         elif locus == "ci":
+            # `suppressed` for the same reason `gating` is here: a step carrying
+            # `continue-on-error: true` runs the gate and does not gate on it.
             found = any(
-                step.gating and _reaches(step.run, tool, invocation, control_id)
+                step.gating
+                and not step.suppressed
+                and _reaches(step.run, tool, invocation, control_id)
                 for step in _workflow_steps(repo)
             )
         elif locus == "editor":
@@ -1140,8 +1183,8 @@ def _reaches(text: str, tool: str, invocation: str, control: str) -> bool:
     controls it names, and `schema`, `meta`, `assert` and `explain` reach none
     at all however pinned their invocation.
     """
-    for command in re.split(r"&&|\|\||;|\n", text):
-        match = re.search(rf"{re.escape(invocation)}(?![-\w])", command)
+    for command in _commands(text):
+        match = re.match(rf"{re.escape(invocation)}(?![-\w])", command)
         if match is None:
             continue
         if tool != _SELF:
