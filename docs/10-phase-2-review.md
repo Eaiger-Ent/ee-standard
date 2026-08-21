@@ -35,9 +35,10 @@ credited as a locus without gating anything.
 The seventh is `gate-repo`, in § The sixth gate, and it completes the family.
 
 The eighth is the shipped devcontainer template, in § The template.
-`standard-adopt` is the last outstanding piece, and one half of the template's
-criterion — that it **builds** — needs an operator with Docker and stays open
-until it is recorded here.
+
+The ninth is `standard-adopt`, in § The front door, which is the last piece of
+the phase. One half of the template's criterion — that it **builds** — needs an
+operator with Docker and stays open until it is recorded here.
 
 ## What closed, and how
 
@@ -1053,6 +1054,100 @@ standard-check run --control BLD-001 --control DEV-001
 
 Recorded as open rather than ticked. A criterion closed on a build nobody ran is
 the over-tick this document exists to catch.
+
+## The front door — `standard-adopt`
+
+The ninth slice, and the last. It writes no gate configuration: every artefact is
+written by the gate that owns the control, which is what keeps one control's
+config in one place. What it owns is the *plan*, the *order*, and the
+*verification*.
+
+### The fourth plan row nobody had noticed
+
+The plan has to name every control in the register — one absent from the plan
+reads as one that does not apply. Three rows were obvious: **deploy**, **dispatch
+elsewhere** (DOC-001 is `lint-md`'s, in another plugin) and **manual**.
+
+Writing the test found a fourth. **SEC-002 fits none of them.** It has no
+`deployed_by`, so it would have been planned as *manual* — telling a reader they
+owe an act they do not. It is satisfied by a workflow **not** referencing a
+static credential: there is nothing to write, and `gate-secrets` verifies it and
+writes nothing for it. `02-skill-family.md` had recorded that as correct rather
+than as a gap, in a sentence nobody had needed until there was a planner.
+
+So the skill has a **checked, not deployed** row, derived from `deploys.json`
+listing a control under a gate while the control names no `deployed_by`. A
+control satisfied by an absence has to be distinguishable from one nobody has
+got to yet.
+
+### The dispatch order is load-bearing in its first two positions
+
+Not alphabetical, and not the order the gates were built:
+
+1. `gate-build` — owns `.devcontainer/` and creates `setup.sh`, which two later
+   gates write their own regions into.
+2. `gate-supply-chain` — writes the frozen install every other gate's CI steps
+   run after. A lint step written before it lints against nothing.
+3. `gate-secrets`, then `gate-quality`, then `gate-iac` — the rest of the
+   file-writing gates, in an order that is preference rather than dependency.
+4. `gate-repo` last, because its effect is not a file and cannot be reviewed
+   before it takes effect.
+
+`test_the_dispatch_order_is_the_one_the_skill_states` reads the order out of
+`SKILL.md` rather than restating it, so a reordering there fails the test that
+exercises it instead of drifting from it silently.
+
+### What the end-to-end test reaches that no gate's test could
+
+Each gate's own test deploys it alone into a clean repository. Here all six run
+in sequence into one repository, and **four of them write into the same
+`.pre-commit-config.yaml`**. That is where "grouped by the artefact they write"
+is either true or discovered not to be: if any gate replaced the file rather than
+appending to it, the later ones would silently drop the earlier ones' hooks.
+`test_four_gates_share_one_pre_commit_config_without_overwriting_each_other`
+asserts all five hook ids survive.
+
+Two other things only exist at this level:
+
+**The verify step failing.** The criterion's operative clause is *"with the
+verify step genuinely able to fail"*. A deployed config is broken — `|| true` on
+the lint step — and the run is checked. It fails **two** controls at once,
+because both verify through `no-failure-suppression` over the whole workflow.
+
+**A gate breaking another gate's control.** The frozen install
+`gate-supply-chain` wrote is removed, and SUP-001 fails while everything else
+passes. That is exactly what a per-gate verify cannot see, and it is why Step 5
+runs the whole register rather than the controls just deployed.
+
+### What is proved, and what is not
+
+Stated here as plainly as it is in the test's own docstring, because this is the
+criterion most easily over-ticked.
+
+**Proved:** the pipeline works. Six gates compose, their artefacts do not
+overwrite each other, the order matters in the way the skill says, every deployed
+control carries its own stamp at the current contract, and the whole-register
+verify catches a break.
+
+**Not proved:** that a model follows the prose. `SKILL.md` is instructions, and
+instructions are followed or they are not. No test can establish it, and the
+limit is the same one every gate's tests carry.
+
+The criterion is ticked on the first and the second is recorded rather than
+glossed — which is the distinction seven re-opened boxes in this project exist to
+teach.
+
+### Preflight P1–P11 — `standard-adopt`
+
+```text
+{"skill": "standard-adopt", "overall": "PASS", "fails": 0}
+```
+
+One test moved to accommodate it. `test_the_templates_stamp_what_they_write`
+required every skill to ship templates, which is right for a gate and wrong for
+a dispatcher: `standard-adopt` ships none **because** it writes no artefacts. The
+test now skips a skill with no templates only after checking it is not a gate —
+a gate with no templates would be one whose deployment has no reviewable source.
 
 ## Decisions the next slice needs
 

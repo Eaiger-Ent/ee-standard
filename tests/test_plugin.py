@@ -135,7 +135,16 @@ def test_the_templates_stamp_what_they_write(skill: Path) -> None:
         "{{REGISTER_CONTRACT}}": str(register.register_contract),
     }
     templates = sorted((skill / "templates").glob("*"))
-    assert templates, f"{skill.name} references templates it does not ship"
+    if not templates:
+        # A skill that ships no templates must be one that writes no artefacts.
+        # `standard-adopt` is the only such skill and it is so by design: every
+        # artefact is written by the gate that owns the control, which is what
+        # keeps one control's config in one place. A *gate* with no templates
+        # would be a gate whose deployment has no reviewable source.
+        assert skill.name not in _sidecar()["gates"], (
+            f"{skill.name} deploys controls and ships no template to write them from"
+        )
+        pytest.skip(f"{skill.name} writes no artefacts of its own")
     known = {control.id for control in register.controls}
     for template in templates:
         text = template.read_text(encoding="utf-8")

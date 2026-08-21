@@ -37,10 +37,13 @@ that something is verifiable before Phase 3 — as **intent**, never as
 enforcement. Its eighth shipped the devcontainer template at
 `plugins/ee-standard/templates/devcontainer/`, which pins its image and features
 by digest and — checked by a grep rather than a reading — no tool version by
-hand. `docs/10-phase-2-review.md` holds the evidence for all eight. **All six
-gates and the template now exist.** Outstanding: `standard-adopt`, and the half
-of the template's criterion that needs an operator with Docker to *build* it —
-this devcontainer has none, so nothing here has.
+hand. Its ninth shipped `standard-adopt`, the
+front door: it writes no gate configuration, owning the plan, the dispatch order
+and the whole-register verify instead. `docs/10-phase-2-review.md` holds the
+evidence for all nine. **Phase 2 is 10/11.** The one criterion still open is that
+the devcontainer template *builds* — this container has no Docker, so nothing
+here has run `devcontainer build`, and the commands for an operator are in
+`docs/08-adopting.md` § 2.0.
 Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
@@ -242,8 +245,9 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 the three meta-controls described below the table.
 
 Gate skills live in `plugins/ee-standard/skills/` — `gate-secrets`,
-`gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`
-— the whole family. A gate verifies itself with
+`gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,
+the whole family, plus `standard-adopt`, the dispatcher that ships no templates
+because it writes no artefacts of its own. A gate verifies itself with
 `standard-check run --control <ID>` and never by reading its own files back —
 that command runs the control's verify blocks through the same `run_control` the
 full audit calls, which is what makes "one assert implementation" true rather
