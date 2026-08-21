@@ -40,10 +40,15 @@ by digest and — checked by a grep rather than a reading — no tool version by
 hand. Its ninth shipped `standard-adopt`, the
 front door: it writes no gate configuration, owning the plan, the dispatch order
 and the whole-register verify instead. `docs/10-phase-2-review.md` holds the
-evidence for all nine. **Phase 2 is 10/11.** The one criterion still open is that
-the devcontainer template *builds* — this container has no Docker, so nothing
-here has run `devcontainer build`, and the commands for an operator are in
-`docs/08-adopting.md` § 2.0.
+evidence for all nine, and § Where Phase 2 finished holds the closing audit —
+run over the register rather than over the ledger, because a ledger is a claim
+and the register is the thing. **Phase 2 is 10/11.** The one criterion still open
+is that the devcontainer template *builds*: this container has no Docker, so
+nothing here has run `devcontainer build`, and the commands for an operator are
+in `docs/08-adopting.md` § 2.0. One question the audit raised is Phase 3's and is
+recorded rather than fixed: SUP-002 verifies the dependency-update
+*configuration*, and whether the bot is **enabled** is platform state nothing
+checks.
 Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
