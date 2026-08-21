@@ -57,6 +57,26 @@ repos:
         language: system
         pass_filenames: false
         types: [python]
+      # ee-control: SUP-003  ee-skill: gate-supply-chain@0.1.0  register: v0.14.0  register-contract: 14
+      #
+      # SUP-003's pre-commit locus, which was declared from Phase 0 and wired by
+      # nothing until contract 14. The gate is the checker itself: no
+      # third-party action linter shares this register's notion of an
+      # owner-exempt action, and a second implementation would eventually
+      # disagree with the first. Reached through `tools.standard-check.invocation`
+      # rather than by name, because a bare name resolves from PATH and what
+      # answered would be auditing this repository (ADR 0020).
+      #
+      # The hook below it runs `standard-check schema`, which validates the
+      # register and reads no control at all — which is why that one does not
+      # count as this locus and this one exists.
+      - id: standard-check-supply-chain
+        name: standard-check (SUP-003)
+        entry: uv run standard-check run --control SUP-003
+        language: system
+        pass_filenames: false
+        files: ^\.github/workflows/.*\.ya?ml$
+
       # The register is validated on every commit that touches it
       # (docs/01-register-schema.md).
       - id: standard-check-schema

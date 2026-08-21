@@ -146,9 +146,9 @@ What matters when you adapt it:
 
 ## 3 — The gates
 
-Two gates are built — see § 3.1 and § 3.2. For the rest, until Phase 2 ships
-them, wire the gates by copying this repository's own artefacts, which are the
-reference implementation:
+Three gates are built — see § 3.1, § 3.2 and § 3.3. For the rest, until Phase 2
+ships them, wire the gates by copying this repository's own artefacts, which are
+the reference implementation:
 
 | Locus | File here | What it gives you |
 | --- | --- | --- |
@@ -267,7 +267,60 @@ fails LNT-001 even though TST-001 passes. This repository's own six
 quality-gate stamps say *adopted rather than deployed*, because the artefacts
 were hand-written in Phase 0.5 before there was a gate to write them.
 
-### 3.3 — Your register records your own files
+### 3.3 — `gate-supply-chain`, and the locus that was never checked
+
+`/gate-supply-chain` wires SUP-001 (*dependencies resolve from a committed
+lockfile*), SUP-002 (*dependency updates are proposed automatically*) and
+SUP-003 (*third-party CI actions are pinned to a commit SHA*). Three controls
+and one skill because they are one property split three ways — what a build
+resolves, how it stays current, and what it is allowed to fetch — and because
+SUP-001's install step has to sit **above** every other gate's steps in the
+gating workflow. Every one of them runs the tools that install places.
+
+**Four prerequisites, and how you know each is met.**
+
+| Prerequisite | Why | How you know it worked |
+| --- | --- | --- |
+| A tracked lockfile for every ecosystem you are in | The gate stops rather than generating one. A lockfile a skill produces pins a resolution nobody reviewed | `standard-check run --control SUP-001` names the ecosystem and the lockfile it expected |
+| A `frozen_install_command` for the lockfile you use | `uv sync --frozen` and `poetry install --sync` are both python. Which is right is a fact about your repository | The schema rejects a register whose command matches none of its own ecosystem's `frozen_install` patterns — so a gate cannot write a step the checker then refuses |
+| A `tools.standard-check` entry with an `invocation` | SUP-003's pre-commit gate is the checker itself, and a locus running a bare name resolves from `PATH` — what answered would be auditing your repository ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) | The gate stops before writing anything and says the invocation is missing |
+| A gating workflow — one that runs on `push` or `pull_request` | A workflow only a human can trigger is not the ci locus | GOV-001 reports every blocking control reachable from a step that can fail |
+
+**Expect exit `0`.** None of these three declares a `remote` locus, so nothing
+is waiting on Phase 3. A `3` means a block declared itself partial.
+
+**Two ways a repository that already had SUP-003 passing can now fail it.**
+
+1. **A declared locus with nothing at it.** Until register contract 14, SUP-003
+   verified neither of the two loci it declares. `actions-pinned-to-sha` reads
+   the *property* — every `uses:` is a commit SHA — out of the files on disk,
+   which is a different claim from *something enforces this before a commit
+   lands and before a merge does*. This repository reported SUP-003 PASS with no
+   pre-commit hook for it of any kind. If yours does too, the gate writes one;
+   the property and the loci now fail independently, and the report says which.
+2. **Running the checker where you meant to audit with it.** A hook or step
+   invoking `standard-check schema`, `meta`, `assert` or `explain` reaches no
+   control at all. This repository's own pre-commit config ran
+   `standard-check schema` and would otherwise have been credited with a SUP-003
+   gate that could never have failed it.
+
+**The config is not the bot.** A `.github/dependabot.yml` is inert until
+Dependabot is enabled on the repository, and a `renovate.json` is inert until
+the Renovate app is installed and its onboarding pull request is left open
+rather than closed — both platform acts, both in § 1.1. The gate writes the
+file and says which act you now owe it. **A pin nothing updates rots at a known
+version**, which is a different failure from an unpinned one and not a better
+one, so SUP-002 exists to keep SUP-003's SHAs and DEV-001's digests current
+rather than merely fixed.
+
+**Wiring by hand instead?** Stamp what you write, and stamp **each control's
+own artefacts**. All three read back a stamp naming themselves, so recording
+your install step and forgetting `dependabot.yml` fails SUP-002 while the other
+two pass. This repository's own four supply-chain stamps say *adopted rather
+than deployed*, because the artefacts were hand-written in Phase 0.5 before
+there was a gate to write them.
+
+### 3.4 — Your register records your own files
 
 Two things in `controls.yaml` describe **the repository being checked**, not this
 one, and are the first edits an adopter makes to their copy:

@@ -23,6 +23,12 @@ jobs:
           # renovate: datasource=pypi depName=uv
           pip install uv==0.12.5
 
+      # ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  register: v0.14.0  register-contract: 14
+      #
+      # Adopted, not deployed: hand-written in Phase 0.5 and stamped when the
+      # gate that owns it was built. It sits above every other gate's steps
+      # because they run the tools it places — an ordering the gate writes
+      # deliberately rather than by where the file happened to grow.
       - name: Install dependencies (frozen)
         # SUP-001 — install from the committed lockfile, never re-resolve.
         run: uv sync --frozen
@@ -71,6 +77,12 @@ jobs:
       - name: Secret scan
         run: gitleaks detect --no-banner --redact
 
+      # ee-control: SUP-003  ee-skill: gate-supply-chain@0.1.0  register: v0.14.0  register-contract: 14
+      #
+      # SUP-003's ci locus. No step of its own: this full audit runs the checker
+      # with no `--control`, so it reaches every applicable control including
+      # SUP-003, and a second step would be the same check twice. The gate
+      # checks for exactly this before writing one.
       - name: Conformance
         # Exit codes per ADR 0016: 0 fully verified and clean, 1 a verified
         # violation, 3 no violation but something could not be verified.

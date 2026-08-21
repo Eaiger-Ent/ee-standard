@@ -170,7 +170,14 @@ def test_h3_the_frozen_idiom_comes_from_the_register(tmp_path: Path) -> None:
     assert ci_installs_frozen(repo, a_register(), {}).passed
 
     def forget_the_idiom(document: dict[str, Any]) -> None:
-        document["ecosystems"]["ruby"]["frozen_install"] = [r"\bnothing-like-this\b"]
+        ruby = document["ecosystems"]["ruby"]
+        ruby["frozen_install"] = [r"\bnothing-like-this\b"]
+        # The command a gate writes moves with the pattern the checker credits,
+        # because from contract 14 the schema refuses a register where they
+        # disagree. Changing one alone is not a smaller edit — it is a register
+        # that would have `gate-supply-chain` deploy a step this very assert
+        # would then refuse.
+        ruby["frozen_install_command"] = {"Gemfile.lock": "nothing-like-this"}
 
     result = ci_installs_frozen(repo, register_with(tmp_path, forget_the_idiom), {})
     assert not result.passed

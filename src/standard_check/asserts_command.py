@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from standard_check.asserts_file import (
+    CONTROL_ARG,
     AssertFn,
     AssertResult,
     _ecosystems_present,
@@ -1041,6 +1042,87 @@ def secrets_gate_wired_at_all_loci(
     return _ok(f"pre-commit and ci loci both reach {tool} through '{invocation}'{scoped}")
 
 
+def supply_chain_gate_wired_at_all_loci(
+    repo: Repo,
+    register: Register,
+    args: Mapping[str, object],
+) -> AssertResult:
+    """SUP-003's two loci, each verified rather than declared.
+
+    SUP-003 declares `locus: [pre-commit, ci]` and, until contract 14, verified
+    neither. `actions-pinned-to-sha` reads the *property* — every `uses:` is a
+    commit SHA — out of the workflow files on disk. That is a different claim
+    from *something enforces this before a commit lands and before a merge
+    does*, and this repository reported SUP-003 PASS while having no pre-commit
+    hook for it of any kind.
+
+    Same shape as SEC-001 at contract 11, and the same move. What differs is the
+    gate: there is no third-party tool that shares this register's notion of an
+    owner-exempt action, so the gate is the checker, invoked at each locus
+    through the path `tools.<tool>.invocation` records. A bare name would be a
+    locus resolving from `PATH` (ADR 0020) — and for this tool that is worse
+    than usual, because whatever answered would be auditing the repository.
+
+    The control's own id reaches this assert from the runner, so what is looked
+    for is *this* control being run rather than the checker being run at all: a
+    hook auditing some other control is not this locus wired.
+    """
+    tool = str(args.get("tool", ""))
+    if not tool:
+        return _fail("assert requires a 'tool' argument naming the gate's tool")
+    pinned = register.tools.get(tool)
+    if pinned is None:
+        return _fail(f"the register mandates '{tool}' at these loci and pins no such tool")
+    invocation = pinned.invocation or tool
+    control = str(args.get(CONTROL_ARG, ""))
+    problems: list[str] = []
+    if not any(
+        _audits(str(hook.get("entry", "")), invocation, control)
+        for hook in _precommit_hooks(repo)
+    ):
+        problems.append(f"pre-commit locus — no hook runs '{invocation}' for {control}")
+    if not any(
+        step.gating and _audits(step.run, invocation, control)
+        for step in _workflow_steps(repo)
+    ):
+        problems.append(f"ci locus — no gating step runs '{invocation}' for {control}")
+    if problems:
+        return _fail("; ".join(problems))
+    return _ok(f"pre-commit and ci loci both reach {control} through '{invocation}'")
+
+
+#: The checker's subcommands that audit no control. Running the checker is not
+#: the same as auditing with it: `standard-check schema` validates the register
+#: and reads not one control, and this repository's own pre-commit config runs
+#: exactly that — which credited SUP-003 with a pre-commit gate that could never
+#: have failed it. Which subcommands audit is a property of this checker's CLI
+#: rather than of any repository, so it stays here (ADR 0018).
+_NON_AUDITING_SUBCOMMANDS = ("schema", "meta", "assert", "explain")
+
+
+def _audits(text: str, invocation: str, control: str) -> bool:
+    """Whether `text` runs the checker in a way that reaches `control`.
+
+    Two spellings reach it and two do not. A full run — the invocation followed
+    by nothing or by flags — audits every applicable control, so it reaches this
+    one. A selective run reaches it only when this control is among those
+    selected; one naming other controls is the checker being run with this locus
+    still not gating on this control. And a non-auditing subcommand reaches
+    nothing at all, however pinned its invocation.
+    """
+    for command in re.split(r"&&|\|\||;|\n", text):
+        match = re.search(rf"{re.escape(invocation)}(?![-\w])", command)
+        if match is None:
+            continue
+        rest = command[match.end() :].split()
+        if rest and rest[0] in _NON_AUDITING_SUBCOMMANDS:
+            continue
+        selected = re.findall(r"--control[=\s]+(\S+)", command)
+        if not selected or control in selected:
+            return True
+    return False
+
+
 COMMAND_ASSERTS: dict[str, AssertFn] = {
     "no-static-cloud-keys": no_static_cloud_keys,
     "ci-installs-frozen": ci_installs_frozen,
@@ -1051,4 +1133,5 @@ COMMAND_ASSERTS: dict[str, AssertFn] = {
     "tests-run-and-block": tests_run_and_block,
     "markdown_gate_wired_at_all_loci": markdown_gate_wired_at_all_loci,
     "secrets_gate_wired_at_all_loci": secrets_gate_wired_at_all_loci,
+    "supply_chain_gate_wired_at_all_loci": supply_chain_gate_wired_at_all_loci,
 }

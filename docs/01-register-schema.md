@@ -351,6 +351,8 @@ ecosystems:
       - '\bbundle install\b[^\n]*--(?:deployment|frozen)\b'
     lock_entry:                        # regexes; what a package looks like in a lockfile
       - '(?m)^\s+{package} \('
+    frozen_install_command:            # what a gate writes, keyed by lockfile
+      Gemfile.lock: "bundle install --deployment"
     add_dev_dependency:                # optional; see below
       Gemfile.lock: "bundle add --group development {package}"
 ```
@@ -372,6 +374,15 @@ it invokes, so `stack_tool_pinned_in_lockfile` looks the package up, and these
 patterns are how it is recognised. `{package}` is substituted with the name
 sought, regex-escaped — a plain substitution rather than `str.format`, because a
 regular expression is full of braces.
+
+**`frozen_install_command` is what a gate writes where `frozen_install` is what
+the checker credits**, and the schema holds the pair together: every command
+must match one of its own ecosystem's patterns. Without that rule a register
+could have a gate deploy an install step the control it deploys then refuses —
+a deployment that fails its own verification, discovered by whoever ran it. It
+is required of **every** ecosystem, covering every lockfile that ecosystem
+declares, because SUP-001 applies `always`: an ecosystem with a lockfile it
+cannot install from is a control nothing can deploy.
 
 **`add_dev_dependency` is how a gate creates a pin that is missing**, keyed by
 the lockfile that is present rather than by the ecosystem: `uv add --dev` and

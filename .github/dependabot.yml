@@ -1,6 +1,12 @@
 # SUP-002 — dependency updates are proposed automatically, covering every
 # ecosystem present in this repo. Digest and SHA pins (DEV-001, SUP-003) rely
 # on these proposals to stay current instead of fossilising.
+#
+# Adopted, not deployed: hand-written in Phase 0.5 and stamped when the gate
+# that owns it was built. The stamp is at the top of the file rather than at
+# each entry, which is right here and wrong in `.pre-commit-config.yaml`: every
+# line of this file belongs to SUP-002.
+# ee-control: SUP-002  ee-skill: gate-supply-chain@0.1.0  register: v0.14.0  register-contract: 14
 version: 2
 updates:
   - package-ecosystem: github-actions

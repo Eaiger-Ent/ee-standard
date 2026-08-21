@@ -19,9 +19,12 @@ shape three controls have to share.
 The third settles one of the decisions the second slice recorded as outstanding
 — § The pin's existence — because every gate after `gate-quality` inherits the
 answer, and a decision inherited by four gates is cheaper to make once than to
-unpick four times. The other four gates, `standard-adopt` and the devcontainer
-template are still outstanding, and the criteria that name them are still
-open.
+unpick four times.
+
+The fourth is `gate-supply-chain`, in § The third gate below, and it is the
+first whose controls were **already passing** before it existed. The other three
+gates, `standard-adopt` and the devcontainer template are still outstanding, and
+the criteria that name them are still open.
 
 ## What closed, and how
 
@@ -504,6 +507,146 @@ residual, stated rather than closed.
 DOC-001 gains none either, and for a different reason: `node_modules/.bin/` exits
 127 when the artefact is absent, so there is nothing to fall through to. Case C
 is specific to a resolver that searches.
+
+## The third gate — `gate-supply-chain`, register contract 14
+
+SUP-001, SUP-002 and SUP-003: what a build resolves, how it stays current, and
+what it is allowed to fetch.
+
+### It found a locus nothing had ever read
+
+The first two gates deployed things a bare repository plainly lacked. This one
+started from three controls that were **green**, in this repository, on the day
+it was written — and one of them was green for the wrong reason.
+
+SUP-003 declares `locus: [pre-commit, ci]`. Its one verify block was
+`actions-pinned-to-sha`, which walks the workflow files and checks every `uses:`
+is a 40-character SHA. That is a claim about the *property*. It is not the claim
+the control's `locus:` makes, which is that something enforces the property
+before a commit lands and before a merge does. This repository had **no
+pre-commit hook for SUP-003 of any kind**, and reported PASS.
+
+Exactly the shape contract 11 fixed in SEC-001, and § H found in GOV-001. Found
+again here because a gate has to *write* each locus it claims, which is a
+question nobody asks while only auditing.
+
+A survey while fixing it found three more of the same: BLD-001, DEV-001 and
+IAC-001 all declare `pre-commit` and verify only their property. They belong to
+gates not yet built, and each will wire and verify its own locus as this one
+did. Recorded here rather than fixed silently, because four controls is a
+pattern and not an oversight.
+
+### The gate is the checker, and that is the point
+
+SUP-003 has no third-party tool that could serve its pre-commit locus. No action
+linter shares this register's notion of an owner-exempt action —
+`actions-pinned-to-sha` reads the repository's own owner from the remote and
+exempts what it published. A second implementation would eventually disagree
+with the first, and the disagreement would surface as a commit blocked at one
+locus and waved through at another.
+
+So the hook runs `standard-check run --control SUP-003`. One assert, one
+implementation, at both loci — the same argument that made a gate verify itself
+through `standard-check run --control <ID>` rather than by reading its own files
+back. `tools.standard-check` records how a locus reaches it, because a bare name
+resolves from `PATH` (ADR 0020) and for this tool what answered would be
+auditing the repository.
+
+**Running the checker is not the same as auditing with it.** The first
+implementation of `supply_chain_gate_wired_at_all_loci` credited this
+repository's pre-commit locus immediately — and the hook it credited was
+`standard-check schema`, which validates the register and reads not one control.
+A SUP-003 gate that could never have failed SUP-003. `schema`, `meta`, `assert`
+and `explain` are now excluded by name, and `test_a_non_auditing_subcommand_is_not_this_locus`
+holds it.
+
+The same distinction cuts the other way and has to. A gating step running the
+checker with **no** `--control` audits every applicable control, so it reaches
+SUP-003 and a second step would be the same check twice. This repository's
+workflow is exactly that case: it carries a SUP-003 stamp and no SUP-003 step,
+and the skill checks for it before writing one.
+
+### What the register gained
+
+| Field | What it settles | Why it is not the checker's |
+| --- | --- | --- |
+| `ecosystems.<name>.frozen_install_command` | What a gate *writes* to install from the lockfile, keyed by the lockfile present | `uv sync --frozen` and `poetry install --sync` are both python. The same argument as `add_dev_dependency` at contract 13 |
+| `tools.standard-check` | How a locus reaches the checker | An adopter installs it as a dependency and reaches it however their package manager does |
+| `SUP-00x.deployed_by` | Which gate owns these artefacts | The same statement contract 12 made for the quality controls |
+
+**The pair that cannot drift.** `frozen_install` is what the checker credits;
+`frozen_install_command` is what the gate writes. The schema requires every
+command to match one of its own ecosystem's patterns, so a register cannot be
+written in which the gate deploys a step the control then refuses. That rule
+found its first case immediately: `test_h3_the_frozen_idiom_comes_from_the_register`
+mutates `frozen_install` to nonsense, and the register now refuses to load until
+the command moves with it — which is the coupling working, stated in the test.
+
+**A lockfile the register recognised and no install it accepted.** `bun.lockb`
+was listed among node's lockfiles from contract 8 with no `frozen_install`
+pattern that installs from it. A bun repository could satisfy SUP-001 by no
+spelling at all. Found by the new schema rule rather than by a bun repository,
+which is the cheaper way to find it.
+
+### Watched failing
+
+Fourteen cases in `tests/test_gate_supply_chain_deploy.py`, on a fixture
+repository whose one action reference is **already SHA-pinned** — chosen so that
+`actions-pinned-to-sha` is green from the first line and every failure below is
+about a locus rather than about the property:
+
+```text
+SUP-003  FAIL
+   ✓ file: actions-pinned-to-sha — every third-party action reference is pinned by SHA
+   ✗ file: supply_chain_gate_wired_at_all_loci — pre-commit locus — no hook runs
+     'uv run standard-check' for SUP-003
+```
+
+And the reverse, on the deployed repository with one reference reverted to a
+tag: the property fails and the loci still pass. The two halves are separable,
+which is what makes the locus check worth having rather than a restatement.
+
+Also held: the install step replaced, `dependabot.yml` deleted, the hook
+deleted, the hook auditing a *different* control, the hook running a
+non-auditing subcommand, the stamps stripped, and one control's stamp stripped
+while the other two keep theirs.
+
+### What this repository had to change about itself
+
+Four artefacts, all *adopted rather than deployed* — hand-written in Phase 0.5,
+stamped now that the gate that owns them exists — and one genuinely new:
+
+| Artefact | Control | State |
+| --- | --- | --- |
+| `.github/workflows/standard-check.yml` — frozen install | SUP-001 | Adopted, stamped |
+| `.github/dependabot.yml` | SUP-002 | Adopted, stamped |
+| `.github/workflows/standard-check.yml` — the full audit | SUP-003 | Adopted, stamped; no step added |
+| `.pre-commit-config.yaml` — `standard-check-supply-chain` | SUP-003 | **New.** The locus that had never existed |
+
+`.github/dependabot.yml` is the eighth stamped file in this repository and the
+only one whose stamp sits at the top rather than at a section: every line of it
+belongs to one control, which is exactly the condition that makes a whole-file
+stamp right rather than a claim over hooks it does not own.
+
+### Preflight P1–P11 — `gate-supply-chain`
+
+`preflight-check.sh` from `ee-skills`, the same script the marketplace runs.
+
+```text
+{"skill": "gate-supply-chain", "overall": "PASS", "fails": 0}
+  P1_line_count  363 / 500      P7_dependencies_json   none required
+  P2_description_len            P8_skill_dir_paths     all resolve
+  P3_name_field                 P9_subskill_invocation none
+  P4_invocation  side-effect verbs; disable-model-invocation=true
+  P5_arguments_hint             P10_no_duplicate_dir
+  P6_supporting_files           P11_argument_flags
+```
+
+P2 failed first time at 286 characters against a 250 limit, and the fix is
+worth recording rather than smoothing over: the description had been written to
+list all three controls and what each does. The limit is a real constraint on
+what a description can be — a trigger, not a summary — and the rewritten one
+says what the gate is for in three clauses and keeps the trigger phrases.
 
 ## Decisions the next slice needs
 
