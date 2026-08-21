@@ -1,0 +1,17 @@
+# Written into the target repository's gating workflow, as a step of the job
+# that already runs on push or pull_request. A workflow that runs only on
+# `workflow_dispatch` is not the ci locus — it runs when a human clicks it, and
+# a control reachable only that way is declared and unreachable (theme T-3).
+#
+# **Write this only when the repository has no full audit.** A gating step
+# running {{TOOL_INVOCATION}} with no `--control` reaches every applicable
+# control, including these two, and a second step would be the same check twice.
+# The skill checks before writing, and says when it did not.
+#
+# One step, two controls, two stamps — the same shape as the pre-commit hook,
+# and for the same reason: the read-back matches on the control being
+# evaluated, so one stamp would leave the other control's ci locus unrecorded.
+      # ee-control: BLD-001  ee-skill: gate-build@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: DEV-001  ee-skill: gate-build@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      - name: Build and environment
+        run: {{TOOL_INVOCATION}} run --control BLD-001 --control DEV-001

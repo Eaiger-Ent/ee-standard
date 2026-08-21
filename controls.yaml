@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.14.0
+version: 0.15.0
 
 meta:
   owner: platform-engineering
@@ -96,7 +96,23 @@ meta:
   #     credit. `node.frozen_install` gained a bun pattern: `bun.lockb` was
   #     listed as a lockfile with no idiom that installs from it, so a bun
   #     repository could not satisfy SUP-001 by any spelling.
-  register_contract: 14
+  # 15: BLD-001 and DEV-001 name the gate that writes their artefacts, and both
+  #     are verified at the two loci they declare. Same finding as SUP-003 at
+  #     contract 14, in the two controls the same survey listed beside it: each
+  #     read its property out of the files on disk and neither read a locus.
+  #     `supply_chain_gate_wired_at_all_loci` is replaced by
+  #     `gate_wired_at_declared_loci`, which reads the *control's own* `locus:`
+  #     list rather than hard-coding two — three near-copies of one assert was
+  #     already one too many, and IAC-001 would have made a fourth.
+  #     BLD-001's gate at both loci is the checker, for both halves of the
+  #     control: `standard-check run --control BLD-001` runs the
+  #     `kind: command` hadolint block through the same path the audit uses, so
+  #     a repository with a Dockerfile needs no second wiring for it. What such
+  #     a repository does need is a `tools.hadolint` entry of its own, naming
+  #     the loci *it* installs the linter at — an absent linter is
+  #     UNCLASSIFIED (ADR 0016) rather than a pass, and this register does not
+  #     pin one because this repository has no Dockerfile to lint.
+  register_contract: 15
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -690,7 +706,7 @@ controls:
       # comes from `tools.standard-check`, because a locus running a bare name
       # resolves from PATH (ADR 0020).
       - kind: file
-        assert: supply_chain_gate_wired_at_all_loci
+        assert: gate_wired_at_declared_loci
         args: { tool: standard-check }
       - kind: file
         assert: provenance_stamp_present
@@ -738,7 +754,27 @@ controls:
       - kind: file
         assert: devcontainer_user_is_non_root
         applies_to: [devcontainer]
+      # Two loci were declared from Phase 0 and neither was read: the three
+      # blocks above check the *property* — the final USER, the declared
+      # container user — out of the files on disk, which is a different claim
+      # from something enforcing it before a commit lands and before a merge
+      # does (contract 14's finding, in the control beside it).
+      #
+      # The gate is the checker, and it covers both halves at once:
+      # `standard-check run --control BLD-001` runs the `hadolint` block above
+      # through the same path the audit uses, so a repository with a Dockerfile
+      # needs no second wiring for it. What such a repository does need is a
+      # `tools.hadolint` entry naming the loci it installs the linter at — an
+      # absent tool is UNCLASSIFIED (ADR 0016) rather than a pass, and this
+      # register pins none because this repository has no Dockerfile.
+      - kind: file
+        assert: gate_wired_at_declared_loci
+        args: { tool: standard-check }
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-build }
     owner: platform-engineering
+    deployed_by: gate-build
     variance: forbidden
     baseline: null
     review_by: 2027-08-16
@@ -767,7 +803,14 @@ controls:
         assert: devcontainer_lock_covers_all_features
       - kind: file
         assert: devcontainer_image_digest_pinned
+      - kind: file
+        assert: gate_wired_at_declared_loci
+        args: { tool: standard-check }
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-build }
     owner: platform-engineering
+    deployed_by: gate-build
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16

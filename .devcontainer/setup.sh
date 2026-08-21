@@ -24,6 +24,15 @@ done
 # enforces that it is committed and installed frozen.
 npm ci --no-audit --no-fund
 
+# ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  register: v0.15.0  register-contract: 15
+#
+# `gate-build` owns this file; each gate writes and stamps its own region inside
+# it, exactly as three gates write their own hooks into one
+# `.pre-commit-config.yaml`. Until contract 15 these two installs were nobody's
+# — listed in `tools.<tool>.pinned_at`, compared by
+# `tool_versions_match_register`, and claimed by no gate. A locus with no owner
+# is how a locus gets forgotten.
+#
 # uv bootstraps the Python environment, so it cannot come from it — its
 # version is a literal at each locus, kept in step by Renovate rather than by
 # a human remembering. See controls.yaml `tools:`.
@@ -32,6 +41,12 @@ pip install --quiet uv==0.12.5
 uv sync --frozen
 uv run pre-commit install
 
+# ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  register: v0.15.0  register-contract: 15
+#
+# The third of SEC-001's three sites for this version, and the one the Phase 2
+# review recorded as belonging to no gate. `gate-secrets` writes and stamps it;
+# `gate-build`, which owns the file, leaves it alone.
+#
 # gitleaks at SEC-001's shared pin, verified by checksum (a pinned release
 # artefact — preference 3 in docs/03-devcontainer.md). Same version as CI.
 # renovate: datasource=github-releases depName=gitleaks/gitleaks

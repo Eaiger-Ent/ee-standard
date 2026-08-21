@@ -175,6 +175,14 @@ before writing. SUP-001 fails on that and it is not this gate's to fix: a
 lockfile this skill generates pins a resolution nobody reviewed. Say which
 lockfile is missing and what command produces it.
 
+**The developer environment, if there is one.** A repository with a
+devcontainer installs its package manager in `.devcontainer/setup.sh`, and that
+install repeats a version the register pins — `tool_versions_match_register`
+compares it, and until register contract 15 no gate claimed it. The file belongs
+to `gate-build`; this block inside it belongs here, exactly as three gates write
+their own hooks into one `.pre-commit-config.yaml`. Stamp the block for SUP-001,
+never the file. If there is no devcontainer, write nothing and say so.
+
 ---
 
 ## Step 2 — Wire dependency updates (SUP-002)

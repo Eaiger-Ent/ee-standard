@@ -102,10 +102,19 @@ def test_hadolint_does_not_run_against_a_repo_with_no_dockerfile(tmp_path: Path)
     register, control = _bld_001()
     repo = _devcontainer(tmp_path / "dc", remoteUser="vscode")
     result = run_control(control, register, repo)
-    assert result.verdict is Verdict.PASS, result
     ran = [b.block.run or b.block.assert_name or "" for b in result.blocks]
     assert not any("hadolint" in name for name in ran), ran
-    assert ran == ["devcontainer_user_is_non_root"], ran
+    # The container blocks skip; what remains applies to every repository with a
+    # devcontainer. The property passes here — the fixture is a bare
+    # devcontainer, so the two blocks contract 15 added (its loci, and its
+    # stamp) are what is missing, and neither of them is hadolint.
+    assert ran == [
+        "devcontainer_user_is_non_root",
+        "gate_wired_at_declared_loci",
+        "provenance_stamp_present",
+    ], ran
+    passed = {b.block.assert_name for b in result.blocks if b.verdict is Verdict.PASS}
+    assert passed == {"devcontainer_user_is_non_root"}, result
 
 
 def test_a_devcontainer_running_as_root_fails_the_control(tmp_path: Path) -> None:

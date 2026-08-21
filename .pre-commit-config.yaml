@@ -77,6 +77,21 @@ repos:
         pass_filenames: false
         files: ^\.github/workflows/.*\.ya?ml$
 
+      # ee-control: BLD-001  ee-skill: gate-build@0.1.0  register: v0.15.0  register-contract: 15
+      # ee-control: DEV-001  ee-skill: gate-build@0.1.0  register: v0.15.0  register-contract: 15
+      #
+      # One hook, two controls, two stamps. BLD-001 and DEV-001 declare the same
+      # two loci and are enforced by the same command, so a second hook would run
+      # the same binary twice for no extra verdict — but the stamp read-back
+      # matches on the control being evaluated, so one stamp would leave the
+      # other control's pre-commit locus unrecorded.
+      - id: standard-check-build
+        name: standard-check (BLD-001, DEV-001)
+        entry: uv run standard-check run --control BLD-001 --control DEV-001
+        language: system
+        pass_filenames: false
+        files: ^(Dockerfile|.*/Dockerfile|\.devcontainer/.*)$
+
       # The register is validated on every commit that touches it
       # (docs/01-register-schema.md).
       - id: standard-check-schema

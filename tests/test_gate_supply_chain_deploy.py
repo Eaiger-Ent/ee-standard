@@ -316,7 +316,7 @@ def test_an_unpinned_action_added_after_deployment_is_caught(
     assert "SUP-003  FAIL" in out
     assert "actions/checkout@v4" in out
     # The loci are still wired, and say so.
-    assert "✓ file: supply_chain_gate_wired_at_all_loci" in out
+    assert "✓ file: gate_wired_at_declared_loci" in out
 
 
 def test_a_hook_that_audits_another_control_is_not_this_locus(

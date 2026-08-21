@@ -49,7 +49,8 @@ never be pointed at different things by accident.
 ## Success criteria
 
 1. Every value written came from the register; none was chosen here.
-2. Both of SEC-001's local loci — pre-commit and ci — run the scanner.
+2. Both of SEC-001's local loci — pre-commit and ci — run the scanner, and
+   every site in `PINNED_AT` repeats the version the register names.
 3. Each artefact written carries a provenance stamp naming SEC-001, this skill
    and version, and the register's version and contract.
 4. `standard-check run --control SEC-001 --control SEC-002` was run afterwards,
@@ -195,6 +196,31 @@ repository now disagree, and `tool_versions_match_register` will say so. Add the
 path to `tools.<TOOL>.pinned_at` in the register and tell the user you did — it
 is their register recording their files
 (`docs/08-adopting.md` § 3.3), so it is an edit to report, not one to hide.
+
+---
+
+## Step 3.5 — Wire the developer environment, if there is one
+
+`PINNED_AT` names every file that repeats this tool's version, and in a
+repository with a devcontainer one of them is `.devcontainer/setup.sh`. That
+file belongs to `gate-build`; the scanner's install block inside it belongs
+here, exactly as both gates write their own hooks into one
+`.pre-commit-config.yaml`. Shared file, per-region stamps.
+
+This is not a locus of SEC-001's own — the control declares `pre-commit`, `ci`
+and `remote`, and a developer environment is none of them. It is where the
+pre-commit locus's binary comes from, which is why the register lists it and
+`tool_versions_match_register` compares it. Until register contract 15 no gate
+claimed it, and a locus with no owner is how a locus gets forgotten.
+
+- **`.devcontainer/setup.sh` exists:** if it already installs `TOOL`, stamp that
+  block for SEC-001 and say it was adopted. If it does not, append an install
+  block using the same pinned version and checksum Step 1 used, and stamp it.
+- **There is no devcontainer:** write nothing, and say so. Creating one to hold
+  an install is inventing a DEV-001 artefact this gate does not own.
+
+Do not stamp the whole file. `gate-build` created it and other gates install
+into it; a stamp at the top would claim their blocks as SEC-001's.
 
 ---
 

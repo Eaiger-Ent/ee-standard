@@ -22,9 +22,13 @@ answer, and a decision inherited by four gates is cheaper to make once than to
 unpick four times.
 
 The fourth is `gate-supply-chain`, in § The third gate below, and it is the
-first whose controls were **already passing** before it existed. The other three
-gates, `standard-adopt` and the devcontainer template are still outstanding, and
-the criteria that name them are still open.
+first whose controls were **already passing** before it existed.
+
+The fifth is `gate-build`, in § The fourth gate, which closes two more of the
+four unread loci that slice found and replaces three near-copies of one assert
+with one that reads the control's own `locus:` list. The other two gates,
+`standard-adopt` and the devcontainer template are still outstanding, and the
+criteria that name them are still open.
 
 ## What closed, and how
 
@@ -648,6 +652,114 @@ list all three controls and what each does. The limit is a real constraint on
 what a description can be — a trigger, not a summary — and the rewritten one
 says what the gate is for in three clauses and keeps the trigger phrases.
 
+## The fourth gate — `gate-build`, register contract 15
+
+BLD-001 and DEV-001: a container that does not end as root, and a devcontainer
+whose image and features are pinned.
+
+### The same finding, in the two controls beside it
+
+The third slice found SUP-003 declaring `locus: [pre-commit, ci]` with nothing
+reading either, and listed three more controls with the same defect. Two of them
+are this gate's. Both verified only their *property* — the final `USER`, the
+declared container user, the lock file's coverage — read out of the files on
+disk, and a repository with no pre-commit hook of any kind reported PASS on
+both.
+
+So the fixture in `tests/test_gate_build_deploy.py` is a devcontainer that is
+**already correct**: non-root user, digest-pinned image, complete lock file.
+Every failure in that file is about a locus or a stamp, which is the whole of
+what contract 15 added.
+
+### One assert instead of four
+
+Contract 14 shipped `supply_chain_gate_wired_at_all_loci`, which knew two loci
+by name. BLD-001, DEV-001 and IAC-001 would each have grown another copy — and
+three copies of one check was already one too many, which is the shape this
+repository exists to prevent, reproduced inside the tool meant to prevent it.
+
+`gate_wired_at_declared_loci` reads the **control's own** `locus:` list from the
+register and checks each member. SUP-003 migrated to it in the same commit, so
+the count went from one-and-growing to one. `remote` is skipped deliberately and
+*named* as skipped in the message — verifying platform state is Phase 3's, and a
+locus quietly dropped is the silence this assert exists to remove.
+
+The one thing it still knows by name is this checker's own console script,
+recorded as `_SELF`. A gate whose tool *is* the auditor has to be judged by which
+subcommand it runs, and no other tool does — which is a property of the checker
+rather than of any repository (ADR 0018).
+
+### The tool this gate deliberately does not install
+
+BLD-001's container half runs `hadolint`. The obvious move was a
+`tools.hadolint` entry, and the schema refused it: `pinned_at` is required to be
+non-empty under `source: literal`, because *an empty list is indistinguishable
+from a tool nobody pins*. This repository has no Dockerfile, so it installs
+hadolint at no locus, and any site listed would be a site
+`tool_versions_match_register` then fails as absent.
+
+Working around that would have meant either installing an unused binary here or
+weakening a rule that exists for a good reason. Neither is the answer. The
+answer is that `standard-check run --control BLD-001` runs the `hadolint` block
+through the same path the audit uses, so a repository with a Dockerfile needs no
+second wiring — and an absent linter reports `UNCLASSIFIED — cannot verify`
+(ADR 0016) rather than passing. What closes it is a `tools.hadolint` entry in
+**that repository's** register, naming the loci it installs the linter at, which
+is `08-adopting.md` § 3.5 doing exactly the work it was written for.
+
+The skill says so and says what not to do about it: *do not install a tool the
+register does not pin*. `test_hadolint_is_not_installed_by_this_gate` holds it.
+
+### `.devcontainer/setup.sh` gets an owner, and its regions get theirs
+
+The second slice recorded this as a decision it could not defer: the scanner
+install in `setup.sh` was a third site repeating SEC-001's version, listed in
+`pinned_at`, claimed by no gate — *"today it is nobody's, which is how a locus
+gets forgotten"*. The `uv` install two lines above it was in the same state and
+had not even been noticed.
+
+Settled: `gate-build` owns the **file** and each gate writes and stamps its own
+**region** inside it, exactly as four gates write their own hooks into one
+`.pre-commit-config.yaml`. `gate-secrets` gained a step for the scanner install,
+`gate-supply-chain` one for the package manager, and both bumped their
+`contractVersion`. `gate-build` writes no stamp there at all, because neither of
+its controls has a locus in that file and a stamp naming a control whose locus
+the file is not is a claim rather than a record.
+
+`.devcontainer/setup.sh` is the ninth stamped file in this repository and the
+only one whose every stamp belongs to a gate other than the one that owns it.
+
+### Watched failing
+
+Twelve cases, including both halves failing independently:
+
+```text
+BLD-001  FAIL
+   ✓ file: devcontainer_user_is_non_root — states a non-root user (remoteUser: vscode)
+   ✗ file: gate_wired_at_declared_loci — pre-commit locus — nothing runs
+     'uv run standard-check' for BLD-001
+```
+
+and its mirror, with the user reverted to `root` on a fully deployed repository:
+the property fails and `gate_wired_at_declared_loci` still passes.
+
+Also held: the partial lock file (Phase 0.5's re-opened criterion, as a test),
+the floating image tag under a complete lock file, one control's stamp stripped
+while the other keeps its own — one command enforcing two controls needs two
+stamps — and the no-op path where an existing full audit reaches both controls
+and the gate correctly adds nothing.
+
+### Preflight P1–P11 — `gate-build`
+
+```text
+{"skill": "gate-build", "overall": "PASS", "fails": 0}
+```
+
+P6 failed first time — `ci-steps.yaml` shipped in `templates/` and was
+referenced by no line of `SKILL.md`, because the ci locus had been described in
+prose rather than pointed at its template. A shipped file nothing references is
+a file nothing keeps current, which is precisely what P6 is for.
+
 ## Decisions the next slice needs
 
 Recorded here rather than settled silently, in the shape § H used.
@@ -656,5 +768,5 @@ Recorded here rather than settled silently, in the shape § H used.
 | --- | --- |
 | ~~`deploys.json` carries one `contractVersion` for the whole plugin~~ — **settled** by the second gate, see § `deploys.json` carries one contract per gate | Phase 5's criteria are *a version bump produces no recommendation, a contract bump does*. A per-plugin contract makes the second one fire for gates that did not change, and that is discovered as noise rather than as a bug |
 | A repo-root `LICENSE`, copied into the plugin | `check_plugin_license.py` fails without it and `pyproject.toml` already declares Apache-2.0. Phase 6 holds the criterion; the plugin directory exists from now on without one |
-| Whether `gate-secrets` should own `.devcontainer/setup.sh`'s scanner install | It is a third site repeating the version, listed in `pinned_at`, and no gate currently claims it. Today it is nobody's, which is how a locus gets forgotten |
+| ~~Whether `gate-secrets` should own `.devcontainer/setup.sh`'s scanner install~~ — **settled** at register contract 15: `gate-build` owns the file, each gate stamps its own region, see § `.devcontainer/setup.sh` gets an owner | It is a third site repeating the version, listed in `pinned_at`, and no gate currently claims it. Today it is nobody's, which is how a locus gets forgotten |
 | ~~Whether a stack's gate tools must be **present** in a lockfile the repository commits~~ — **settled yes** at register contract 13, see § The pin's existence | It is about the pin's *existence* rather than the invocation, so it is a new assert rather than a register edit, and every gate after this one inherits whichever answer is given |

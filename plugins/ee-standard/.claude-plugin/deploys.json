@@ -2,21 +2,33 @@
   "schemaVersion": 2,
   "gates": {
     "gate-secrets": {
-      "contractVersion": 1,
+      "contractVersion": 2,
       "controls": ["SEC-001", "SEC-002"],
       "artifacts": [
         ".pre-commit-config.yaml#gitleaks",
-        ".github/workflows/standard-check.yml#secret-scan"
+        ".github/workflows/standard-check.yml#secret-scan",
+        ".devcontainer/setup.sh#gitleaks"
       ]
     },
     "gate-supply-chain": {
-      "contractVersion": 1,
+      "contractVersion": 2,
       "controls": ["SUP-001", "SUP-002", "SUP-003"],
       "artifacts": [
         ".github/workflows/standard-check.yml#frozen-install",
         ".github/dependabot.yml",
         ".pre-commit-config.yaml#supply-chain",
-        ".github/workflows/standard-check.yml#conformance"
+        ".github/workflows/standard-check.yml#conformance",
+        ".devcontainer/setup.sh#package-manager"
+      ]
+    },
+    "gate-build": {
+      "contractVersion": 1,
+      "controls": ["BLD-001", "DEV-001"],
+      "artifacts": [
+        ".devcontainer/devcontainer.json#remoteUser",
+        ".devcontainer/devcontainer.json#image",
+        ".devcontainer/devcontainer-lock.json",
+        ".pre-commit-config.yaml#build"
       ]
     },
     "gate-quality": {
