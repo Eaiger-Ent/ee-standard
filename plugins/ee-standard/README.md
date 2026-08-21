@@ -14,9 +14,9 @@ them carries a pinned version, a tool name or a rule of its own.
 | Skill | Controls | State |
 | --- | --- | --- |
 | `gate-secrets` | SEC-001, SEC-002 | **Built** — the reference gate |
+| `gate-quality` | LNT-001, TYP-001, TST-001 | **Built** — three controls, two shared files |
 | `gate-supply-chain` | SUP-001, SUP-002, SUP-003 | Phase 2 |
 | `gate-build` | BLD-001, DEV-001 | Phase 2 |
-| `gate-quality` | LNT-001, TYP-001, TST-001 | Phase 2 |
 | `gate-iac` | IAC-001 | Phase 2 |
 | `gate-repo` | CI-001 | Phase 3 — the only gate that mutates platform state |
 | `standard-adopt` | dispatcher | Phase 2 |
@@ -25,7 +25,9 @@ them carries a pinned version, a tool name or a rule of its own.
 
 Gates are grouped by the artefact they write, not one per control:
 `gate-quality` writes one pre-commit config and one CI workflow covering three
-controls, and three separate skills would fight over the same two files.
+controls, and three separate skills would fight over the same two files. The
+grouping is a register fact, not a convention held here — all three controls
+carry `deployed_by: gate-quality`, and a test fails a sidecar that disagrees.
 
 ## What a gate is, and is not
 
@@ -46,6 +48,7 @@ deployed, through the same code path that audits the repository:
 
 ```bash
 standard-check run --control SEC-001
+standard-check run --control LNT-001 --control TYP-001 --control TST-001
 ```
 
 Writing a config and confirming the config works are different claims, and only
@@ -53,8 +56,12 @@ the second is worth anything.
 
 ## Deployment contract
 
-`.claude-plugin/deploys.json` records what this plugin writes and a
-`contractVersion` that changes **only when the written output changes**. A
-redeployment is recommended when the installed contract is ahead of the one
-stamped in a repository, and stays silent through every release that did not
-change what gets written.
+`.claude-plugin/deploys.json` records what each gate writes and a
+`contractVersion` **per gate** that changes only when that gate's output
+changes. A redeployment is recommended when a gate's installed contract is ahead
+of the one stamped in a repository, and stays silent through every release that
+did not change what that gate writes.
+
+Per gate, rather than per plugin, because six gates ship here: one shared number
+would recommend redeploying `gate-secrets` every time `gate-quality`'s output
+moved, which is the noise the mechanism exists to avoid.

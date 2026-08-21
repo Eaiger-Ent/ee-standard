@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.11.0
+version: 0.12.0
 
 meta:
   owner: platform-engineering
@@ -55,7 +55,17 @@ meta:
   #     `tools.<tool>.release_repo` records where a literal tool's release is
   #     fetched from — the one value `gate-secrets` needed and could not derive,
   #     because it existed only inside a `# renovate: depName=` annotation.
-  register_contract: 11
+  # 12: LNT-001, TYP-001 and TST-001 name the gate that writes their artefacts.
+  #     `gate-quality` is the first gate to own more than one control, and
+  #     `deployed_by` is what makes "which gate deploys this" a register fact
+  #     rather than something read off a skill's prose. LNT-001 carries the
+  #     `provenance_stamp_present` block for the three, because the assert
+  #     matches stamps by skill rather than by control — see the comment there.
+  #     `stacks.<stack>.gates.<role>.invocation` now names the path that reaches
+  #     the artefact the lockfile pins rather than a bare tool name, which is
+  #     ADR 0020 applied to the quality gates: `gate-quality` writes that string
+  #     at every locus, so a bare name would deploy a locus resolving from PATH.
+  register_contract: 12
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -243,7 +253,15 @@ stacks:
     gates:
       lint:
         tool: ruff
-        invocation: ruff check
+        # ADR 0020 applied to the quality gates. `invocation` is what every
+        # locus runs and what the checker matches a CI step against, so a bare
+        # `ruff check` is a locus that resolves from PATH — the same fall-through
+        # `npx --no-install` had for DOC-001 (§ H6), verified against whatever
+        # global happens to be installed rather than against the version the
+        # lockfile pins. `uv run` reaches uv.lock's artefact and fails when it
+        # is absent. `gate-quality` writes this string verbatim at every locus,
+        # so the form here is the form deployed.
+        invocation: uv run ruff check
         pre_commit: ruff
         editor_extension: charliermarsh.ruff
         config:
@@ -252,7 +270,7 @@ stacks:
           - {file: .ruff.toml}
       typecheck:
         tool: mypy
-        invocation: mypy
+        invocation: uv run mypy
         pre_commit: mypy
         strict_key: strict
         # Where the tool's *allow-list* lives, as a dotted path from the config
@@ -276,7 +294,10 @@ stacks:
     gates:
       lint:
         tool: eslint
-        invocation: eslint
+        # The node half of the same rule, and the spelling DOC-001 already uses:
+        # `npx --no-install` and `npm exec --no --` both fall through to a global
+        # (measured, ADR 0020); the lockfile's own binary path does not.
+        invocation: node_modules/.bin/eslint
         pre_commit: eslint
         editor_extension: dbaeumer.vscode-eslint
         config:
@@ -284,7 +305,7 @@ stacks:
           - {file: .eslintrc*}
       typecheck:
         tool: tsc
-        invocation: tsc
+        invocation: node_modules/.bin/tsc
         pre_commit: tsc
         strict_key: strict
         # `include` sits at the document root, not under `compilerOptions`,
@@ -639,7 +660,18 @@ controls:
         args: { role: lint }
       - kind: file
         assert: no-failure-suppression
+      # One block for the three controls `gate-quality` deploys, and it sits
+      # here because LNT-001 is the one with an artefact at every locus the
+      # gate writes to — editor, pre-commit and ci. The assert matches stamps
+      # by *skill*, not by control, so copies under TYP-001 and TST-001 would
+      # evaluate the same files and report the same verdict three times.
+      # `deployed_by` is what records ownership per control; this is what reads
+      # the deployment back, which is the half `lint-md` never had (§ F).
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-quality }
     owner: platform-engineering
+    deployed_by: gate-quality
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
@@ -665,6 +697,7 @@ controls:
         assert: typecheck-strict-and-blocking
         args: { role: typecheck }
     owner: platform-engineering
+    deployed_by: gate-quality
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
@@ -691,6 +724,7 @@ controls:
       - kind: file
         assert: no-failure-suppression
     owner: platform-engineering
+    deployed_by: gate-quality
     variance: forbidden
     baseline: null
     review_by: 2027-08-16

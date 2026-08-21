@@ -166,15 +166,34 @@ silent through every release that did not change the output.
 
 ```json
 {
-  "contractVersion": 3,
-  "artifacts": [
-    ".markdownlint.yaml",
-    ".claude/hooks/md-lint.py",
-    ".github/workflows/lint.yml#markdown"
-  ],
-  "controls": ["DOC-001"]
+  "schemaVersion": 2,
+  "gates": {
+    "gate-secrets": {
+      "contractVersion": 1,
+      "controls": ["SEC-001", "SEC-002"],
+      "artifacts": [
+        ".pre-commit-config.yaml#gitleaks",
+        ".github/workflows/standard-check.yml#secret-scan"
+      ]
+    }
+  }
 }
 ```
+
+**One contract per gate, not per plugin.** Six gates ship in this one plugin, so
+a plugin-wide `contractVersion` would make changing what `gate-quality` writes
+recommend redeploying `gate-secrets` — a redeployment notice for a gate whose
+output did not move. Phase 5's first two exit criteria are exactly *a version
+bump produces no recommendation, a contract bump does*, and a contract that
+fires for the wrong gates fails the second while appearing to pass it. The
+second gate is what forced the shape; `10-phase-2-review.md` records it as a
+decision rather than a refactor nobody wrote down.
+
+`tests/test_plugin.py` holds the sidecar to the register in the one direction
+that can be wrong: a control the register marks `deployed_by: <gate>` must
+appear under that gate. `SEC-002` is listed under `gate-secrets` without a
+`deployed_by` of its own, which is correct — the gate checks it and writes
+nothing for it.
 
 This ships as `.claude-plugin/deploys.json`, a **sidecar rather than a key in
 `plugin.json`**. The precedent is `readme-meta.json` in `ee-skills`, which exists
@@ -189,7 +208,9 @@ is a trivial change.
 `skill-update` already collects `id`, `version`, `scope` and `installPath` for
 every plugin at its discovery step. Reading each plugin's `deploys.json` from
 `installPath` needs no new infrastructure — the data is in hand at the point the
-skill already pauses to report.
+skill already pauses to report. Per-gate contracts do not change that: it is
+still one file at one path, and the gate a stamp names is the key to compare
+against.
 
 It gains a read-only reconciliation section and an offer to hand off to
 `standard-adopt`. It never writes gate config itself. `lint-md` sets

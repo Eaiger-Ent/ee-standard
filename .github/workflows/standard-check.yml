@@ -49,12 +49,21 @@ jobs:
         # package-lock.json; `npm ci` is also SUP-001's frozen node install.
         run: npm ci --no-audit --no-fund
 
+      # ee-control: LNT-001  ee-skill: gate-quality@0.1.0  register: v0.12.0  register-contract: 12
+      #
+      # Adopted, not deployed. The three steps below are one gate's ci locus:
+      # `gate-quality` writes them together because they share a workflow and a
+      # frozen install, and splitting them across three skills would have three
+      # skills editing one file. Each is invoked through `uv run`, so the
+      # version is uv.lock's at every locus rather than a literal here.
       - name: Lint
         run: uv run ruff check .
 
+      # ee-control: TYP-001  ee-skill: gate-quality@0.1.0  register: v0.12.0  register-contract: 12
       - name: Type check
         run: uv run mypy
 
+      # ee-control: TST-001  ee-skill: gate-quality@0.1.0  register: v0.12.0  register-contract: 12
       - name: Tests
         run: uv run pytest
 

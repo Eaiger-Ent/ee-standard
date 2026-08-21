@@ -38,6 +38,12 @@
 
   "customizations": {
     "vscode": {
+      // ee-control: LNT-001  ee-skill: gate-quality@0.1.0  register: v0.12.0  register-contract: 12
+      //
+      // Adopted, not deployed — and the only artefact `gate-quality` writes
+      // that is not a hook or a workflow step. LNT-001 is the one control of
+      // the three declaring an `editor` locus, so the stamp names it alone.
+      //
       // The editor locus, for the two controls that declare one. Each reads
       // the same configuration pre-commit and CI read — pin once, reference
       // many, rather than an editor with rules of its own.

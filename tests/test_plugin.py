@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
@@ -46,13 +47,63 @@ def test_the_plugin_declares_itself() -> None:
     assert isinstance(manifest["dependencies"], list)
 
 
+def _sidecar() -> dict[str, Any]:
+    loaded = json.loads((PLUGIN / ".claude-plugin/deploys.json").read_text(encoding="utf-8"))
+    assert isinstance(loaded, dict)
+    return loaded
+
+
 def test_the_deploys_sidecar_names_controls_the_register_defines() -> None:
     """A sidecar naming DOC-002 would recommend redeploying a control nobody has."""
-    sidecar = json.loads((PLUGIN / ".claude-plugin/deploys.json").read_text(encoding="utf-8"))
     known = {control.id for control in a_register().controls}
-    assert set(sidecar["controls"]) <= known, set(sidecar["controls"]) - known
-    assert isinstance(sidecar["contractVersion"], int)
-    assert sidecar["artifacts"], "a plugin that deploys nothing needs no contract"
+    for gate, entry in _sidecar()["gates"].items():
+        assert set(entry["controls"]) <= known, set(entry["controls"]) - known
+        assert isinstance(entry["contractVersion"], int)
+        assert entry["artifacts"], f"{gate} deploys nothing and needs no contract"
+
+
+def test_each_gate_carries_its_own_contract_version() -> None:
+    """One contract per thing that can change, which is the gate and not the plugin.
+
+    With six gates in one plugin, a single plugin-wide `contractVersion` makes
+    changing what `gate-quality` writes recommend redeploying `gate-secrets`.
+    Phase 5's first two exit criteria are exactly *a version bump produces no
+    recommendation, a contract bump does*, so a contract that fires for gates
+    whose output did not change fails the second one while appearing to pass it.
+    Recorded as a decision the second gate forces in `10-phase-2-review.md`.
+    """
+    sidecar = _sidecar()
+    assert sidecar["schemaVersion"] == 2
+    assert "contractVersion" not in sidecar, (
+        "a plugin-wide contract version is what this shape exists to remove"
+    )
+    directories = {skill.name for skill in SKILLS}
+    assert set(sidecar["gates"]) <= directories, set(sidecar["gates"]) - directories
+    gates = {name for name in directories if name.startswith("gate-")}
+    assert gates <= set(sidecar["gates"]), gates - set(sidecar["gates"])
+
+
+def test_the_sidecar_agrees_with_the_register_about_who_deploys_what() -> None:
+    """`deployed_by` and the sidecar are two records of one fact.
+
+    The register says which gate writes a control's artefacts; the sidecar says
+    which controls a gate writes. Left unchecked they are theme T-2 across two
+    files — and the one that drifts is the sidecar, because nothing consumes it
+    until Phase 5's sweep, by which point the disagreement is a year old.
+
+    Checked in the direction that can be wrong: a control the register assigns
+    to a gate this plugin ships must appear in that gate's list. SEC-002 sits in
+    `gate-secrets`' list without a `deployed_by` of its own, which is correct —
+    the gate checks it and writes nothing for it.
+    """
+    sidecar = _sidecar()["gates"]
+    for control in a_register().controls:
+        gate = control.deployed_by
+        if gate is None or gate not in sidecar:
+            continue
+        assert control.id in sidecar[gate]["controls"], (
+            f"{control.id} is deployed_by {gate}, which does not list it"
+        )
 
 
 @pytest.mark.parametrize("skill", SKILLS, ids=lambda p: p.name)
@@ -79,7 +130,6 @@ def test_the_templates_stamp_what_they_write(skill: Path) -> None:
     """
     register = a_register()
     substitutions = {
-        "{{TOOL}}": "gitleaks",
         "{{SKILL_VERSION}}": "0.1.0",
         "{{REGISTER_VERSION}}": register.version,
         "{{REGISTER_CONTRACT}}": str(register.register_contract),
@@ -92,6 +142,12 @@ def test_the_templates_stamp_what_they_write(skill: Path) -> None:
         assert MARKER in text, f"{template.name} writes an artefact it does not stamp"
         for placeholder, value in substitutions.items():
             text = text.replace(placeholder, value)
+        # Whatever else a template parameterises — a tool name, a version, an
+        # invocation — is a value only the register supplies at deploy time.
+        # Filling the rest generically keeps this test about the stamp rather
+        # than about any one gate's vocabulary, which is what tied it to
+        # `gitleaks` while `gate-secrets` was the only gate.
+        text = re.sub(r"\{\{[A-Z_]+\}\}", "supplied-by-the-register", text)
         stamps = stamps_in(text)
         assert len(stamps) == text.count(MARKER), (
             f"{template.name}: a stamp does not parse once the register fills it"
@@ -144,11 +200,13 @@ def test_the_gate_verifies_through_the_checker_and_not_otherwise(skill: Path) ->
     the first time the register moved.
     """
     text = (skill / "SKILL.md").read_text(encoding="utf-8")
-    sidecar = json.loads((PLUGIN / ".claude-plugin/deploys.json").read_text(encoding="utf-8"))
+    entry = _sidecar()["gates"].get(skill.name)
+    if entry is None:
+        pytest.skip(f"{skill.name} deploys nothing — there is no verify step to check")
     verify = [line for line in text.splitlines() if "standard-check" in line and "run" in line]
     assert verify, f"{skill.name} has no verify step that calls the checker"
     joined = " ".join(verify)
-    for control in sidecar["controls"]:
+    for control in entry["controls"]:
         assert f"--control {control}" in joined, (
             f"{skill.name} deploys {control} and does not verify it through the checker"
         )

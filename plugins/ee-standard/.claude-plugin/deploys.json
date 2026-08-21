@@ -1,8 +1,25 @@
 {
-  "contractVersion": 1,
-  "artifacts": [
-    ".pre-commit-config.yaml#gitleaks",
-    ".github/workflows/standard-check.yml#secret-scan"
-  ],
-  "controls": ["SEC-001", "SEC-002"]
+  "schemaVersion": 2,
+  "gates": {
+    "gate-secrets": {
+      "contractVersion": 1,
+      "controls": ["SEC-001", "SEC-002"],
+      "artifacts": [
+        ".pre-commit-config.yaml#gitleaks",
+        ".github/workflows/standard-check.yml#secret-scan"
+      ]
+    },
+    "gate-quality": {
+      "contractVersion": 1,
+      "controls": ["LNT-001", "TYP-001", "TST-001"],
+      "artifacts": [
+        ".devcontainer/devcontainer.json#customizations.vscode.extensions",
+        ".pre-commit-config.yaml#lint",
+        ".pre-commit-config.yaml#typecheck",
+        ".github/workflows/standard-check.yml#lint",
+        ".github/workflows/standard-check.yml#type-check",
+        ".github/workflows/standard-check.yml#tests"
+      ]
+    }
+  }
 }
