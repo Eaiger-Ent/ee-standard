@@ -71,6 +71,9 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
     here, which is the point of grouping a gate by the artefact it writes: three
     controls, two shared files, one skill that owns its own sections of each.
 
+    The ninth is `.devcontainer/setup.sh`, and it is the one file whose stamps
+    all belong to gates other than the one that owns the file.
+
     The eighth is `.github/dependabot.yml`, SUP-002's, and it is the one file
     where a whole-file stamp is right rather than wrong: every line of it
     belongs to one control. `gate-supply-chain`'s other three stamps land in
@@ -95,6 +98,13 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
         # that belongs to exactly one control end to end, which is why its stamp
         # sits at the top of the file rather than at a section of it.
         ".github/dependabot.yml",
+        # `gate-build` owns this file and stamps nothing in it — neither BLD-001
+        # nor DEV-001 has a locus here. The two stamps it carries are other
+        # gates': SEC-001's scanner install and SUP-001's package manager, each
+        # a site `tools.<tool>.pinned_at` names and no gate claimed until
+        # register contract 15. Shared file, per-region stamps, as
+        # `.pre-commit-config.yaml` has been since Phase 2's first slice.
+        ".devcontainer/setup.sh",
     }
 
 

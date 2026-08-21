@@ -1042,30 +1042,43 @@ def secrets_gate_wired_at_all_loci(
     return _ok(f"pre-commit and ci loci both reach {tool} through '{invocation}'{scoped}")
 
 
-def supply_chain_gate_wired_at_all_loci(
+#: This checker's own console script. Recognising it by name is a property of
+#: the checker rather than of any repository (ADR 0018): a gate whose tool *is*
+#: the auditor has to be judged by which subcommand it runs, and no other tool
+#: does.
+_SELF = "standard-check"
+
+#: The subcommands that audit no control. Running the checker is not the same as
+#: auditing with it: `standard-check schema` validates the register and reads not
+#: one control, and this repository's own pre-commit config runs exactly that —
+#: which credited SUP-003 with a pre-commit gate that could never have failed it.
+_NON_AUDITING_SUBCOMMANDS = ("schema", "meta", "assert", "explain")
+
+
+def gate_wired_at_declared_loci(
     repo: Repo,
     register: Register,
     args: Mapping[str, object],
 ) -> AssertResult:
-    """SUP-003's two loci, each verified rather than declared.
+    """Every locus this control declares runs something that enforces it.
 
-    SUP-003 declares `locus: [pre-commit, ci]` and, until contract 14, verified
-    neither. `actions-pinned-to-sha` reads the *property* — every `uses:` is a
-    commit SHA — out of the workflow files on disk. That is a different claim
-    from *something enforces this before a commit lands and before a merge
-    does*, and this repository reported SUP-003 PASS while having no pre-commit
-    hook for it of any kind.
+    A control's `locus:` list is a claim, and until contract 14 several controls
+    made it with nothing checking it. SUP-003, BLD-001, DEV-001 and IAC-001 each
+    declared `[pre-commit, ci]` and verified only their *property* — every
+    `uses:` is a SHA, the final USER is not root, the lock file covers every
+    feature — read out of the files on disk. That is a different claim from
+    *something enforces this before a commit lands and before a merge does*, and
+    a repository with no pre-commit hook of any kind reported PASS on all four.
 
-    Same shape as SEC-001 at contract 11, and the same move. What differs is the
-    gate: there is no third-party tool that shares this register's notion of an
-    owner-exempt action, so the gate is the checker, invoked at each locus
-    through the path `tools.<tool>.invocation` records. A bare name would be a
-    locus resolving from `PATH` (ADR 0020) — and for this tool that is worse
-    than usual, because whatever answered would be auditing the repository.
+    The loci come from the control being evaluated rather than from `args:`,
+    which is what stops this assert becoming a fourth near-copy: contract 14
+    shipped `supply_chain_gate_wired_at_all_loci` knowing two loci by name, and
+    BLD-001, DEV-001 and IAC-001 would each have grown another. Three copies of
+    one check was already one too many.
 
-    The control's own id reaches this assert from the runner, so what is looked
-    for is *this* control being run rather than the checker being run at all: a
-    hook auditing some other control is not this locus wired.
+    `remote` is skipped deliberately and named as skipped. Verifying platform
+    state is Phase 3's, and a locus quietly dropped here is the silence this
+    assert exists to remove.
     """
     tool = str(args.get("tool", ""))
     if not tool:
@@ -1074,46 +1087,65 @@ def supply_chain_gate_wired_at_all_loci(
     if pinned is None:
         return _fail(f"the register mandates '{tool}' at these loci and pins no such tool")
     invocation = pinned.invocation or tool
-    control = str(args.get(CONTROL_ARG, ""))
+    control_id = str(args.get(CONTROL_ARG, ""))
+    # `register.controls` rather than `register.control()`, which also resolves
+    # meta-controls: a meta-control checks the register rather than the
+    # repository and declares no loci, so there would be nothing here for it to
+    # be wired at.
+    control = next((c for c in register.controls if c.id == control_id), None)
+    if control is None:  # pragma: no cover — the runner supplies a real control
+        return _fail(f"no control with a declared locus named '{control_id}'")
+
     problems: list[str] = []
-    if not any(
-        _audits(str(hook.get("entry", "")), invocation, control)
-        for hook in _precommit_hooks(repo)
-    ):
-        problems.append(f"pre-commit locus — no hook runs '{invocation}' for {control}")
-    if not any(
-        step.gating and _audits(step.run, invocation, control)
-        for step in _workflow_steps(repo)
-    ):
-        problems.append(f"ci locus — no gating step runs '{invocation}' for {control}")
+    checked: list[str] = []
+    deferred: list[str] = []
+    for locus in control.locus:
+        if locus == "remote":
+            deferred.append(locus)
+            continue
+        if locus == "pre-commit":
+            found = any(
+                _reaches(str(hook.get("entry", "")), tool, invocation, control_id)
+                for hook in _precommit_hooks(repo)
+            )
+        elif locus == "ci":
+            found = any(
+                step.gating and _reaches(step.run, tool, invocation, control_id)
+                for step in _workflow_steps(repo)
+            )
+        elif locus == "editor":
+            found = any(
+                invocation in extension for extension in _devcontainer_extensions(repo)
+            )
+        else:  # pragma: no cover — LOCI is closed and every member is handled
+            return _fail(f"locus '{locus}' is declared and this assert cannot read it")
+        if found:
+            checked.append(locus)
+        else:
+            problems.append(f"{locus} locus — nothing runs '{invocation}' for {control_id}")
     if problems:
         return _fail("; ".join(problems))
-    return _ok(f"pre-commit and ci loci both reach {control} through '{invocation}'")
+    reached = " and ".join(checked) if checked else "no local"
+    note = f" ({', '.join(deferred)} deferred to Phase 3)" if deferred else ""
+    return _ok(f"{reached} loci reach {control_id} through '{invocation}'{note}")
 
 
-#: The checker's subcommands that audit no control. Running the checker is not
-#: the same as auditing with it: `standard-check schema` validates the register
-#: and reads not one control, and this repository's own pre-commit config runs
-#: exactly that — which credited SUP-003 with a pre-commit gate that could never
-#: have failed it. Which subcommands audit is a property of this checker's CLI
-#: rather than of any repository, so it stays here (ADR 0018).
-_NON_AUDITING_SUBCOMMANDS = ("schema", "meta", "assert", "explain")
+def _reaches(text: str, tool: str, invocation: str, control: str) -> bool:
+    """Whether `text` runs `invocation` in a way that enforces `control`.
 
-
-def _audits(text: str, invocation: str, control: str) -> bool:
-    """Whether `text` runs the checker in a way that reaches `control`.
-
-    Two spellings reach it and two do not. A full run — the invocation followed
-    by nothing or by flags — audits every applicable control, so it reaches this
-    one. A selective run reaches it only when this control is among those
-    selected; one naming other controls is the checker being run with this locus
-    still not gating on this control. And a non-auditing subcommand reaches
-    nothing at all, however pinned its invocation.
+    For an ordinary tool this is the invocation appearing as an invocation. For
+    the checker it is narrower, because running the checker is not the same as
+    auditing with it: a full run — the invocation followed by nothing or by
+    flags — reaches every applicable control, a selective run reaches only the
+    controls it names, and `schema`, `meta`, `assert` and `explain` reach none
+    at all however pinned their invocation.
     """
     for command in re.split(r"&&|\|\||;|\n", text):
         match = re.search(rf"{re.escape(invocation)}(?![-\w])", command)
         if match is None:
             continue
+        if tool != _SELF:
+            return True
         rest = command[match.end() :].split()
         if rest and rest[0] in _NON_AUDITING_SUBCOMMANDS:
             continue
@@ -1133,5 +1165,5 @@ COMMAND_ASSERTS: dict[str, AssertFn] = {
     "tests-run-and-block": tests_run_and_block,
     "markdown_gate_wired_at_all_loci": markdown_gate_wired_at_all_loci,
     "secrets_gate_wired_at_all_loci": secrets_gate_wired_at_all_loci,
-    "supply_chain_gate_wired_at_all_loci": supply_chain_gate_wired_at_all_loci,
+    "gate_wired_at_declared_loci": gate_wired_at_declared_loci,
 }

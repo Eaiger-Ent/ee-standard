@@ -146,7 +146,7 @@ What matters when you adapt it:
 
 ## 3 — The gates
 
-Three gates are built — see § 3.1, § 3.2 and § 3.3. For the rest, until Phase 2
+Four gates are built — see § 3.1 to § 3.4. For the rest, until Phase 2
 ships them, wire the gates by copying this repository's own artefacts, which are
 the reference implementation:
 
@@ -320,7 +320,61 @@ two pass. This repository's own four supply-chain stamps say *adopted rather
 than deployed*, because the artefacts were hand-written in Phase 0.5 before
 there was a gate to write them.
 
-### 3.4 — Your register records your own files
+### 3.4 — `gate-build`, and what it pins rather than chooses
+
+`/gate-build` wires BLD-001 (*every container image stage ends as a non-root
+user*) and DEV-001 (*devcontainer features are version-pinned*). Two controls
+and one skill because they read the same file: BLD-001 wants a user, DEV-001
+wants two pins, and both are keys in `devcontainer.json`.
+
+**It pins what it finds; it does not choose.** Deciding *which* image and which
+features your repository uses is `project-init`'s, or your own. This gate
+insists that whichever were chosen are pinned. Inventing an image or a user here
+produces a container that does not start, which is a worse failure than the one
+being fixed.
+
+**Three prerequisites, and how you know each is met.**
+
+| Prerequisite | Why | How you know it worked |
+| --- | --- | --- |
+| A base image that defines a non-root user | The gate writes the user the image provides, not one it invents | `docker run --rm <image> id -un` names a user; `standard-check run --control BLD-001` then reports it |
+| A `tools.standard-check` entry with an `invocation` | Both controls' pre-commit gate is the checker, and a locus running a bare name resolves from `PATH` — what answered would be auditing your repository ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) | The gate stops before writing anything and says the invocation is missing |
+| A `tools.hadolint` entry, **if you have a Dockerfile** | BLD-001's container half runs the linter. An absent linter is `UNCLASSIFIED — cannot verify`, not a pass ([ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md)) | `standard-check run --control BLD-001` stops reporting UNCLASSIFIED for that block |
+
+That last row is § 3.5 in miniature — *your register records your own files*.
+This standard's register pins no `hadolint`, because this repository has no
+Dockerfile to lint, and a `pinned_at` naming a site that does not exist is a
+failure rather than a placeholder. A repository that does have one adds the
+entry, naming the loci **it** installs the linter at.
+
+**Two half-states this gate exists to catch.** Each reads as solved and is not:
+
+1. **A lock file covering some features.** This project's own Phase 0.5 exit
+   criterion was re-opened over exactly that — a lock file pinning three of four
+   features.
+2. **A complete lock file over a floating image tag.** The more dangerous of the
+   two, for the same reason. Both halves or neither.
+
+And one that is not a half-state at all: **a devcontainer naming neither
+`containerUser` nor `remoteUser`** runs as whatever its base image uses, which
+may be root today and may become root on any digest bump. Non-root by luck is
+not the property BLD-001 states.
+
+**A shared file, and who owns which part of it.** `gate-build` owns
+`.devcontainer/setup.sh` and creates it when absent. It does not own what other
+gates install there: `gate-secrets` writes and stamps the scanner's install
+block, and `gate-supply-chain` the package manager's — exactly as four gates
+write their own hooks into one `.pre-commit-config.yaml`. `gate-build` writes no
+stamp of its own in that file, because neither of its controls has a locus
+there, and a stamp naming a control whose locus the file is not is a claim
+rather than a record.
+
+**Wiring by hand instead?** One hook can enforce both controls — the command is
+the same — but it needs **two** stamps. The read-back matches on the control
+being evaluated, so a hook stamped for BLD-001 alone leaves DEV-001's pre-commit
+locus unrecorded even though the same command enforces it.
+
+### 3.5 — Your register records your own files
 
 Two things in `controls.yaml` describe **the repository being checked**, not this
 one, and are the first edits an adopter makes to their copy:

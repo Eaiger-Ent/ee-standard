@@ -1,0 +1,31 @@
+// The devcontainer's two properties, stamped for the two controls that read
+// them. This template is *merged into* a `devcontainer.json` the repository
+// already has — `03-devcontainer.md` is explicit that producing the initial
+// `.devcontainer/` is the template's job and this gate only pins what it finds.
+//
+// BLD-001 wants a user, DEV-001 wants two pins, and they are different keys in
+// one file — so one stamp each, at the key it owns, never one at the top. A
+// whole-file stamp here would claim the editor extensions `gate-quality` writes
+// into the same file.
+//
+// Every value is the repository's own. The digest is whatever `image:` already
+// resolves to today; this gate does not choose an image, it insists that
+// whichever one was chosen is pinned. `{{CONTAINER_USER}}` is likewise the
+// user the base image already provides — inventing one would produce a
+// container that does not start.
+// --- .devcontainer/devcontainer.json — merged into what is already there ---
+{
+  // ee-control: BLD-001  ee-skill: gate-build@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+  //
+  // Stated rather than inherited. A devcontainer naming neither `containerUser`
+  // nor `remoteUser` runs as whatever its base image uses, which may be root
+  // today and may become root on any digest bump — non-root by luck is not the
+  // property BLD-001 states.
+  "remoteUser": "{{CONTAINER_USER}}",
+
+  // ee-control: DEV-001  ee-skill: gate-build@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+  //
+  // A complete lock file over a floating image tag is the more dangerous
+  // half-state: it reads as solved and is not. Both halves or neither.
+  "image": "{{IMAGE}}@sha256:{{IMAGE_DIGEST}}"
+}
