@@ -146,7 +146,7 @@ What matters when you adapt it:
 
 ## 3 — The gates
 
-Five gates are built — see § 3.1 to § 3.5. For the rest, until Phase 2
+All six gates are built — see § 3.1 to § 3.6. For the rest, until Phase 2
 ships them, wire the gates by copying this repository's own artefacts, which are
 the reference implementation:
 
@@ -341,7 +341,7 @@ being fixed.
 | A `tools.standard-check` entry with an `invocation` | Both controls' pre-commit gate is the checker, and a locus running a bare name resolves from `PATH` — what answered would be auditing your repository ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) | The gate stops before writing anything and says the invocation is missing |
 | A `tools.hadolint` entry, **if you have a Dockerfile** | BLD-001's container half runs the linter. An absent linter is `UNCLASSIFIED — cannot verify`, not a pass ([ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md)) | `standard-check run --control BLD-001` stops reporting UNCLASSIFIED for that block |
 
-That last row is § 3.6 in miniature — *your register records your own files*.
+That last row is § 3.7 in miniature — *your register records your own files*.
 This standard's register pins no `hadolint`, because this repository has no
 Dockerfile to lint, and a `pinned_at` naming a site that does not exist is a
 failure rather than a placeholder. A repository that does have one adds the
@@ -419,7 +419,66 @@ carrying `continue-on-error: true` does not satisfy any control's ci locus. The
 tool runs, the job succeeds whatever it reports, and the merge is not gated on
 it. The same tightening applies to every gate, not only this one.
 
-### 3.6 — Your register records your own files
+### 3.6 — `gate-repo`, the one that changes something outside your repository
+
+`/gate-repo` wires CI-001 (*the default branch cannot be written to without a
+passing check*). It is the only gate whose effect is not a file you review
+before it takes effect: it calls the GitHub API, and **the ruleset is in force
+the moment the call returns**, for everyone with access.
+
+So it confirms explicitly before acting, on every run, regardless of any plan
+already approved — including one approved in `standard-adopt`. That plan covers
+what will be written to files; this call is not a file. A re-run that would
+change nothing still asks, because a call whose effect is invisible until it is
+wrong is not one to make silently.
+
+**Two prerequisites, and how you know each is met.**
+
+| Prerequisite | Why | How you know it worked |
+| --- | --- | --- |
+| A token with `administration: write` on the repository | Writing a ruleset needs it, and it is granted by a human with admin (§ 1) | `gh api repos/<owner>/<name>/rulesets` returns rather than 403 |
+| Agreement that the default branch stops accepting direct pushes | It applies to **everyone**, including administrators, unless a bypass is configured | The gate states the blast radius before asking, and names who it affects |
+
+The gate stops **before writing anything** when the token lacks the permission.
+A skill that writes the record and cannot apply it leaves a repository looking
+protected in a diff and unprotected in fact.
+
+**A recorded ruleset is not a protected branch.** `gate-repo` writes
+`.github/rulesets/default-branch.json` and then applies it. GitHub does not read
+a path in your repository to decide what protects your default branch; only the
+API call does. The file is a record, and the checker verifies it as one:
+`ruleset_recorded_matches_register` says *intent only* in its own message.
+
+**Expect exit `3`.** CI-001's `remote` block reports `SKIPPED (no credentials)`
+until Phase 3 implements platform verification. What is verified is that you
+record the ruleset the register requires. What is not verified — by anything,
+yet — is that GitHub is enforcing it. Both get said, and neither stands in for
+the other.
+
+**Three things the checker rejects in a recorded ruleset**, each of which GitHub
+itself would accept:
+
+1. **`enforcement: evaluate`.** It reports what would have happened and blocks
+   nothing — a control declared and unreachable.
+2. **A ruleset targeting a branch by name.** `~DEFAULT_BRANCH` follows the
+   default; `refs/heads/main` stops protecting it the day your default moves,
+   silently.
+3. **A ruleset git does not track.** Nobody can review it, and the remote block
+   cannot be reached without credentials either — so nothing at all about the
+   control would have been verified.
+
+**Already have branch protection?** Say so and let the gate transcribe it. This
+repository's own record was adopted rather than deployed: the ruleset was
+created by hand in Phase 0.5, and the file is what the API returns today,
+including a `deletion` rule the register does not ask for. An extra rule adds a
+restriction; a record that disagrees with what is enforced is worse than one
+carrying more than the register requires.
+
+**Classic branch protection and a ruleset both apply**, and the union of their
+requirements is enforced. Removing the classic rule is a real reduction until
+the ruleset is confirmed active, so the gate confirms first and asks second.
+
+### 3.7 — Your register records your own files
 
 Two things in `controls.yaml` describe **the repository being checked**, not this
 one, and are the first edits an adopter makes to their copy:

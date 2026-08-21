@@ -213,6 +213,116 @@ def _pin_problem(
     return f"{package} is not pinned in {searched}, so {gate.invocation} resolves from PATH", ""
 
 
+def ruleset_recorded_matches_register(
+    repo: Repo,
+    register: Register,
+    args: Mapping[str, object],
+) -> AssertResult:
+    """The branch ruleset a repository records says what the register requires.
+
+    **This verifies intent, not platform state.** A recorded ruleset GitHub has
+    never been told about protects nothing, and nothing here may stand in for
+    the `kind: remote` block beside it — that block reports SKIPPED (no
+    credentials) until Phase 3, deliberately, and its verdict is the one that
+    says the branch is protected.
+
+    What this closes is smaller and real. CI-001's only locus is `remote`, which
+    made `gate-repo` the one gate with no file to write, no stamp to leave and
+    nothing observable until a later phase. A gate that cannot be watched
+    working is the shape this repository's review record keeps re-opening
+    criteria over. Recording the ruleset as a reviewable artefact — derived from
+    the register's `args:` at deploy time — gives the deployment something a
+    reader and a checker can both see.
+
+    The three requirements are the register's, and they are the *same* `args:`
+    the remote assert reads. Two blocks would be two definitions of "protected",
+    free to drift from each other.
+    """
+    path = str(args.get("path", ""))
+    if not path:
+        return _fail("assert requires a 'path' argument naming the recorded ruleset")
+    if path not in repo.tracked:
+        return _fail(
+            f"{path} is not tracked — a ruleset git does not carry is not one anybody "
+            "can review, and this control's remote block cannot be reached without "
+            "credentials either"
+        )
+    # JSONC, like `.devcontainer/devcontainer.json`, and for the same reason: the
+    # stamp is a `//` comment and a file that cannot carry one cannot carry its
+    # own provenance. GitHub's API takes strict JSON, so the gate strips the
+    # comment lines on the way out — which is a filter on a payload, not a
+    # second copy of the ruleset.
+    try:
+        document = load_jsonc(repo.root / path)
+    except (OSError, ValueError) as exc:
+        return _fail(f"{path} is not readable JSON: {exc}")
+    if not isinstance(document, dict):
+        return _fail(f"{path} must be a JSON object describing one ruleset")
+
+    problems = _ruleset_problems(document, args)
+    if problems:
+        return _fail("; ".join(problems))
+    return _ok(
+        f"{path} records a ruleset matching the register — intent only; whether the "
+        "platform enforces it is the remote block's, and is not claimed here"
+    )
+
+
+#: How a GitHub ruleset spells each requirement. The *rules* are the register's
+#: — which requirements a protected branch must carry is `args:` — while the
+#: shape of GitHub's own JSON is not something a repository can differ on, so it
+#: stays here (ADR 0018).
+_RULE_TYPES = {
+    "require_pull_request": "pull_request",
+    "require_status_checks": "required_status_checks",
+    "allow_force_push": "non_fast_forward",
+}
+
+
+def _ruleset_problems(document: Mapping[str, object], args: Mapping[str, object]) -> list[str]:
+    """Where the recorded ruleset falls short of what the register requires."""
+    problems: list[str] = []
+    if document.get("enforcement") != "active":
+        problems.append(
+            f"enforcement is {document.get('enforcement')!r}, not 'active' — an evaluated "
+            "or disabled ruleset reports what would have happened and blocks nothing"
+        )
+    rules = document.get("rules")
+    present = {
+        str(rule.get("type"))
+        for rule in (rules if isinstance(rules, list) else [])
+        if isinstance(rule, dict)
+    }
+    if (
+        args.get("require_pull_request") is True
+        and _RULE_TYPES["require_pull_request"] not in present
+    ):
+        problems.append("no 'pull_request' rule — the default branch can be written to directly")
+    if (
+        args.get("require_status_checks") is True
+        and _RULE_TYPES["require_status_checks"] not in present
+    ):
+        problems.append("no 'required_status_checks' rule — a pull request can merge unchecked")
+    # `non_fast_forward` is the rule that *forbids* force-push, so the register's
+    # `allow_force_push: false` requires it to be present. Stated rather than
+    # inferred: the register says what is allowed and GitHub names what is
+    # blocked, and reading one as the other is how a control ends up inverted.
+    if args.get("allow_force_push") is False and _RULE_TYPES["allow_force_push"] not in present:
+        problems.append(
+            "no 'non_fast_forward' rule — history on the default branch can be rewritten"
+        )
+    target = document.get("conditions")
+    if isinstance(target, dict):
+        refs = target.get("ref_name")
+        include = refs.get("include") if isinstance(refs, dict) else None
+        if isinstance(include, list) and "~DEFAULT_BRANCH" not in include:
+            problems.append(
+                f"conditions target {include} rather than ~DEFAULT_BRANCH — a ruleset "
+                "naming a branch by name stops protecting it the day the default moves"
+            )
+    return problems
+
+
 _RENOVATE_CONFIGS = (
     "renovate.json",
     "renovate.json5",
@@ -704,6 +814,7 @@ FILE_ASSERTS: dict[str, AssertFn] = {
     "devcontainer_user_is_non_root": devcontainer_user_is_non_root,
     "provenance_stamp_present": provenance_stamp_present,
     "stack_tool_pinned_in_lockfile": stack_tool_pinned_in_lockfile,
+    "ruleset_recorded_matches_register": ruleset_recorded_matches_register,
 }
 
 # Remote assert names are part of the closed set from Phase 1 so a typo is a

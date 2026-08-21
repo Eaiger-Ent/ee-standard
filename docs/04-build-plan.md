@@ -409,9 +409,9 @@ fixed in both.
       [`08-adopting.md`](08-adopting.md) with its evidence — the gate skills'
       prerequisites, what `standard-adopt` needs before it can run, and what the
       template requires of a repository that copies it. `gate-secrets` (§ 3.1),
-      `gate-quality` (§ 3.2), `gate-supply-chain` (§ 3.3), `gate-build` (§ 3.4)
-      and `gate-iac` (§ 3.5) have theirs written down; `standard-adopt` and the
-      template do not
+      `gate-quality` (§ 3.2), `gate-supply-chain` (§ 3.3), `gate-build` (§ 3.4),
+      `gate-iac` (§ 3.5) and `gate-repo` (§ 3.6) have theirs written down;
+      `standard-adopt` and the template do not
 
 - [x] `gate-secrets` deploys onto a repo with none of its config, and
       `standard-check` then reports SEC-001 PASS for its local loci — closed
@@ -420,7 +420,7 @@ fixed in both.
       deleted in turn and watched failing, in
       [`10-phase-2-review.md`](10-phase-2-review.md)
 - [ ] Every gate writes a provenance stamp its own verify step reads back —
-      holds for all five gates, and the mechanism the
+      holds for all six gates, and the mechanism the
       rest inherit is in place: `provenance_stamp_present`, and a schema rule
       that rejects a register where it and `deployed_by` name different gates.
       Open until the gates exist. Reading back is now **per control**: a gate
@@ -464,9 +464,10 @@ fixed in both.
       Contract 14 added SUP-003's two, whose gate is the checker itself. Open
       for the loci the remaining gates will write
 
-- [ ] Every SKILL.md passes preflight P1–P11 — the five gates built so far all
-      pass with zero failures, each recorded in `10-phase-2-review.md` under its
-      own § Preflight P1–P11 heading. Open until the other four skills exist
+- [ ] Every SKILL.md passes preflight P1–P11 — all six gates pass with zero
+      failures, each recorded in `10-phase-2-review.md` under its own
+      § Preflight P1–P11 heading. Open until `standard-adopt` and the two
+      `standard-*` skills exist
 - [x] Every control's declared `locus:` is read by something. Found open in
       Phase 2: SUP-003, BLD-001, DEV-001 and IAC-001 each declared
       `[pre-commit, ci]` and verified only their property, so a repository with

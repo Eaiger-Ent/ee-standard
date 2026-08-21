@@ -30,9 +30,11 @@ with one that reads the control's own `locus:` list.
 
 The sixth is `gate-iac`, in § The fifth gate, which closes the last of those
 four — and, in the course of doing so, found two ways a CI step could be
-credited as a locus without gating anything. `standard-adopt` and the
-devcontainer template are still outstanding, and the criteria that name them are
-still open.
+credited as a locus without gating anything.
+
+The seventh is `gate-repo`, in § The sixth gate, and it completes the family.
+`standard-adopt` and the devcontainer template are still outstanding, and the
+criteria that name them are still open.
 
 ## What closed, and how
 
@@ -854,6 +856,104 @@ stripped, and the no-op path where an existing full audit reaches the control.
 Zero failures first time — the first gate for which that is true, and only
 because P2's 250-character description limit and P6's referenced-files rule had
 already been paid for by `gate-supply-chain` and `gate-build`.
+
+## The sixth gate — `gate-repo`, register contract 17
+
+CI-001, and the last gate. It is the only one whose effect is not a file.
+
+### The gate with nothing to verify
+
+Every other gate writes artefacts a checker can read. CI-001's only locus is
+`remote`, so `gate-repo` had no file to write, no stamp to leave and nothing at
+all observable until Phase 3 implements `kind: remote`. Its whole verify block
+would have reported `SKIPPED (no credentials)` — a gate whose correctness rested
+entirely on a phase that has not happened.
+
+That is the shape this review record keeps re-opening criteria over, so the
+ruleset is **recorded before it is applied**:
+`.github/rulesets/default-branch.json`, derived from CI-001's `args:` at deploy
+time, stamped like any other artefact, and read back by
+`ruleset_recorded_matches_register`.
+
+**And the record must not be mistaken for the enforcement.** GitHub does not
+read a path in a repository to decide what protects its default branch; only the
+API call does. A recorded ruleset the platform has never been told about
+protects nothing, which is the reads-as-solved half-state DEV-001 exists to
+catch, one domain over. So the assert says *intent only* in its own message, and
+the `remote` block is unchanged — still `SKIPPED (no credentials)`, still the
+verdict that would say the branch is protected. Every deployed run in
+`tests/test_gate_repo_deploy.py` exits `3`, never `0`, and the test that asserts
+it says why.
+
+### One statement of "protected", read twice
+
+The recorded file and the remote check take the **same** `args:` —
+`require_pull_request`, `require_status_checks`, `allow_force_push`. Two blocks
+would be two definitions, free to drift, and the drift would be invisible until
+Phase 3 made the second one executable. That is the worst moment to discover it,
+so `test_the_register_states_the_requirements_once` compares them.
+
+One mapping is stated rather than inferred: `allow_force_push: false` becomes
+GitHub's `non_fast_forward` rule. The register says what is *allowed* and GitHub
+names what is *blocked*, and reading one as the other is how a control ends up
+inverted.
+
+### Three things GitHub accepts and the checker does not
+
+Each is a ruleset that exists and protects less than it appears to:
+
+| Recorded | Why it fails |
+| --- | --- |
+| `enforcement: evaluate` | Reports what would have happened and blocks nothing — declared and unreachable |
+| `include: ["refs/heads/main"]` | Stops protecting the default branch the day the default moves, silently |
+| The file untracked | Nobody can review it, and the remote block cannot be reached without credentials either — so *nothing* about the control would have been verified |
+
+### JSONC, and the filter that has to survive it
+
+The record carries a `//` stamp, so it is JSONC, as `.devcontainer/devcontainer.json`
+is and for the same reason: a file that cannot carry a comment cannot carry its
+own provenance. GitHub's API takes strict JSON, so Step 2 pipes the file through
+`grep -v '^[[:space:]]*//'` on the way out.
+
+That is a filter on a payload rather than a second copy of the ruleset — but it
+only works while every comment sits on a line of its own.
+`test_the_recorded_ruleset_is_valid_json_once_the_comments_are_stripped` runs
+the gate's own filter over the gate's own template and parses the result, so a
+trailing comment fails here rather than at the API call.
+
+### The confirmation no test can hold
+
+This gate calls an API whose effect is immediate and shared. No test can prove a
+model asks first. What can be held is that the skill says to, in terms that name
+the blast radius — *it affects every collaborator, not only you* — that it does
+not treat `standard-adopt`'s plan approval as covering a call that is not a
+file, and that a failed call is never retried with a weaker ruleset. Those four
+sentences are asserted in `test_the_skill_confirms_before_it_calls`, which is a
+weaker guarantee than the others in this repository and is labelled as one.
+
+### What this repository recorded
+
+Adopted, not deployed. The ruleset was created by hand on 2026-08-17 and
+`GET /rulesets/20937135` returns four rules, not three: `pull_request`,
+`required_status_checks`, `non_fast_forward` and `deletion`. The record
+transcribes all four.
+
+`deletion` is not one of CI-001's requirements, and keeping it is deliberate. An
+extra rule adds a restriction; what the control forbids is removing a required
+one. A record that disagreed with what is enforced would be worse than one
+carrying more than the register asks for — and it is the disagreement, not the
+extra rule, that this file exists to make visible.
+
+Stated as a limit rather than left implicit: the assert checks that the required
+rules are **present**, not that no others are. CI-001 is `variance: forbidden`,
+and a stricter reading would fail this repository for protecting its branch more
+than the register asks. If that reading is wanted, it is a register change.
+
+### Preflight P1–P11 — `gate-repo`
+
+```text
+{"skill": "gate-repo", "overall": "PASS", "fails": 0}
+```
 
 ## Decisions the next slice needs
 
