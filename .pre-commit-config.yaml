@@ -29,12 +29,27 @@ repos:
         entry: gitleaks protect --staged --no-banner --redact
         language: system
         pass_filenames: false
+      # ee-control: LNT-001  ee-skill: gate-quality@0.1.0  register: v0.12.0  register-contract: 12
+      #
+      # Adopted rather than deployed from nothing, as SEC-001's hook above was:
+      # hand-wired in Phase 0.5, before there was a gate to write it. The entry
+      # differs from what templates/precommit-hooks.yaml renders in one place —
+      # `--force-exclude`, so the hook honours [tool.ruff] exclude when
+      # pre-commit passes filenames — and that difference is narrowing.
+      #
       # LNT-001 — reads [tool.ruff] in pyproject.toml, the single definition.
       - id: ruff
         name: ruff check (LNT-001)
         entry: uv run ruff check --force-exclude
         language: system
         types: [python]
+      # ee-control: TYP-001  ee-skill: gate-quality@0.1.0  register: v0.12.0  register-contract: 12
+      #
+      # Adopted, not deployed. `pass_filenames: false` is deliberate: mypy is
+      # given the roots [tool.mypy] files names, so that one list is the
+      # coverage the checker reads back (§ H, `coverage_key`) rather than
+      # whatever pre-commit happens to have staged.
+      #
       # TYP-001 — reads [tool.mypy] in pyproject.toml (strict).
       - id: mypy
         name: mypy --strict (TYP-001)

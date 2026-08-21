@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.11.0
+version: 0.12.0
 
 meta:
   owner: platform-engineering
@@ -55,7 +55,21 @@ meta:
   #     `tools.<tool>.release_repo` records where a literal tool's release is
   #     fetched from — the one value `gate-secrets` needed and could not derive,
   #     because it existed only inside a `# renovate: depName=` annotation.
-  register_contract: 11
+  # 12: LNT-001, TYP-001 and TST-001 name the gate that writes their artefacts.
+  #     `gate-quality` is the first gate to own more than one control, and
+  #     `deployed_by` is what makes "which gate deploys this" a register fact
+  #     rather than something read off a skill's prose. LNT-001 carries the
+  #     `provenance_stamp_present` block of its own, because the assert now
+  #     reads back the stamp of the control it is evaluating rather than any
+  #     stamp its gate wrote anywhere. A gate that deploys three controls is
+  #     where those two stop being the same statement: before this, a stamp
+  #     naming TST-001 satisfied LNT-001 and the editor locus could go
+  #     unstamped with nothing reporting it.
+  #     `stacks.<stack>.gates.<role>.invocation` now names the path that reaches
+  #     the artefact the lockfile pins rather than a bare tool name, which is
+  #     ADR 0020 applied to the quality gates: `gate-quality` writes that string
+  #     at every locus, so a bare name would deploy a locus resolving from PATH.
+  register_contract: 12
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -243,7 +257,15 @@ stacks:
     gates:
       lint:
         tool: ruff
-        invocation: ruff check
+        # ADR 0020 applied to the quality gates. `invocation` is what every
+        # locus runs and what the checker matches a CI step against, so a bare
+        # `ruff check` is a locus that resolves from PATH — the same fall-through
+        # `npx --no-install` had for DOC-001 (§ H6), verified against whatever
+        # global happens to be installed rather than against the version the
+        # lockfile pins. `uv run` reaches uv.lock's artefact and fails when it
+        # is absent. `gate-quality` writes this string verbatim at every locus,
+        # so the form here is the form deployed.
+        invocation: uv run ruff check
         pre_commit: ruff
         editor_extension: charliermarsh.ruff
         config:
@@ -252,7 +274,7 @@ stacks:
           - {file: .ruff.toml}
       typecheck:
         tool: mypy
-        invocation: mypy
+        invocation: uv run mypy
         pre_commit: mypy
         strict_key: strict
         # Where the tool's *allow-list* lives, as a dotted path from the config
@@ -276,7 +298,10 @@ stacks:
     gates:
       lint:
         tool: eslint
-        invocation: eslint
+        # The node half of the same rule, and the spelling DOC-001 already uses:
+        # `npx --no-install` and `npm exec --no --` both fall through to a global
+        # (measured, ADR 0020); the lockfile's own binary path does not.
+        invocation: node_modules/.bin/eslint
         pre_commit: eslint
         editor_extension: dbaeumer.vscode-eslint
         config:
@@ -284,7 +309,7 @@ stacks:
           - {file: .eslintrc*}
       typecheck:
         tool: tsc
-        invocation: tsc
+        invocation: node_modules/.bin/tsc
         pre_commit: tsc
         strict_key: strict
         # `include` sits at the document root, not under `compilerOptions`,
@@ -639,7 +664,18 @@ controls:
         args: { role: lint }
       - kind: file
         assert: no-failure-suppression
+      # Each of `gate-quality`'s three controls reads back its own stamp. The
+      # assert used to match on the skill alone, which credited a control for
+      # any stamp its gate had written anywhere: a stamp naming TST-001
+      # satisfied LNT-001's read-back, and the editor locus could go unstamped
+      # with nothing reporting it. This is the half `lint-md` never had (§ F),
+      # and it is per control because a gate deploying three of them is where
+      # per gate stops being the same statement.
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-quality }
     owner: platform-engineering
+    deployed_by: gate-quality
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
@@ -664,7 +700,11 @@ controls:
       - kind: file
         assert: typecheck-strict-and-blocking
         args: { role: typecheck }
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-quality }
     owner: platform-engineering
+    deployed_by: gate-quality
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
@@ -690,7 +730,11 @@ controls:
         assert: tests-run-and-block
       - kind: file
         assert: no-failure-suppression
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-quality }
     owner: platform-engineering
+    deployed_by: gate-quality
     variance: forbidden
     baseline: null
     review_by: 2027-08-16

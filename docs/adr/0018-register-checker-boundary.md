@@ -236,6 +236,39 @@ class of defect this ADR exists to remove, not an instance of it to tolerate.
 | `[[tool.mypy.overrides]]` blanket-override detection | The shape of one tool's own configuration format. It is keyed on the register's tool name rather than assumed, so a repository mandating a different checker has no such table read against it |
 | The closed set of gate roles (`lint`, `typecheck`) | A property of the register format: a role the checker has no assert for could not be verified however well it were declared |
 
+### Applied — fifth pass, register contract 12
+
+One rule, and it moves *into* the checker rather than out of it — the direction
+this ADR's test also has to answer, or "record the reason" becomes a rule for
+one direction only.
+
+`provenance_stamp_present` reads back the stamp of the control whose verify
+block is running. The control's id therefore has to reach the assert, and there
+were two places it could come from.
+
+| Rule | Where it lives | Why |
+| --- | --- | --- |
+| Which control a stamp read-back is about | Checker: the runner supplies `args[CONTROL_ARG]` from the block's own position | *No.* A control's own id, written into that control's own entry, is a second copy of it — in the one file this repository maintains to prevent second copies. Worse than redundant: the copy is free to name a *different* control from the one it sits under, so a stamp read-back could report on somebody else's deployment. There is exactly one right answer and the block's position already gives it |
+
+The schema rejects a register that supplies the key itself, so the two sources
+cannot both exist. That rejection is the same shape as the `deployed_by` rule
+recorded at contract 11: two fields naming one fact, held equal by the
+validator rather than by care.
+
+**What forced it.** Matching stamps by *skill* was correct while a gate owned
+one control, and became a false green the moment one owned three:
+`gate-quality` deploys LNT-001, TYP-001 and TST-001, and a stamp naming any of
+them satisfied the read-back of all three. A gate that wrote every artefact and
+recorded only the CI steps passed with the editor locus unstamped. The rule did
+not change; the number of controls behind it did, which is the same way § H
+found four ticked criteria that were not met.
+
+**What it still does not check**, stated because a half-closed hole reads as a
+closed one: *how many* artefacts a gate should have stamped, and at which loci.
+That list is the plugin's `deploys.json`, not the register's, and reading a
+plugin from the checker is Phase 5's sweep. Each control now proves its own
+deployment was recorded. No control proves the deployment was complete.
+
 ## Consequences
 
 **Positive outcomes:**

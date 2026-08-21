@@ -388,7 +388,9 @@ gates are what make the template's output verifiable.
 
 Order within the phase: `gate-secrets` first, as the reference implementation.
 It exercises every locus (`pre-commit`, `ci`, and `remote` in Phase 3), so
-whatever shape works for it works for the rest. The others follow it.
+whatever shape works for it works for the rest. `gate-quality` second, as the
+first gate owning more than one control — where "grouped by the artefact they
+write" has to hold for three controls sharing two files. The others follow.
 
 Alongside them, the `.devcontainer/` **template** per
 [`03-devcontainer.md`](03-devcontainer.md) — image digest-pinned,
@@ -406,8 +408,8 @@ fixed in both.
 - [ ] Every adopter-facing step this phase introduces is in
       [`08-adopting.md`](08-adopting.md) with its evidence — the gate skills'
       prerequisites, what `standard-adopt` needs before it can run, and what the
-      template requires of a repository that copies it. `gate-secrets`'
-      prerequisites are written down; the other two are not
+      template requires of a repository that copies it. `gate-secrets` (§ 3.1)
+      and `gate-quality` (§ 3.2) have theirs written down; the other two do not
 
 - [x] `gate-secrets` deploys onto a repo with none of its config, and
       `standard-check` then reports SEC-001 PASS for its local loci — closed
@@ -416,10 +418,15 @@ fixed in both.
       deleted in turn and watched failing, in
       [`10-phase-2-review.md`](10-phase-2-review.md)
 - [ ] Every gate writes a provenance stamp its own verify step reads back —
-      holds for `gate-secrets`, and the mechanism the rest inherit is in place:
-      `provenance_stamp_present`, and a schema rule that rejects a register
-      where it and `deployed_by` name different gates. Open until the gates
-      exist
+      holds for `gate-secrets` and for `gate-quality`, and the mechanism the
+      rest inherit is in place: `provenance_stamp_present`, and a schema rule
+      that rejects a register where it and `deployed_by` name different gates.
+      Open until the gates exist. Reading back is now **per control**: a gate
+      that wrote every artefact and recorded only one of them fails the other
+      two. What no control proves is that the deployment was *complete* — how
+      many artefacts, at which loci — because that list is the plugin's
+      `deploys.json` and reading it is Phase 5's sweep
+      ([ADR 0018](adr/0018-register-checker-boundary.md) § Applied — fifth pass)
 - [x] Gates and checker share one assert implementation — verified by there
       being one copy, not by comparing two. Closed 2026-08-19: the copy is
       `standard_check.asserts`, a gate reaches it only through
@@ -443,11 +450,19 @@ fixed in both.
       deleting the artefact and watching that locus fail — not inferred from
       where the version is recorded ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)).
       The criterion above is about the *source* of a version; `npx --no-install`
-      satisfied it while falling through to `PATH` (§ H6)
+      satisfied it while falling through to `PATH` (§ H6). Shown for DOC-001,
+      and now measured for the quality gates too: contract 12 moved their four
+      `stacks:` invocations to the artefact-reaching form, and deleting the
+      artefact makes `uv run` reinstall the pin or fail — never fall through
+      ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) § Applied to
+      the quality gates). Open for the loci the remaining gates will write, and
+      for one residual: `uv run` *does* fall through when the tool is absent
+      from the project altogether, which the invocation cannot close
 
-- [ ] Every SKILL.md passes preflight P1–P11 — `gate-secrets` passes with zero
-      failures (`10-phase-2-review.md` § Preflight P1–P11). Open until the other
-      eight skills exist
+- [ ] Every SKILL.md passes preflight P1–P11 — `gate-secrets` and
+      `gate-quality` both pass with zero failures (`10-phase-2-review.md`
+      § Preflight P1–P11, and § Preflight P1–P11 — `gate-quality`). Open until
+      the other seven skills exist
 - [ ] `standard-adopt` end-to-end on a scratch repo: plan → confirm → deploy →
       verify → commit, with the verify step genuinely able to fail
 

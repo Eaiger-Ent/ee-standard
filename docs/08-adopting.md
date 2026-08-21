@@ -24,14 +24,16 @@ prevent, so the gaps are stated rather than glossed.
 | Platform prerequisites (this document, § 1) | **Exists**, manual | Below |
 | A devcontainer you can copy | **Exists** for this repo; the generalised template is Phase 2 | `.devcontainer/` |
 | `gate-secrets` — deploys SEC-001, checks SEC-002 | **Exists** | `plugins/ee-standard/skills/gate-secrets/` |
-| The other five `gate-*` skills | **Phase 2 — not built** | `docs/02-skill-family.md` |
+| `gate-quality` — deploys LNT-001, TYP-001, TST-001 | **Exists** | `plugins/ee-standard/skills/gate-quality/` |
+| The other four `gate-*` skills | **Phase 2 — not built** | `docs/02-skill-family.md` |
 | `standard-adopt` — one command to deploy everything | **Phase 2 — not built** | `docs/02-skill-family.md` |
 | `kind: remote` verification of platform state | **Phase 3 — not built** | Reports `SKIPPED (no credentials)` |
 
 So today, adoption is: do § 1 by hand, copy the devcontainer, run
-`/gate-secrets` for the secrets gate, wire the remaining gates by hand using
-this repository as the worked example, and run the checker. When Phase 2
-finishes, most of § 2 and § 3 becomes one command.
+`/gate-secrets` for the secrets gate and `/gate-quality` for the lint, type and
+test gates, wire the remaining gates by hand using this repository as the worked
+example, and run the checker. When Phase 2 finishes, most of § 2 and § 3 becomes
+one command.
 
 ## 1 — Platform state: what only a human with admin can do
 
@@ -144,9 +146,9 @@ What matters when you adapt it:
 
 ## 3 — The gates
 
-One gate is built — see § 3.1. For the rest, until Phase 2 ships them, wire the
-gates by copying this repository's own artefacts, which are the reference
-implementation:
+Two gates are built — see § 3.1 and § 3.2. For the rest, until Phase 2 ships
+them, wire the gates by copying this repository's own artefacts, which are the
+reference implementation:
 
 | Locus | File here | What it gives you |
 | --- | --- | --- |
@@ -204,13 +206,58 @@ act in § 1 that only an admin can take.
    the first kind was hiding; do not move it somewhere quieter.
 
 **Wiring by hand instead?** Then stamp what you write. SEC-001's verify reads
-back a provenance stamp naming the gate that deploys it, so a hand-wired hook
-with no stamp fails. Say in the stamp's comment that it was adopted rather than
+back a provenance stamp naming SEC-001 and the gate that deploys it, so a
+hand-wired hook with no stamp fails. Say in the stamp's comment that it was adopted rather than
 deployed — this repository's own two artefacts do exactly that, because they
 were written in Phase 0.5 before there was a gate to write them, and a stamp
 claiming otherwise would be a record of something that did not happen.
 
-### 3.2 — Your register records your own files
+### 3.2 — `gate-quality`, and the three controls it deploys together
+
+`/gate-quality` wires LNT-001, TYP-001 and TST-001. Three controls and one skill
+because they share two files: a pre-commit config and a gating workflow. Three
+separate skills writing those in turn would each rewrite what the last one
+wrote, which is why gates are grouped by the artefact they write.
+
+**Four prerequisites, and how you know each is met.**
+
+| Prerequisite | Why | How you know it worked |
+| --- | --- | --- |
+| A `stacks:` entry for every stack you are in | The linter, the type checker, their config locations, the strictness key and the editor extension all come from there. There is no default | `standard-check explain LNT-001` prints the control; `standard-check run --control LNT-001` names your stack in its message |
+| Each gate's `invocation` reaches the artefact your lockfile pins | That string is what the skill writes at every locus. A bare tool name resolves from `PATH`, so the deployed gate runs whatever global is installed rather than the pinned version ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) | The skill stops before writing anything and says which invocation is bare |
+| A CI job that installs from the lockfile before these steps | Lint, type check and tests run the tools that install placed. A lint step before the install lints against nothing | SUP-001 passing, and the three steps sitting after the install step in the same job |
+| A test command the register accepts for your ecosystem | `ecosystems.<name>.test_commands` bounds the set; your repository picks the member. The skill asks rather than choosing | `standard-check run --control TST-001` reports the command runs and its exit code is the verdict |
+
+**Expect exit `0` here, unlike `gate-secrets`.** All three controls verify from
+files and none declares a `remote` locus, so nothing is waiting on Phase 3. A
+`3` means a block declared itself partial — read which, rather than rounding up.
+
+**Three ways an adopter who already had these controls passing can now fail
+them.** Each is the check working, not a new rule:
+
+1. **Strictness is read, not assumed.** TYP-001 carries `baseline: null`. If
+   turning the strictness key on surfaces existing type errors, there is nowhere
+   to record them — the skill reports the count and stops rather than weakening
+   the setting it was asked to deploy.
+2. **A coverage allow-list is judged by what it leaves out.** `files = [...]` in
+   a type checker's config excludes everything it does not name, so a tracked
+   module nothing imports is unchecked while the control claims all first-party
+   source. The gate lists every such file and extends the list
+   ([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md), applied to an
+   allow-list rather than an exemption list).
+3. **A suppressed step is not a gate.** Nothing the gate writes may carry
+   `continue-on-error` or end in an idiom from the register's `suppression:`
+   list. LNT-001 and TST-001 both verify through `no-failure-suppression`, and
+   `|| true` on the lint step fails both of them at once.
+
+**Wiring by hand instead?** Stamp what you write, as § 3.1 says for the secrets
+gate — and stamp **each control's own artefacts**. All three read back a stamp
+naming themselves, so recording your CI steps and forgetting the editor locus
+fails LNT-001 even though TST-001 passes. This repository's own six
+quality-gate stamps say *adopted rather than deployed*, because the artefacts
+were hand-written in Phase 0.5 before there was a gate to write them.
+
+### 3.3 — Your register records your own files
 
 Two things in `controls.yaml` describe **the repository being checked**, not this
 one, and are the first edits an adopter makes to their copy:
@@ -282,6 +329,7 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 5 | Renovate installed, if any version is a literal | Its Dependency Dashboard lists the expected number of sites |
 | 6 | Devcontainer image digest-pinned, lock file complete, user stated | `uv run standard-check` reports DEV-001 and BLD-001 passing |
 | 7 | Gates wired at every locus the control declares | LNT-001, TYP-001, DOC-001, TST-001 passing |
+| 7b | Quality gates wired at every locus **and** stamped | `standard-check run --control LNT-001 --control TYP-001 --control TST-001` exits `0` — every block ✓, nothing skipped |
 | 7a | Secrets gate wired at pre-commit **and** CI, and stamped | `standard-check run --control SEC-001` shows both local blocks ✓ and exits `3` — the remote block is Phase 3, not a failure |
 | 8 | The conformance run is a required status check | GOV-001 passing without its partial declaration (Phase 3) |
 

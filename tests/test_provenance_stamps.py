@@ -65,6 +65,11 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
 
     The sixth is SEC-001's CI locus, stamped in Phase 2. `.pre-commit-config.yaml`
     is on both lists: it holds a hook for each control, stamped at the hook.
+
+    The seventh is LNT-001's editor locus, stamped when `gate-quality` was
+    built. Its three controls added five more stamps to the two files already
+    here, which is the point of grouping a gate by the artefact it writes: three
+    controls, two shared files, one skill that owns its own sections of each.
     """
     assert set(_stamped_files()) == {
         ".markdownlint.yaml",
@@ -76,6 +81,10 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
         # adopted by `gate-secrets` rather than deployed from nothing — the
         # stamps say so, which is what keeps them from claiming otherwise.
         ".github/workflows/standard-check.yml",
+        # `gate-quality`'s editor locus. The workflow and the pre-commit config
+        # above hold its other five stamps; this is the seventh file, and the
+        # only artefact any gate writes that is neither a hook nor a CI step.
+        ".devcontainer/devcontainer.json",
     }
 
 

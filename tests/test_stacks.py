@@ -100,7 +100,10 @@ def test_a_config_location_added_to_the_register_is_honoured(tmp_path: Path) -> 
             ".pre-commit-config.yaml": (
                 "repos:\n  - repo: local\n    hooks:\n      - id: ruff\n        entry: ruff\n"
             ),
-            ".github/workflows/ci.yml": _WORKFLOW.format(command="ruff check ."),
+            # The register's invocation is the path that reaches the lockfile's
+            # artefact, not a bare tool name (ADR 0020, contract 12), and the
+            # ci locus is matched against exactly that string.
+            ".github/workflows/ci.yml": _WORKFLOW.format(command="uv run ruff check ."),
             "house-ruff.toml": "line-length = 100\n",
         },
     )
@@ -125,7 +128,7 @@ def test_strict_key_comes_from_the_register(tmp_path: Path) -> None:
             ".pre-commit-config.yaml": (
                 "repos:\n  - repo: local\n    hooks:\n      - id: mypy\n        entry: mypy\n"
             ),
-            ".github/workflows/ci.yml": _WORKFLOW.format(command="mypy"),
+            ".github/workflows/ci.yml": _WORKFLOW.format(command="uv run mypy"),
         },
     )
     result = typecheck_strict_and_blocking(repo, a_register(), {"role": "typecheck"})

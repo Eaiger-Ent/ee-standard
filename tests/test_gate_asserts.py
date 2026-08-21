@@ -200,10 +200,16 @@ _STAMP = (
     "register: v0.11.0  register-contract: 11\n"
 )
 
+# The control whose verify block is running. The runner supplies it — the block
+# sits inside the control that answers it — so an assert evaluated here has to
+# be handed the same thing, or it is being asked a question the register never
+# asks. `_STAMP` above names SEC-001, which is what makes these two agree.
+_SEC = {"skill": "gate-secrets", "control": "SEC-001"}
+
 
 def test_a_stamp_the_gate_wrote_is_read_back(tmp_path: Path) -> None:
     repo = make_repo(tmp_path, {".pre-commit-config.yaml": _STAMP + _HOOK})
-    result = provenance_stamp_present(repo, a_register(), {"skill": "gate-secrets"})
+    result = provenance_stamp_present(repo, a_register(), _SEC)
     assert result.passed, result.message
     assert ".pre-commit-config.yaml" in result.message
 
@@ -211,7 +217,7 @@ def test_a_stamp_the_gate_wrote_is_read_back(tmp_path: Path) -> None:
 def test_no_stamp_at_all_fails(tmp_path: Path) -> None:
     """The § F state: artefacts deployed, and no record that they were."""
     repo = make_repo(tmp_path, _WIRED)
-    result = provenance_stamp_present(repo, a_register(), {"skill": "gate-secrets"})
+    result = provenance_stamp_present(repo, a_register(), _SEC)
     assert not result.passed
     assert "gate-secrets" in result.message
 
@@ -220,14 +226,14 @@ def test_another_gates_stamp_does_not_answer_for_this_one(tmp_path: Path) -> Non
     repo = make_repo(
         tmp_path, {".pre-commit-config.yaml": _STAMP.replace("gate-secrets", "lint-md") + _HOOK}
     )
-    assert not provenance_stamp_present(repo, a_register(), {"skill": "gate-secrets"}).passed
+    assert not provenance_stamp_present(repo, a_register(), _SEC).passed
 
 
 def test_a_stamp_naming_an_unknown_control_is_a_defect(tmp_path: Path) -> None:
     repo = make_repo(
         tmp_path, {".pre-commit-config.yaml": _STAMP.replace("SEC-001", "SEC-999") + _HOOK}
     )
-    result = provenance_stamp_present(repo, a_register(), {"skill": "gate-secrets"})
+    result = provenance_stamp_present(repo, a_register(), _SEC)
     assert not result.passed
     assert "SEC-999" in result.message
 
@@ -245,7 +251,7 @@ def test_a_stamp_ahead_of_the_register_is_a_defect(tmp_path: Path) -> None:
             + _HOOK
         },
     )
-    result = provenance_stamp_present(repo, register, {"skill": "gate-secrets"})
+    result = provenance_stamp_present(repo, register, _SEC)
     assert not result.passed
     assert str(ahead) in result.message
 
@@ -261,13 +267,13 @@ def test_a_stamp_behind_the_register_is_staleness_and_passes(tmp_path: Path) -> 
             + _HOOK
         },
     )
-    assert provenance_stamp_present(repo, a_register(), {"skill": "gate-secrets"}).passed
+    assert provenance_stamp_present(repo, a_register(), _SEC).passed
 
 
 def test_an_untracked_artefact_carries_no_evidence(tmp_path: Path) -> None:
     repo = make_repo(tmp_path, _WIRED)
     (tmp_path / "scratch.yaml").write_text(_STAMP, encoding="utf-8")
-    assert not provenance_stamp_present(repo, a_register(), {"skill": "gate-secrets"}).passed
+    assert not provenance_stamp_present(repo, a_register(), _SEC).passed
 
 
 def test_the_schema_rejects_a_stamp_that_reads_back_a_different_gate(tmp_path: Path) -> None:
@@ -301,6 +307,61 @@ def test_the_schema_rejects_a_stamp_block_with_no_deployed_by(tmp_path: Path) ->
     assert any("deployed_by" in str(error) for error in errors), errors
 
 
+def test_a_stamp_for_a_sibling_control_does_not_satisfy_this_one(tmp_path: Path) -> None:
+    """The hole per-gate matching left, closed.
+
+    `gate-quality` deploys three controls. Matching on the skill alone credited
+    any of them for any stamp the gate had written anywhere, so a gate that
+    stamped its CI steps and forgot the editor locus passed all three. Here the
+    only stamp names TST-001, and LNT-001 — which the gate also deploys — has
+    nothing of its own to read back.
+    """
+    stamp = _STAMP.replace("SEC-001", "TST-001").replace("gate-secrets", "gate-quality")
+    repo = make_repo(tmp_path, {".pre-commit-config.yaml": stamp + _HOOK})
+    args = {"skill": "gate-quality", "control": "LNT-001"}
+    result = provenance_stamp_present(repo, a_register(), args)
+    assert not result.passed
+    assert "no stamp names LNT-001" in result.message
+    # And the sibling it *did* stamp still passes, so this is about which
+    # control was recorded rather than about the file being unreadable.
+    assert provenance_stamp_present(
+        repo, a_register(), {"skill": "gate-quality", "control": "TST-001"}
+    ).passed
+
+
+def test_the_assert_says_so_when_run_outside_a_control(tmp_path: Path) -> None:
+    """`standard-check assert <name>` evaluates an assert with no control.
+
+    A verdict invented for a question nobody asked is worse than the refusal:
+    this assert's whole subject is *which* control's deployment was recorded.
+    """
+    repo = make_repo(tmp_path, {".pre-commit-config.yaml": _STAMP + _HOOK})
+    result = provenance_stamp_present(repo, a_register(), {"skill": "gate-secrets"})
+    assert not result.passed
+    assert "run --control" in result.message
+
+
+def test_the_schema_rejects_a_register_that_supplies_the_control_itself(
+    tmp_path: Path,
+) -> None:
+    """A control's own id, written into its own entry, is a second copy of it.
+
+    Free to name a different control from the one it sits under — which would
+    make a stamp read-back report on somebody else's deployment. The checker
+    supplies it instead, from the block's own position.
+    """
+
+    def mutate(document: dict[str, Any]) -> None:
+        for control in document["controls"]:
+            if control["id"] == "SEC-001":
+                for block in control["verify"]:
+                    if block.get("assert") == "provenance_stamp_present":
+                        block["args"]["control"] = "SEC-001"
+
+    with pytest.raises(AssertionError):
+        register_with(tmp_path, mutate)
+
+
 def test_a_stamp_is_found_without_reading_the_whole_tree(tmp_path: Path) -> None:
     """The lookup is `git grep`, and it agrees with reading every file.
 
@@ -311,7 +372,7 @@ def test_a_stamp_is_found_without_reading_the_whole_tree(tmp_path: Path) -> None
     files = {f"pkg/mod{i}.py": f"VALUE = {i}\n" for i in range(50)}
     files[".pre-commit-config.yaml"] = _STAMP + _HOOK
     repo = make_repo(tmp_path, files)
-    result = provenance_stamp_present(repo, a_register(), {"skill": "gate-secrets"})
+    result = provenance_stamp_present(repo, a_register(), _SEC)
     assert result.passed, result.message
     assert ".pre-commit-config.yaml" in result.message
     assert "pkg/mod0.py" not in result.message

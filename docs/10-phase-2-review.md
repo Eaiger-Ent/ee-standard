@@ -1,15 +1,22 @@
-# Phase 2 review — the reference gate
+# Phase 2 review — the gates
 
 The evidence for Phase 2's criteria, so that
 [`04-build-plan.md`](04-build-plan.md) can stay a list of outstanding work.
 A criterion there is one checkable sentence; the reasoning for a tick is here.
 
-**Scope of this record.** It covers the first slice of Phase 2: the plugin
-skeleton, the assert entry point gates verify through, and `gate-secrets` — the
-reference implementation the plan puts first *"as the reference implementation…
-whatever shape works for it works for the rest"*. The other five gates,
-`standard-adopt` and the devcontainer template are still outstanding, and the
-criteria that name them are still open.
+**Scope of this record.** Two slices so far.
+
+The first covered the plugin skeleton, the assert entry point gates verify
+through, and `gate-secrets` — the reference implementation the plan puts first
+*"as the reference implementation… whatever shape works for it works for the
+rest"*.
+
+The second is `gate-quality`, recorded in § The second gate below. It is the
+first gate that owns more than one control, so it is where "grouped by the
+artefact they write" stops being a sentence in a design document and becomes a
+shape three controls have to share. The other four gates, `standard-adopt` and
+the devcontainer template are still outstanding, and the criteria that name them
+are still open.
 
 ## What closed, and how
 
@@ -202,12 +209,193 @@ once the register fills them, and that **no value the register pins appears
 anywhere under `plugins/`**. The last is the rule that stops a gate becoming a
 second register, and it is a grep rather than a convention.
 
+## The second gate
+
+`gate-quality` deploys LNT-001, TYP-001 and TST-001. Three controls and one
+skill because they share two files: three skills writing the same
+`.pre-commit-config.yaml` and the same workflow in turn would each rewrite what
+the last one wrote.
+
+### It deploys onto a repo with none of its config
+
+Same shape as `gate-secrets`' criterion, same reason this repository cannot be
+the subject: it has run a linter, a type checker and a test suite since Phase
+0.5. `tests/test_gate_quality_deploy.py` builds the subject — Python source, a
+devcontainer, a CI workflow that gates on `push` and `pull_request` and installs
+from a lockfile, and no quality gate of any kind.
+
+Before deploying, all three fail, and they name the loci rather than the files:
+
+```text
+LNT-001  FAIL  editor locus — no editor configuration installs <extension>;
+               pre-commit locus — no <tool> hook;
+               ci locus — no gating step runs <invocation>
+TYP-001  FAIL  … and: no tracked file carries a provenance stamp naming
+               'gate-quality'
+TST-001  FAIL  no CI step runs the test command
+```
+
+After deploying from the shipped templates, `standard-check run --control
+LNT-001 --control TYP-001 --control TST-001` exits `0` — not `3`. That
+difference from `gate-secrets` is the point rather than an accident: all three
+controls verify from files and none declares a `remote` locus, so there is
+nothing Phase 3 is holding back and nothing to round up.
+
+### Every artefact broken in turn, and watched failing
+
+A verify step that has never been observed failing is not known to work. Nine
+breakages, each producing the verdict that names it. Run twice, against two
+subjects, because they answer different questions: against the throwaway
+repository in `tests/test_gate_quality_deploy.py`, where six of them are kept as
+tests so a regression is caught rather than remembered; and against a scratch
+copy of **this** repository, which is the deployment an adopter would read as
+the worked example. The messages quoted below are that second run's — a real
+repository's filenames rather than a fixture's:
+
+| What was broken | Verdict |
+| --- | --- |
+| Editor extension removed from `devcontainer.json` | LNT-001 FAIL — *editor locus — no editor configuration installs charliermarsh.ruff* |
+| The lint hook removed from `.pre-commit-config.yaml` | LNT-001 FAIL — *pre-commit locus* |
+| The Lint step removed from the workflow | LNT-001 FAIL — *ci locus* |
+| The Type check step removed | TYP-001 FAIL — *ci locus — no gating step runs uv run mypy* |
+| Strictness switched off in the config | TYP-001 FAIL — *mypy strict mode is not set* |
+| The Tests step removed | TST-001 FAIL — *no CI step runs the test command* |
+| `\|\| true` appended to the Lint step | LNT-001 **and** TST-001 FAIL — both verify through `no-failure-suppression` |
+| A root dropped from the coverage allow-list | TYP-001 FAIL — *tool.mypy.files does not cover 1 tracked python file (scripts/plan_progress.py)* |
+| Every `gate-quality` stamp removed, artefacts left in place | LNT-001 FAIL — *no tracked file carries a provenance stamp naming 'gate-quality'* |
+| Every artefact written, and only TST-001's stamp kept | LNT-001 **and** TYP-001 FAIL — *no stamp names LNT-001*; TST-001 still passes, so the failure is about the record and not the file |
+
+The last four are the ones worth reading twice. Each leaves every artefact in
+place: a suppressed step, a coverage list that quietly excludes, a deployment
+nothing records, and a deployment recorded for one control out of three. All
+four are gates that look deployed and are not.
+
+### What the second gate needed from the register
+
+**`invocation` had to name the artefact, not the tool.** `stacks:` recorded
+`ruff check` and `mypy` — bare names. The checker only ever *matched* them
+against a CI step, and this repository's steps say `uv run …`, so the substring
+matched and nothing was wrong. A gate is different: it **writes** that string at
+every locus, and a bare name deploys a hook and a CI step that resolve from
+`PATH`. That is exactly the fall-through ADR 0020 measured for `npx
+--no-install` (§ H6), arriving by a different route — a value that was only ever
+read is now also written, and the two uses have different requirements.
+
+Contract 12 sets all four invocations to the form that reaches the pinned
+artefact: `uv run …` for the Python stack, `node_modules/.bin/…` for the
+TypeScript one, which is the spelling DOC-001 already uses. Two test fixtures
+that had encoded the bare form moved with it.
+
+**And it was measured rather than assumed.** ADR 0020 was written from npm's
+evidence, and `uv run` is a different mechanism, so the claim was probed:
+deleting the artefact makes `uv run` reinstall the pin, and makes it *fail* when
+it cannot — it never reaches an impostor on `PATH`. That is the criterion
+*delete the artefact and watch the locus fail*, demonstrated in a second
+ecosystem. One residual is recorded rather than glossed: `uv run` does fall
+through to `PATH` when the tool is absent from the project altogether, which is
+a different and smaller condition than `npx --no-install`'s, and is the decision
+the next slice inherits. The full measurement is in
+[ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) § Applied to the
+quality gates.
+
+**`deployed_by` on three controls, and a stamp block on each.** The first
+draft of this slice gave the three controls one shared block, on the reasoning
+that `provenance_stamp_present` matched stamps by *skill*, so three copies would
+evaluate the same files three times. That reasoning was correct and the
+conclusion was wrong: matching by skill is what made the copies redundant, and
+matching by skill is itself the defect. A stamp naming TST-001 satisfied
+LNT-001's read-back, so a gate that wrote every artefact and recorded only the
+CI steps passed all three with the editor locus unstamped.
+
+The assert now reads back the stamp of the control it is evaluating, the id
+arrives from the runner rather than from `args:`, and each control carries its
+own block. The reasoning is recorded in
+[ADR 0018](adr/0018-register-checker-boundary.md) § Applied — fifth pass,
+because it puts a rule *in* the checker and that direction owes a reason too.
+
+A test holds the sidecar to the register as well: a control the register assigns
+to a gate must appear under that gate.
+
+### The one value the register does not settle
+
+The test command. `ecosystems.<name>.test_commands` records the spellings the
+standard accepts; which one a repository uses is that repository's own fact, and
+neither the register nor the skill can know it. So the gate **asks**, offering
+exactly that set, and writes the answer — and says when it asks that the answer
+must also reach the artefact the lockfile pins, which `pytest` does not and
+`uv run pytest` does.
+
+This is the difference between a value a skill invents and a value a skill
+elicits. Inventing `pytest` would have put a rule in a skill; asking, from a set
+the register bounds, puts the decision where it belongs and leaves the record in
+the workflow for anyone to read.
+
+### `deploys.json` carries one contract per gate
+
+The first slice recorded this as a decision the second gate would force, and it
+did. The sidecar is now keyed by gate — `schemaVersion: 2`, with
+`contractVersion`, `controls` and `artifacts` under each — because a
+plugin-wide number would have made `gate-quality`'s first release recommend
+redeploying `gate-secrets`, which changed nothing. Phase 5's criteria are *a
+version bump produces no recommendation, a contract bump does*; a contract that
+fires for the wrong gate fails the second while appearing to pass it.
+
+`skill-update` still reads one file at one path, so the widening in
+[`05-promotion.md`](05-promotion.md) is unaffected — the gate a stamp names is
+the key to compare against.
+
+### This repository's own quality artefacts were unstamped
+
+Six stamps, across the three files those artefacts already lived in, all saying
+**adopted rather than deployed from nothing** — hand-wired in Phase 0.5, before
+there was a gate to write them. `.devcontainer/devcontainer.json` is the seventh
+stamped file in this repository and the only artefact any gate writes that is
+neither a hook nor a CI step.
+
+One difference from the template is recorded in its own stamp comment rather
+than smoothed over: the lint hook carries `--force-exclude`, so it honours the
+tool's own exclude list when pre-commit passes filenames. That is a narrowing,
+and `variance: narrowing-only` permits it.
+
+### Preflight P1–P11 — `gate-quality`
+
+Run with the same `preflight-check.sh` from `skill-preflight@0.1.15`:
+
+```text
+P1 line count           PASS  384 / 500
+P2 description length   PASS  226 / 250
+P3 name field           PASS  gate-quality
+P4 invocation           PASS  side-effect verbs present; disable-model-invocation=true
+P5 argument-hint        PASS  no $ARGUMENTS usage
+P6 supporting files     PASS  all sibling files referenced from SKILL.md
+P7 dependencies.json    PASS  not required
+P8 ${CLAUDE_SKILL_DIR}  PASS  every path ref resolves
+P9 sub-skill invocation PASS  none
+P10 duplicate directory PASS  one location
+P11 argument flags      PASS
+overall: PASS, 0 failures
+```
+
+Two skills of the nine now pass. The criterion says *every* SKILL.md, so it
+stays open.
+
+### What is now stale, on purpose
+
+`gate-secrets`' two stamps read `register-contract: 11` against a register at
+12. That is staleness, and staleness is reported and never enforced
+(`00-concepts.md` § Notify, never redeploy) — `provenance_stamp_present` fails a
+stamp *ahead* of the register, never one behind. Nothing about SEC-001 changed
+at contract 12, and rewriting those stamps by hand would record a redeployment
+that did not happen. Left as it is, deliberately, and it is the first live
+instance of the state Phase 5's sweep exists to report.
+
 ## Decisions the next slice needs
 
 Recorded here rather than settled silently, in the shape § H used.
 
 | Decision | Why it cannot be deferred past the second gate |
 | --- | --- |
-| `deploys.json` carries one `contractVersion` for the whole plugin. With six gates in one plugin, changing what `gate-quality` writes would recommend redeploying `gate-secrets` — the noise Phase 5's first two criteria exist to prevent | Phase 5's criteria are *a version bump produces no recommendation, a contract bump does*. A per-plugin contract makes the second one fire for gates that did not change, and that is discovered as noise rather than as a bug |
+| ~~`deploys.json` carries one `contractVersion` for the whole plugin~~ — **settled** by the second gate, see § `deploys.json` carries one contract per gate | Phase 5's criteria are *a version bump produces no recommendation, a contract bump does*. A per-plugin contract makes the second one fire for gates that did not change, and that is discovered as noise rather than as a bug |
 | A repo-root `LICENSE`, copied into the plugin | `check_plugin_license.py` fails without it and `pyproject.toml` already declares Apache-2.0. Phase 6 holds the criterion; the plugin directory exists from now on without one |
 | Whether `gate-secrets` should own `.devcontainer/setup.sh`'s scanner install | It is a third site repeating the version, listed in `pinned_at`, and no gate currently claims it. Today it is nobody's, which is how a locus gets forgotten |
+| Whether a stack's gate tools must be **present** in a lockfile the repository commits. Measured: `uv run <tool>` reaches the pin, and fails rather than falling through when it cannot — but falls through to `PATH` when the tool is absent from the project altogether ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) § Applied to the quality gates, case C) | It is about the pin's *existence* rather than the invocation, so it is a new assert rather than a register edit, and every gate after this one inherits whichever answer is given |

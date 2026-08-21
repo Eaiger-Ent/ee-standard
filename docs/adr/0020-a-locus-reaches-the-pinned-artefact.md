@@ -140,6 +140,55 @@ problem.
   gate whose tool is not lockfile-sourced has nothing to apply — an absence that
   has to be deliberate rather than overlooked.
 
+## Applied to the quality gates — register contract 12, measured
+
+The ADR was written from one ecosystem's evidence. `gate-quality` deploys into
+another, so the same claim had to be measured rather than assumed: contract 12
+changed `stacks.python.gates.*.invocation` from `ruff check` and `mypy` to
+`uv run ruff check` and `uv run mypy`, and the question is whether that form
+resolves the way `node_modules/.bin/` does or the way `npx --no-install` does.
+
+Measured in a probe project pinning `ruff` in `uv.lock`, with an impostor `ruff`
+on `PATH` that prints a version no lockfile mentions:
+
+```text
+A  .venv deleted, network available
+   uv run ruff --version          exit 0   ruff 0.14.1        (the pin)
+B  .venv deleted, offline, cache empty
+   uv run ruff --version          exit 1   could not install  (no fall-through)
+C  ruff removed from the project entirely
+   uv run ruff --version          exit 0   9.9.9-impostor     (PATH answered)
+D  the bare name, for comparison
+   ruff --version                 exit 0   9.9.9-impostor     (PATH answered)
+```
+
+**A and B are the property this ADR asks for.** Deleting the artefact does not
+produce a pass from somewhere else: `uv run` reinstalls the pinned version when
+it can, and fails when it cannot. It never reaches the impostor. That is the
+line `npx --no-install` failed to hold, and `uv run` holds it — so the criterion
+*deleting the artefact and watching the locus fail* is now demonstrated in a
+second ecosystem, by measurement rather than by analogy.
+
+**C is a residual, and it is a different condition.** `uv run` falls through to
+`PATH` when the tool is absent from the project altogether. `npx --no-install`
+fell through whenever the *install* was missing — a state any fresh clone is in.
+This one requires someone to remove the dependency and leave the invocation
+behind, which is a smaller and noisier hole, but it is the same shape and it is
+not closed by the invocation.
+
+What would close it is an assertion that each stack's gate tools appear in the
+lockfile of an ecosystem the repository is in — a check about the *pin's
+existence* rather than about the invocation, which is why it is not this ADR's.
+Recorded as outstanding in
+[`10-phase-2-review.md`](../10-phase-2-review.md) § Decisions the next slice
+needs rather than left as a footnote here.
+
+**D is why the register no longer records a bare name.** In this devcontainer a
+bare `ruff` resolves to `.venv/bin/ruff` because the venv is on `PATH`, and on a
+CI runner it resolves to nothing or to whatever the image ships. The same string
+meant two different things at two loci, which is the condition this ADR exists
+to remove.
+
 ## Related ADRs
 
 - [ADR 0018: Draw the Boundary Between Register and Checker](0018-register-checker-boundary.md)

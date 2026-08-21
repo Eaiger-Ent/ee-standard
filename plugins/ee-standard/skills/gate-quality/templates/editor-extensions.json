@@ -1,0 +1,29 @@
+// The editor locus. Two shapes, because the checker reads two places: a
+// repository with a devcontainer gets the first, one without gets the second.
+// Demanding the devcontainer would invent an LNT-001 dependency on DEV-001's
+// artefact, and a repository whose editor locus is `.vscode/` satisfies the
+// control (§ D). Write one of them, never both — two lists of extensions is
+// the second copy this standard exists to prevent.
+//
+// LNT-001 is the only one of this gate's three controls that declares an
+// `editor` locus, so the stamp names it alone. A stamp naming TYP-001 here
+// would claim a locus that control does not have.
+//
+// The extension id is the register's `stacks.{{STACK}}.gates.lint
+// .editor_extension`. The editor reads the same configuration pre-commit and
+// CI read — pin once, reference many — so nothing here configures rules.
+// --- .devcontainer/devcontainer.json — merged into what is already there ---
+{
+  // ee-control: LNT-001  ee-skill: gate-quality@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+  "customizations": {
+    "vscode": {
+      "extensions": ["{{EDITOR_EXTENSION}}"]
+    }
+  }
+}
+
+// --- .vscode/extensions.json — where the repository has no devcontainer ---
+{
+  // ee-control: LNT-001  ee-skill: gate-quality@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+  "recommendations": ["{{EDITOR_EXTENSION}}"]
+}

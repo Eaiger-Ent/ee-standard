@@ -17,6 +17,7 @@ from typing import Any, ClassVar
 import yaml
 
 from standard_check.asserts import ASSERTS, REMOTE_ASSERTS
+from standard_check.asserts_file import CONTROL_ARG
 from standard_check.predicates import PredicateSyntaxError, compile_predicate
 
 RUNGS = ("advisory", "warn", "blocking", "blocking (baselined)")
@@ -475,6 +476,19 @@ class _Validator:
             args = block.get("args", {})
             if not isinstance(args, dict):
                 self.error(f"{here}.args", "must be a mapping")
+                continue
+            # The runner supplies the id of the control a block belongs to, so
+            # an assert that reads a stamp back knows whose stamp. A register
+            # that wrote it here would be stating a control's own id inside its
+            # own entry — a second copy of it in the file that exists to prevent
+            # second copies, and free to name a different control than the one
+            # it sits under.
+            if CONTROL_ARG in args:
+                self.error(
+                    f"{here}.args.{CONTROL_ARG}",
+                    "is supplied by the checker from the control this block sits "
+                    "under — naming it here would be a second copy of the id",
+                )
                 continue
             blocks.append(
                 VerifyBlock(
