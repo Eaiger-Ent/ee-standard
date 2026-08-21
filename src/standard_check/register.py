@@ -86,6 +86,7 @@ _ECOSYSTEM_ALLOWED = (
     "frozen_install",
     "lock_entry",
     "add_dev_dependency",
+    "frozen_install_command",
 )
 #: The ecosystem keys every ecosystem must declare. `add_dev_dependency` is not
 #: among them: it is required only of an ecosystem a stack names, because that
@@ -266,6 +267,12 @@ class Ecosystem:
     # can fail a control for an unpinned tool and cannot pin it would deploy a
     # control it is unable to satisfy.
     add_dev_dependency: dict[str, str] = field(default_factory=dict)
+    # What a gate writes to install from the lockfile, keyed by the lockfile
+    # present, where `frozen_install` above is what the checker accepts. The
+    # schema holds the pair together: every command must match one of this
+    # ecosystem's own patterns, so a gate cannot write a step the checker will
+    # not credit.
+    frozen_install_command: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -921,9 +928,36 @@ class _Validator:
                             break
                     fields[key] = tuple(str(x) for x in value)
                 else:
-                    adds = self._add_dev_dependency(entry.get("add_dev_dependency"), at)
+                    adds = self._lockfile_commands(
+                        entry.get("add_dev_dependency"), f"{at}.add_dev_dependency"
+                    )
+                    frozen = self._lockfile_commands(
+                        entry.get("frozen_install_command"),
+                        f"{at}.frozen_install_command",
+                        placeholder=None,
+                        must_match=fields["frozen_install"],
+                    )
+                    # Required of *every* ecosystem, unlike `add_dev_dependency`:
+                    # SUP-001 applies `always`, so a gate deploying it has to be
+                    # able to write the install step for whichever package
+                    # manager the repository turns out to use. An ecosystem with
+                    # a lockfile it cannot install from is a control nothing can
+                    # deploy.
+                    uncovered = [
+                        lock for lock in fields["lockfiles"] if lock not in frozen
+                    ]
+                    if uncovered:
+                        self.error(
+                            f"{at}.frozen_install_command",
+                            "must cover every lockfile this ecosystem declares — "
+                            f"missing: {', '.join(uncovered)}",
+                        )
+                        continue
                     ecosystems[str(name)] = Ecosystem(
-                        name=str(name), add_dev_dependency=adds, **fields
+                        name=str(name),
+                        add_dev_dependency=adds,
+                        frozen_install_command=frozen,
+                        **fields,
                     )
         predicates_raw = raw.get("predicates")
         predicates: dict[str, bool | str] = {}
@@ -1052,28 +1086,47 @@ class _Validator:
             coverage_key=optional["coverage_key"],
         )
 
-    def _add_dev_dependency(self, raw: object, at: str) -> dict[str, str]:
-        """How a gate creates a missing pin, keyed by lockfile. Optional here."""
+    def _lockfile_commands(
+        self,
+        raw: object,
+        at: str,
+        *,
+        placeholder: str | None = PACKAGE_PLACEHOLDER,
+        must_match: tuple[str, ...] = (),
+    ) -> dict[str, str]:
+        """A command per lockfile — what a gate runs where the manager differs.
+
+        Two fields share this shape and both are optional here, required by a
+        rule one level up. `placeholder` names a token the command must contain;
+        `must_match` names patterns one of which the command must satisfy, which
+        is how `frozen_install_command` is held to what `frozen_install` accepts.
+        """
         if raw is None:
             return {}
         if not isinstance(raw, dict) or not raw:
-            self.error(
-                f"{at}.add_dev_dependency",
-                "must be a non-empty mapping of lockfile to command",
-            )
+            self.error(at, "must be a non-empty mapping of lockfile to command")
             return {}
         commands: dict[str, str] = {}
         for lock, command in raw.items():
             if not isinstance(command, str) or not command.strip():
-                self.error(f"{at}.add_dev_dependency.{lock}", "must be a non-empty string")
+                self.error(f"{at}.{lock}", "must be a non-empty string")
                 continue
-            if PACKAGE_PLACEHOLDER not in command:
+            if placeholder is not None and placeholder not in command:
                 # A command with nowhere to put the package name adds a
                 # different dependency every time, or none. Caught here rather
                 # than discovered by a gate mid-deployment.
+                self.error(f"{at}.{lock}", f"must contain the {placeholder} placeholder")
+                continue
+            if must_match and not any(re.search(p, command) for p in must_match):
+                # The gate writes this string and the checker reads it back
+                # through those patterns. A command outside them is a step the
+                # gate deploys and the control refuses to credit — a deployment
+                # that fails its own verification, discovered here instead.
                 self.error(
-                    f"{at}.add_dev_dependency.{lock}",
-                    f"must contain the {PACKAGE_PLACEHOLDER} placeholder",
+                    f"{at}.{lock}",
+                    f"'{command.strip()}' matches no frozen_install pattern for this "
+                    "ecosystem, so a gate writing it would deploy a step the checker "
+                    "does not credit",
                 )
                 continue
             commands[str(lock)] = command.strip()

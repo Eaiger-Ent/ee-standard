@@ -408,8 +408,9 @@ fixed in both.
 - [ ] Every adopter-facing step this phase introduces is in
       [`08-adopting.md`](08-adopting.md) with its evidence — the gate skills'
       prerequisites, what `standard-adopt` needs before it can run, and what the
-      template requires of a repository that copies it. `gate-secrets` (§ 3.1)
-      and `gate-quality` (§ 3.2) have theirs written down; the other two do not
+      template requires of a repository that copies it. `gate-secrets` (§ 3.1),
+      `gate-quality` (§ 3.2) and `gate-supply-chain` (§ 3.3) have theirs written
+      down; the other two do not
 
 - [x] `gate-secrets` deploys onto a repo with none of its config, and
       `standard-check` then reports SEC-001 PASS for its local loci — closed
@@ -418,7 +419,8 @@ fixed in both.
       deleted in turn and watched failing, in
       [`10-phase-2-review.md`](10-phase-2-review.md)
 - [ ] Every gate writes a provenance stamp its own verify step reads back —
-      holds for `gate-secrets` and for `gate-quality`, and the mechanism the
+      holds for `gate-secrets`, `gate-quality` and `gate-supply-chain`, and the
+      mechanism the
       rest inherit is in place: `provenance_stamp_present`, and a schema rule
       that rejects a register where it and `deployed_by` name different gates.
       Open until the gates exist. Reading back is now **per control**: a gate
@@ -459,12 +461,22 @@ fixed in both.
       is absent from the project altogether — closed at register contract 13,
       where `stack_tool_pinned_in_lockfile` made the pin's existence a verdict
       ([`10-phase-2-review.md`](10-phase-2-review.md) § The pin's existence).
-      Open for the loci the remaining gates will write
+      Contract 14 added SUP-003's two, whose gate is the checker itself. Open
+      for the loci the remaining gates will write
 
-- [ ] Every SKILL.md passes preflight P1–P11 — `gate-secrets` and
-      `gate-quality` both pass with zero failures (`10-phase-2-review.md`
-      § Preflight P1–P11, and § Preflight P1–P11 — `gate-quality`). Open until
-      the other seven skills exist
+- [ ] Every SKILL.md passes preflight P1–P11 — `gate-secrets`, `gate-quality`
+      and `gate-supply-chain` all pass with zero failures
+      (`10-phase-2-review.md` § Preflight P1–P11, § Preflight P1–P11 —
+      `gate-quality`, and § Preflight P1–P11 — `gate-supply-chain`). Open until
+      the other six skills exist
+- [ ] Every control's declared `locus:` is read by something. Found open in
+      Phase 2: SUP-003, BLD-001, DEV-001 and IAC-001 each declared
+      `[pre-commit, ci]` and verified only their property, so a repository with
+      no pre-commit hook of any kind reported PASS
+      ([`10-phase-2-review.md`](10-phase-2-review.md) § It found a locus nothing
+      had ever read). SUP-003 closed at register contract 14; the other three
+      close with the gates that own them
+
 - [ ] `standard-adopt` end-to-end on a scratch repo: plan → confirm → deploy →
       verify → commit, with the verify step genuinely able to fail
 

@@ -1,0 +1,30 @@
+# Written into the target repository's `.pre-commit-config.yaml`, under the
+# `repos: - repo: local` entry's `hooks:` list. Double-brace placeholders are
+# substituted from the register before the block is written; none of them is a
+# value this file is allowed to decide.
+#
+# The stamp sits at the hook rather than at the top of the file. A
+# `.pre-commit-config.yaml` holds hooks for several controls, and a whole-file
+# stamp would claim the ones this gate does not own
+# (docs/00-concepts.md § The provenance stamp).
+#
+# SUP-003's gate is the checker itself, and that is deliberate rather than
+# convenient. No third-party action linter shares this register's notion of an
+# owner-exempt action, so a second implementation would eventually disagree with
+# the first — and the disagreement would surface as a commit blocked by one
+# locus and waved through by another. {{TOOL_INVOCATION}} is the register's
+# `tools.{{TOOL}}.invocation`, written verbatim: a bare name here would be a
+# hook resolving from PATH, and for this tool what answers would be auditing
+# the repository (ADR 0020).
+#
+# `--control SUP-003` rather than a full audit, so a failing hook names the
+# control a developer has to fix rather than reporting the whole register at
+# them. `files:` limits the hook to commits that touch a workflow — the only
+# commits that can introduce an unpinned action.
+      # ee-control: SUP-003  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      - id: {{TOOL}}-supply-chain
+        name: {{TOOL}} (SUP-003)
+        entry: {{TOOL_INVOCATION}} run --control SUP-003
+        language: system
+        pass_filenames: false
+        files: ^\.github/workflows/.*\.ya?ml$

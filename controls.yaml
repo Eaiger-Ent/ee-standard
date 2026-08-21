@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.13.0
+version: 0.14.0
 
 meta:
   owner: platform-engineering
@@ -80,7 +80,23 @@ meta:
   #     `stack_tool_pinned_in_lockfile` reads the two together. Every gate after
   #     `gate-quality` inherits the answer, which is why it is settled here
   #     rather than at the gate that first needs it.
-  register_contract: 13
+  # 14: The three supply-chain controls name the gate that writes their
+  #     artefacts, and SUP-003 is verified at both loci it declares. It declared
+  #     `[pre-commit, ci]` and `actions-pinned-to-sha` read neither: it reads
+  #     the *property* — every `uses:` is a SHA — from the workflow files, and a
+  #     repository with no pre-commit hook for it at all reported PASS. That is
+  #     the shape contract 11 fixed in SEC-001, found again in three more
+  #     controls, and `supply_chain_gate_wired_at_all_loci` is the same move.
+  #     `tools.standard-check` records how a locus reaches the checker, because
+  #     SUP-003's pre-commit gate is the checker itself and a bare name resolves
+  #     from PATH (ADR 0020). `ecosystems.<name>.frozen_install_command` records
+  #     what a gate *writes* where `frozen_install` records what the checker
+  #     *accepts* — the schema requires each command to match one of its own
+  #     ecosystem's patterns, so a gate cannot write a step the checker will not
+  #     credit. `node.frozen_install` gained a bun pattern: `bun.lockb` was
+  #     listed as a lockfile with no idiom that installs from it, so a bun
+  #     repository could not satisfy SUP-001 by any spelling.
+  register_contract: 14
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -152,6 +168,21 @@ tools:
     pinned_at:
       - .devcontainer/setup.sh
       - .github/workflows/standard-check.yml
+  # The checker itself. SUP-003 and DEV-001 declare a `pre-commit` locus and
+  # have no third-party tool that could serve it — the check is this checker's
+  # own — so their pre-commit gate runs `standard-check`, and a locus that runs
+  # a bare name resolves from PATH (ADR 0020). Recorded here so the gate writes
+  # the form the repository actually uses: an adopter installs the checker as a
+  # dependency and reaches it however their package manager does.
+  #
+  # `source: lockfile` is honest in this repository as well as in an adopting
+  # one, though for a different reason: here `standard-check` is the project
+  # `uv.lock` resolves, rather than a dependency it pins. Either way `uv run`
+  # reaches the artefact uv.lock governs and nothing on PATH.
+  standard-check:
+    source: lockfile
+    lockfile: uv.lock
+    invocation: uv run standard-check
   uv:
     source: literal
     # renovate: datasource=pypi depName=uv
@@ -205,6 +236,17 @@ ecosystems:
       uv.lock: "uv add --dev {package}"
       poetry.lock: "poetry add --group dev {package}"
       pdm.lock: "pdm add --dev {package}"
+    # What a gate *writes* where `frozen_install` above records what the checker
+    # *accepts*. The two are a pair and the schema holds them together: every
+    # command here must match one of the patterns above, so a gate cannot write
+    # an install step the checker will not credit. Keyed by lockfile for the
+    # same reason `add_dev_dependency` is — `uv sync --frozen` and
+    # `poetry install --sync` are both python, and which is right is a fact
+    # about the repository rather than about the ecosystem.
+    frozen_install_command:
+      uv.lock: "uv sync --frozen"
+      poetry.lock: "poetry install --sync"
+      pdm.lock: "pdm install --frozen-lockfile"
     lock_entry:
       # uv.lock, poetry.lock and pdm.lock all spell a package the same way.
       - '(?m)^name = "{package}"$'
@@ -222,6 +264,11 @@ ecosystems:
       pnpm-lock.yaml: "pnpm add --save-dev {package}"
       yarn.lock: "yarn add --dev {package}"
       bun.lockb: "bun add --dev {package}"
+    frozen_install_command:
+      package-lock.json: "npm ci"
+      pnpm-lock.yaml: "pnpm install --frozen-lockfile"
+      yarn.lock: "yarn install --immutable"
+      bun.lockb: "bun install --frozen-lockfile"
     lock_entry:
       # package-lock.json v2+ keys by install path; pnpm and yarn (berry)
       # write `/name@version`; yarn classic writes the descriptor at the
@@ -234,11 +281,18 @@ ecosystems:
       - '\bnpm ci\b'
       - '\byarn install\b[^\n]*--immutable\b'
       - '\bpnpm install\b[^\n]*--frozen-lockfile\b'
+      # Added at contract 14. `bun.lockb` was listed as a node lockfile with no
+      # idiom that installs from it, so a bun repository could satisfy neither
+      # `ci-installs-frozen` nor the new `frozen_install_command` beside it —
+      # a lockfile the register recognised and no install it accepted.
+      - '\bbun install\b[^\n]*--frozen-lockfile\b'
   go:
     manifest: [go.mod]
     lockfiles: [go.sum]
     dependabot: [gomod]
     test_commands: ["go test"]
+    frozen_install_command:
+      go.sum: "go mod download"
     lock_entry:
       # go.sum lines are `module/path v1.2.3 h1:…`.
       - '(?m)^(?:\S+/)?{package} v'
@@ -254,6 +308,8 @@ ecosystems:
     lockfiles: [Cargo.lock]
     dependabot: [cargo]
     test_commands: ["cargo test"]
+    frozen_install_command:
+      Cargo.lock: "cargo fetch --locked"
     lock_entry:
       # Cargo.lock is TOML, one `[[package]]` table per crate.
       - '(?m)^name = "{package}"$'
@@ -264,6 +320,9 @@ ecosystems:
     lockfiles: [gradle.lockfile, gradle/verification-metadata.xml]
     dependabot: [maven, gradle]
     test_commands: ["gradle test", "mvn test"]
+    frozen_install_command:
+      gradle.lockfile: "./gradlew --offline build"
+      gradle/verification-metadata.xml: "./gradlew --offline build"
     lock_entry:
       # gradle.lockfile writes `group:artifact:version=…`;
       # verification-metadata.xml writes `<component … name="artifact" …>`.
@@ -277,6 +336,8 @@ ecosystems:
     lockfiles: [Gemfile.lock]
     dependabot: [bundler]
     test_commands: [rspec, "bundle exec rspec", "rake test"]
+    frozen_install_command:
+      Gemfile.lock: "bundle install --deployment"
     lock_entry:
       # Gemfile.lock indents `  name (version)` under `specs:`.
       - '(?m)^\s+{package} \('
@@ -559,7 +620,15 @@ controls:
         assert: ci-installs-frozen
       - kind: file
         assert: tool_versions_match_register
+      # The gate's own deployment, read back by the gate that wrote it. Per
+      # control rather than per gate: `gate-supply-chain` owns three, so a stamp
+      # naming SUP-002 satisfying SUP-001 would let the frozen-install step go
+      # unstamped with nothing reporting it (contract 12's finding, inherited).
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-supply-chain }
     owner: platform-engineering
+    deployed_by: gate-supply-chain
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
@@ -583,7 +652,11 @@ controls:
     verify:
       - kind: file
         assert: dependency_update_config_covers_all_ecosystems
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-supply-chain }
     owner: platform-engineering
+    deployed_by: gate-supply-chain
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
@@ -604,7 +677,26 @@ controls:
     verify:
       - kind: file
         assert: actions-pinned-to-sha
+      # Two loci are declared above and until contract 14 neither was read.
+      # `actions-pinned-to-sha` reads the *property* — every `uses:` is a SHA —
+      # out of the workflow files, which is not the same claim as "something
+      # enforces this at pre-commit and in CI". This repository reported PASS
+      # with no pre-commit hook for SUP-003 of any kind. Same shape as SEC-001
+      # at contract 11, same move.
+      #
+      # The gate is the checker itself: there is no third-party tool that reads
+      # this register's notion of an owner-exempt action, and a second
+      # implementation would eventually disagree with the first. `invocation`
+      # comes from `tools.standard-check`, because a locus running a bare name
+      # resolves from PATH (ADR 0020).
+      - kind: file
+        assert: supply_chain_gate_wired_at_all_loci
+        args: { tool: standard-check }
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-supply-chain }
     owner: platform-engineering
+    deployed_by: gate-supply-chain
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16

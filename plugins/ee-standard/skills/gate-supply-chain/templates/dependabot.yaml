@@ -1,0 +1,24 @@
+# Written to `.github/dependabot.yml` in the target repository. One `updates:`
+# entry per ecosystem the repository is actually in, using the
+# `package-ecosystem:` spelling the register's `ecosystems.<name>.dependabot`
+# accepts — never a spelling chosen here.
+#
+# The stamp is at the top of this file rather than at each entry, and that is
+# the one place a whole-file stamp is right: every line of it belongs to
+# SUP-002, unlike a `.pre-commit-config.yaml` shared by five controls.
+#
+# `github-actions` and `devcontainers` are not package ecosystems detected from
+# a manifest — they are repository features detected by predicate, and the
+# register's `_required_update_ecosystems` adds them for a repository that has
+# workflows or a devcontainer. Their proposals are what keep SUP-003's SHA pins
+# and DEV-001's digest pins current instead of fossilising: a pin nothing
+# updates is a pin that rots at a known version, which is a different failure
+# from an unpinned one but not a better one.
+# --- .github/dependabot.yml ---
+# ee-control: SUP-002  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+version: 2
+updates:
+  - package-ecosystem: {{ECOSYSTEM_SPELLING}}
+    directory: /
+    schedule:
+      interval: weekly

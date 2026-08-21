@@ -9,6 +9,16 @@
         ".github/workflows/standard-check.yml#secret-scan"
       ]
     },
+    "gate-supply-chain": {
+      "contractVersion": 1,
+      "controls": ["SUP-001", "SUP-002", "SUP-003"],
+      "artifacts": [
+        ".github/workflows/standard-check.yml#frozen-install",
+        ".github/dependabot.yml",
+        ".pre-commit-config.yaml#supply-chain",
+        ".github/workflows/standard-check.yml#conformance"
+      ]
+    },
     "gate-quality": {
       "contractVersion": 2,
       "controls": ["LNT-001", "TYP-001", "TST-001"],

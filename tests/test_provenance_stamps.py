@@ -70,6 +70,12 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
     built. Its three controls added five more stamps to the two files already
     here, which is the point of grouping a gate by the artefact it writes: three
     controls, two shared files, one skill that owns its own sections of each.
+
+    The eighth is `.github/dependabot.yml`, SUP-002's, and it is the one file
+    where a whole-file stamp is right rather than wrong: every line of it
+    belongs to one control. `gate-supply-chain`'s other three stamps land in
+    the workflow and the pre-commit config already listed — so the file count
+    grows by one while the stamp count grows by four.
     """
     assert set(_stamped_files()) == {
         ".markdownlint.yaml",
@@ -85,6 +91,10 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
         # above hold its other five stamps; this is the seventh file, and the
         # only artefact any gate writes that is neither a hook nor a CI step.
         ".devcontainer/devcontainer.json",
+        # SUP-002's, from `gate-supply-chain`. The only artefact any gate writes
+        # that belongs to exactly one control end to end, which is why its stamp
+        # sits at the top of the file rather than at a section of it.
+        ".github/dependabot.yml",
     }
 
 
