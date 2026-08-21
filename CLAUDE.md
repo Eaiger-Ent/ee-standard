@@ -155,8 +155,11 @@ names a real control. Seven files carry one: `.markdownlint.yaml`,
 `.devcontainer/devcontainer.json`, and — with
 one stamp per hook it owns rather than one at the top of the file —
 `.pre-commit-config.yaml`. A control whose artefacts a gate writes names it in
-`deployed_by`, and `provenance_stamp_present` reads that stamp back; the schema
-rejects a register where the two disagree. Keep the header when editing such
+`deployed_by`, and `provenance_stamp_present` reads back a stamp naming **that
+control** — not merely one naming its gate, which credited a gate's three
+controls for any stamp it had written anywhere. The control's id reaches the
+assert from the runner, and the schema rejects a register that writes it into
+`args:` itself, or one where `deployed_by` and the stamp block disagree. Keep the header when editing such
 files, note the edit in it, and respect the control's variance direction.
 
 A stamp *behind* the register is staleness, reported and never enforced —

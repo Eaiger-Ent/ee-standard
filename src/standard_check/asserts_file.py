@@ -34,6 +34,14 @@ class AssertResult:
 # how the checker became a second source of truth in the first place.
 AssertFn = Callable[[Repo, "Register", Mapping[str, object]], AssertResult]
 
+#: The one key in that mapping the register did not write. The runner adds the
+#: id of the control whose verify block is running, because an assert that reads
+#: a stamp back has to know *whose* stamp and the block already sits inside the
+#: control that answers it. It is evaluation context, not a rule — and the
+#: schema rejects a register that supplies the key itself, since a control's own
+#: id written into its own entry is a second copy of it (ADR 0018).
+CONTROL_ARG = "control"
+
 
 def _ok(message: str) -> AssertResult:
     return AssertResult(True, message)
@@ -489,13 +497,28 @@ def provenance_stamp_present(
     register: Register,
     args: Mapping[str, object],
 ) -> AssertResult:
-    """The gate that deploys this control left a stamp, and the stamp is sound.
+    """The gate that deploys this control left a stamp *for this control*.
 
     Phase 2's criterion is that every gate writes a provenance stamp *its own
     verify step reads back*. A gate that writes a stamp nothing reads has
     recorded a claim, not established one — which is how three of the four
     `lint-md` artefacts came to carry no stamp at all while `CLAUDE.md` stated
     as fact that they did (§ F).
+
+    **Per control, not per gate.** Matching on the skill alone was the shape
+    this assert shipped with, and it credited a gate for any stamp it had
+    written anywhere: `gate-quality` deploys three controls, so a stamp naming
+    TST-001 satisfied LNT-001's read-back and the editor locus could go
+    unstamped with nothing reporting it. The control being evaluated arrives as
+    `args[CONTROL_ARG]`, supplied by the runner rather than by the register —
+    writing a control's own id into its own entry would be a second copy of it
+    in the file that exists to prevent second copies.
+
+    What this still does not check is *how many* artefacts the gate should have
+    stamped, or at which loci. That list is the plugin's `deploys.json` rather
+    than the register's, and reading a plugin from the checker is Phase 5's
+    sweep. So: each control now proves its own deployment was recorded, and no
+    control proves the deployment was complete.
 
     Read back here, deliberately, is **soundness and not currency**. A stamp
     behind the register is staleness, which `docs/00-concepts.md` § Notify,
@@ -512,6 +535,15 @@ def provenance_stamp_present(
     skill = str(args.get("skill", ""))
     if not skill:
         return _fail("assert requires a 'skill' argument naming the deploying gate")
+    this_control = str(args.get(CONTROL_ARG, ""))
+    if not this_control:
+        # Reachable only through `standard-check assert <name>`, the debugging
+        # entry point, which evaluates an assert outside any control. Saying so
+        # beats inventing a verdict for a question that was not asked.
+        return _fail(
+            "assert reads back the stamp of the control it is evaluating, and was "
+            "run outside one — use `standard-check run --control <ID>`"
+        )
 
     known = {control.id for control in register.controls} | {
         control.id for control in register.meta_controls
@@ -541,9 +573,19 @@ def provenance_stamp_present(
     ]
     if problems:
         return _fail("; ".join(sorted(problems)))
+
+    for_this = sorted(
+        path for path, stamps in mine.items() if any(s.control == this_control for s in stamps)
+    )
+    if not for_this:
+        return _fail(
+            f"'{skill}' stamped {', '.join(sorted(mine))}, and no stamp names "
+            f"{this_control} — a gate that deploys several controls records each "
+            "artefact against the control whose locus it is"
+        )
     return _ok(
-        f"{skill} stamped {len(mine)} artefact{'s' if len(mine) != 1 else ''} "
-        f"({', '.join(sorted(mine))}), each naming a control the register defines"
+        f"{skill} stamped {len(for_this)} artefact{'s' if len(for_this) != 1 else ''} "
+        f"for {this_control} ({', '.join(for_this)})"
     )
 
 

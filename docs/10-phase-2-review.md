@@ -263,10 +263,12 @@ repository's filenames rather than a fixture's:
 | `\|\| true` appended to the Lint step | LNT-001 **and** TST-001 FAIL — both verify through `no-failure-suppression` |
 | A root dropped from the coverage allow-list | TYP-001 FAIL — *tool.mypy.files does not cover 1 tracked python file (scripts/plan_progress.py)* |
 | Every `gate-quality` stamp removed, artefacts left in place | LNT-001 FAIL — *no tracked file carries a provenance stamp naming 'gate-quality'* |
+| Every artefact written, and only TST-001's stamp kept | LNT-001 **and** TYP-001 FAIL — *no stamp names LNT-001*; TST-001 still passes, so the failure is about the record and not the file |
 
-The last three are the ones worth reading twice. Each leaves every artefact in
-place: a suppressed step, a coverage list that quietly excludes, and a
-deployment nothing records are all gates that look deployed and are not.
+The last four are the ones worth reading twice. Each leaves every artefact in
+place: a suppressed step, a coverage list that quietly excludes, a deployment
+nothing records, and a deployment recorded for one control out of three. All
+four are gates that look deployed and are not.
 
 ### What the second gate needed from the register
 
@@ -284,13 +286,35 @@ artefact: `uv run …` for the Python stack, `node_modules/.bin/…` for the
 TypeScript one, which is the spelling DOC-001 already uses. Two test fixtures
 that had encoded the bare form moved with it.
 
-**`deployed_by` on three controls, and one stamp block between them.**
-`provenance_stamp_present` matches stamps by *skill*, not by control, so three
-copies of the block would evaluate the same files and report the same verdict
-three times. LNT-001 carries it — the one control with an artefact at every
-locus this gate writes to — and all three carry `deployed_by`. A test holds the
-sidecar to the register in that direction: a control the register assigns to a
-gate must appear under that gate.
+**And it was measured rather than assumed.** ADR 0020 was written from npm's
+evidence, and `uv run` is a different mechanism, so the claim was probed:
+deleting the artefact makes `uv run` reinstall the pin, and makes it *fail* when
+it cannot — it never reaches an impostor on `PATH`. That is the criterion
+*delete the artefact and watch the locus fail*, demonstrated in a second
+ecosystem. One residual is recorded rather than glossed: `uv run` does fall
+through to `PATH` when the tool is absent from the project altogether, which is
+a different and smaller condition than `npx --no-install`'s, and is the decision
+the next slice inherits. The full measurement is in
+[ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) § Applied to the
+quality gates.
+
+**`deployed_by` on three controls, and a stamp block on each.** The first
+draft of this slice gave the three controls one shared block, on the reasoning
+that `provenance_stamp_present` matched stamps by *skill*, so three copies would
+evaluate the same files three times. That reasoning was correct and the
+conclusion was wrong: matching by skill is what made the copies redundant, and
+matching by skill is itself the defect. A stamp naming TST-001 satisfied
+LNT-001's read-back, so a gate that wrote every artefact and recorded only the
+CI steps passed all three with the editor locus unstamped.
+
+The assert now reads back the stamp of the control it is evaluating, the id
+arrives from the runner rather than from `args:`, and each control carries its
+own block. The reasoning is recorded in
+[ADR 0018](adr/0018-register-checker-boundary.md) § Applied — fifth pass,
+because it puts a rule *in* the checker and that direction owes a reason too.
+
+A test holds the sidecar to the register as well: a control the register assigns
+to a gate must appear under that gate.
 
 ### The one value the register does not settle
 
@@ -374,4 +398,4 @@ Recorded here rather than settled silently, in the shape § H used.
 | ~~`deploys.json` carries one `contractVersion` for the whole plugin~~ — **settled** by the second gate, see § `deploys.json` carries one contract per gate | Phase 5's criteria are *a version bump produces no recommendation, a contract bump does*. A per-plugin contract makes the second one fire for gates that did not change, and that is discovered as noise rather than as a bug |
 | A repo-root `LICENSE`, copied into the plugin | `check_plugin_license.py` fails without it and `pyproject.toml` already declares Apache-2.0. Phase 6 holds the criterion; the plugin directory exists from now on without one |
 | Whether `gate-secrets` should own `.devcontainer/setup.sh`'s scanner install | It is a third site repeating the version, listed in `pinned_at`, and no gate currently claims it. Today it is nobody's, which is how a locus gets forgotten |
-| Whether an assert that reads a stamp back should know which control it is evaluating. `provenance_stamp_present` matches by skill, so a gate that stamped one of its three artefacts and forgot the others still passes | It decides how many stamp blocks a multi-control gate carries, and every gate after `gate-quality` owns more than one control. Changing the assert's signature is a checker change with a reason ADR 0018 would have to record |
+| Whether a stack's gate tools must be **present** in a lockfile the repository commits. Measured: `uv run <tool>` reaches the pin, and fails rather than falling through when it cannot — but falls through to `PATH` when the tool is absent from the project altogether ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) § Applied to the quality gates, case C) | It is about the pin's *existence* rather than the invocation, so it is a new assert rather than a register edit, and every gate after this one inherits whichever answer is given |

@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from standard_check.asserts import ASSERTS
-from standard_check.asserts_file import AssertFn
+from standard_check.asserts_file import CONTROL_ARG, AssertFn
 from standard_check.predicates import compile_predicate
 from standard_check.register import Control, MetaControl, Register, VerifyBlock
 from standard_check.repo import NotAGitRepository, Repo
@@ -121,7 +121,9 @@ def _run_command_block(block: VerifyBlock, repo: Repo) -> BlockResult:
     return BlockResult(block, Verdict.FAIL, f"exit {completed.returncode}: {detail}")
 
 
-def run_block(block: VerifyBlock, register: Register, repo: Repo) -> BlockResult:
+def run_block(
+    block: VerifyBlock, register: Register, repo: Repo, control: Control | MetaControl | None = None
+) -> BlockResult:
     if block.kind == "command":
         return _run_command_block(block, repo)
     if block.kind == "remote":
@@ -133,7 +135,10 @@ def run_block(block: VerifyBlock, register: Register, repo: Repo) -> BlockResult
             "remote verification requires credentials (Phase 3)",
         )
     assert block.assert_name is not None
-    passed, message = guarded(ASSERTS[block.assert_name], repo, register, block.args)
+    args = dict(block.args)
+    if control is not None:
+        args[CONTROL_ARG] = control.id
+    passed, message = guarded(ASSERTS[block.assert_name], repo, register, args)
     return BlockResult(block, Verdict.PASS if passed else Verdict.FAIL, message)
 
 
@@ -179,7 +184,7 @@ def run_control(control: Control, register: Register, repo: Repo) -> ControlResu
                 "repository shape this repo does not have"
             ),
         )
-    blocks = tuple(run_block(block, register, repo) for block in applicable)
+    blocks = tuple(run_block(block, register, repo, control) for block in applicable)
     return ControlResult(control, worst([b.verdict for b in blocks]), blocks)
 
 

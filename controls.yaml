@@ -59,8 +59,12 @@ meta:
   #     `gate-quality` is the first gate to own more than one control, and
   #     `deployed_by` is what makes "which gate deploys this" a register fact
   #     rather than something read off a skill's prose. LNT-001 carries the
-  #     `provenance_stamp_present` block for the three, because the assert
-  #     matches stamps by skill rather than by control — see the comment there.
+  #     `provenance_stamp_present` block of its own, because the assert now
+  #     reads back the stamp of the control it is evaluating rather than any
+  #     stamp its gate wrote anywhere. A gate that deploys three controls is
+  #     where those two stop being the same statement: before this, a stamp
+  #     naming TST-001 satisfied LNT-001 and the editor locus could go
+  #     unstamped with nothing reporting it.
   #     `stacks.<stack>.gates.<role>.invocation` now names the path that reaches
   #     the artefact the lockfile pins rather than a bare tool name, which is
   #     ADR 0020 applied to the quality gates: `gate-quality` writes that string
@@ -660,13 +664,13 @@ controls:
         args: { role: lint }
       - kind: file
         assert: no-failure-suppression
-      # One block for the three controls `gate-quality` deploys, and it sits
-      # here because LNT-001 is the one with an artefact at every locus the
-      # gate writes to — editor, pre-commit and ci. The assert matches stamps
-      # by *skill*, not by control, so copies under TYP-001 and TST-001 would
-      # evaluate the same files and report the same verdict three times.
-      # `deployed_by` is what records ownership per control; this is what reads
-      # the deployment back, which is the half `lint-md` never had (§ F).
+      # Each of `gate-quality`'s three controls reads back its own stamp. The
+      # assert used to match on the skill alone, which credited a control for
+      # any stamp its gate had written anywhere: a stamp naming TST-001
+      # satisfied LNT-001's read-back, and the editor locus could go unstamped
+      # with nothing reporting it. This is the half `lint-md` never had (§ F),
+      # and it is per control because a gate deploying three of them is where
+      # per gate stops being the same statement.
       - kind: file
         assert: provenance_stamp_present
         args: { skill: gate-quality }
@@ -696,6 +700,9 @@ controls:
       - kind: file
         assert: typecheck-strict-and-blocking
         args: { role: typecheck }
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-quality }
     owner: platform-engineering
     deployed_by: gate-quality
     variance: narrowing-only
@@ -723,6 +730,9 @@ controls:
         assert: tests-run-and-block
       - kind: file
         assert: no-failure-suppression
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-quality }
     owner: platform-engineering
     deployed_by: gate-quality
     variance: forbidden

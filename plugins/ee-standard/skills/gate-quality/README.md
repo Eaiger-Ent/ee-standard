@@ -25,8 +25,13 @@ the artefact they write, not one per control — the general rule, of which this
 is the first instance.
 
 The grouping is visible in the register rather than only here: all three
-controls carry `deployed_by: gate-quality`, and the plugin's `deploys.json`
-lists them under this gate with a contract version of their own.
+controls carry `deployed_by: gate-quality`, each reads back its own provenance
+stamp, and the plugin's `deploys.json` lists them under this gate with a
+contract version of their own.
+
+*Each* is the operative word. The stamp read-back matches on the control, not
+on this skill's name, so recording the CI steps and forgetting the editor locus
+fails LNT-001 rather than passing on TST-001's stamp.
 
 ## Why it takes no opinions
 

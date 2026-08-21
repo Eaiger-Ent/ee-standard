@@ -206,8 +206,8 @@ act in § 1 that only an admin can take.
    the first kind was hiding; do not move it somewhere quieter.
 
 **Wiring by hand instead?** Then stamp what you write. SEC-001's verify reads
-back a provenance stamp naming the gate that deploys it, so a hand-wired hook
-with no stamp fails. Say in the stamp's comment that it was adopted rather than
+back a provenance stamp naming SEC-001 and the gate that deploys it, so a
+hand-wired hook with no stamp fails. Say in the stamp's comment that it was adopted rather than
 deployed — this repository's own two artefacts do exactly that, because they
 were written in Phase 0.5 before there was a gate to write them, and a stamp
 claiming otherwise would be a record of something that did not happen.
@@ -251,9 +251,10 @@ them.** Each is the check working, not a new rule:
    `|| true` on the lint step fails both of them at once.
 
 **Wiring by hand instead?** Stamp what you write, as § 3.1 says for the secrets
-gate. LNT-001's verify reads back a provenance stamp naming `gate-quality`, so
-hand-wired quality gates with no stamp fail the control. This repository's own
-six quality-gate stamps say *adopted rather than deployed*, because the artefacts
+gate — and stamp **each control's own artefacts**. All three read back a stamp
+naming themselves, so recording your CI steps and forgetting the editor locus
+fails LNT-001 even though TST-001 passes. This repository's own six
+quality-gate stamps say *adopted rather than deployed*, because the artefacts
 were hand-written in Phase 0.5 before there was a gate to write them.
 
 ### 3.3 — Your register records your own files

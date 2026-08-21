@@ -386,6 +386,42 @@ def test_a_coverage_allow_list_that_leaves_a_tracked_file_out_is_caught(
     assert "src/quiet.py" in out
 
 
+def test_stamping_one_locus_and_forgetting_the_others_is_caught(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The gate wrote every artefact and recorded only one of them.
+
+    This is the shape a gate owning three controls makes possible and a gate
+    owning one does not: every file is in place, the deployment worked, and the
+    only stamp names TST-001. Matching stamps by skill credited LNT-001 and
+    TYP-001 for it. Matching by control does not.
+    """
+    for path in (".pre-commit-config.yaml", ".devcontainer/devcontainer.json"):
+        target = deployed / path
+        target.write_text(
+            re.sub(r"^.*ee-control:.*\n", "", target.read_text(encoding="utf-8"), flags=re.M),
+            encoding="utf-8",
+        )
+    workflow = deployed / ".github/workflows/ci.yml"
+    workflow.write_text(
+        re.sub(
+            r"^.*ee-control: (?:LNT|TYP)-001.*\n",
+            "",
+            workflow.read_text(encoding="utf-8"),
+            flags=re.M,
+        ),
+        encoding="utf-8",
+    )
+    make_repo(deployed, {})
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert "LNT-001  FAIL" in out and "TYP-001  FAIL" in out
+    assert "no stamp names LNT-001" in out
+    # TST-001 keeps its own stamp and passes, which is what makes the failure
+    # above about the record rather than about the file.
+    assert "TST-001  PASS" in out
+
+
 def test_removing_the_stamps_is_caught(
     deployed: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
