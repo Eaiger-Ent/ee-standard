@@ -455,9 +455,11 @@ fixed in both.
       `stacks:` invocations to the artefact-reaching form, and deleting the
       artefact makes `uv run` reinstall the pin or fail — never fall through
       ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) § Applied to
-      the quality gates). Open for the loci the remaining gates will write, and
-      for one residual: `uv run` *does* fall through when the tool is absent
-      from the project altogether, which the invocation cannot close
+      the quality gates). That residual — `uv run` falling through when the tool
+      is absent from the project altogether — closed at register contract 13,
+      where `stack_tool_pinned_in_lockfile` made the pin's existence a verdict
+      ([`10-phase-2-review.md`](10-phase-2-review.md) § The pin's existence).
+      Open for the loci the remaining gates will write
 
 - [ ] Every SKILL.md passes preflight P1–P11 — `gate-secrets` and
       `gate-quality` both pass with zero failures (`10-phase-2-review.md`

@@ -17,7 +17,11 @@ from typing import Any, ClassVar
 import yaml
 
 from standard_check.asserts import ASSERTS, REMOTE_ASSERTS
-from standard_check.asserts_file import CONTROL_ARG
+from standard_check.asserts_file import (
+    CONTROL_ARG,
+    PACKAGE_PLACEHOLDER,
+    substitute_package,
+)
 from standard_check.predicates import PredicateSyntaxError, compile_predicate
 
 RUNGS = ("advisory", "warn", "blocking", "blocking (baselined)")
@@ -80,10 +84,26 @@ _ECOSYSTEM_ALLOWED = (
     "dependabot",
     "test_commands",
     "frozen_install",
+    "lock_entry",
+    "add_dev_dependency",
 )
-_STACK_ALLOWED = ("gates", "source_globs")
+#: The ecosystem keys every ecosystem must declare. `add_dev_dependency` is not
+#: among them: it is required only of an ecosystem a stack names, because that
+#: is where a gate has a pin to create. Requiring it everywhere would mean
+#: inventing a dev-dependency idiom for ecosystems no gate deploys into, and an
+#: invented one is worse than an absent one.
+_ECOSYSTEM_REQUIRED = (
+    "manifest",
+    "lockfiles",
+    "dependabot",
+    "test_commands",
+    "frozen_install",
+    "lock_entry",
+)
+_STACK_ALLOWED = ("gates", "source_globs", "ecosystem")
 _GATE_ALLOWED = (
     "tool",
+    "package",
     "invocation",
     "pre_commit",
     "editor_extension",
@@ -235,6 +255,17 @@ class Ecosystem:
     # same two-key map ADR 0018 moved out of `lockfile_present_and_tracked`,
     # left standing in the assert next to it.
     frozen_install: tuple[str, ...] = ()
+    # Where a package appears inside this ecosystem's lockfile, as regular
+    # expressions with `{package}` substituted for the name sought. A register
+    # fact from contract 13, and the same argument as `frozen_install` one field
+    # up: a lockfile format the checker has not heard of is a pin nothing
+    # verifies, and the failure would be silent.
+    lock_entry: tuple[str, ...] = ()
+    # How a gate creates a pin that is missing, keyed by the lockfile present.
+    # Required of an ecosystem a stack names and absent elsewhere: a gate that
+    # can fail a control for an unpinned tool and cannot pin it would deploy a
+    # control it is unable to satisfy.
+    add_dev_dependency: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -271,6 +302,11 @@ class Gate:
     tool: str
     invocation: str
     config: tuple[ConfigLocation, ...]
+    # The name the tool is pinned under, where it differs from the tool's own.
+    # `tsc` is a binary the `typescript` package ships, so a lockfile search for
+    # `tsc` finds nothing in a repository that pins it correctly. Defaults to
+    # `tool`; which package ships a tool is a fact about the tool.
+    package: str | None = None
     pre_commit: str | None = None
     editor_extension: str | None = None
     strict_key: str | None = None
@@ -294,6 +330,11 @@ class Stack:
     gates: dict[str, Gate]
     # The tracked files this stack's gates are claimed to cover.
     source_globs: tuple[str, ...] = ()
+    # Which ecosystem's lockfile pins this stack's gate tools. A stack and an
+    # ecosystem are different things — one mandates tools, the other knows what
+    # a lockfile is — and a repository could reasonably run its linter from a
+    # package manager other than the one its application uses.
+    ecosystem: str = ""
 
 
 @dataclass(frozen=True)
@@ -856,7 +897,7 @@ class _Validator:
                     continue
                 self._unknown_keys(entry, _ECOSYSTEM_ALLOWED, at)
                 fields: dict[str, tuple[str, ...]] = {}
-                for key in _ECOSYSTEM_ALLOWED:
+                for key in _ECOSYSTEM_REQUIRED:
                     value = entry.get(key)
                     if not isinstance(value, list) or not value:
                         self.error(f"{at}.{key}", "must be a non-empty list of strings")
@@ -868,13 +909,22 @@ class _Validator:
                     # does not parse would otherwise be a crash mid-run, and one
                     # that parses but is never reached is a control passing
                     # vacuously — the failure this field was added to stop.
-                    if key == "frozen_install":
-                        broken = self._uncompilable(value, f"{at}.{key}")
+                    if key in ("frozen_install", "lock_entry"):
+                        # `lock_entry` carries a `{package}` placeholder, so it
+                        # is compiled with a stand-in substituted — the same
+                        # reason `frozen_install` is compiled here rather than
+                        # at first use: a pattern that never parses is a control
+                        # passing vacuously, not a crash anyone would see.
+                        probe = [substitute_package(str(x), "probe") for x in value]
+                        broken = self._uncompilable(probe, f"{at}.{key}")
                         if broken:
                             break
                     fields[key] = tuple(str(x) for x in value)
                 else:
-                    ecosystems[str(name)] = Ecosystem(name=str(name), **fields)
+                    adds = self._add_dev_dependency(entry.get("add_dev_dependency"), at)
+                    ecosystems[str(name)] = Ecosystem(
+                        name=str(name), add_dev_dependency=adds, **fields
+                    )
         predicates_raw = raw.get("predicates")
         predicates: dict[str, bool | str] = {}
         if not isinstance(predicates_raw, dict) or not predicates_raw:
@@ -890,7 +940,7 @@ class _Validator:
                     self.error(f"predicates.{name}", str(exc))
                     continue
                 predicates[str(name)] = expr
-        stacks = self._stacks(raw["stacks"], predicates) if "stacks" in raw else {}
+        stacks = self._stacks(raw["stacks"], predicates, ecosystems) if "stacks" in raw else {}
         suppression = self._suppression(raw["suppression"]) if "suppression" in raw else ()
         cloud_credentials = (
             self._cloud_credentials(raw["cloud_credentials"])
@@ -978,7 +1028,7 @@ class _Validator:
                 return None
             strings[key] = value.strip()
         optional: dict[str, str | None] = {}
-        for key in ("pre_commit", "editor_extension", "strict_key", "coverage_key"):
+        for key in ("package", "pre_commit", "editor_extension", "strict_key", "coverage_key"):
             value = raw.get(key)
             if value is None:
                 optional[key] = None
@@ -995,13 +1045,46 @@ class _Validator:
             tool=strings["tool"],
             invocation=strings["invocation"],
             config=config,
+            package=optional["package"],
             pre_commit=optional["pre_commit"],
             editor_extension=optional["editor_extension"],
             strict_key=optional["strict_key"],
             coverage_key=optional["coverage_key"],
         )
 
-    def _stacks(self, raw: object, predicates: dict[str, bool | str]) -> dict[str, Stack]:
+    def _add_dev_dependency(self, raw: object, at: str) -> dict[str, str]:
+        """How a gate creates a missing pin, keyed by lockfile. Optional here."""
+        if raw is None:
+            return {}
+        if not isinstance(raw, dict) or not raw:
+            self.error(
+                f"{at}.add_dev_dependency",
+                "must be a non-empty mapping of lockfile to command",
+            )
+            return {}
+        commands: dict[str, str] = {}
+        for lock, command in raw.items():
+            if not isinstance(command, str) or not command.strip():
+                self.error(f"{at}.add_dev_dependency.{lock}", "must be a non-empty string")
+                continue
+            if PACKAGE_PLACEHOLDER not in command:
+                # A command with nowhere to put the package name adds a
+                # different dependency every time, or none. Caught here rather
+                # than discovered by a gate mid-deployment.
+                self.error(
+                    f"{at}.add_dev_dependency.{lock}",
+                    f"must contain the {PACKAGE_PLACEHOLDER} placeholder",
+                )
+                continue
+            commands[str(lock)] = command.strip()
+        return commands
+
+    def _stacks(
+        self,
+        raw: object,
+        predicates: dict[str, bool | str],
+        ecosystems: dict[str, Ecosystem],
+    ) -> dict[str, Stack]:
         """Per-stack gate tools, keyed by the predicate that detects the stack."""
         if not isinstance(raw, dict):
             self.error("stacks", "must be a mapping of stack name to its gates")
@@ -1040,11 +1123,43 @@ class _Validator:
                 # uncomparable allow-list is the silence ADR 0019 removes.
                 self.error(f"{at}.source_globs", "must be a non-empty list of file globs")
                 continue
+            ecosystem = entry.get("ecosystem")
+            # Required, and required to name a defined ecosystem. A stack whose
+            # ecosystem is absent or misspelt is a stack whose gate tools no
+            # lockfile is checked for — the pin's existence going unverified is
+            # exactly the residual contract 13 exists to close, so silence here
+            # would reintroduce it one register edit later.
+            if not isinstance(ecosystem, str) or ecosystem not in ecosystems:
+                known = ", ".join(sorted(ecosystems)) or "none defined"
+                self.error(
+                    f"{at}.ecosystem",
+                    f"must name an ecosystem whose lockfile pins this stack's gate tools "
+                    f"— known: {known}",
+                )
+                continue
+            # A gate can fail a control for a tool no lockfile pins, so it must
+            # be able to create that pin — for whichever package manager the
+            # repository uses. An ecosystem a stack names and does not say how
+            # to add a dependency to is a gate that can report the problem and
+            # not fix it.
+            uncovered = [
+                lock
+                for lock in ecosystems[ecosystem].lockfiles
+                if lock not in ecosystems[ecosystem].add_dev_dependency
+            ]
+            if uncovered:
+                self.error(
+                    f"ecosystems.{ecosystem}.add_dev_dependency",
+                    f"is required because stack '{name}' names this ecosystem, and must "
+                    f"cover every lockfile it declares — missing: {', '.join(uncovered)}",
+                )
+                continue
             if gates:
                 stacks[str(name)] = Stack(
                     name=str(name),
                     gates=gates,
                     source_globs=tuple(g.strip() for g in globs),
+                    ecosystem=ecosystem,
                 )
         return stacks
 

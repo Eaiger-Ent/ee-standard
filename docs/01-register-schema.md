@@ -349,13 +349,40 @@ ecosystems:
     test_commands: [rspec, "rake test"]
     frozen_install:                    # regexes; matched against gating CI steps
       - '\bbundle install\b[^\n]*--(?:deployment|frozen)\b'
+    lock_entry:                        # regexes; what a package looks like in a lockfile
+      - '(?m)^\s+{package} \('
+    add_dev_dependency:                # optional; see below
+      Gemfile.lock: "bundle add --group development {package}"
 ```
 
-Every field is required and every list non-empty. `frozen_install` is compiled at
-schema time like `suppression`, because a pattern that matches nothing is a
-control passing vacuously rather than a crash — an ecosystem the checker knew
-nothing about is exactly how a repository with a `go.mod` came to be told that
-every CI install was frozen.
+Every field except `add_dev_dependency` is required and every list non-empty.
+`frozen_install` and `lock_entry` are compiled at schema time like
+`suppression`, because a pattern that matches nothing is a control passing
+vacuously rather than a crash — an ecosystem the checker knew nothing about is
+exactly how a repository with a `go.mod` came to be told that every CI install
+was frozen.
+
+**`lock_entry` is the existence half of
+[ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md).** That ADR made
+every locus invoke the artefact its lockfile owns, and measured the one
+condition no spelling of `invocation` covers: `uv run <tool>` falls through to
+`PATH` when the tool is absent from the project altogether (§ Applied to the
+quality gates, case C). An invocation cannot assert the existence of the thing
+it invokes, so `stack_tool_pinned_in_lockfile` looks the package up, and these
+patterns are how it is recognised. `{package}` is substituted with the name
+sought, regex-escaped — a plain substitution rather than `str.format`, because a
+regular expression is full of braces.
+
+**`add_dev_dependency` is how a gate creates a pin that is missing**, keyed by
+the lockfile that is present rather than by the ecosystem: `uv add --dev` and
+`poetry add --group dev` are both python, and which one is right is a fact about
+the repository. It is optional in general and **required of any ecosystem a
+stack names**, covering every lockfile that ecosystem declares — a gate that can
+fail a control for an unpinned tool and cannot pin it would deploy a control it
+is unable to satisfy. Inventing an idiom for ecosystems no gate deploys into
+would be worse than leaving it absent, which is why it is not required
+everywhere. Each command must contain the `{package}` placeholder; one with
+nowhere to put the name adds a different dependency every time, or none.
 
 The evidence must come from a step in a workflow that runs on `push` or
 `pull_request`. A frozen install in a manually-triggered workflow shows what
@@ -390,6 +417,7 @@ different linter without the checker changing.
 stacks:
   python:                       # the key IS a predicate name
     source_globs: ["*.py"]      # the tracked files its gates must cover
+    ecosystem: python           # whose lockfile pins the gate tools below
     gates:
       lint:                     # role: lint | typecheck
         tool: ruff
@@ -401,6 +429,7 @@ stacks:
           - {file: ruff.toml}
       typecheck:
         tool: mypy
+        package: mypy           # optional; the name in the lockfile, if different
         invocation: mypy
         pre_commit: mypy
         strict_key: strict      # a boolean in the section, which must be true
@@ -413,12 +442,23 @@ stacks:
 | Field | Required | Notes |
 | --- | --- | --- |
 | `tool` | yes | The mandated tool's name, used in messages. |
+| `package` | no | The name the tool is pinned under, where it differs. Defaults to `tool`. |
 | `invocation` | yes | How CI runs it. Matched as an invocation, not a substring. |
 | `config` | yes | Where its configuration may live, most specific first. |
 | `pre_commit` | no | Hook id or entry substring at the pre-commit locus. |
 | `editor_extension` | no | Extension id, found in `devcontainer.json` **or** `.vscode/extensions.json`. |
 | `strict_key` | no | A boolean inside the matched section that must be true. |
 | `coverage_key` | no | Dotted path, **from the config file's root**, to the tool's allow-list. |
+
+**`ecosystem` and `package` are the two names a pin needs.** A stack and an
+ecosystem are different things — `python` the stack mandates ruff and mypy,
+`python` the ecosystem knows what a lockfile is — and `ecosystem` says which one
+pins the other's tools. It is required, and required to name a defined
+ecosystem: a stack whose ecosystem is absent or misspelt is a stack whose gate
+tools no lockfile is checked for. `package` covers the case where the tool's
+name is not the package's: `tsc` is a binary the `typescript` package ships, so
+searching a correctly-pinned lockfile for `tsc` finds nothing and would fail a
+repository that satisfies the control.
 
 **The key is a predicate.** A stack applies exactly when its predicate does, so
 `applies_to: [python, typescript]` on a control and the stacks of those names are
@@ -465,7 +505,15 @@ A control reaches its gate through the verify block's `args`:
       - kind: file
         assert: linter-wired-at-all-loci
         args: { role: lint }
+      - kind: file
+        assert: stack_tool_pinned_in_lockfile
+        args: { role: lint }
 ```
+
+The two blocks are the two halves of ADR 0020 and are separable on purpose. The
+first says every locus reaches the artefact the lockfile pins; the second says
+the pin exists. A repository can satisfy either without the other, and only the
+pair means *the version that runs is the version that was reviewed*.
 
 ### `suppression`
 

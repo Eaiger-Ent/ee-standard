@@ -10,7 +10,7 @@
       ]
     },
     "gate-quality": {
-      "contractVersion": 1,
+      "contractVersion": 2,
       "controls": ["LNT-001", "TYP-001", "TST-001"],
       "artifacts": [
         ".devcontainer/devcontainer.json#customizations.vscode.extensions",

@@ -15,11 +15,12 @@ from typing import TYPE_CHECKING
 
 import yaml
 
+from standard_check.predicates import compile_predicate
 from standard_check.provenance import EXPECTED, stamps_by_file
 from standard_check.repo import Repo, load_jsonc
 
 if TYPE_CHECKING:  # `register` imports the assert registries — importing it
-    from standard_check.register import Ecosystem, Register  # at runtime: circular
+    from standard_check.register import Ecosystem, Gate, Register, Stack  # at runtime: circular
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,20 @@ AssertFn = Callable[[Repo, "Register", Mapping[str, object]], AssertResult]
 #: schema rejects a register that supplies the key itself, since a control's own
 #: id written into its own entry is a second copy of it (ADR 0018).
 CONTROL_ARG = "control"
+
+#: The placeholder a `lock_entry` pattern carries in place of the package name.
+#: Substituted rather than `str.format`-ed, because a regular expression is full
+#: of braces — `\d{2}` would be a formatting error — and the register writes
+#: regular expressions in three other fields already. It lives here beside
+#: CONTROL_ARG for the same reason: the register imports this module, never the
+#: reverse.
+PACKAGE_PLACEHOLDER = "{package}"
+
+
+def substitute_package(pattern: str, package: str) -> str:
+    """A `lock_entry` pattern with the package name substituted, regex-escaped."""
+    return pattern.replace(PACKAGE_PLACEHOLDER, re.escape(package))
+
 
 
 def _ok(message: str) -> AssertResult:
@@ -109,6 +124,93 @@ def lockfile_present_and_tracked(
             )
         )
     return _ok(f"tracked lockfile present for: {', '.join(sorted(present))}")
+
+
+def stack_tool_pinned_in_lockfile(
+    repo: Repo,
+    register: Register,
+    args: Mapping[str, object],
+) -> AssertResult:
+    """Each applicable stack's gate tool for `role` is pinned in a tracked lockfile.
+
+    The other half of [ADR 0020](../../docs/adr/0020-a-locus-reaches-the-pinned-artefact.md).
+    That ADR made every locus invoke the artefact its lockfile owns, and measured
+    the one case the invocation cannot cover: `uv run <tool>` falls through to
+    `PATH` when the tool is absent from the project altogether (case C). An
+    invocation cannot assert the existence of the thing it invokes, so the
+    existence is asserted here.
+
+    Everything that decides the verdict is a register fact. Which ecosystem's
+    lockfile pins a stack's tools is `stacks.<stack>.ecosystem`, what a package
+    looks like inside that lockfile is `ecosystems.<name>.lock_entry`, and the
+    name to look for is the gate's `package` where it differs from its `tool`.
+    """
+    role = str(args.get("role", ""))
+    if not role:
+        return _fail("assert requires a 'role' argument naming a gate in the register")
+    problems: list[str] = []
+    found: list[str] = []
+    for stack_name, stack in sorted(register.stacks.items()):
+        gate = stack.gates.get(role)
+        if gate is None:
+            continue
+        if not compile_predicate(register.predicates.get(stack_name, False))(repo):
+            continue
+        problem, note = _pin_problem(repo, register, stack, gate)
+        if problem:
+            problems.append(f"{stack_name}: {problem}")
+        else:
+            found.append(note)
+    if problems:
+        return _fail("; ".join(problems))
+    if not found:
+        return _ok(f"no stack with a {role} gate is present")
+    return _ok("; ".join(found))
+
+
+def _pin_problem(
+    repo: Repo,
+    register: Register,
+    stack: Stack,
+    gate: Gate,
+) -> tuple[str | None, str]:
+    """Why this gate's tool is not pinned, or the lockfile that pins it."""
+    package = gate.package or gate.tool
+    ecosystem = register.ecosystems.get(stack.ecosystem)
+    if ecosystem is None:
+        # Unreachable through a validated register — the schema rejects a stack
+        # naming no defined ecosystem. Stated rather than assumed, because an
+        # assert that silently passes on a register it cannot read is the
+        # vacuous verdict this control exists to stop.
+        return f"names ecosystem '{stack.ecosystem}', which the register does not define", ""
+    tracked = [lock for lock in ecosystem.lockfiles if lock in repo.tracked]
+    if not tracked:
+        return (
+            f"{package} cannot be pinned — no tracked {stack.ecosystem} lockfile "
+            f"(one of {', '.join(ecosystem.lockfiles)})",
+            "",
+        )
+    patterns = [substitute_package(pattern, package) for pattern in ecosystem.lock_entry]
+    unreadable: list[str] = []
+    for lock in tracked:
+        try:
+            text = repo.read(lock)
+        except (OSError, UnicodeDecodeError):
+            # A binary lockfile — bun.lockb is one — is reported as a lockfile
+            # that could not be read. Treating it as a match would pass every
+            # package, and treating it as absent would hide why.
+            unreadable.append(lock)
+            continue
+        if any(re.search(pattern, text) for pattern in patterns):
+            return None, f"{gate.tool} pinned in {lock}"
+    searched = ", ".join(tracked)
+    if unreadable:
+        return (
+            f"{package} not found in {searched} — {', '.join(unreadable)} could not be "
+            f"read as text, so no pin could be confirmed",
+            "",
+        )
+    return f"{package} is not pinned in {searched}, so {gate.invocation} resolves from PATH", ""
 
 
 _RENOVATE_CONFIGS = (
@@ -601,6 +703,7 @@ FILE_ASSERTS: dict[str, AssertFn] = {
     "dockerfile_final_user_is_non_root": dockerfile_final_user_is_non_root,
     "devcontainer_user_is_non_root": devcontainer_user_is_non_root,
     "provenance_stamp_present": provenance_stamp_present,
+    "stack_tool_pinned_in_lockfile": stack_tool_pinned_in_lockfile,
 }
 
 # Remote assert names are part of the closed set from Phase 1 so a typo is a
