@@ -185,9 +185,12 @@ analysers are installed by the gates that own their controls, each writing its
 own stamped region into that file.
 
 **Two lines that must survive the copy.** The template's own `.gitignore` names
-`.env` and `.env.docker`, and SEC-001 depends on them. Deleting it does not fail
-a build; it fails quietly, later, in someone else's clone — and a secret that
-reaches a remote is not undone by removing it.
+`.env` and `.env.docker`, and SEC-001 reads them. Deleting the file fails
+SEC-001, as does moving the rule somewhere git does not track — an uncommitted
+`.gitignore` or a `.git/info/exclude` entry protects your clone and nobody
+else's. Until register contract 18 it failed nothing at all: it failed quietly,
+later, in someone else's clone, and a secret that reaches a remote is not undone
+by removing it.
 
 **How you know it worked**, in this order:
 
@@ -195,6 +198,7 @@ reaches a remote is not undone by removing it.
 grep -rl '{{' .devcontainer          # expect no output
 devcontainer build --workspace-folder .
 standard-check run --control BLD-001 --control DEV-001
+standard-check run --control SEC-001   # the .gitignore that came with the copy
 ```
 
 A fresh copy fails the loci and stamp blocks of both controls, which is correct:
@@ -202,12 +206,12 @@ A fresh copy fails the loci and stamp blocks of both controls, which is correct:
 `devcontainer_image_digest_pinned` and `devcontainer_lock_covers_all_features`
 from the first line.
 
-Copy `.devcontainer/` from this repository as the worked example. Its operator
-guide is [`06-devcontainer-setup.md`](06-devcontainer-setup.md); the
-specification the shipped template will meet is
-[`03-devcontainer.md`](03-devcontainer.md).
+This repository's own `.devcontainer/` is the worked example the template was
+generalised from; its operator guide is
+[`06-devcontainer-setup.md`](06-devcontainer-setup.md), and the specification
+both meet is [`03-devcontainer.md`](03-devcontainer.md).
 
-What matters when you adapt it:
+What matters when you adapt the copy:
 
 - **Pin the image by `@sha256:` digest**, not by tag. A tag moves.
 - **Commit `devcontainer-lock.json`, covering every feature.** A lock file that
@@ -223,14 +227,18 @@ What matters when you adapt it:
   not the artefact that installer fetches.
 - **Keep secrets out of the repository.** This repo's `.env` — and the
   `.env.docker` derived from it for `--env-file` — are gitignored and populated
-  from the host keychain by `fetch-secrets.sh`. SEC-001 depends on those lines
-  staying in `.gitignore`, so a second secrets file means a second line.
+  from the host keychain by `fetch-secrets.sh`. SEC-001 reads those lines, so a
+  second secrets file means a second line **and** a second entry in that
+  control's `paths:` — a file the register does not name is a file nothing
+  checks. One line per path, never a glob: a glob that later misses a file
+  gives no signal, and the per-path form makes the omission visible.
 
 ## 3 — The gates
 
-All six gates are built — see § 3.1 to § 3.6. For the rest, until Phase 2
-ships them, wire the gates by copying this repository's own artefacts, which are
-the reference implementation:
+All six gates are built — see § 3.1 to § 3.6, and § 0 for the front door that
+dispatches them in order. DOC-001 is the one control no gate here deploys: it is
+`lint-md`'s, in another plugin. What follows describes this repository's own
+artefacts, which are the reference implementation:
 
 | Locus | File here | What it gives you |
 | --- | --- | --- |
@@ -286,13 +294,29 @@ act in § 1 that only an admin can take.
    naming a path git does not track — a vendored directory, a fixture outside
    the repository's own content — scopes the scanner and is fine. Deal with what
    the first kind was hiding; do not move it somewhere quieter.
+3. **The files that hold fetched credentials must be ignored, by a rule git
+   carries.** Register contract 18 added `secret_files_are_gitignored`, and it
+   reads the `paths:` your register names. Three ways it fails, and the remedy
+   differs for each. *Not ignored* — add the rule. *Ignored by something git
+   does not track*, meaning `.git/info/exclude`, a global excludes file, or a
+   `.gitignore` nobody committed — the rule protects your clone and no other, so
+   commit one that travels. *Already tracked* — an ignore rule added now removes
+   nothing from history; treat what is in that file as disclosed, rotate it, and
+   deal with the history separately. `gate-secrets` writes the first, reports the
+   second, and refuses to paper over the third.
+
+   This was the last part of SEC-001 resting on prose. Both this repository's
+   `.gitignore` and the shipped devcontainer template carried a comment saying
+   *SEC-001 depends on these two lines*, and nothing read either.
 
 **Wiring by hand instead?** Then stamp what you write. SEC-001's verify reads
 back a provenance stamp naming SEC-001 and the gate that deploys it, so a
-hand-wired hook with no stamp fails. Say in the stamp's comment that it was adopted rather than
-deployed — this repository's own two artefacts do exactly that, because they
-were written in Phase 0.5 before there was a gate to write them, and a stamp
-claiming otherwise would be a record of something that did not happen.
+hand-wired hook with no stamp fails. Say in the stamp's comment that it was
+adopted rather than deployed — this repository's own artefacts do exactly that,
+because they were written in Phase 0.5 before there was a gate to write them,
+and a stamp claiming otherwise would be a record of something that did not
+happen. The `.gitignore` region is the newest of them, stamped at contract 18
+rather than rewritten, for the same reason.
 
 ### 3.2 — `gate-quality`, and the three controls it deploys together
 

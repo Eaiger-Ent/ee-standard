@@ -17,7 +17,7 @@ import yaml
 
 from standard_check.predicates import compile_predicate
 from standard_check.provenance import EXPECTED, stamps_by_file
-from standard_check.repo import Repo, load_jsonc
+from standard_check.repo import Repo, git, load_jsonc
 
 if TYPE_CHECKING:  # `register` imports the assert registries — importing it
     from standard_check.register import Ecosystem, Gate, Register, Stack  # at runtime: circular
@@ -801,6 +801,88 @@ def provenance_stamp_present(
     )
 
 
+def secret_files_are_gitignored(
+    repo: Repo,
+    register: Register,
+    args: Mapping[str, object],
+) -> AssertResult:
+    """The files a host writes credentials into cannot be committed by accident.
+
+    SEC-001's other blocks all act *after* the fact: `gitleaks` reads what git
+    already carries, and push protection reads what reached the remote. The
+    ignore rule is the one part of the control that acts before a credential
+    is ever a git object, and until contract 18 nothing read it. Two files in
+    this repository — and two in every repository the template is copied into —
+    are written on every container start by a script whose own header says
+    *SEC-001 depends on these two lines*, and that dependency was prose.
+
+    Three ways this fails, and all three are quiet:
+
+    **Tracked.** The file is already in git, so an ignore rule changes nothing
+    about it. Reported as its own case rather than as "not ignored", because
+    the remedy is different: an ignore rule fixes the second, and only a
+    history rewrite and a credential rotation fix the first.
+
+    **Not ignored.** The next `git add -A` commits it. This is the case the
+    prose was guarding and the one a checker can see instantly.
+
+    **Ignored by a rule git does not carry** — `.git/info/exclude`, a global
+    excludes file, or a `.gitignore` nobody committed. This is the reason the
+    assert reads `check-ignore -v` for the *source* of the match rather than
+    taking exit 0 as the answer. The rule works on the machine that has it and
+    on no other, so the file is unignored in every clone but the author's,
+    which is precisely the shape `08-adopting.md` warns about: it does not fail
+    a build, it fails quietly, later, in someone else's clone.
+
+    Which files hold fetched credentials is a fact about a repository, not
+    about the checker (ADR 0018), so `paths` is the register's. The mechanism —
+    what git means by ignored, and that a rule must be tracked to travel — is
+    not something a repository can reasonably differ on, so it stays here.
+    """
+    raw = args.get("paths")
+    paths = [str(entry) for entry in raw] if isinstance(raw, list) else []
+    if not paths:
+        return _fail(
+            "assert requires a non-empty 'paths' list naming the files that hold "
+            "fetched credentials — an empty list would pass without checking anything"
+        )
+
+    problems: list[str] = []
+    covered: list[str] = []
+    for path in paths:
+        if path in repo.tracked:
+            problems.append(
+                f"{path} is tracked — git already carries it, and an ignore rule added "
+                "now would neither remove it from history nor un-leak what is in it"
+            )
+            continue
+        # `--no-index` asks what the ignore rules say, rather than what they say
+        # about a file git is not already tracking. The tracked case is handled
+        # above and has a different remedy, so conflating the two would report
+        # the wrong fix.
+        result = git(repo.root, "check-ignore", "--no-index", "-v", "--", path)
+        matched = result.stdout.strip()
+        if result.returncode != 0 or not matched:
+            problems.append(
+                f"{path} is not ignored — the next `git add -A` commits the credentials "
+                "in it, and a secret that reaches a remote is not undone by deleting it"
+            )
+            continue
+        source = matched.split(":", 1)[0]
+        if source not in repo.tracked:
+            problems.append(
+                f"{path} is ignored by {source}, which git does not track — the rule "
+                "does not travel, so the file is ignored here and unignored in every "
+                "other clone"
+            )
+            continue
+        covered.append(f"{path} ({source})")
+
+    if problems:
+        return _fail("; ".join(problems))
+    return _ok("ignored by a rule git carries: " + ", ".join(covered))
+
+
 FILE_ASSERTS: dict[str, AssertFn] = {
     "tool_versions_match_register": tool_versions_match_register,
     "precommit_hook_present": precommit_hook_present,
@@ -815,6 +897,7 @@ FILE_ASSERTS: dict[str, AssertFn] = {
     "provenance_stamp_present": provenance_stamp_present,
     "stack_tool_pinned_in_lockfile": stack_tool_pinned_in_lockfile,
     "ruleset_recorded_matches_register": ruleset_recorded_matches_register,
+    "secret_files_are_gitignored": secret_files_are_gitignored,
 }
 
 # Remote assert names are part of the closed set from Phase 1 so a typo is a

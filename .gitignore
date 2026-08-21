@@ -1,7 +1,16 @@
-# Host-fetched secrets. SEC-001 depends on these lines — see
-# docs/06-devcontainer-setup.md § "The macOS Keychain values". The .docker
-# copy is derived from the .env and holds the same credentials, so it is
-# listed in its own right rather than left to a glob.
+# Host-fetched secrets. `fetch-secrets.sh` writes real credentials into both on
+# every container start — see docs/06-devcontainer-setup.md § "The macOS
+# Keychain values". The .docker copy is derived from the .env and holds the same
+# credentials, so it is listed in its own right rather than left to a glob: a
+# glob that later misses a file gives no signal, and two lines make a missing
+# one visible.
+#
+# Adopted, not deployed: hand-written in Phase 0.5 and stamped at register
+# contract 18, when `secret_files_are_gitignored` made SEC-001 read these two
+# lines instead of a comment claiming it depended on them. One stamp per region
+# rather than one at the top — the rest of this file is build output and editor
+# droppings that belong to no control, and a whole-file stamp would claim them.
+# ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  register: v0.18.0  register-contract: 18
 .devcontainer/.env
 .devcontainer/.env.docker
 

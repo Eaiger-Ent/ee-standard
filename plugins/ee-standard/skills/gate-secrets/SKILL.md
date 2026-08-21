@@ -51,11 +51,13 @@ never be pointed at different things by accident.
 1. Every value written came from the register; none was chosen here.
 2. Both of SEC-001's local loci — pre-commit and ci — run the scanner, and
    every site in `PINNED_AT` repeats the version the register names.
-3. Each artefact written carries a provenance stamp naming SEC-001, this skill
+3. Every path in `SECRET_PATHS` is ignored by a rule git tracks, and none of
+   them is itself tracked.
+4. Each artefact written carries a provenance stamp naming SEC-001, this skill
    and version, and the register's version and contract.
-4. `standard-check run --control SEC-001 --control SEC-002` was run afterwards,
+5. `standard-check run --control SEC-001 --control SEC-002` was run afterwards,
    its output shown, and its verdict reported as given — including a failure.
-5. Nothing was written outside the target repository.
+6. Nothing was written outside the target repository.
 
 ---
 
@@ -80,6 +82,7 @@ verify block names in `args.tool`:
 | --- | --- |
 | `TOOL` | SEC-001's `secrets_gate_wired_at_all_loci` block, `args.tool` |
 | `IGNORE_FILE` | the same block, `args.ignore_file` |
+| `SECRET_PATHS` | SEC-001's `secret_files_are_gitignored` block, `args.paths` |
 | `TOOL_VERSION` | `tools.<TOOL>.version` |
 | `TOOL_SHA256` | `tools.<TOOL>.sha256` |
 | `TOOL_REPO` | `tools.<TOOL>.release_repo` — `owner/name`, where the release is fetched from |
@@ -105,6 +108,7 @@ register to fix there, not to paper over here.
 | `HOOK_STATE` | `grep -q "id: $TOOL" .pre-commit-config.yaml 2>/dev/null && echo WIRED \|\| echo ABSENT` |
 | `WORKFLOWS` | `ls .github/workflows/ 2>/dev/null \|\| echo NONE` |
 | `IGNORE_STATE` | `test -f "$IGNORE_FILE" && echo EXISTS \|\| echo ABSENT` |
+| `IGNORED_STATE` | for each `SECRET_PATHS` entry: `git check-ignore --no-index -v -- "$p"` — record the matching rule's **source file**, or `UNIGNORED` |
 | `LEGACY_STATE` | `test -f .git/hooks/pre-commit && ! test -f .pre-commit-config.yaml && echo LEGACY \|\| echo ABSENT` |
 
 For each workflow found, establish whether it **gates**: a workflow is the ci
@@ -221,6 +225,41 @@ claimed it, and a locus with no owner is how a locus gets forgotten.
 
 Do not stamp the whole file. `gate-build` created it and other gates install
 into it; a stamp at the top would claim their blocks as SEC-001's.
+
+---
+
+## Step 3.6 — Ignore the files that hold fetched credentials
+
+Every other artefact this gate writes acts **after** a credential is already a
+git object: the scanner reads what git carries, and push protection reads what
+reached the remote. The ignore rule is the only part of SEC-001 that acts
+before, and until register contract 18 nothing verified it — both this
+repository's `.gitignore` and the shipped devcontainer template carried a
+comment saying *SEC-001 depends on these two lines*, which is a claim rather
+than a check.
+
+For each entry in `SECRET_PATHS`, act on what `IGNORED_STATE` recorded:
+
+- **A rule in a file git tracks:** nothing to do. Say which file carries it.
+- **`UNIGNORED`:** append the path to the repository's root `.gitignore`,
+  creating it if absent, under a stamped comment. **One line per path, never a
+  glob.** `.env.docker` is derived from `.env` and holds the same credentials;
+  a repository that wrote `.env*` and later added a file the glob missed would
+  have no signal, and the two-line form is what makes a missed one visible.
+- **A rule git does not track** — `.git/info/exclude`, a global excludes file,
+  or an uncommitted `.gitignore`: the file is ignored on this machine and
+  unignored in every clone. Add the tracked rule as above, and say plainly that
+  the untracked one was never protecting anybody else.
+- **The path is already tracked:** stop and report it. An ignore rule added now
+  removes nothing from history. Show `git log --oneline -- "$p"`, say that the
+  credentials in it must be treated as disclosed and rotated, and do **not**
+  write the rule as though it had fixed anything. This gate cannot rewrite
+  history and must not imply that it did.
+
+The stamp goes above the lines rather than at the top of the file: `.gitignore`
+holds build output, editor droppings and language caches that belong to nobody
+in particular, and a whole-file stamp would claim them for SEC-001. Same rule as
+`.pre-commit-config.yaml`, and for the same reason.
 
 ---
 

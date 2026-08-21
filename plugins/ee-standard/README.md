@@ -15,13 +15,17 @@ them carries a pinned version, a tool name or a rule of its own.
 | --- | --- | --- |
 | `gate-secrets` | SEC-001, SEC-002 | **Built** — the reference gate |
 | `gate-quality` | LNT-001, TYP-001, TST-001 | **Built** — three controls, two shared files |
-| `gate-supply-chain` | SUP-001, SUP-002, SUP-003 | Phase 2 |
-| `gate-build` | BLD-001, DEV-001 | Phase 2 |
-| `gate-iac` | IAC-001 | Phase 2 |
-| `gate-repo` | CI-001 | Phase 3 — the only gate that mutates platform state |
-| `standard-adopt` | dispatcher | Phase 2 |
-| `standard-check` | installs and wraps the checker | Phase 2 |
-| `standard-variance` | classifies local deltas | Phase 2 |
+| `gate-supply-chain` | SUP-001, SUP-002, SUP-003 | **Built** — found the locus nothing had ever read |
+| `gate-build` | BLD-001, DEV-001 | **Built** — owns `.devcontainer/`, which other gates write into |
+| `gate-iac` | IAC-001 | **Built** — the only gate whose controls may legitimately not apply |
+| `gate-repo` | CI-001 | **Built** — the only gate whose effect is not a file. Records the ruleset, then applies it |
+| `standard-adopt` | dispatcher | **Built** — the front door. Writes no gate configuration of its own |
+| `standard-check` | installs and wraps the checker | Phase 3 |
+| `standard-variance` | classifies local deltas | Phase 5 |
+
+All six gates and the dispatcher shipped in Phase 2. The two unbuilt rows are
+later phases' by the build plan, not leftovers from this one: `standard-check`
+waits on `kind: remote`, and `standard-variance` on the staleness sweep.
 
 Gates are grouped by the artefact they write, not one per control:
 `gate-quality` writes one pre-commit config and one CI workflow covering three

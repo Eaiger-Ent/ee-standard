@@ -194,7 +194,17 @@ Staleness is **reported, never enforced** — see § Notify, never redeploy belo
 A stale stamp is a recommendation to redeploy, so nothing in the checker fails a
 build over one. What is checked is that a stamp is *well-formed*: that it parses
 and names a control the register defines. A stamp naming `DOC-002` where no such
-control exists is a defect in the deployment, not a staleness signal.
+control exists is a defect in the deployment, not a staleness signal. A stamp
+claiming a contract the register has not reached is one too, and fails: a
+deployment cannot be ahead of the thing it deploys.
+
+**Nothing reports staleness yet.** The three rows above describe what the sweep
+will distinguish, and the sweep is Phase 5's — reading a plugin's `deploys.json`
+from the checker is that phase's work, and its exit criteria hold it. Until then
+`standard-check` says only that a stamp is well-formed, and the stale stamps in
+this repository are stale in silence. The distinction matters because "reported,
+never enforced" reads as a description of today and is a description of the
+design: the half that is built is *never enforced*.
 
 ## Notify, never redeploy
 

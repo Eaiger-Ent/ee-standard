@@ -445,7 +445,8 @@ fixed in both.
       are in [`08-adopting.md`](08-adopting.md) § 2.0
 - [x] The template pins no tool version by hand. Every tool it installs is
       either sourced from a lockfile the consumer repo already commits, or from
-      a single toolchain file (§ G's action 2) — never a literal inside
+      a single toolchain file ([§ G](09-phase-1.5-review.md#g--tool-version-reconciliation)'s
+      action 2) — never a literal inside
       `setup.sh`. **Closed 2026-08-21** as a grep rather than a reading, because
       [ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) named this
       criterion in advance as one a template could meet *in letter*
@@ -492,6 +493,18 @@ fixed in both.
       ([`10-phase-2-review.md`](10-phase-2-review.md) § What this slice found in
       the other four gates)
 
+- [ ] `gate-repo`'s ruleset payload is one GitHub's API accepts, and names the
+      status checks the branch must require — **found open by the second review,
+      2026-08-21** ([`10-phase-2-review.md`](10-phase-2-review.md) § 2). The
+      rule is spelled `{ "type": "required_status_checks" }` with no
+      `parameters`, which the REST schema requires, so the apply call 422s; and
+      a rule naming no context requires no check, which
+      `ruleset_recorded_matches_register` cannot see because it tests only that
+      a rule of that type is present. This repository's recorded ruleset is
+      therefore not the transcription its header claims — the platform requires
+      `standard-check` and `lint-md`, and the file names neither. Closing it
+      likely lets GOV-001 drop its partial
+
 - [x] `standard-adopt` end-to-end on a scratch repo: plan → confirm → deploy →
       verify → commit, with the verify step genuinely able to fail — closed
       2026-08-21 by `tests/test_standard_adopt.py`, which drives every gate in
@@ -510,8 +523,10 @@ reports it.
 The locus that gets forgotten, done deliberately.
 
 Implement `kind: remote`: GitHub push protection state, branch ruleset shape,
-and the presence of a workflow that can actually fail. Build `gate-repo` to
-create the ruleset via the API.
+and the presence of a workflow that can actually fail. `gate-repo` itself shipped
+in Phase 2 at register contract 17, and already applies the ruleset via the API —
+what is deferred here is *verifying* the platform state it produces, which is the
+half no file can answer.
 
 Then GOV-001, which is the highest-value control in the register and cannot be
 finished before this phase: proving a `blocking` control is *reachable from a CI

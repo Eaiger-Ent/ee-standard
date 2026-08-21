@@ -1231,6 +1231,172 @@ resting on the copy's controls passing. The commands are in `08-adopting.md`
 A criterion closed on a build nobody ran is the over-tick this document exists
 to catch — seven times, so far.
 
+## What the second review found
+
+A second review on 2026-08-21, run over the artefacts rather than over this
+document, after Phase 2's own closing audit had already run. It found four
+things. One was a Tier-1 control resting on prose and is fixed at register
+contract 18. One is a shipped gate that cannot do the thing it exists to do, and
+is **open**. Two were documentation that had drifted behind the code and are
+fixed.
+
+Recording the count plainly: the closing audit above ran over the register and
+missed all four, because three of them are not in the register and the fourth is
+in a shipped skill's prose. An audit is scoped by what it reads.
+
+### 1 — SEC-001's only preventive block was a comment (fixed, contract 18)
+
+SEC-001 had four verify blocks and every one of them read state that already
+existed. `gitleaks detect` reads what git carries. `secrets_gate_wired_at_all_loci`
+reads the workflow and the hook. `provenance_stamp_present` reads a stamp.
+`github_push_protection_enabled` reads what reached the remote. All four act
+after a credential is a git object.
+
+`fetch-secrets.sh` writes real tokens into `.devcontainer/.env` and
+`.devcontainer/.env.docker` on **every container start**, on the host, outside
+anything git sees until someone types `git add -A`. The only thing standing
+between that and a commit is an ignore rule — and the ignore rule's own comment
+read *SEC-001 depends on these lines*, which is a claim about a control rather
+than a check performed by one. `grep -rn gitignore src/` returned nothing.
+
+The shipped devcontainer template carried the same comment, one better and one
+worse: better because it travels to every adopting repository, worse because it
+said out loud what the consequence was — *deleting it does not fail a build; it
+fails quietly, later, in someone else's clone*.
+
+**Closed** by `secret_files_are_gitignored`, and the `paths:` are the register's
+because which files hold fetched credentials is a fact about a repository
+(ADR 0018). Three failures, told apart because the remedies differ:
+
+| State | Why it is not a pass | Remedy |
+| --- | --- | --- |
+| Not ignored | The next `git add -A` commits it | Add the rule |
+| Ignored by a rule git does not track | Works on one machine; the file is unignored in every clone | Commit a rule that travels |
+| Already tracked | An ignore rule added now removes nothing from history | Rotate the credential; the history is a separate problem |
+
+The third is why the assert reports tracking as its own case rather than folding
+it into "not ignored": a checker that recommended an ignore rule for a file git
+already carries would be recommending the wrong thing, confidently.
+
+The second is why it reads `check-ignore -v` for the *source* of the match
+rather than taking exit `0` as the answer. `.git/info/exclude` and an
+uncommitted `.gitignore` both exit `0`, and both protect exactly one clone.
+
+**Watched failing**, all three, in `tests/test_asserts_file.py`, and end to end
+in `tests/test_gate_secrets_deploy.py` — where deleting the deployed rule, moving
+it to `.git/info/exclude`, and force-adding a credential file each fail SEC-001.
+`tests/test_standard_adopt.py` holds the last of it: after `standard-adopt` runs,
+the rule satisfying SEC-001 is the *template's own* `.devcontainer/.gitignore`,
+and deleting it fails the control. The template's comment is now true in the
+other direction.
+
+An existing test caught its own staleness on the way: `test_removing_the_stamps_is_caught`
+stripped stamps from the two files it knew about, and a third now carried one,
+so `provenance_stamp_present` correctly passed. The assert was right and the
+test had gone stale — which is the direction round that this document exists to
+notice.
+
+`.gitignore` is now the eleventh stamped file, and the only one whose stamped
+region runs nothing, installs nothing and declares nothing. It only prevents.
+
+### 2 — `gate-repo` would POST a ruleset GitHub rejects (**open**)
+
+The most serious of the four, and untouched here because fixing it is a register
+change plus an assert change plus a re-transcription, and it deserves its own
+slice rather than being folded into this one.
+
+Running the skill's own comment filter over the recorded artefact gives the
+literal payload it would send:
+
+```json
+[{"type":"pull_request"},{"type":"required_status_checks"},{"type":"non_fast_forward"},{"type":"deletion"}]
+```
+
+GitHub's REST schema makes `parameters` **required** on a `required_status_checks`
+rule, carrying `required_status_checks` (the list of check contexts) and
+`strict_required_status_checks_policy`. So `/gate-repo`'s apply step returns 422
+for every adopter — and the skill correctly forbids retrying with anything
+weaker, so the gate dead-ends with CI-001 undeployed. The shipped template at
+`skills/gate-repo/templates/default-branch.json` has the same shape.
+
+Set the API aside and it is worse rather than better. A `required_status_checks`
+rule naming no context requires no check. CI-001's `enforces` reads *at least one
+passing status check*, and `_ruleset_problems` tests only that a rule of that
+**type** is present — so a ruleset requiring nothing satisfies
+`require_status_checks: true`. This is the same shape as the four loci nothing
+read (§ It found a locus nothing had ever read): the verdict is decided by the
+presence of a thing rather than by what the thing does.
+
+The record is also not the transcription it says it is. Its header states it is
+what `GET /repos/Eaiger-Ent/ee-standard/rulesets/20937135` returns, transcribed.
+The live ruleset returns:
+
+```json
+"required_status_checks":[{"context":"standard-check"},{"context":"lint-md"}]
+```
+
+Both contexts are dropped, along with every `pull_request` parameter. The
+platform enforces the property; the record of it does not say so. So this
+repository is *safe* and its record is *wrong*, which is the more dangerous way
+round — nothing fails, and the file a reader would trust is the one that is
+incomplete.
+
+The same `args:` feed the Phase 3 `default_branch_ruleset_satisfies`, so the
+blind spot is inherited before it is implemented. It also sits next to something
+now closable: GOV-001's partial says *whether the CI workflow is a required
+status check … is not verified*, and a recorded ruleset carrying its contexts
+would answer exactly that, from a file, today.
+
+**What the fix looks like**, recorded so the next slice does not re-derive it:
+the required contexts become CI-001 `args:` — which checks a repository requires
+is precisely the kind of fact ADR 0018 puts in the register — both the record
+and the template render `parameters`, `_ruleset_problems` fails a status-check
+rule naming no context, `.github/rulesets/default-branch.json` is re-transcribed
+from the API, and the contract bumps.
+
+### 3 and 4 — documentation behind the code (fixed)
+
+Neither changes a verdict, and both are the kind of drift that makes a reader
+trust the wrong file.
+
+`plugins/ee-standard/README.md` — the plugin's own front page — still listed
+`gate-supply-chain`, `gate-build` and `gate-iac` as *Phase 2* meaning unbuilt,
+and `gate-repo` as *Phase 3*. All six had shipped. The two genuinely unbuilt
+rows now name the phase that owns each rather than sharing a number with the
+finished ones.
+
+`08-adopting.md` § 3 said *All six gates are built* and then, in the next
+sentence, *until Phase 2 ships them, wire the gates by copying this repository's
+own artefacts*. § 2.0 carried the same residue. Phase 3's preamble in the build
+plan said *Build `gate-repo`*, which happened at contract 17.
+
+Two `§` citations pointed at the wrong document: `.github/workflows/lint.yml`
+cited `04-build-plan.md § F` and `renovate.json` cited `§ G`, and both sections
+live in `09-phase-1.5-review.md`. `lint.yml`'s comment also still said the tool
+is invoked through `npx`, which ADR 0020 changed to `node_modules/.bin` — a
+stamped artefact describing its own previous shape.
+
+### What was checked and found sound
+
+Recorded because a review that lists only findings reads as though nothing else
+was looked at.
+
+The full suite passes, `ruff` and `mypy` are clean, `standard-check` exits `3`
+and `--require-complete` exits `1`. The ten pre-existing stamps parse and name
+real controls. `deploys.json`'s per-gate controls agree with every `deployed_by`,
+including SEC-002, which is listed under `gate-secrets` and deliberately has no
+`deployed_by` — it is verified from the workflows and has no artefact of its own.
+The workflow's tolerance of exit `3` is bounded in a comment and held by a Phase
+3 criterion. The required status check contexts on the platform — `standard-check`
+and `lint-md` — match the job ids in both workflows.
+
+One thing was found and deliberately not treated as a defect: the shipped
+template's `fetch-secrets.sh` is macOS-only and hard-fails without a Claude
+OAuth token in the Keychain, so `devcontainer up` cannot succeed on Linux or
+Windows. The repository's owner ruled this acceptable for now. It is recorded
+here rather than fixed, and it is not what blocks the open build criterion —
+`devcontainer build` does not run `initializeCommand`.
+
 ## Decisions the next slice needs
 
 Recorded here rather than settled silently, in the shape § H used.
@@ -1239,6 +1405,7 @@ Recorded here rather than settled silently, in the shape § H used.
 | --- | --- |
 | ~~`deploys.json` carries one `contractVersion` for the whole plugin~~ — **settled** by the second gate, see § `deploys.json` carries one contract per gate | Phase 5's criteria are *a version bump produces no recommendation, a contract bump does*. A per-plugin contract makes the second one fire for gates that did not change, and that is discovered as noise rather than as a bug |
 | A repo-root `LICENSE`, copied into the plugin | `check_plugin_license.py` fails without it and `pyproject.toml` already declares Apache-2.0. Phase 6 holds the criterion; the plugin directory exists from now on without one |
+| **`gate-repo`'s ruleset payload omits `parameters`** — see § 2 above. The apply call 422s, and the recorded ruleset requires no named check | Every adopter who runs `/gate-repo` hits it, and CI-001 is the control the whole Phase 3 remote story is built on. It is also the last thing standing between GOV-001 and dropping its partial |
 | Whether SUP-002 should declare a `remote` locus. It verifies the *configuration*; whether the bot is **enabled** is platform state nothing checks — see § What the audit found that Phase 3 owns | Adding one creates a fourth `kind: remote` block, and Phase 3 is where those are implemented rather than stubbed. Deciding it earlier would mean stubbing exactly the part that must not be stubbed |
 | ~~Whether `gate-secrets` should own `.devcontainer/setup.sh`'s scanner install~~ — **settled** at register contract 15: `gate-build` owns the file, each gate stamps its own region, see § `.devcontainer/setup.sh` gets an owner | It is a third site repeating the version, listed in `pinned_at`, and no gate currently claims it. Today it is nobody's, which is how a locus gets forgotten |
 | ~~Whether a stack's gate tools must be **present** in a lockfile the repository commits~~ — **settled yes** at register contract 13, see § The pin's existence | It is about the pin's *existence* rather than the invocation, so it is a new assert rather than a register edit, and every gate after this one inherits whichever answer is given |

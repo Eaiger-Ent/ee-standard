@@ -36,8 +36,8 @@
   },
 
   // Secrets are fetched on the host and never committed. Both generated files
-  // are gitignored by the `.gitignore` in this directory; SEC-001 depends on
-  // those lines staying there.
+  // are gitignored by the `.gitignore` in this directory, and from register
+  // contract 18 SEC-001 reads that rule rather than taking its word for it.
   "initializeCommand": "bash .devcontainer/fetch-secrets.sh",
 
   // The `.docker` copy, not the `.env` itself. `--env-file` does no shell
