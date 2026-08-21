@@ -37,8 +37,12 @@ The seventh is `gate-repo`, in § The sixth gate, and it completes the family.
 The eighth is the shipped devcontainer template, in § The template.
 
 The ninth is `standard-adopt`, in § The front door, which is the last piece of
-the phase. One half of the template's criterion — that it **builds** — needs an
-operator with Docker and stays open until it is recorded here.
+the phase.
+
+**Ten criteria of eleven are closed.** § Where Phase 2 finished holds the audit
+that closed them and the one that is still open — the devcontainer template
+building, which needs an operator with Docker and stays open until its output is
+recorded here.
 
 ## What closed, and how
 
@@ -1149,6 +1153,84 @@ a dispatcher: `standard-adopt` ships none **because** it writes no artefacts. Th
 test now skips a skill with no templates only after checking it is not a gate —
 a gate with no templates would be one whose deployment has no reviewable source.
 
+## Where Phase 2 finished
+
+Ten of eleven criteria. What follows is the audit that closed it, run over the
+register rather than over the ledger — because a ledger is a claim and the
+register is the thing.
+
+### Every control, and what reads each locus it declares
+
+| Control | Gate | Own stamp | Loci read by |
+| --- | --- | --- | --- |
+| SEC-001 | `gate-secrets` | yes | `secrets_gate_wired_at_all_loci`; remote deferred |
+| SEC-002 | — | no | `no-static-cloud-keys` — see below |
+| SUP-001 | `gate-supply-chain` | yes | `ci-installs-frozen`, over gating steps |
+| SUP-002 | `gate-supply-chain` | yes | `dependency_update_config_covers_all_ecosystems` — see below |
+| SUP-003 | `gate-supply-chain` | yes | `gate_wired_at_declared_loci` |
+| BLD-001 | `gate-build` | yes | `gate_wired_at_declared_loci` |
+| DEV-001 | `gate-build` | yes | `gate_wired_at_declared_loci` |
+| CI-001 | `gate-repo` | yes | `ruleset_recorded_matches_register`; remote deferred |
+| LNT-001 | `gate-quality` | yes | `linter-wired-at-all-loci` |
+| TYP-001 | `gate-quality` | yes | `typecheck-strict-and-blocking` |
+| TST-001 | `gate-quality` | yes | `tests-run-and-block` |
+| IAC-001 | `gate-iac` | yes | `gate_wired_at_declared_loci` |
+| DOC-001 | `lint-md` | no | `markdown_gate_wired_at_all_loci` |
+
+**Two rows have no locus-wiring assert, and neither is an oversight.** Saying so
+here rather than leaving the blank, because a blank in a table like this is
+exactly the silence three of this phase's slices were spent removing.
+
+**SEC-002 has nothing to wire.** *CI authenticates without a long-lived cloud
+credential* is satisfied by a workflow **not** referencing one.
+`no-static-cloud-keys` reads every workflow file, which is the whole of the `ci`
+locus for a control whose content is an absence. There is no gate to install, no
+artefact to write, and so no stamp — which is why it is `standard-adopt`'s
+*checked, not deployed* row rather than a gap.
+
+**SUP-002's `ci` locus is read, and measured.** Its assert reads a config file
+rather than a workflow step, so the question is fair: what fails in CI when that
+config is wrong? Measured by deleting `.github/dependabot.yml` from a copy of
+this repository —
+
+```text
+SUP-002  FAIL
+   ✗ file: dependency_update_config_covers_all_ecosystems — renovate.json enables
+     custom managers only, so it proposes no package-ecosystem updates, and
+     there is no .github/dependabot.yml to cover them
+```
+
+— and that failure reaches CI through the conformance step, which is the same
+route SUP-001's `tool_versions_match_register` takes. The locus is read.
+
+**DOC-001 carries no stamp block of its own**, and that is `lint-md`'s to add.
+The deployment here is stale by design (`lint-md@1.0.6` against 1.0.7) and
+`CLAUDE.md` records why re-running it is not the fix.
+
+### What the audit found that Phase 3 owns
+
+One thing, recorded rather than fixed: **SUP-002 verifies the configuration and
+not the bot**. A `dependabot.yml` is inert until Dependabot is enabled on the
+repository, and a `renovate.json` until the app is installed and its onboarding
+pull request left open. Both are platform acts, both are already flagged as a
+human's in `08-adopting.md` § 1.1 and in `gate-supply-chain`'s own output — and
+neither is *verified*, because verifying platform state is Phase 3's.
+
+Whether SUP-002 should therefore declare a `remote` locus is a register change
+this phase deliberately did not make: adding one would create a fourth
+`kind: remote` block, and Phase 3 is where those are implemented rather than
+stubbed.
+
+### The one criterion left open
+
+The devcontainer template **builds**. This container has no Docker, so nothing
+here has run `devcontainer build`, and the criterion says so rather than
+resting on the copy's controls passing. The commands are in `08-adopting.md`
+§ 2.0, and this section is where the output goes when an operator runs them.
+
+A criterion closed on a build nobody ran is the over-tick this document exists
+to catch — seven times, so far.
+
 ## Decisions the next slice needs
 
 Recorded here rather than settled silently, in the shape § H used.
@@ -1157,5 +1239,6 @@ Recorded here rather than settled silently, in the shape § H used.
 | --- | --- |
 | ~~`deploys.json` carries one `contractVersion` for the whole plugin~~ — **settled** by the second gate, see § `deploys.json` carries one contract per gate | Phase 5's criteria are *a version bump produces no recommendation, a contract bump does*. A per-plugin contract makes the second one fire for gates that did not change, and that is discovered as noise rather than as a bug |
 | A repo-root `LICENSE`, copied into the plugin | `check_plugin_license.py` fails without it and `pyproject.toml` already declares Apache-2.0. Phase 6 holds the criterion; the plugin directory exists from now on without one |
+| Whether SUP-002 should declare a `remote` locus. It verifies the *configuration*; whether the bot is **enabled** is platform state nothing checks — see § What the audit found that Phase 3 owns | Adding one creates a fourth `kind: remote` block, and Phase 3 is where those are implemented rather than stubbed. Deciding it earlier would mean stubbing exactly the part that must not be stubbed |
 | ~~Whether `gate-secrets` should own `.devcontainer/setup.sh`'s scanner install~~ — **settled** at register contract 15: `gate-build` owns the file, each gate stamps its own region, see § `.devcontainer/setup.sh` gets an owner | It is a third site repeating the version, listed in `pinned_at`, and no gate currently claims it. Today it is nobody's, which is how a locus gets forgotten |
 | ~~Whether a stack's gate tools must be **present** in a lockfile the repository commits~~ — **settled yes** at register contract 13, see § The pin's existence | It is about the pin's *existence* rather than the invocation, so it is a new assert rather than a register edit, and every gate after this one inherits whichever answer is given |
