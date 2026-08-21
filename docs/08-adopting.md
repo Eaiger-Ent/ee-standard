@@ -120,6 +120,51 @@ for a file.
 
 ## 2 — The development environment
 
+### 2.0 — Where the devcontainer comes from
+
+A conformant `.devcontainer/` ships with the plugin, at
+`plugins/ee-standard/templates/devcontainer/`. Copy it, replace the
+double-brace placeholders — `grep -rl '{{' .devcontainer` lists them — and run
+`/gate-build` to pin what you chose and stamp it.
+
+**Why it ships here rather than as a template repository.** `project-init` has
+one stated precondition: `.devcontainer/devcontainer.json` must already exist,
+and its guidance when it does not is *"clone the template repo or add the file
+manually"*. That template repo is private, so anyone whose access lapses loses
+the ability to start a project. A directory in the plugin is obtainable by
+anyone who can install the plugin.
+
+**What the template pins**: the image by digest, and every feature by digest in
+`devcontainer-lock.json`. **What it refuses to pin**: any tool version inside
+`setup.sh`. That is Phase 2's own exit criterion — *the template pins no tool
+version by hand; every tool it installs is either sourced from a lockfile the
+consumer repo already commits, or from a single toolchain file*. A template
+scattering pins through a shell script reproduces that problem in every
+repository that adopts the standard, and you have no
+`tool_versions_match_register` of your own until you adopt the register too.
+
+So `setup.sh` installs only from lockfiles you commit. Scanners, linters and
+analysers are installed by the gates that own their controls, each writing its
+own stamped region into that file.
+
+**Two lines that must survive the copy.** The template's own `.gitignore` names
+`.env` and `.env.docker`, and SEC-001 depends on them. Deleting it does not fail
+a build; it fails quietly, later, in someone else's clone — and a secret that
+reaches a remote is not undone by removing it.
+
+**How you know it worked**, in this order:
+
+```bash
+grep -rl '{{' .devcontainer          # expect no output
+devcontainer build --workspace-folder .
+standard-check run --control BLD-001 --control DEV-001
+```
+
+A fresh copy fails the loci and stamp blocks of both controls, which is correct:
+`gate-build` has not run yet. It should pass `devcontainer_user_is_non_root`,
+`devcontainer_image_digest_pinned` and `devcontainer_lock_covers_all_features`
+from the first line.
+
 Copy `.devcontainer/` from this repository as the worked example. Its operator
 guide is [`06-devcontainer-setup.md`](06-devcontainer-setup.md); the
 specification the shipped template will meet is

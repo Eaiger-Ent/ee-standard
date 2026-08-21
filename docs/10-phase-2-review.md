@@ -33,8 +33,11 @@ four — and, in the course of doing so, found two ways a CI step could be
 credited as a locus without gating anything.
 
 The seventh is `gate-repo`, in § The sixth gate, and it completes the family.
-`standard-adopt` and the devcontainer template are still outstanding, and the
-criteria that name them are still open.
+
+The eighth is the shipped devcontainer template, in § The template.
+`standard-adopt` is the last outstanding piece, and one half of the template's
+criterion — that it **builds** — needs an operator with Docker and stays open
+until it is recorded here.
 
 ## What closed, and how
 
@@ -954,6 +957,102 @@ than the register asks. If that reading is wanted, it is a register change.
 ```text
 {"skill": "gate-repo", "overall": "PASS", "fails": 0}
 ```
+
+## The template — `plugins/ee-standard/templates/devcontainer/`
+
+The eighth slice, and the first that is not code.
+
+### Where it lives, and why that was a decision
+
+`03-devcontainer.md` named two candidate homes and settled on neither: a public
+template repository, or a directory inside the plugin. The plugin won, and the
+argument is the one that document already made — `project-init`'s stated
+precondition is that `.devcontainer/devcontainer.json` exists, its guidance when
+it does not is *"clone the template repo"*, and **that repo is private**. Anyone
+whose access lapses loses the ability to start a project.
+
+A directory in the plugin is obtainable by anyone who can install the plugin,
+needs no org-admin action, and cannot drift from the register into a second
+repository nobody is auditing.
+
+### What it pins, resolved rather than copied
+
+The base image digest was **resolved from the registry while writing this**,
+not carried across from this repository's own devcontainer:
+
+```text
+GET https://mcr.microsoft.com/v2/devcontainers/base/manifests/trixie
+docker-content-digest: sha256:025b74bb5f7ac53edd77e01aa7188c359aab100e23a2f6220bde50bbb9fd31dd
+```
+
+It matches what this repository pins, which is the answer the copy would have
+given — and the point is that it was checked rather than assumed. The feature
+digest did **not**: `ghcr.io/devcontainers/features/github-cli:1` now resolves
+to `1.1.1` where this repository's lock file holds `1.1.0`. A tag had moved
+since Phase 0.5, and copying the lock file would have shipped a stale pin as a
+fresh one.
+
+### The criterion that needed a test rather than a review
+
+> The template pins no tool version by hand. Every tool it installs is either
+> sourced from a lockfile the consumer repo already commits, or from a single
+> toolchain file — never a literal inside `setup.sh`.
+
+[ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) singled this one out
+in advance as a criterion a template could meet **in letter**: it is about the
+*source* of a version, and a template with a resolution hole satisfies it. So it
+is a grep, not a reading — `_VERSION_LITERAL` in
+`tests/test_devcontainer_template.py` enumerates the shapes a real setup script
+uses, and `setup.sh` must contain none of them.
+
+And the grep is itself tested. `test_the_grep_would_catch_a_pin_if_one_appeared`
+feeds it five lines lifted from real scripts — `pip install --quiet uv==0.12.5`,
+`GITLEAKS_VERSION=8.30.1`, a version in a URL path, a bare `sha256sum -c` digest,
+`npm install -g markdownlint-cli2@0.18.1` — and requires each to fail. Two of
+those five slipped through the first pattern, which is the whole argument for
+writing that test: a pattern loose enough to match nothing passes the positive
+test while verifying nothing at all.
+
+A second test covers what the grep cannot. A script can pin nothing and still
+install something unpinned — `pip install uv`, `npm install -g` — which is worse,
+because the version is then whatever the registry served that day. Every install
+in the template is required to be frozen and guarded by a lockfile's presence.
+
+### The two lines that travel with the directory
+
+`fetch-secrets.sh` writes real credentials into `.devcontainer/.env`. The
+template ships its own `.gitignore` naming that file and its derived
+`.env.docker`, rather than telling an adopter to add them — a `.gitignore` you
+have to remember is one added after the first commit, which is one commit too
+late.
+
+Asserted twice, and deliberately: once on the file's contents, and once by
+`git ls-files` on a real copy with real-looking files in place.
+`.gitignore` semantics are subtle enough — a nested path, a leading slash, a
+negation — that reading the file is not the same as checking the behaviour.
+
+### What is verified, and what is not
+
+`test_the_copied_template_passes_the_controls_that_judge_it` copies the template
+into a throwaway repository and runs BLD-001 and DEV-001 against it. All three
+property blocks pass from the first line. The locus and stamp blocks fail, and
+the test asserts that too — a fresh copy has not run `gate-build`, which is the
+next step the README gives, and hiding that would be claiming a deployment that
+had not happened.
+
+**The build is not verified here and cannot be.** This devcontainer has no
+Docker, so a test claiming a successful build would claim something nothing ran.
+The exit criterion has two halves and only one of them is closed; the other
+needs an operator with Docker, and the commands are in `08-adopting.md` § 2.0:
+
+```bash
+grep -rl '{{' .devcontainer          # expect no output
+devcontainer build --workspace-folder .
+standard-check run --control BLD-001 --control DEV-001
+```
+
+Recorded as open rather than ticked. A criterion closed on a build nobody ran is
+the over-tick this document exists to catch.
 
 ## Decisions the next slice needs
 

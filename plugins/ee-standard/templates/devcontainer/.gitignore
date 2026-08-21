@@ -1,0 +1,9 @@
+# SEC-001 depends on these two lines. `fetch-secrets.sh` writes real credentials
+# here on every container start, and a commit that carries them is the failure
+# the whole secrets gate exists to prevent — one that no scanner can undo once
+# it reaches a remote.
+#
+# Keep this file in the copy you make. Deleting it does not fail a build; it
+# fails quietly, later, in someone else's clone.
+.env
+.env.docker

@@ -434,14 +434,21 @@ fixed in both.
       `standard_check.asserts`, a gate reaches it only through
       `standard-check run --control <ID>`, and a gate that deploys a control it
       does not name there fails a test
-- [ ] The devcontainer template builds, and DEV-001 passes against it
-- [ ] The template pins no tool version by hand. Every tool it installs is
+- [ ] The devcontainer template builds, and DEV-001 passes against it — the
+      template ships at `plugins/ee-standard/templates/devcontainer/` and
+      DEV-001's and BLD-001's property blocks pass against a copy of it
+      (`tests/test_devcontainer_template.py`). **Open on the other half**: this
+      devcontainer has no Docker, so nothing here has built it, and a tick on a
+      build nobody ran is the over-tick this plan exists to catch. The commands
+      are in [`08-adopting.md`](08-adopting.md) § 2.0
+- [x] The template pins no tool version by hand. Every tool it installs is
       either sourced from a lockfile the consumer repo already commits, or from
       a single toolchain file (§ G's action 2) — never a literal inside
-      `setup.sh`. A template that scatters pins through a shell script
-      reproduces § G's problem in every repo that adopts the standard, and the
-      consumer has no `tool_versions_match_register` of their own until they
-      adopt the register too
+      `setup.sh`. **Closed 2026-08-21** as a grep rather than a reading, because
+      [ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) named this
+      criterion in advance as one a template could meet *in letter*
+      ([`10-phase-2-review.md`](10-phase-2-review.md) § The criterion that
+      needed a test rather than a review)
 - [x] The rule for exemptions in a deployed config is decided and **checkable**
       before any gate skill deploys one (§ H7) — closed 2026-08-18 by
       [ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md): an exemption
