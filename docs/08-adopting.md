@@ -219,7 +219,7 @@ because they share two files: a pre-commit config and a gating workflow. Three
 separate skills writing those in turn would each rewrite what the last one
 wrote, which is why gates are grouped by the artefact they write.
 
-**Four prerequisites, and how you know each is met.**
+**Five prerequisites, and how you know each is met.**
 
 | Prerequisite | Why | How you know it worked |
 | --- | --- | --- |
@@ -227,12 +227,13 @@ wrote, which is why gates are grouped by the artefact they write.
 | Each gate's `invocation` reaches the artefact your lockfile pins | That string is what the skill writes at every locus. A bare tool name resolves from `PATH`, so the deployed gate runs whatever global is installed rather than the pinned version ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) | The skill stops before writing anything and says which invocation is bare |
 | A CI job that installs from the lockfile before these steps | Lint, type check and tests run the tools that install placed. A lint step before the install lints against nothing | SUP-001 passing, and the three steps sitting after the install step in the same job |
 | A test command the register accepts for your ecosystem | `ecosystems.<name>.test_commands` bounds the set; your repository picks the member. The skill asks rather than choosing | `standard-check run --control TST-001` reports the command runs and its exit code is the verdict |
+| An `ecosystem:` on your stack, and an `add_dev_dependency` for the lockfile you use | The gate has to be able to create a pin that is missing. `uv add --dev` and `poetry add --group dev` are both python, so the register says which one your repository uses | The schema rejects a register whose stack names an ecosystem that does not cover every lockfile it declares — `standard-check schema` names the field |
 
 **Expect exit `0` here, unlike `gate-secrets`.** All three controls verify from
 files and none declares a `remote` locus, so nothing is waiting on Phase 3. A
 `3` means a block declared itself partial — read which, rather than rounding up.
 
-**Three ways an adopter who already had these controls passing can now fail
+**Four ways an adopter who already had these controls passing can now fail
 them.** Each is the check working, not a new rule:
 
 1. **Strictness is read, not assumed.** TYP-001 carries `baseline: null`. If
@@ -249,6 +250,15 @@ them.** Each is the check working, not a new rule:
    `continue-on-error` or end in an idiom from the register's `suppression:`
    list. LNT-001 and TST-001 both verify through `no-failure-suppression`, and
    `|| true` on the lint step fails both of them at once.
+4. **A wired tool your lockfile does not pin.** From register contract 13,
+   LNT-001 and TYP-001 verify that the tool exists in a lockfile you commit as
+   well as that every locus invokes it. A repository that lints with a globally
+   installed linter — one nobody pinned, and which can differ between your
+   machine and CI — now fails, naming the tool and the lockfile. The gate adds
+   the dependency for you and reports every one it added by name: a tool your
+   repository did not previously depend on is a change to what it builds, not
+   only to how it is checked
+   ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md), case C).
 
 **Wiring by hand instead?** Stamp what you write, as § 3.1 says for the secrets
 gate — and stamp **each control's own artefacts**. All three read back a stamp

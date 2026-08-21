@@ -145,7 +145,25 @@ def _deploy(root: Path, register: Register) -> None:
     typecheck = register.stacks[STACK].gates["typecheck"]
     lint = register.stacks[STACK].gates["lint"]
 
-    # Step 2 — an empty section is a real configuration: the tool's defaults,
+    # Step 2, first half — the pin. `invocation` reaches the artefact the
+    # lockfile pins and reaches `PATH` instead when the tool is not in the
+    # project at all (ADR 0020, case C), so from contract 13 the pin is part of
+    # the control. The command is the register's, keyed by the lockfile that is
+    # present; what it does to the lockfile is simulated here, because running a
+    # real `uv add` would resolve from the network inside a unit test.
+    ecosystem = register.ecosystems[register.stacks[STACK].ecosystem]
+    lockfile = next(lock for lock in ecosystem.lockfiles if (root / lock).exists())
+    assert ecosystem.add_dev_dependency[lockfile] == "uv add --dev {package}"
+    lock = root / lockfile
+    for gate in (lint, typecheck):
+        package = gate.package or gate.tool
+        lock.write_text(
+            lock.read_text(encoding="utf-8")
+            + f'\n[[package]]\nname = "{package}"\nversion = "0.0.0"\n',
+            encoding="utf-8",
+        )
+
+    # Step 2, second half — an empty section is a real configuration: the tool's defaults,
     # stated where a reviewer can find them and a later commit can tighten.
     pyproject = root / "pyproject.toml"
     pyproject.write_text(
@@ -231,6 +249,11 @@ def test_before_deploying_all_three_controls_fail(
     assert "editor locus" in out and "pre-commit locus" in out and "ci locus" in out
     assert "no CI step runs the test command" in out
     assert "no tracked file carries a provenance stamp" in out
+    # The adopter's lockfile pins neither tool, so the invocations the gate is
+    # about to write would resolve from PATH. Part of the starting state from
+    # contract 13, and part of what the deployment has to change.
+    assert "ruff is not pinned in uv.lock" in out
+    assert "mypy is not pinned in uv.lock" in out
 
 
 def test_after_deploying_every_locus_verifies(
@@ -338,6 +361,32 @@ def test_removing_an_artefact_is_caught(
     assert code == 1
     assert f"{control}  FAIL" in out
     assert locus in out
+
+
+def test_removing_the_pin_is_caught(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ADR 0020 case C, on a fully deployed repository.
+
+    Every artefact is in place and every locus still reads `uv run ruff check`.
+    What changed is that ruff is no longer in the project, so that invocation
+    resolves from `PATH` — the condition ADR 0020 measured passing, and the one
+    the invocation itself cannot close.
+    """
+    lock = deployed / "uv.lock"
+    lock.write_text(
+        lock.read_text(encoding="utf-8").replace('name = "ruff"', 'name = "not-ruff"'),
+        encoding="utf-8",
+    )
+    make_repo(deployed, {})
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert "LNT-001  FAIL" in out
+    assert "ruff is not pinned in uv.lock" in out
+    assert "resolves from PATH" in out
+    # The wiring is untouched, and says so — the two halves are separable and
+    # this test is the evidence that the second one is doing work.
+    assert "ruff wired at every declared locus" in out
 
 
 def _rewrite_workflow(root: Path, edit: object) -> None:

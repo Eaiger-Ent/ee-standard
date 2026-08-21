@@ -16,8 +16,13 @@ a gate verifies through. Its second landed 2026-08-21 at register contract 12:
 `gate-quality`, the first gate owning more than one control (LNT-001, TYP-001,
 TST-001 — three controls, two shared files), a `deploys.json` carrying one
 contract **per gate** rather than per plugin, and `stacks:` invocations moved to
-the form that reaches the artefact a lockfile pins. `docs/10-phase-2-review.md`
-holds the evidence for both. Outstanding: the other four gates,
+the form that reaches the artefact a lockfile pins. Its third landed the same
+day at contract 13: `stack_tool_pinned_in_lockfile`, which closes
+[ADR 0020](docs/adr/0020-a-locus-reaches-the-pinned-artefact.md)'s case C by
+making the *existence* of a pin a verdict rather than only the invocation that
+reaches it, and `ecosystems.<name>.add_dev_dependency`, without which a gate
+could fail a control for an unpinned tool and not pin it.
+`docs/10-phase-2-review.md` holds the evidence for all three. Outstanding: the other four gates,
 `standard-adopt`, and the devcontainer template.
 Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
@@ -163,9 +168,9 @@ assert from the runner, and the schema rejects a register that writes it into
 files, note the edit in it, and respect the control's variance direction.
 
 A stamp *behind* the register is staleness, reported and never enforced —
-`gate-secrets`' two read contract 11 against a register at 12, deliberately,
-because nothing about SEC-001 changed at that contract and rewriting them by
-hand would record a redeployment that did not happen. A stamp *ahead* of the
+`gate-secrets`' two read contract 11 and `gate-quality`'s read 12 against a
+register at 13, deliberately, because nothing either gate wrote here needs
+rewriting and doing it by hand would record a redeployment that did not happen. A stamp *ahead* of the
 register is a defect, and fails. An exemption
 in a deployed config is judged by what it hides
 ([ADR 0019](docs/adr/0019-exemptions-cannot-hide-tracked-files.md)): excluding a

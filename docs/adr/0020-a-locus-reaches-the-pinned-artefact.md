@@ -179,9 +179,24 @@ not closed by the invocation.
 What would close it is an assertion that each stack's gate tools appear in the
 lockfile of an ecosystem the repository is in — a check about the *pin's
 existence* rather than about the invocation, which is why it is not this ADR's.
-Recorded as outstanding in
-[`10-phase-2-review.md`](../10-phase-2-review.md) § Decisions the next slice
-needs rather than left as a footnote here.
+
+**Closed at register contract 13.** `stack_tool_pinned_in_lockfile` is that
+assertion, and LNT-001 and TYP-001 each carry a block of it beside the wiring
+block. The register gained the two names it needs: `stacks.<stack>.ecosystem`,
+whose lockfile pins the stack's gate tools, and `ecosystems.<name>.lock_entry`,
+what a package looks like inside it. Case C is now a verdict — with ruff removed
+from a fully deployed repository and every locus still reading
+`uv run ruff check`, LNT-001 reports *ruff is not pinned in uv.lock, so uv run
+ruff check resolves from PATH*, and the wiring block beside it still passes. The
+two halves are separable, and the second one is doing work.
+
+It arrived with a second half of its own. A gate that can fail a control for an
+unpinned tool and cannot pin it would deploy a control it is unable to satisfy,
+so `ecosystems.<name>.add_dev_dependency` records how the pin is created, keyed
+by the lockfile present — `uv add --dev` and `poetry add --group dev` are both
+python — and `gate-quality`'s Step 2 runs it. The evidence is in
+[`10-phase-2-review.md`](../10-phase-2-review.md) § The pin's existence, and in
+`tests/test_lockfile_pin.py`.
 
 **D is why the register no longer records a bare name.** In this devcontainer a
 bare `ruff` resolves to `.venv/bin/ruff` because the venv is on `PATH`, and on a

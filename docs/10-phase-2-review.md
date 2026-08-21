@@ -14,9 +14,14 @@ rest"*.
 The second is `gate-quality`, recorded in § The second gate below. It is the
 first gate that owns more than one control, so it is where "grouped by the
 artefact they write" stops being a sentence in a design document and becomes a
-shape three controls have to share. The other four gates, `standard-adopt` and
-the devcontainer template are still outstanding, and the criteria that name them
-are still open.
+shape three controls have to share.
+
+The third settles one of the decisions the second slice recorded as outstanding
+— § The pin's existence — because every gate after `gate-quality` inherits the
+answer, and a decision inherited by four gates is cheaper to make once than to
+unpick four times. The other four gates, `standard-adopt` and the devcontainer
+template are still outstanding, and the criteria that name them are still
+open.
 
 ## What closed, and how
 
@@ -382,12 +387,123 @@ stays open.
 ### What is now stale, on purpose
 
 `gate-secrets`' two stamps read `register-contract: 11` against a register at
-12. That is staleness, and staleness is reported and never enforced
+13, and `gate-quality`'s read 12. That is staleness, and staleness is reported
+and never enforced
 (`00-concepts.md` § Notify, never redeploy) — `provenance_stamp_present` fails a
 stamp *ahead* of the register, never one behind. Nothing about SEC-001 changed
-at contract 12, and rewriting those stamps by hand would record a redeployment
-that did not happen. Left as it is, deliberately, and it is the first live
-instance of the state Phase 5's sweep exists to report.
+at contract 12 or 13, and rewriting those stamps by hand would record a
+redeployment that did not happen. Left as it is, deliberately, and it is the
+first live instance of the state Phase 5's sweep exists to report.
+
+Contract 13 is the more interesting case, because it *did* change what
+`gate-quality` writes — the gate now creates the pin as well as the wiring — and
+`gate-quality`'s `contractVersion` in `deploys.json` moved from 1 to 2 to say
+so. This repository still needs no redeployment: `uv.lock` already pins ruff and
+mypy, so the gate re-run would add nothing. A contract bump recommending a
+redeployment that would change no file is exactly the noise a per-gate contract
+was introduced to bound, and it is bounded here to one gate rather than two.
+
+## The pin's existence — register contract 13
+
+The third slice, and the smallest: one assert, four register fields, one new
+step in a gate that already shipped.
+
+### What was open
+
+[ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) made every locus
+invoke the artefact its lockfile owns, and measured four conditions. Three came
+out the way the ADR wanted. The fourth, case C, did not:
+
+```text
+C  ruff removed from the project entirely
+   uv run ruff --version          exit 0   9.9.9-impostor     (PATH answered)
+```
+
+Every artefact is in place, the invocation still reads `uv run ruff check`, and
+what answers is whatever is on `PATH`. No spelling of `invocation` closes it,
+because an invocation cannot assert the existence of the thing it invokes. The
+ADR said so and recorded the question here rather than as a footnote: *must a
+stack's gate tools be present in a lockfile the repository commits?*
+
+Answered yes. It is a new assert rather than a register edit, and every gate
+after `gate-quality` inherits it — which is why it is settled before the four
+gates that would otherwise each inherit an open question.
+
+### What the register gained
+
+Four fields, all of them answering *yes* to
+[ADR 0018](adr/0018-register-checker-boundary.md)'s test.
+
+| Field | What it settles | Why it is not the checker's |
+| --- | --- | --- |
+| `stacks.<stack>.ecosystem` | Whose lockfile pins this stack's gate tools | A stack and an ecosystem are different things, and a repository could reasonably run its linter from a package manager other than the one its application uses |
+| `ecosystems.<name>.lock_entry` | What a package looks like inside that lockfile | The same argument as `frozen_install` beside it: a lockfile format the checker has not heard of is a pin nothing verifies, and the failure is silent |
+| `ecosystems.<name>.add_dev_dependency` | How a gate creates a pin that is missing, keyed by the lockfile present | `uv add --dev` and `poetry add --group dev` are both python. Which is right is a fact about the repository |
+| `stacks.<stack>.gates.<role>.package` | The name the tool is pinned under, where it differs | `tsc` is a binary the `typescript` package ships. Searching a correctly-pinned lockfile for `tsc` finds nothing |
+
+### The half that is easy to miss
+
+An assert that fails a control for an unpinned tool makes `gate-quality`
+incapable of satisfying a control it deploys — the gate wires a linter and never
+adds it as a dependency. That surfaced as a test failure rather than as a
+thought, which is the useful direction: `test_after_deploying_every_locus_verifies`
+went red the moment the assert was wired, on a fixture repository whose
+`uv.lock` pins neither tool.
+
+So the slice is two changes, not one. `add_dev_dependency` is the register's
+answer, and `gate-quality`'s Step 2 gained a first half that runs it. A gate
+that can report a problem and not fix it is a gate that deploys a control it
+cannot satisfy, and the schema now refuses the shape: an ecosystem a stack names
+must declare `add_dev_dependency` for every lockfile it lists.
+
+### Watched failing
+
+The assert fails when the pin is gone, on a fully deployed repository —
+`test_removing_the_pin_is_caught`:
+
+```text
+LNT-001  FAIL
+   ✓ file: linter-wired-at-all-loci — ruff wired at every declared locus from one configuration
+   ✗ file: stack_tool_pinned_in_lockfile — python: ruff is not pinned in uv.lock,
+     so uv run ruff check resolves from PATH
+```
+
+The two blocks disagreeing is the point. The wiring is untouched and still
+passes; the pin is gone and fails. A repository can satisfy either half without
+the other, and only the pair means *the version that runs is the version that
+was reviewed*.
+
+Six more cases are held in `tests/test_lockfile_pin.py`: no lockfile at all, a
+lockfile git does not track, a stack whose predicate is unsatisfied, a binary
+lockfile that cannot confirm a pin and does not pretend to, `package`
+overriding `tool`, and the register-moves-alone test that renames the mandated
+linter in `controls.yaml` and watches the same repository fail.
+
+### The patterns that nobody had run
+
+`lock_entry` is declared for all six ecosystems and exercised by two, because
+this repository has a python stack and a typescript one. The other four would
+have shipped as regular expressions nobody had ever run — the shape that let a
+`go.mod` repository past SUP-001 for three contracts (§ H3 in
+[`09-phase-1.5-review.md`](09-phase-1.5-review.md)).
+
+So each of the six is tested twice: once against a real fragment of its own
+lockfile, and once against a package that is not in that fragment. The second
+half is what makes the first mean something — a pattern loose enough to match
+any text would pass the positive test while verifying nothing.
+
+### What is deliberately not covered
+
+TST-001 gains no pin check. Its test command is not a stack gate role, so there
+is no `stacks:` entry to read one from, and inventing a role for it would put a
+rule in the checker that the register could not state. The residual is smaller
+than case C was — a test command that resolves from `PATH` runs *some* test
+runner, where an unpinned linter enforces *some* rule set — but it is a
+residual, stated rather than closed.
+
+DOC-001 gains none either, and for a different reason: `node_modules/.bin/` exits
+127 when the artefact is absent, so there is nothing to fall through to. Case C
+is specific to a resolver that searches.
 
 ## Decisions the next slice needs
 
@@ -398,4 +514,4 @@ Recorded here rather than settled silently, in the shape § H used.
 | ~~`deploys.json` carries one `contractVersion` for the whole plugin~~ — **settled** by the second gate, see § `deploys.json` carries one contract per gate | Phase 5's criteria are *a version bump produces no recommendation, a contract bump does*. A per-plugin contract makes the second one fire for gates that did not change, and that is discovered as noise rather than as a bug |
 | A repo-root `LICENSE`, copied into the plugin | `check_plugin_license.py` fails without it and `pyproject.toml` already declares Apache-2.0. Phase 6 holds the criterion; the plugin directory exists from now on without one |
 | Whether `gate-secrets` should own `.devcontainer/setup.sh`'s scanner install | It is a third site repeating the version, listed in `pinned_at`, and no gate currently claims it. Today it is nobody's, which is how a locus gets forgotten |
-| Whether a stack's gate tools must be **present** in a lockfile the repository commits. Measured: `uv run <tool>` reaches the pin, and fails rather than falling through when it cannot — but falls through to `PATH` when the tool is absent from the project altogether ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) § Applied to the quality gates, case C) | It is about the pin's *existence* rather than the invocation, so it is a new assert rather than a register edit, and every gate after this one inherits whichever answer is given |
+| ~~Whether a stack's gate tools must be **present** in a lockfile the repository commits~~ — **settled yes** at register contract 13, see § The pin's existence | It is about the pin's *existence* rather than the invocation, so it is a new assert rather than a register edit, and every gate after this one inherits whichever answer is given |

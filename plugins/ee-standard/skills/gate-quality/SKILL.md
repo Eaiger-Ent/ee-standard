@@ -60,12 +60,15 @@ never be pointed at different things by accident.
 1. Every value written came from the register; none was chosen here.
 2. Every locus each control declares is wired — editor, pre-commit and ci for
    LNT-001; pre-commit and ci for TYP-001; ci for TST-001.
-3. Each artefact written carries a provenance stamp naming the control whose
+3. Every tool wired is pinned in a lockfile the repository tracks. An
+   invocation that reaches whatever is on `PATH` is not the pin it names
+   (ADR 0020, case C).
+4. Each artefact written carries a provenance stamp naming the control whose
    locus it is, this skill and version, and the register's version and contract.
-4. `standard-check run --control LNT-001 --control TYP-001 --control TST-001`
+5. `standard-check run --control LNT-001 --control TYP-001 --control TST-001`
    was run afterwards, its output shown, and its verdict reported as given —
    including a failure.
-5. Nothing was written outside the target repository.
+6. Nothing was written outside the target repository.
 
 ---
 
@@ -102,6 +105,10 @@ never self-declared — store:
 | `STRICT_KEY` | `…gates.typecheck.strict_key` |
 | `COVERAGE_KEY` | `…gates.typecheck.coverage_key` |
 | `TYPECHECK_CONFIG` | `…gates.typecheck.config` |
+| `LINT_PACKAGE` | `…gates.lint.package`, falling back to `…gates.lint.tool` |
+| `TYPECHECK_PACKAGE` | `…gates.typecheck.package`, falling back to `…gates.typecheck.tool` |
+| `STACK_ECOSYSTEM` | `stacks.<STACK>.ecosystem` — whose lockfile pins those two |
+| `ADD_DEPENDENCY` | `ecosystems.<STACK_ECOSYSTEM>.add_dev_dependency` — command per lockfile |
 
 And once, not per stack:
 
@@ -138,6 +145,7 @@ pins. This is the failure ADR 0020 measured for DOC-001. Offer via
 | `HOOK_STATE` | whether a hook's `id` or `entry` mentions `LINT_HOOK_ID`, and the same for `TYPECHECK_HOOK_ID` |
 | `WORKFLOWS` | `ls .github/workflows/ 2>/dev/null \|\| echo NONE` |
 | `TEST_STATE` | whether a gating step already invokes one of `TEST_COMMANDS` |
+| `PIN_STATE` | which of `LINT_PACKAGE` and `TYPECHECK_PACKAGE` a tracked `STACK_ECOSYSTEM` lockfile pins, and which lockfile it is |
 | `LEGACY_STATE` | configuration for a superseded linter or formatter the register does not name |
 
 For each workflow found, establish whether it **gates**: a workflow is the ci
@@ -183,12 +191,40 @@ Store the answer as `TEST_COMMAND`.
 
 ---
 
-## Step 2 — Make the configuration say what the controls claim
+## Step 2 — Pin the tools, then make the configuration say what the controls claim
 
 The tools are installed by the repository's package manager from its lockfile,
-so there is no binary to fetch here and no version for this skill to hold. What
-there is, is configuration — and two of these controls are about what the
-configuration says, not merely that it exists.
+so there is no binary to fetch here and no version for this skill to hold. There
+are two things to do: make sure the lockfile actually pins them, and make the
+configuration say what the controls claim.
+
+**The pin.** `LINT_INVOCATION` reaches the artefact the lockfile pins — and
+reaches whatever is on `PATH` instead if the tool is not in the project at all
+(ADR 0020, case C). An invocation cannot assert the existence of the thing it
+invokes, so from register contract 13 `LNT-001` and `TYP-001` each verify the
+pin as well as the wiring, and a gate that wired a tool it never added would
+deploy a control it cannot satisfy.
+
+For each of `LINT_PACKAGE` and `TYPECHECK_PACKAGE` that `PIN_STATE` shows
+unpinned, run the `ADD_DEPENDENCY` command for the lockfile the repository has,
+substituting the package name for `{package}`:
+
+```bash
+# The command comes from the register, keyed by the lockfile that is present.
+# Do not spell one here — `uv add` and `poetry add` are both python, and which
+# one is right is a fact about the repository.
+$(printf '%s' "$ADD_DEPENDENCY_FOR_THIS_LOCKFILE")
+```
+
+Two states are not this skill's to resolve. If the repository has **no** tracked
+lockfile for `STACK_ECOSYSTEM`, stop: SUP-001 owns that, `gate-supply-chain`
+deploys it, and adding a dependency to a project with no lockfile creates one
+whose contents nobody reviewed. If it has more than one, ask via
+**AskUserQuestion** which package manager governs — two lockfiles is a fact
+about the repository, not a thing to guess.
+
+Report every dependency added, by name. A tool the repository did not previously
+depend on is a change to what it builds, not a change to how it is checked.
 
 **The linter's configuration.** If no location in `LINT_CONFIG` holds a
 configuration, create the first one listed with an empty section for the tool.

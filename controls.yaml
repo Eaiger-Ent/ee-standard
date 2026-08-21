@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.12.0
+version: 0.13.0
 
 meta:
   owner: platform-engineering
@@ -69,7 +69,18 @@ meta:
   #     the artefact the lockfile pins rather than a bare tool name, which is
   #     ADR 0020 applied to the quality gates: `gate-quality` writes that string
   #     at every locus, so a bare name would deploy a locus resolving from PATH.
-  register_contract: 12
+  # 13: The pin a locus reaches is verified to exist. ADR 0020 measured `uv run`
+  #     reaching the artefact uv.lock pins, and falling through to PATH in one
+  #     residual case — the tool removed from the project altogether, leaving
+  #     the invocation behind (§ Applied to the quality gates, case C). That is
+  #     about the pin's *existence* rather than about the invocation, so no
+  #     spelling of `invocation` closes it. `stacks.<stack>.ecosystem` names
+  #     whose lockfile pins that stack's gate tools, `ecosystems.<name>.lock_entry`
+  #     records what a package looks like inside it, and
+  #     `stack_tool_pinned_in_lockfile` reads the two together. Every gate after
+  #     `gate-quality` inherits the answer, which is why it is settled here
+  #     rather than at the gate that first needs it.
+  register_contract: 13
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -174,6 +185,29 @@ ecosystems:
     lockfiles: [uv.lock, poetry.lock, pdm.lock]
     dependabot: [uv, pip]
     test_commands: [pytest, tox, nox, "make test"]
+    # Where a package appears inside this ecosystem's lockfile, as regular
+    # expressions with `{package}` substituted for the name being looked for.
+    # ADR 0020 case C: `uv run <tool>` reaches the artefact uv.lock pins, and
+    # falls through to PATH only when the tool is absent from the project
+    # altogether. No spelling of `invocation` closes that, because the question
+    # is whether the pin exists rather than how it is reached — so it is
+    # answered here, beside `frozen_install`, and for the same reason: a
+    # lockfile format the checker has not heard of is a pin nothing verifies.
+    # How a gate creates the pin it needs, keyed by the lockfile that is
+    # present. Contract 13's other half: `lock_entry` makes an absent pin a
+    # verdict, and a gate that cannot answer that verdict would deploy a control
+    # it is unable to satisfy. Required for any ecosystem a stack names, with an
+    # entry for every lockfile it declares — the command differs per package
+    # manager within one ecosystem, which is why it is keyed by lockfile rather
+    # than by ecosystem. Same argument as `release_repo` at contract 11: the one
+    # value the gate needed and could not derive.
+    add_dev_dependency:
+      uv.lock: "uv add --dev {package}"
+      poetry.lock: "poetry add --group dev {package}"
+      pdm.lock: "pdm add --dev {package}"
+    lock_entry:
+      # uv.lock, poetry.lock and pdm.lock all spell a package the same way.
+      - '(?m)^name = "{package}"$'
     frozen_install:
       - '\buv sync\b[^\n]*--(?:frozen|locked)\b'
       - '\bpip3? install\b[^\n]*-r\s+\S+'
@@ -183,6 +217,19 @@ ecosystems:
     lockfiles: [package-lock.json, pnpm-lock.yaml, yarn.lock, bun.lockb]
     dependabot: [npm]
     test_commands: ["npm test", "npm run test", vitest, jest]
+    add_dev_dependency:
+      package-lock.json: "npm install --save-dev {package}"
+      pnpm-lock.yaml: "pnpm add --save-dev {package}"
+      yarn.lock: "yarn add --dev {package}"
+      bun.lockb: "bun add --dev {package}"
+    lock_entry:
+      # package-lock.json v2+ keys by install path; pnpm and yarn (berry)
+      # write `/name@version`; yarn classic writes the descriptor at the
+      # line start. bun.lockb is binary and matches none of them — which is
+      # reported as a lockfile that could not be read rather than as a pass.
+      - '"node_modules/{package}"'
+      - '(?m)^\s*/?{package}@'
+      - '(?m)^"?{package}@'
     frozen_install:
       - '\bnpm ci\b'
       - '\byarn install\b[^\n]*--immutable\b'
@@ -192,6 +239,9 @@ ecosystems:
     lockfiles: [go.sum]
     dependabot: [gomod]
     test_commands: ["go test"]
+    lock_entry:
+      # go.sum lines are `module/path v1.2.3 h1:…`.
+      - '(?m)^(?:\S+/)?{package} v'
     # `-mod=readonly` is the default from Go 1.16, and every build verifies
     # `go.sum`, so an ordinary `go build` already resolves from the lockfile.
     # Stated rather than assumed: a repo that never runs the toolchain in CI
@@ -204,6 +254,9 @@ ecosystems:
     lockfiles: [Cargo.lock]
     dependabot: [cargo]
     test_commands: ["cargo test"]
+    lock_entry:
+      # Cargo.lock is TOML, one `[[package]]` table per crate.
+      - '(?m)^name = "{package}"$'
     frozen_install:
       - '\bcargo\b[^\n]*--(?:locked|frozen)\b'
   java:
@@ -211,6 +264,11 @@ ecosystems:
     lockfiles: [gradle.lockfile, gradle/verification-metadata.xml]
     dependabot: [maven, gradle]
     test_commands: ["gradle test", "mvn test"]
+    lock_entry:
+      # gradle.lockfile writes `group:artifact:version=…`;
+      # verification-metadata.xml writes `<component … name="artifact" …>`.
+      - '(?m)^\S+:{package}:'
+      - 'name="{package}"'
     frozen_install:
       - '\b(?:\./)?gradlew?\b[^\n]*--offline\b'
       - '\bmvn\b[^\n]*(?:--offline|-o)\b'
@@ -219,6 +277,9 @@ ecosystems:
     lockfiles: [Gemfile.lock]
     dependabot: [bundler]
     test_commands: [rspec, "bundle exec rspec", "rake test"]
+    lock_entry:
+      # Gemfile.lock indents `  name (version)` under `specs:`.
+      - '(?m)^\s+{package} \('
     frozen_install:
       - '\bbundle install\b[^\n]*--(?:deployment|frozen)\b'
       - '\bbundle config\b[^\n]*frozen[^\n]*true'
@@ -254,6 +315,14 @@ stacks:
     # `coverage_key` must cover every one of them — see the comment on that
     # field below.
     source_globs: ["*.py", "*.pyi"]
+    # Whose lockfile pins this stack's gate tools. Added at contract 13: a stack
+    # and an ecosystem are different things — `python` the stack mandates ruff
+    # and mypy, `python` the ecosystem knows what a lockfile is — and which one
+    # pins the other's tools is a repository fact, since a TypeScript repo could
+    # reasonably run its linter from a different package manager than the one
+    # its application uses. The names match here and the field says so rather
+    # than the checker assuming it.
+    ecosystem: python
     gates:
       lint:
         tool: ruff
@@ -295,6 +364,7 @@ stacks:
           - {file: setup.cfg, section: mypy}
   typescript:
     source_globs: ["*.ts", "*.tsx"]
+    ecosystem: node
     gates:
       lint:
         tool: eslint
@@ -309,6 +379,12 @@ stacks:
           - {file: .eslintrc*}
       typecheck:
         tool: tsc
+        # The name in the lockfile, where it differs from the tool's. `tsc` is a
+        # binary the `typescript` package ships, so looking for `tsc` in
+        # package-lock.json finds nothing and would fail a repository that pins
+        # it correctly. Which package ships a tool is a fact about the tool, and
+        # a repository could reasonably get the same tool from another package.
+        package: typescript
         invocation: node_modules/.bin/tsc
         pre_commit: tsc
         strict_key: strict
@@ -662,6 +738,14 @@ controls:
         # extension are read from there, so mandating a different linter is a
         # register change and not a checker change (ADR 0018).
         args: { role: lint }
+      # The other half of ADR 0020: `linter-wired-at-all-loci` verifies that
+      # every locus runs `uv run ruff check`, which reaches the artefact uv.lock
+      # pins — and reaches PATH instead if ruff is not in the project at all
+      # (ADR 0020 § Applied to the quality gates, case C). An invocation cannot
+      # assert the existence of the thing it invokes, so this block does.
+      - kind: file
+        assert: stack_tool_pinned_in_lockfile
+        args: { role: lint }
       - kind: file
         assert: no-failure-suppression
       # Each of `gate-quality`'s three controls reads back its own stamp. The
@@ -699,6 +783,9 @@ controls:
     verify:
       - kind: file
         assert: typecheck-strict-and-blocking
+        args: { role: typecheck }
+      - kind: file
+        assert: stack_tool_pinned_in_lockfile
         args: { role: typecheck }
       - kind: file
         assert: provenance_stamp_present
