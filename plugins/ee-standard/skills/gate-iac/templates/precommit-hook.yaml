@@ -1,0 +1,25 @@
+# Written into the target repository's `.pre-commit-config.yaml`, under the
+# `repos: - repo: local` entry's `hooks:` list. Double-brace placeholders are
+# substituted from the register before the block is written; none of them is a
+# value this file is allowed to decide.
+#
+# One hook for two analysers, because the hook runs the *control* and the
+# control runs both. IAC-001's verify blocks are `checkov` and `tflint`, and
+# `{{TOOL_INVOCATION}} run --control IAC-001` executes them through the same
+# path the audit uses — so a repository needs no second wiring for either, and
+# the two can never disagree about what "analysed" means.
+#
+# {{TOOL_INVOCATION}} is the register's `tools.{{TOOL}}.invocation`, written
+# verbatim. A bare name would resolve from PATH, and for this tool what answered
+# would be auditing the repository (ADR 0020).
+#
+# `files:` limits the hook to commits that touch infrastructure code. A commit
+# that changes no `*.tf` cannot introduce a finding in one, and a hook that runs
+# the whole analysis on every commit is a hook developers learn to bypass.
+      # ee-control: IAC-001  ee-skill: gate-iac@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      - id: {{TOOL}}-iac
+        name: {{TOOL}} (IAC-001)
+        entry: {{TOOL_INVOCATION}} run --control IAC-001
+        language: system
+        pass_filenames: false
+        files: '\.tf(vars)?$'

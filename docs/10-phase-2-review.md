@@ -26,9 +26,13 @@ first whose controls were **already passing** before it existed.
 
 The fifth is `gate-build`, in § The fourth gate, which closes two more of the
 four unread loci that slice found and replaces three near-copies of one assert
-with one that reads the control's own `locus:` list. The other two gates,
-`standard-adopt` and the devcontainer template are still outstanding, and the
-criteria that name them are still open.
+with one that reads the control's own `locus:` list.
+
+The sixth is `gate-iac`, in § The fifth gate, which closes the last of those
+four — and, in the course of doing so, found two ways a CI step could be
+credited as a locus without gating anything. `standard-adopt` and the
+devcontainer template are still outstanding, and the criteria that name them are
+still open.
 
 ## What closed, and how
 
@@ -759,6 +763,97 @@ P6 failed first time — `ci-steps.yaml` shipped in `templates/` and was
 referenced by no line of `SKILL.md`, because the ci locus had been described in
 prose rather than pointed at its template. A shipped file nothing references is
 a file nothing keeps current, which is precisely what P6 is for.
+
+## The fifth gate — `gate-iac`, register contract 16
+
+IAC-001, the last of the four unread loci — and the slice that found what the
+other three had been reading.
+
+### The gate that cannot be exercised here
+
+This repository has no `*.tf`, so IAC-001 reports `SKIPPED (predicate)` and
+always will. Every test in `tests/test_gate_iac_deploy.py` runs against a
+throwaway repository with Terraform in it, because a gate whose tests all ran
+against a repository the control skips would be a gate nothing had run.
+
+The same fact shapes the gate itself. This register pins neither `checkov` nor
+`tflint`, so the deployed control reports `UNCLASSIFIED — cannot verify` on both
+analyser blocks. The skill does **not** close that by installing them: an
+unpinned install leaves the version unrecorded, which is the condition
+`tool_versions_match_register` exists to fail. `UNCLASSIFIED` is the honest
+verdict and it is not a pass — `test_after_deploying_the_wiring_verifies`
+asserts the exit code is **not** `0` and calls that correct.
+
+### One hook, two analysers
+
+IAC-001's verify blocks are `checkov --directory . --compact --quiet` and
+`tflint --recursive`. The hook runs the *control*, and the control runs both.
+
+Two hooks each invoking one analyser would be two statements of what "analysed"
+means — a `--recursive` dropped at one locus and kept at another, discovered by
+a finding CI caught and pre-commit did not. The template names neither analyser,
+and two tests hold it: one checks the hook's `entry` names the control rather
+than the tools, the other that neither `run:` string appears anywhere under
+`plugins/`.
+
+### What this slice found in the other four gates
+
+Building the "suppressed step" test for IAC-001 turned up two defects in a check
+every gate uses, both of them the same shape as the ones contracts 11 and 14
+fixed: a locus read by something that could not tell enforcement from mention.
+
+**A suppressed step counted as a locus.** `continue-on-error: true` means the
+job succeeds whatever the gate reports. The tool runs; the merge is not gated on
+it. SEC-001 and SUP-003 carry no `no-failure-suppression` block of their own, so
+nothing else caught it — *declared and unreachable* one level in from the
+`workflow_dispatch` case § D found.
+
+**Installing a tool counted as running it.** This was the worse of the two, and
+it was `gate-secrets`' own shipped template that exposed it. The ci-locus check
+was a substring search over a step's whole `run:` text, and the install step
+mentions `gitleaks` six times — in a URL, in a tarball name, and as an argument
+to `tar`, `install` and `rm`. Measured:
+
+```text
+workflow with the secret-scan step deleted, install step kept
+  SEC-001  ✓ file: secrets_gate_wired_at_all_loci — pre-commit and ci loci
+           both reach gitleaks through 'gitleaks'
+```
+
+The scanner was installed and never run, and the control was green. Contract 11
+added that ci check precisely to stop a deleted scan step passing; it did not
+stop this one.
+
+Both are closed by one change: a tool is run by a step when it is the
+**command**, not when its name appears in one. `_commands()` splits a `run:`
+block on shell separators, strips prefix words (`sudo`, `env`, a `VAR=`
+assignment), and the invocation is matched at position 0. `_ci_run_mentions` and
+the generic locus assert both go through it.
+
+One existing test moved with the tightening rather than around it:
+`test_mandating_a_different_linter_changes_the_verdict` had a fixture running
+`uv run flake8 check` against a register naming `flake8 check`. The substring
+search accepted it; the command match does not, and it should not — that is ADR
+0020's point stated the other way round, so the register mutation now names the
+invocation the repository actually makes.
+
+### Watched failing
+
+Twelve cases, including the predicate itself: a repository with no Terraform is
+`SKIPPED (predicate)` and exits `0`, which is the state this repository is
+permanently in. Then, on the Terraform fixture: both loci failing before
+deployment, each artefact deleted in turn, the CI step suppressed, the stamps
+stripped, and the no-op path where an existing full audit reaches the control.
+
+### Preflight P1–P11 — `gate-iac`
+
+```text
+{"skill": "gate-iac", "overall": "PASS", "fails": 0}
+```
+
+Zero failures first time — the first gate for which that is true, and only
+because P2's 250-character description limit and P6's referenced-files rule had
+already been paid for by `gate-supply-chain` and `gate-build`.
 
 ## Decisions the next slice needs
 
