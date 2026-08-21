@@ -35,6 +35,43 @@ test gates, wire the remaining gates by hand using this repository as the worked
 example, and run the checker. When Phase 2 finishes, most of § 2 and § 3 becomes
 one command.
 
+## 0 — The front door
+
+`/standard-adopt` is the only entry point you need. It reads the register, works
+out which controls apply to **your** repository from its files, shows a plan,
+dispatches the gates in dependency order, verifies through the checker, and
+commits.
+
+```bash
+/standard-adopt --repo . --register ./controls.yaml
+```
+
+Everything in the sections below is either a step it takes for you, or a step it
+tells you that you owe. Read § 1 first anyway: those are the acts no skill can
+take, and a plan that reaches them is a plan waiting on you.
+
+**What it will not do.** It writes no gate configuration itself — every artefact
+is written by the gate that owns the control, which is what keeps one control's
+config in one place. It will not commit on a failed verify. And it will not
+report exit `3` as a pass: SEC-001's and CI-001's remote blocks report
+`SKIPPED (no credentials)` until Phase 3, so `3` is the expected result today
+and the skill names which blocks were skipped rather than rounding up.
+
+**One confirmation, and one exception.** It asks once, covering the whole plan.
+`gate-repo` asks **again** on its own, and that is right rather than redundant:
+the plan covers what will be written to files, and a GitHub API call is not a
+file. Its ruleset is in force the moment the call returns, for everyone with
+access.
+
+**A control is never silently absent from the plan.** Four rows cover every
+control in the register — *deploy*, *dispatch elsewhere* (DOC-001 is `lint-md`'s,
+in another plugin), *checked, not deployed* (SEC-002 is satisfied by a workflow
+**not** referencing a static credential, so there is nothing to write), and
+*manual*. A control missing from the plan would read as one that does not apply.
+
+If you would rather deploy one gate at a time, each works standalone — § 3.1 to
+§ 3.6. `standard-adopt` exists to save you knowing which.
+
 ## 1 — Platform state: what only a human with admin can do
 
 None of this is code, none of it is in a pull request, and all of it is invisible
