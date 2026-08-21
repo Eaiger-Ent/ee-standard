@@ -1,0 +1,35 @@
+// CI-001's recorded ruleset — a record, not an enforcement. GitHub does not
+// read this path to decide what protects `main`; only the API call does, and
+// only Phase 3's `kind: remote` verification can confirm that it still does.
+//
+// Adopted rather than deployed: this ruleset was created by hand on
+// 2026-08-17, and this file was written when the gate that owns it was built.
+// It is what `GET /repos/Eaiger-Ent/ee-standard/rulesets/20937135` returns
+// today, transcribed — not what a deployment would have produced from nothing.
+//
+// The file is JSONC, as `.devcontainer/devcontainer.json` is, so that it can
+// carry its own stamp. `gate-repo` strips the comment lines before POSTing,
+// because GitHub's API takes strict JSON.
+{
+  // ee-control: CI-001  ee-skill: gate-repo@0.1.0  register: v0.17.0  register-contract: 17
+  "name": "default-branch-protection",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["~DEFAULT_BRANCH"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "pull_request" },
+    { "type": "required_status_checks" },
+    { "type": "non_fast_forward" },
+    // Not one of CI-001's requirements, and kept because it is on the platform.
+    // An extra rule adds a restriction; the control forbids removing a required
+    // one. Transcribing the ruleset without this would make the record disagree
+    // with what is enforced, which is worse than recording more than the
+    // register asks for.
+    { "type": "deletion" }
+  ]
+}

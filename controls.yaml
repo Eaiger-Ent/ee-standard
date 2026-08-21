@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.16.0
+version: 0.17.0
 
 meta:
   owner: platform-engineering
@@ -121,7 +121,21 @@ meta:
   #     register; an absent analyser is UNCLASSIFIED (ADR 0016) rather than a
   #     pass, and this register pins neither because this repository has no
   #     `*.tf` to analyse.
-  register_contract: 16
+  # 17: CI-001 names the gate that writes its artefact — and it has one, which
+  #     was not obvious. Its only locus is `remote`, so `gate-repo` was the one
+  #     gate with no file to write, no stamp to leave and nothing verifiable
+  #     until Phase 3. A gate that cannot be observed working is what this
+  #     repository's review record keeps catching, so the ruleset is *recorded*
+  #     before it is applied: `.github/rulesets/default-branch.json`, derived
+  #     from this control's `args:` at deploy time, stamped like any other
+  #     artefact, and read back by `ruleset_recorded_matches_register`.
+  #
+  #     That assert verifies **intent, not platform state**, and says so in its
+  #     own message. A recorded ruleset GitHub has never been told about is the
+  #     reads-as-solved half-state DEV-001 exists to catch, one domain over — so
+  #     the remote block stays exactly where it was, reporting SKIPPED (no
+  #     credentials) until Phase 3 implements `kind: remote`.
+  register_contract: 17
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -845,6 +859,24 @@ controls:
     locus: [remote]
     applies_to: [always]
     verify:
+      # What the ruleset must say. One statement, read twice: the recorded
+      # artefact is compared against it now, and the platform's own state will
+      # be compared against it in Phase 3. Two `args:` blocks would be two
+      # definitions of "protected", free to drift.
+      - kind: file
+        assert: ruleset_recorded_matches_register
+        args:
+          path: .github/rulesets/default-branch.json
+          require_pull_request: true
+          require_status_checks: true
+          allow_force_push: false
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-repo }
+      # Unchanged, and deliberately. A recorded ruleset is what a repository
+      # *intends*; only the platform can say what it enforces, and nothing here
+      # may stand in for that. Reporting SKIPPED (no credentials) is the honest
+      # verdict until Phase 3.
       - kind: remote
         assert: default_branch_ruleset_satisfies
         args:
@@ -852,6 +884,7 @@ controls:
           require_status_checks: true
           allow_force_push: false
     owner: platform-engineering
+    deployed_by: gate-repo
     variance: forbidden
     baseline: null
     review_by: 2027-08-16

@@ -31,8 +31,12 @@ of one assert with `gate_wired_at_declared_loci`, which reads the control's own
 `locus:` list. Its sixth landed at contract 16: `gate-iac`, closing the last of the four — and
 finding two more ways a CI step could be credited as a locus without gating
 anything, a suppressed step and the step that *installs* a tool rather than
-running it. `docs/10-phase-2-review.md` holds the evidence for all six.
-Outstanding: `standard-adopt` and the devcontainer template.
+running it. Its seventh landed at contract 17: `gate-repo`, the only gate whose
+effect is not a file, which records the branch ruleset before applying it so
+that something is verifiable before Phase 3 — as **intent**, never as
+enforcement. `docs/10-phase-2-review.md` holds the evidence for all seven. **All
+six gates now exist.** Outstanding: `standard-adopt` and the devcontainer
+template.
 Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
@@ -163,14 +167,16 @@ naming the control, the deploying skill and version, the register version **and
 the register contract** — `docs/00-concepts.md` § The provenance stamp has the
 format, one parser lives at `src/standard_check/provenance.py` (never write a
 second), and `tests/test_provenance_stamps.py` checks every stamp parses and
-names a real control. Nine files carry one: `.markdownlint.yaml`,
+names a real control. Ten files carry one: `.markdownlint.yaml`,
 `.markdownlint-cli2.yaml`, `.github/workflows/lint.yml`,
 `.claude/hooks/md-lint.py`, `.github/workflows/standard-check.yml`,
 `.devcontainer/devcontainer.json`, `.github/dependabot.yml` — the one file whose
 stamp sits at the top, because every line of it belongs to SUP-002 —
 `.devcontainer/setup.sh`, whose every stamp belongs to a gate other than the
-`gate-build` that owns the file, and, with one stamp per hook it owns rather
-than one at the top of the file, `.pre-commit-config.yaml`. A control whose artefacts a gate writes names it in
+`gate-build` that owns the file, `.github/rulesets/default-branch.json` — the
+one artefact that enforces nothing by existing, being a record of what the
+platform is asked to enforce — and, with one stamp per hook it owns rather than
+one at the top of the file, `.pre-commit-config.yaml`. A control whose artefacts a gate writes names it in
 `deployed_by`, and `provenance_stamp_present` reads back a stamp naming **that
 control** — not merely one naming its gate, which credited a gate's three
 controls for any stamp it had written anywhere. The control's id reaches the
@@ -180,7 +186,7 @@ files, note the edit in it, and respect the control's variance direction.
 
 A stamp *behind* the register is staleness, reported and never enforced —
 `gate-secrets`' and `gate-quality`'s older stamps read contracts 11 and 12
-against a register at 16, deliberately, because nothing they wrote here needs
+against a register at 17, deliberately, because nothing they wrote here needs
 rewriting and doing it by hand would record a redeployment that did not happen. A stamp *ahead* of the
 register is a defect, and fails. An exemption
 in a deployed config is judged by what it hides
@@ -232,7 +238,8 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 the three meta-controls described below the table.
 
 Gate skills live in `plugins/ee-standard/skills/` — `gate-secrets`,
-`gate-quality`, `gate-supply-chain`, `gate-build` and `gate-iac` today. A gate verifies itself with
+`gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`
+— the whole family. A gate verifies itself with
 `standard-check run --control <ID>` and never by reading its own files back —
 that command runs the control's verify blocks through the same `run_control` the
 full audit calls, which is what makes "one assert implementation" true rather
