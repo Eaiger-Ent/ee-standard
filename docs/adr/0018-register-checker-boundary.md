@@ -300,6 +300,10 @@ deployment was recorded. No control proves the deployment was complete.
 - [ADR 0009: Lint From One Pinned Definition at Every Locus](0009-single-lint-definition.md)
   — the same argument applied to a tool's configuration rather than to the
   register.
+- [ADR 0021: How Remote Verification Authenticates](0021-how-remote-verification-authenticates.md)
+  — the reason the transport, the repository identity and the failure taxonomy
+  for `kind: remote` are held in the checker, recorded because this ADR requires
+  such a reason to exist.
 
 ## References
 

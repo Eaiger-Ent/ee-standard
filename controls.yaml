@@ -911,9 +911,10 @@ controls:
     applies_to: [always]
     verify:
       # What the ruleset must say. One statement, read twice: the recorded
-      # artefact is compared against it now, and the platform's own state will
-      # be compared against it in Phase 3. Two `args:` blocks would be two
-      # definitions of "protected", free to drift.
+      # artefact is compared against it, and so is the platform's own state.
+      # Two `args:` blocks would be two definitions of "protected", free to
+      # drift — and one reading serves both blocks, so the checker cannot hold
+      # two either.
       - kind: file
         assert: ruleset_recorded_matches_register
         args:
@@ -935,10 +936,12 @@ controls:
       - kind: file
         assert: provenance_stamp_present
         args: { skill: gate-repo }
-      # Unchanged, and deliberately. A recorded ruleset is what a repository
-      # *intends*; only the platform can say what it enforces, and nothing here
-      # may stand in for that. Reporting SKIPPED (no credentials) is the honest
-      # verdict until Phase 3.
+      # A recorded ruleset is what a repository *intends*; only the platform
+      # can say what it enforces, and nothing above may stand in for that. This
+      # block reads the rules GitHub reports as **in effect** on the default
+      # branch, so a ruleset that is merely recorded, or is in `evaluate` mode,
+      # or whose conditions miss the branch, satisfies nothing here. With no
+      # token it reports SKIPPED (no credentials), which is never a pass.
       - kind: remote
         assert: default_branch_ruleset_satisfies
         args:
@@ -946,8 +949,9 @@ controls:
           require_status_checks: true
           allow_force_push: false
           # The same values the file block reads. Two lists would be two
-          # definitions of "protected", free to drift — and that drift would be
-          # invisible until Phase 3 implemented this block.
+          # definitions of "protected", free to drift — and the drift would be
+          # invisible, since nothing compares two copies of a rule to each
+          # other. `test_gate_repo_deploy.py` holds the two `args:` equal.
           required_checks: [standard-check, lint-md]
           require_branches_up_to_date: true
     owner: platform-engineering

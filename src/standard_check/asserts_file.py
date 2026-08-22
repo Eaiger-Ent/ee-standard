@@ -789,14 +789,3 @@ FILE_ASSERTS: dict[str, AssertFn] = {
     "secret_files_are_gitignored": secret_files_are_gitignored,
 }
 
-# Remote assert names are part of the closed set from Phase 1 so a typo is a
-# schema error today, but their execution is deliberately deferred to Phase 3 —
-# implementing them now would mean stubbing exactly the part that must not be
-# stubbed. Until then every `kind: remote` block reports SKIPPED (no
-# credentials), which is never a pass.
-REMOTE_ASSERTS: frozenset[str] = frozenset(
-    {
-        "github_push_protection_enabled",
-        "default_branch_ruleset_satisfies",
-    }
-)

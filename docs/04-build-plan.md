@@ -540,16 +540,26 @@ unreachable — and only a remote check catches it.
       `kind: remote` needs, the token scopes that create a ruleset, and how an
       adopter confirms their conformance run is a *required* status check
 
-- [ ] Remote verification passes against a real repository
+- [x] Remote verification passes against a real repository — closed 2026-08-22
+      by Phase 3's first slice. `SEC-001` and `CI-001` both report `PASS`
+      against `Eaiger-Ent/ee-standard`, the first `0` exit either has produced
+      ([`11-phase-3-review.md`](11-phase-3-review.md) § Evidence)
 - [ ] With no credentials, remote checks report `SKIPPED (no credentials)` and
       the run does **not** exit 0 on that basis alone — satisfied for the exit
-      code since 2026-08-17 (it is `3`), outstanding for the workflow
+      code since 2026-08-17 (it is `3`); the reporting half is closed and tested
+      as of 2026-08-22, and the workflow half waits on the flip below
 - [ ] The `Standard` workflow's Conformance step passes `--require-complete` and
       no longer tolerates exit `3`. This is the flip ADR 0016 § Ratified
       tolerance defers to this phase: the tolerance exists only because remote
       verification does not, so implementing it here is what ends it. Leaving
       the tolerance in place after remote verification works would be the
-      silence ADR 0016 was written to stop
+      silence ADR 0016 was written to stop. **Blocked on a token, not on
+      the flip:** the default Actions `GITHUB_TOKEN` cannot read
+      `security_and_analysis`, so SEC-001's remote block reports `UNCLASSIFIED`
+      in CI while passing locally. Flipping first would turn every run red for a
+      control that holds
+      ([`11-phase-3-review.md`](11-phase-3-review.md) § What this slice left
+      open)
 - [ ] GOV-001 correctly fails a repo whose lint workflow exists but is not a
       required status check
 - [x] GOV-002 fails when a baseline file grows by one line — **already

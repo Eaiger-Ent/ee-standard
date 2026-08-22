@@ -11,9 +11,25 @@ import pytest
 import yaml
 
 from standard_check.register import Register, load_register
+from standard_check.remote import TOKEN_VARIABLES
 from standard_check.repo import Repo
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+@pytest.fixture(autouse=True)
+def _no_ambient_github_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test's verdict may depend on who is logged in.
+
+    A remote block reads `GITHUB_TOKEN` from the environment, and both this
+    devcontainer and GitHub Actions set one. Without this fixture the same test
+    would report SKIPPED (no credentials) on a laptop and reach the network in
+    CI — a suite whose results depend on ambient authentication, which is the
+    kind of hidden input the checker exists to refuse. Tests that want
+    credentials pass them explicitly.
+    """
+    for name in TOKEN_VARIABLES:
+        monkeypatch.delenv(name, raising=False)
 
 
 def make_repo(root: Path, files: dict[str, str], commit: bool = True) -> Repo:
