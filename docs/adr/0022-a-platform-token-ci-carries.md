@@ -105,22 +105,72 @@ because it mints tokens. Setup is org-level and needs someone with organisation
 admin. Most of the controls in § What the register must gain are still required,
 now pointed at the private key.
 
-### Option 3: Verify SEC-001's remote block somewhere a pull request cannot reach
+### Option 3: Put the credential behind a gate a pull request cannot edit
 
 Keep `${{ github.token }}` in the `pull_request` run, and give the
-administration-scoped credential only to a job triggered by
-`push: branches: [main]` or `schedule` — triggers whose workflow definition a
-pull request cannot alter, because they run the base repository's file.
+administration-scoped credential to a separate job that a pull request cannot
+cause to run with that credential attached.
 
-**Pros:** The strongest credential is never exposed to pull-request-authored
-code, which removes the exfiltration path rather than bounding it. It is also
-the honest shape: whether push protection is on is a property of the
-*repository*, not of a proposed change, so checking it per pull request was
-always slightly the wrong question.
+**The first draft of this option was wrong, and the correction is the whole
+point.** It originally said: trigger the job on `push: branches: [main]` or
+`schedule`, since a pull request cannot alter what runs on `main`. The second
+half is true and the first does not follow — **the trigger list lives in the
+workflow file, and for a `pull_request` event GitHub runs the file from the pull
+request's own ref.** A branch could add `pull_request:` to that workflow's `on:`
+block, or delete an `if: github.event_name != 'pull_request'` guard, and
+self-trigger the job with the secret attached. Any guard written in YAML is a
+guard the attacker is editing.
+
+The gate has to be **server-side**, which means a
+[deployment environment](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments):
+configured in repository settings, not in a file, and therefore outside what a
+pull request can touch. The secret is an *environment* secret rather than a
+repository secret, and the environment carries either or both of:
+
+- a **deployment branch policy** naming `main`. A `pull_request` run's ref is
+  `refs/pull/N/merge`, which is not a branch and matches no branch pattern, so
+  the job cannot reach the secret; and
+- **required reviewers** — *"A workflow job cannot access environment secrets
+  until approval is granted by required approvers."*
+
+Both are available on public repositories at every current plan tier, which this
+repository is ([ADR 0014](0014-satisfying-remote-locus-controls.md)).
+
+```yaml
+jobs:
+  platform-state:
+    environment: platform-state      # the load-bearing line, not the `on:` block
+    steps:
+      - name: Push protection
+        env:
+          GITHUB_TOKEN: ${{ secrets.PLATFORM_READ_TOKEN }}
+        run: uv run standard-check --require-complete run --control SEC-001
+```
+
+A pull request that copies this job into its own branch is refused by the
+environment gate whatever its YAML says.
+
+**Pros:** The exfiltration path is removed by platform configuration rather than
+bounded by convention, and the mechanism is not in the repository a pull request
+can rewrite. It is also the honest shape: whether push protection is on is a
+property of the *repository*, not of a proposed change, so asking it per pull
+request was always slightly the wrong question.
 **Cons:** It does not let the `pull_request` run exit `0`, so it does not by
 itself unblock `--require-complete` there. It splits conformance across two
-workflows, and a scheduled check that fails is noticed later than one that
-blocks a merge.
+workflows, and a scheduled check that fails is noticed later than one that blocks
+a merge. It also adds platform state that nothing in the register verifies —
+an environment whose branch policy is later widened would silently undo this,
+which is requirement 5 below.
+
+**Two limits, stated rather than implied.** This makes exfiltration *recorded*
+rather than impossible: anything merged to `main` runs with the credential, so
+the attacker must land a permanent, attributable commit instead of opening and
+closing a pull request silently. And that gain is weaker here than it sounds,
+because this repository's ruleset sets `required_approving_review_count: 0` — a
+pull request merges on passing checks with **no human review**, so "it reached
+`main`" currently means "CI went green", not "somebody looked". Required
+reviewers on the environment compensate for exactly that, which is why they are
+listed above rather than treated as optional.
 
 ### Option 4: Record that the block is not answerable from CI, and flip anyway
 
@@ -148,10 +198,20 @@ happens when a control is credited for something it never read.
 
 The recommendation, to be ratified or rejected: **Option 3 for the credential's
 location, and Option 2 for its kind, if a credential is introduced at all.**
-Option 3 removes the exfiltration path instead of bounding it, and Option 2's
-short-lived token is ADR 0002's own reasoning applied consistently. Option 1 is
-acceptable only with every control in the next section in place, and Option 4 is
-refused because it would weaken `partial` to suit one control.
+Option 3 moves the exfiltration path behind platform configuration a pull request
+cannot edit, and Option 2's short-lived token is ADR 0002's own reasoning applied
+consistently. Option 1 is acceptable only with every requirement in the next
+section in place, and Option 4 is refused because it would weaken `partial` to
+suit one control.
+
+**One empirical check is owed before Option 3 is relied on.** The branch-policy
+behaviour above follows from documented semantics and has *not* been tested on
+this repository. This repository's own record is a list of what happens when a
+mechanism is credited without being observed
+([`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § H), so it should be
+tested the cheap way — an environment holding a non-secret dummy value, and one
+throwaway pull request that tries to read it — before any real credential
+depends on it.
 
 ## What the register must gain
 
@@ -204,7 +264,22 @@ API lets a fine-grained token enumerate its own permissions, so "scoped to this
 repository, `Administration: read` only" stays a human act recorded at issue
 time. It must be written down as such rather than implied to be checked.
 
-### 5. The adopter-facing consequence
+### 5. The environment gate is itself unverified platform state
+
+Option 3 depends on a deployment branch policy and, ideally, required reviewers.
+Both are platform state, and nothing in the register reads them — so an
+environment whose branch policy was later widened to "all branches" would
+silently return the credential to every pull request, with every control still
+green.
+
+That is the same shape as the audit gap
+[ADR 0014](0014-satisfying-remote-locus-controls.md) recorded and Phase 3 closed:
+a protection that holds in fact and is proven by nothing. If Option 3 is taken,
+its environment configuration needs a `kind: remote` block of its own reading
+`GET /repos/{owner}/{repo}/environments/{name}` — otherwise the mechanism
+protecting the credential is the one thing in this design nobody checks.
+
+### 6. The adopter-facing consequence
 
 Whatever is decided, [`08-adopting.md`](08-adopting.md) owes it a section under
 the standing requirement in [`04-build-plan.md`](04-build-plan.md): an adopter
@@ -226,9 +301,11 @@ must close before its adopter criterion can be ticked.
 
 **Trade-offs and risks:**
 
-- Four new register facts and one new control to close one `UNCLASSIFIED`. That
-  is a poor ratio, and it is a legitimate reason to prefer Option 3 or to accept
-  the tolerance for longer rather than to build all of it.
+- Six requirements to close one `UNCLASSIFIED`. That is a poor ratio, and it is
+  a legitimate reason to accept the tolerance for longer rather than to build all
+  of it. Note that Option 3 does not escape the ratio — it removes the
+  exfiltration path but adds requirement 5, because the gate protecting the
+  credential would otherwise be the one thing nobody checks.
 - Requirement 4 checks the token's kind, not its scope. Over-reading it as
   "the register verifies the token is minimal" would be the substitution this
   repository keeps catching.
@@ -256,4 +333,6 @@ must close before its adopter criterion can be ticked.
 - [Using secrets in GitHub Actions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)
 - [Generating an installation access token for a GitHub App](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app)
 - [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token)
+- [Managing environments for deployment](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
+- [REST API endpoints for deployment environments](https://docs.github.com/en/rest/deployments/environments)
 - [NIST SP 800-218 (SSDF)](https://csrc.nist.gov/pubs/sp/800/218/final)
