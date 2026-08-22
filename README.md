@@ -103,17 +103,28 @@ Phase 0.5 complete — this repo's own devcontainer, digest-pinned and verified.
 Operator guide: [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md).
 
 Phase 1 built — `standard-check` exists (`uv run standard-check`) and this repo
-satisfies every control the checker can currently verify locally. Controls with
-a remote half report `SKIPPED (no credentials)` until Phase 3, which is never a
-pass.
+satisfies every control the checker can verify.
 
 Phase 1.5, remediation, is complete as of 2026-08-18 — 26 exit criteria, seven of
 which were ticked and later found false before closing properly. It existed
 because Phase 2 copies the assert layer into six gate skills, so a defect left
-in the checker becomes six. **Phase 2 is next.** The findings, the five decisions
-they needed, and the evidence behind every tick are in
-[`docs/09-phase-1.5-review.md`](docs/09-phase-1.5-review.md); the outstanding
-work is [`docs/04-build-plan.md`](docs/04-build-plan.md).
+in the checker becomes six. The findings, the five decisions they needed, and the
+evidence behind every tick are in
+[`docs/09-phase-1.5-review.md`](docs/09-phase-1.5-review.md).
+
+Phase 2, the gates, is 11 criteria of 12 — the whole `gate-*` family plus
+`standard-adopt` ship in [`plugins/ee-standard/`](plugins/ee-standard/), and the
+one open criterion needs an operator with Docker
+([`docs/10-phase-2-review.md`](docs/10-phase-2-review.md)).
+
+**Phase 3 is in progress.** `kind: remote` is implemented as of 2026-08-22, so
+the two controls that verify GitHub's own state — a protected default branch and
+secret scanning push protection — are checked rather than skipped. Give the
+checker a `GITHUB_TOKEN` and they answer; without one they report
+`SKIPPED (no credentials)`, which is never a pass
+([`docs/11-phase-3-review.md`](docs/11-phase-3-review.md)).
+
+The outstanding work is [`docs/04-build-plan.md`](docs/04-build-plan.md).
 
 ## Relationship to existing ee-skills plugins
 

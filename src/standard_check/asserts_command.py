@@ -27,6 +27,7 @@ from standard_check.asserts_file import (
 )
 from standard_check.predicates import compile_predicate
 from standard_check.repo import Repo, load_jsonc
+from standard_check.rulesets import by_rule_type, required_checks, requirement_problems
 
 if TYPE_CHECKING:  # `register` imports the assert registries — importing it
     from standard_check.register import (  # at runtime would be circular
@@ -1275,7 +1276,7 @@ def ruleset_recorded_matches_register(
     problems = _ruleset_problems(document, args, repo)
     if problems:
         return _fail("; ".join(problems))
-    checks = ", ".join(_required_checks(args)) or "none named"
+    checks = ", ".join(required_checks(args)) or "none named"
     return _ok(
         f"{path} records a ruleset matching the register, requiring {checks} — intent "
         "only; whether the platform enforces it is the remote block's, and is not "
@@ -1283,27 +1284,12 @@ def ruleset_recorded_matches_register(
     )
 
 
-#: How a GitHub ruleset spells each requirement. The *rules* are the register's
-#: — which requirements a protected branch must carry is `args:` — while the
-#: shape of GitHub's own JSON is not something a repository can differ on, so it
-#: stays here (ADR 0018).
-_RULE_TYPES = {
-    "require_pull_request": "pull_request",
-    "require_status_checks": "required_status_checks",
-    "allow_force_push": "non_fast_forward",
-}
-
 #: Rule types GitHub's REST schema requires a `parameters` object on, and those
 #: it accepts none for. Not a repository's choice — it is the API's own shape,
 #: and getting it wrong means the apply call is rejected rather than the control
 #: being weakened, which is why it is checked at all (ADR 0018).
 _RULES_NEEDING_PARAMETERS = frozenset({"pull_request", "required_status_checks"})
 _RULES_TAKING_NO_PARAMETERS = frozenset({"non_fast_forward", "deletion"})
-
-
-def _required_checks(args: Mapping[str, object]) -> list[str]:
-    raw = args.get("required_checks")
-    return [str(entry) for entry in raw] if isinstance(raw, list) else []
 
 
 def _check_contexts(repo: Repo) -> dict[str, bool]:
@@ -1342,32 +1328,19 @@ def _ruleset_problems(
             f"enforcement is {document.get('enforcement')!r}, not 'active' — an evaluated "
             "or disabled ruleset reports what would have happened and blocks nothing"
         )
-    rules = document.get("rules")
-    by_type = {
-        str(rule.get("type")): rule
-        for rule in (rules if isinstance(rules, list) else [])
-        if isinstance(rule, dict)
-    }
-    if (
-        args.get("require_pull_request") is True
-        and _RULE_TYPES["require_pull_request"] not in by_type
-    ):
-        problems.append("no 'pull_request' rule — the default branch can be written to directly")
-    if (
-        args.get("require_status_checks") is True
-        and _RULE_TYPES["require_status_checks"] not in by_type
-    ):
-        problems.append("no 'required_status_checks' rule — a pull request can merge unchecked")
-    # `non_fast_forward` is the rule that *forbids* force-push, so the register's
-    # `allow_force_push: false` requires it to be present. Stated rather than
-    # inferred: the register says what is allowed and GitHub names what is
-    # blocked, and reading one as the other is how a control ends up inverted.
-    if args.get("allow_force_push") is False and _RULE_TYPES["allow_force_push"] not in by_type:
-        problems.append(
-            "no 'non_fast_forward' rule — history on the default branch can be rewritten"
-        )
+    by_type = by_rule_type(document.get("rules"))
+    # The requirement reading is `rulesets.py`'s, and the remote block reads the
+    # platform's rules through the same function. What stays here is what only a
+    # recorded artefact can be wrong about: a payload the API would reject, a
+    # condition naming a branch by name, and a required check no workflow
+    # produces.
+    problems.extend(
+        f"the recorded ruleset {problem}" if problem.startswith("does not require") else problem
+        for problem in requirement_problems(by_type, args)
+    )
     problems.extend(_payload_problems(by_type))
-    problems.extend(_status_check_problems(by_type, args, repo))
+    if args.get("require_status_checks") is True and required_checks(args):
+        problems.extend(_unproduced_checks(required_checks(args), repo))
     target = document.get("conditions")
     if isinstance(target, dict):
         refs = target.get("ref_name")
@@ -1402,53 +1375,6 @@ def _payload_problems(by_type: Mapping[str, Mapping[str, object]]) -> list[str]:
                 f"the '{rule_type}' rule carries 'parameters', which GitHub's API does not "
                 "accept for it"
             )
-    return problems
-
-
-def _status_check_problems(
-    by_type: Mapping[str, Mapping[str, object]],
-    args: Mapping[str, object],
-    repo: Repo,
-) -> list[str]:
-    """What the status-check rule actually requires, rather than that it exists."""
-    if args.get("require_status_checks") is not True:
-        return []
-    rule = by_type.get(_RULE_TYPES["require_status_checks"])
-    if rule is None:
-        return []  # already reported as an absent rule
-    required = _required_checks(args)
-    if not required:
-        return [
-            "the register requires status checks and names none in `required_checks` — a "
-            "rule requiring zero checks lets a pull request merge with CI red, so there is "
-            "nothing here for a ruleset to satisfy"
-        ]
-    parameters = rule.get("parameters")
-    if not isinstance(parameters, dict):
-        return []  # already reported as a payload the API rejects
-    entries = parameters.get("required_status_checks")
-    recorded = {
-        str(entry.get("context"))
-        for entry in (entries if isinstance(entries, list) else [])
-        if isinstance(entry, dict)
-    }
-    problems: list[str] = []
-    missing = [check for check in required if check not in recorded]
-    if missing:
-        problems.append(
-            "the recorded ruleset does not require " + ", ".join(missing) + " — a "
-            "'required_status_checks' rule naming "
-            + (f"only {', '.join(sorted(recorded))}" if recorded else "no check at all")
-            + " does not gate what the register says it gates"
-        )
-    strict = parameters.get("strict_required_status_checks_policy")
-    wanted = args.get("require_branches_up_to_date")
-    if isinstance(wanted, bool) and strict is not wanted:
-        problems.append(
-            f"strict_required_status_checks_policy is {strict!r} where the register says "
-            f"{wanted!r} — with it off, a check that passed against stale code counts"
-        )
-    problems.extend(_unproduced_checks(required, repo))
     return problems
 
 

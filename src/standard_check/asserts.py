@@ -16,13 +16,14 @@ One namespace, resolved by name, is what lets `kind:` mean what it says:
 
 - `kind: file`    — an assertion over repository files, run in-process
 - `kind: command` — an external tool, whose exit code is the verdict
-- `kind: remote`  — platform API state (Phase 3)
+- `kind: remote`  — platform API state, in `asserts_remote`
 """
 
 from __future__ import annotations
 
 from standard_check.asserts_command import COMMAND_ASSERTS
-from standard_check.asserts_file import FILE_ASSERTS, REMOTE_ASSERTS, AssertFn
+from standard_check.asserts_file import FILE_ASSERTS, AssertFn
+from standard_check.asserts_remote import REMOTE_ASSERTS
 
 _DUPLICATES = set(FILE_ASSERTS) & set(COMMAND_ASSERTS)
 if _DUPLICATES:  # pragma: no cover — a name collision is a programming error

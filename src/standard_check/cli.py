@@ -29,6 +29,7 @@ from pathlib import Path
 
 from standard_check.meta import META_CHECKS
 from standard_check.register import Control, Register, load_register
+from standard_check.remote import resolve as resolve_remote
 from standard_check.repo import NotAGitRepository, Repo, require_git_repo
 from standard_check.report import render
 from standard_check.runner import Verdict, exit_code, run_command_assert, run_control
@@ -48,6 +49,15 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="path to controls.yaml (default: <repo>/controls.yaml)",
+    )
+    parser.add_argument(
+        "--github-repo",
+        metavar="OWNER/NAME",
+        default=None,
+        help=(
+            "the GitHub repository remote checks ask about "
+            "(default: inferred from the origin remote)"
+        ),
     )
     parser.add_argument(
         "--require-complete",
@@ -103,6 +113,7 @@ def _cmd_run(
     tier: int | None,
     require_complete: bool,
     ids: list[str] | None = None,
+    github_repo: str | None = None,
 ) -> int:
     """A conformance run, optionally narrowed to a tier or to named controls.
 
@@ -132,7 +143,12 @@ def _cmd_run(
             )
             return 2
         controls = [c for c in controls if c.id in wanted]
-    results = [run_control(control, register, repo) for control in controls]
+    # Resolved once for the whole run and handed to every control. Resolving
+    # per block would let two blocks in one report describe different
+    # repositories, and a report that does not say which repository it is about
+    # is not evidence about any of them.
+    remote = resolve_remote(repo, github_repo)
+    results = [run_control(control, register, repo, remote) for control in controls]
     # Meta-controls audit the register as a whole, so they are not part of
     # verifying one control's deployment. Narrowing the run drops them.
     meta_results = (
@@ -231,10 +247,17 @@ def main(argv: list[str] | None = None) -> int:
 def _dispatch(args: argparse.Namespace, repo_path: Path, register_path: Path | None) -> int:
     match args.command:
         case None:
-            return _cmd_run(repo_path, register_path, None, args.require_complete)
+            return _cmd_run(
+                repo_path, register_path, None, args.require_complete, None, args.github_repo
+            )
         case "run":
             return _cmd_run(
-                repo_path, register_path, args.tier, args.require_complete, args.control
+                repo_path,
+                register_path,
+                args.tier,
+                args.require_complete,
+                args.control,
+                args.github_repo,
             )
         case "schema":
             return _cmd_schema(repo_path, register_path)

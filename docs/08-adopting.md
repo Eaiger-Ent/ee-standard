@@ -25,15 +25,13 @@ prevent, so the gaps are stated rather than glossed.
 | A devcontainer you can copy | **Exists** for this repo; the generalised template is Phase 2 | `.devcontainer/` |
 | `gate-secrets` — deploys SEC-001, checks SEC-002 | **Exists** | `plugins/ee-standard/skills/gate-secrets/` |
 | `gate-quality` — deploys LNT-001, TYP-001, TST-001 | **Exists** | `plugins/ee-standard/skills/gate-quality/` |
-| The other four `gate-*` skills | **Phase 2 — not built** | `docs/02-skill-family.md` |
-| `standard-adopt` — one command to deploy everything | **Phase 2 — not built** | `docs/02-skill-family.md` |
-| `kind: remote` verification of platform state | **Phase 3 — not built** | Reports `SKIPPED (no credentials)` |
+| The other four `gate-*` skills | **Exists** | `plugins/ee-standard/skills/` |
+| `standard-adopt` — one command to deploy everything | **Exists** | `plugins/ee-standard/skills/standard-adopt/` |
+| `kind: remote` verification of platform state | **Exists**, needs a token | § 4.1 below |
 
 So today, adoption is: do § 1 by hand, copy the devcontainer, run
-`/gate-secrets` for the secrets gate and `/gate-quality` for the lint, type and
-test gates, wire the remaining gates by hand using this repository as the worked
-example, and run the checker. When Phase 2 finishes, most of § 2 and § 3 becomes
-one command.
+`/standard-adopt`, and run the checker with a token in the environment so the
+two remote controls can be answered rather than skipped (§ 4.1).
 
 ## 0 — The front door
 
@@ -53,9 +51,12 @@ take, and a plan that reaches them is a plan waiting on you.
 **What it will not do.** It writes no gate configuration itself — every artefact
 is written by the gate that owns the control, which is what keeps one control's
 config in one place. It will not commit on a failed verify. And it will not
-report exit `3` as a pass: SEC-001's and CI-001's remote blocks report
-`SKIPPED (no credentials)` until Phase 3, so `3` is the expected result today
-and the skill names which blocks were skipped rather than rounding up.
+report exit `3` as a pass. Whether `3` is the expected result now depends on
+your environment: with a token that can read your platform state, SEC-001's and
+CI-001's remote blocks are verified and a conformant repository exits `0`;
+without one they report `SKIPPED (no credentials)` and the run exits `3`. The
+skill names which blocks were skipped rather than rounding up. Read § 4.1
+before deciding which of the two you are looking at.
 
 **One confirmation, and one exception.** It asks once, covering the whole plan.
 `gate-repo` asks **again** on its own, and that is right rather than redundant:
@@ -275,11 +276,14 @@ deployment and its audit cannot be pointed at different things by accident.
 | `tools.<scanner>.release_repo` set in your register | The skill downloads a pinned release and needs `owner/name`. Before Phase 2 this value existed only inside a `# renovate: depName=` comment, which is an annotation for a bot rather than a field anything can read | `standard-check schema` accepts the register; a malformed value is rejected as *must be an owner/name repository reference* |
 | A workflow that runs on `push` or `pull_request` | A workflow triggered only by `workflow_dispatch` runs when a human clicks it, and a control reachable only that way is declared and unreachable | The verify step reports `ci locus — no gating step runs '<scanner>'` if you have none |
 
-**Expect exit `3`, not `0`, and read it as a result rather than a problem.**
-SEC-001's remote block — GitHub secret scanning push protection — reports
-`SKIPPED (no credentials)` until Phase 3. The two local loci are verified; the
-remote one is not, and is not claimed. Enabling push protection is the platform
-act in § 1 that only an admin can take.
+**SEC-001's third block asks GitHub, and needs a token that can see the answer.**
+Its remote block reads whether secret scanning push protection is enabled. With
+no token it reports `SKIPPED (no credentials)`; with a token that lacks
+repository administration read access it reports `UNCLASSIFIED`, because GitHub
+omits the setting from that answer entirely and an absent setting is not a
+setting that is off (§ 4.1). Either way the run exits `3` and the two local loci
+are still verified. Enabling push protection is the platform act in § 1 that
+only an admin can take.
 
 **Two ways an adopter who already had SEC-001 passing can now fail it.**
 
@@ -555,11 +559,12 @@ a path in your repository to decide what protects your default branch; only the
 API call does. The file is a record, and the checker verifies it as one:
 `ruleset_recorded_matches_register` says *intent only* in its own message.
 
-**Expect exit `3`.** CI-001's `remote` block reports `SKIPPED (no credentials)`
-until Phase 3 implements platform verification. What is verified is that you
-record the ruleset the register requires. What is not verified — by anything,
-yet — is that GitHub is enforcing it. Both get said, and neither stands in for
-the other.
+**Two blocks, two different questions.** The file block verifies that you
+*record* the ruleset the register requires. The remote block asks GitHub which
+rules are actually **in force** on your default branch, and only that one can
+say the branch is protected. Neither stands in for the other, and the messages
+say which is which. A ruleset you recorded but never applied passes the first
+and fails the second — which is the whole reason the second exists.
 
 **Name the checks you require, in your own register.** CI-001's
 `required_checks:` is a list of **job ids** from workflows that run on `push` or
@@ -641,6 +646,78 @@ uv run standard-check --repo ../other    # `--repo` goes before the subcommand
 uv run standard-check --repo ../other --register ./controls.yaml
 ```
 
+### 4.1 — Remote checks: what they need, and what they refuse to guess
+
+Two Tier-1 controls verify **platform state** rather than files, and no file can
+answer them. CI-001 asks which rules GitHub has in force on your default branch;
+SEC-001 asks whether secret scanning push protection is enabled. Everything
+below is [ADR 0021](adr/0021-how-remote-verification-authenticates.md).
+
+**Give it a token.** The checker reads `GITHUB_TOKEN`, then `GH_TOKEN`. Nothing
+is read from `gh`'s configuration and no binary has to be installed. The token
+is sent as a bearer header, never in a URL.
+
+```bash
+export GITHUB_TOKEN=$(gh auth token)   # a local shell
+uv run standard-check                  # remote blocks now answer
+```
+
+**In CI you must pass it explicitly.** GitHub Actions does *not* put
+`GITHUB_TOKEN` in a step's environment — it is available as `${{ github.token }}`
+and a workflow has to hand it over. A conformance step without this reports
+`SKIPPED (no credentials)` on a runner that had a perfectly good token
+available:
+
+```yaml
+      - name: Conformance
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: uv run standard-check
+```
+
+**The scopes are not the same for the two controls**, and this is the part that
+surprises people:
+
+| Control | Reads | Needs |
+| --- | --- | --- |
+| CI-001 | `GET /repos/{owner}/{repo}/rules/branches/{branch}` | Read access to the repository. The default Actions `GITHUB_TOKEN` is enough on a public repository |
+| SEC-001 | `security_and_analysis` on `GET /repos/{owner}/{repo}` | **Repository administration read.** GitHub omits the whole object for a caller without it |
+| `gate-repo`, to *create* the ruleset | `POST /repos/{owner}/{repo}/rulesets` | `administration: write`, granted by a human with admin (§ 3.6) |
+
+The middle row is the one to plan for. A token that cannot see
+`security_and_analysis` gets an answer with the setting simply absent — not
+`disabled`. The checker reports `UNCLASSIFIED` for that, and **will not** read
+the absence as push protection being off: doing so would report a violation on a
+repository where the control holds, produced entirely by not having looked.
+
+**Which repository it asks about.** Your `origin` remote, parsed from
+`git remote get-url origin`. Nothing to configure, and nothing to keep in step
+when a repository is renamed or transferred. Override it when the checkout is
+not the repository you mean — a fork, a mirror, or auditing one repository from
+another:
+
+```bash
+uv run standard-check --github-repo my-org/the-real-one run --control CI-001
+```
+
+The flag goes **before** the subcommand, like `--repo` and `--require-complete`.
+
+**What each refusal means.** All four of these deny the run a `0` exit, so none
+can be mistaken for a pass — but they ask different things of you:
+
+| The report says | What happened | What to do |
+| --- | --- | --- |
+| `SKIPPED (no credentials)` | No token in the environment | Supply one |
+| `UNCLASSIFIED`, *token was rejected* | 401 — invalid or expired | Fix the token |
+| `UNCLASSIFIED`, *lacks the scope* | 403 | Grant the scope in the table above |
+| `UNCLASSIFIED`, *not visible to this token* | 404 — the repository does not exist, or the token cannot see it | Check the slug and the token's access |
+| `UNCLASSIFIED`, *says nothing about* | The answer came back without the setting | Use a token with administration read |
+| `FAIL` | GitHub answered, and the branch is not protected as the register requires | Fix the platform state — this one **is** about your repository |
+
+The last row is the mirror of all the others, and it is worth stating plainly: an
+effective-rules response listing **no rules** is an answer, not a refusal. It
+means nothing is protecting your default branch, and it fails.
+
 Read the exit code, not just the report
 ([ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md)):
 
@@ -659,9 +736,12 @@ Verdicts to read carefully:
 
 - `SKIPPED (predicate)` — the control does not apply to this repository. A
   legitimate pass.
-- `SKIPPED (no credentials)` — a remote check could not run. **Not** a pass.
-- `UNCLASSIFIED` — the tool that would decide is absent, so the answer is
-  unknown. Not a failure, and not a pass.
+- `SKIPPED (no credentials)` — no token was in the environment, so no remote
+  question was asked. **Not** a pass.
+- `UNCLASSIFIED` — something was asked and did not answer: an absent tool, or a
+  token that was rejected, lacked the scope, or could not see the setting. Not a
+  failure, and not a pass. It is deliberately distinct from the row above,
+  because one needs a token supplied and the other needs one fixed.
 
 ## 5 — Checklist
 
@@ -677,7 +757,8 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 6 | Devcontainer image digest-pinned, lock file complete, user stated | `uv run standard-check` reports DEV-001 and BLD-001 passing |
 | 7 | Gates wired at every locus the control declares | LNT-001, TYP-001, DOC-001, TST-001 passing |
 | 7b | Quality gates wired at every locus **and** stamped | `standard-check run --control LNT-001 --control TYP-001 --control TST-001` exits `0` — every block ✓, nothing skipped |
-| 7a | Secrets gate wired at pre-commit **and** CI, and stamped | `standard-check run --control SEC-001` shows both local blocks ✓ and exits `3` — the remote block is Phase 3, not a failure |
+| 7a | Secrets gate wired at pre-commit **and** CI, and stamped | `standard-check run --control SEC-001` shows both local blocks ✓; with an admin-scoped token the remote block is ✓ too and it exits `0` |
+| 7c | The branch protection you recorded is the one GitHub enforces | `standard-check run --control CI-001` with a token — the remote block reports the rules in effect, not the file |
 | 8 | The conformance run is a required status check | GOV-001 passing without its partial declaration (Phase 3) |
 
 ## When something is wrong with the standard itself

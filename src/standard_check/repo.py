@@ -112,13 +112,28 @@ class Repo:
             return False
         return True
 
-    def owner(self) -> str | None:
-        """The repository owner per the origin remote, if resolvable."""
+    def github_slug(self) -> str | None:
+        """`owner/name` per the origin remote, if it is a GitHub URL.
+
+        Where a repository lives is something git already records, so the
+        remote asserts read it from there rather than from configuration a
+        repository would have to keep in step with reality (ADR 0018). Both
+        URL spellings are accepted, and a trailing `.git` is not part of the
+        name GitHub's API answers to.
+        """
         result = git(self.root, "remote", "get-url", "origin")
         if result.returncode != 0:
             return None
-        match = re.search(r"github\.com[:/]([^/]+)/", result.stdout.strip())
-        return match.group(1) if match else None
+        match = re.search(
+            r"github\.com[:/]([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+?)(?:\.git)?/?$",
+            result.stdout.strip(),
+        )
+        return f"{match.group(1)}/{match.group(2)}" if match else None
+
+    def owner(self) -> str | None:
+        """The repository owner per the origin remote, if resolvable."""
+        slug = self.github_slug()
+        return slug.split("/")[0] if slug else None
 
 
 def strip_jsonc(text: str) -> str:

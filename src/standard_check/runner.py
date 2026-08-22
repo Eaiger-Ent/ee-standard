@@ -16,8 +16,11 @@ from enum import Enum
 
 from standard_check.asserts import ASSERTS
 from standard_check.asserts_file import CONTROL_ARG, AssertFn
+from standard_check.asserts_remote import REMOTE_ASSERTS
 from standard_check.predicates import compile_predicate
 from standard_check.register import Control, MetaControl, Register, VerifyBlock
+from standard_check.remote import GitHub, NoCredentials, Unreadable, Unresolvable
+from standard_check.remote import resolve as resolve_remote
 from standard_check.repo import NotAGitRepository, Repo
 
 
@@ -121,19 +124,54 @@ def _run_command_block(block: VerifyBlock, repo: Repo) -> BlockResult:
     return BlockResult(block, Verdict.FAIL, f"exit {completed.returncode}: {detail}")
 
 
+#: What a remote block is run against: a resolved repository-and-token, the
+#: statement that no token was offered, or `None` meaning "work it out from this
+#: repository and this environment". The CLI resolves once and passes the result
+#: down so that a run's remote blocks cannot disagree about which repository
+#: they are describing.
+RemoteTarget = GitHub | NoCredentials | Unresolvable | None
+
+
+def _run_remote_block(
+    block: VerifyBlock, register: Register, repo: Repo, remote: RemoteTarget
+) -> BlockResult:
+    """Ask the platform, and report honestly when it does not answer.
+
+    Three outcomes, and only the third is about the repository (ADR 0021):
+    nobody asked (SKIPPED — no credentials), somebody asked and got no usable
+    answer (UNCLASSIFIED), or the platform answered (PASS or FAIL). The first
+    two both deny the run a `0` exit, so neither can be read as a pass; they are
+    distinguished because one needs a token supplied and the other needs one
+    fixed.
+    """
+    assert block.assert_name is not None
+    try:
+        target = resolve_remote(repo) if remote is None else remote
+        if isinstance(target, NoCredentials):
+            return BlockResult(block, Verdict.SKIPPED_NO_CREDENTIALS, target.message)
+        if isinstance(target, Unresolvable):
+            return BlockResult(block, Verdict.UNCLASSIFIED, target.message)
+        result = REMOTE_ASSERTS[block.assert_name](target, register, block.args)
+    except Unreadable as exc:
+        return BlockResult(block, Verdict.UNCLASSIFIED, str(exc))
+    except Exception as exc:  # an assert must never abort the rest of the audit
+        return BlockResult(
+            block, Verdict.UNCLASSIFIED, f"could not evaluate: {type(exc).__name__}: {exc}"
+        )
+    return BlockResult(block, Verdict.PASS if result.passed else Verdict.FAIL, result.message)
+
+
 def run_block(
-    block: VerifyBlock, register: Register, repo: Repo, control: Control | MetaControl | None = None
+    block: VerifyBlock,
+    register: Register,
+    repo: Repo,
+    control: Control | MetaControl | None = None,
+    remote: RemoteTarget = None,
 ) -> BlockResult:
     if block.kind == "command":
         return _run_command_block(block, repo)
     if block.kind == "remote":
-        # Remote verification is Phase 3: it needs credentials, network and a
-        # live repository. Skipping is the honest verdict — never a pass.
-        return BlockResult(
-            block,
-            Verdict.SKIPPED_NO_CREDENTIALS,
-            "remote verification requires credentials (Phase 3)",
-        )
+        return _run_remote_block(block, register, repo, remote)
     assert block.assert_name is not None
     args = dict(block.args)
     if control is not None:
@@ -164,7 +202,9 @@ def _block_applies(block: VerifyBlock, register: Register, repo: Repo) -> bool:
     )
 
 
-def run_control(control: Control, register: Register, repo: Repo) -> ControlResult:
+def run_control(
+    control: Control, register: Register, repo: Repo, remote: RemoteTarget = None
+) -> ControlResult:
     satisfied, detail = applies(control, register, repo)
     if not satisfied:
         return ControlResult(
@@ -184,7 +224,7 @@ def run_control(control: Control, register: Register, repo: Repo) -> ControlResu
                 "repository shape this repo does not have"
             ),
         )
-    blocks = tuple(run_block(block, register, repo, control) for block in applicable)
+    blocks = tuple(run_block(block, register, repo, control, remote) for block in applicable)
     return ControlResult(control, worst([b.verdict for b in blocks]), blocks)
 
 

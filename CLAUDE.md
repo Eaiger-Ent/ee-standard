@@ -78,8 +78,24 @@ ticked, four of them on 2026-08-18 by the review recorded as
 ran on neither push nor pull_request, a tool compared only at filenames the
 checker itself named, and ADR 0018 recorded as implemented with one of its
 ratified moves never made.
-`kind: remote` verification stays deferred to Phase 3; do not stub it earlier —
-remote verify blocks report `SKIPPED (no credentials)`.
+**Phase 3 is in progress.** Its first slice landed 2026-08-22 and implements
+`kind: remote`: `src/standard_check/remote.py` (transport, credential discovery,
+the failure taxonomy), `asserts_remote.py` (the two asserts the register
+declares), and `rulesets.py`, which gives the recorded ruleset and the platform
+response **one** reading of what "protected" means. Reasoned in
+[ADR 0021](docs/adr/0021-how-remote-verification-authenticates.md), which
+ADR 0018 requires to exist. `docs/11-phase-3-review.md` holds the evidence and
+the three criteria the slice deliberately left open.
+
+Four outcomes, and only two are about the repository: **no token** is
+`SKIPPED (no credentials)`; a token that was **rejected, under-scoped or shown
+an answer that does not settle the control** is `UNCLASSIFIED`; only an actual
+answer is `PASS`/`FAIL`. GitHub omits `security_and_analysis` for a caller
+without admin, so reading its absence as "push protection is off" would report a
+violation produced by not having looked — the asserts raise instead. The mirror
+holds too: an effective-rules response of `[]` **is** an answer, and fails.
+Tests must never depend on ambient auth — `tests/conftest.py` strips
+`GITHUB_TOKEN`/`GH_TOKEN` autouse.
 
 Per [ADR 0014](docs/adr/0014-satisfying-remote-locus-controls.md) (**Accepted**
 and implemented 2026-08-17), this repository **is public**: write nothing that
@@ -269,6 +285,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/07-inherited-conventions.md` | What the predecessor repo knew, sorted by whether it transfers — including what must **not** be copied |
 | `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
+| `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
 | `docs/adr/` | One ADR per control, plus the open decisions at `Status: Proposed` |
 
 `README.md` § "The register at a glance" lists the thirteen Tier-1 controls, with
