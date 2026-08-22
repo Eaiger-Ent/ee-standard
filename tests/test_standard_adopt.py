@@ -445,6 +445,29 @@ def test_after_adopting_every_local_locus_verifies(
     assert code in (1, 3), out  # 1 only because DOC-001 is another plugin's
 
 
+def test_the_templates_gitignore_is_what_satisfies_sec_001s_ignore_rule(
+    adopted: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Register contract 18, end to end through the front door.
+
+    The template ships `.devcontainer/.gitignore` and its own comment says
+    *keep this file in the copy you make; deleting it does not fail a build, it
+    fails quietly, later, in someone else's clone*. From contract 18 that is no
+    longer true — deleting it fails SEC-001 here, which is the difference
+    between a file the adopter is asked to remember and one the checker holds
+    them to.
+    """
+    _, out = _verdict(adopted, capsys)
+    assert "✓ file: secret_files_are_gitignored" in out
+    assert ".devcontainer/.gitignore" in out
+
+    (adopted / ".devcontainer/.gitignore").unlink()
+    make_repo(adopted, {})
+    code, out = _verdict(adopted, capsys)
+    assert code == 1
+    assert "is not ignored" in out
+
+
 def test_four_gates_share_one_pre_commit_config_without_overwriting_each_other(
     adopted: Path,
 ) -> None:

@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.17.0
+version: 0.18.0
 
 meta:
   owner: platform-engineering
@@ -135,7 +135,23 @@ meta:
   #     reads-as-solved half-state DEV-001 exists to catch, one domain over — so
   #     the remote block stays exactly where it was, reporting SKIPPED (no
   #     credentials) until Phase 3 implements `kind: remote`.
-  register_contract: 17
+  # 18: SEC-001 reads the ignore rule that keeps a fetched credential out of git
+  #     in the first place. Its other three blocks all act after the fact —
+  #     `gitleaks` reads what git already carries, push protection reads what
+  #     reached the remote — while `.gitignore` acts before a credential is ever
+  #     a git object, and nothing read it. `fetch-secrets.sh` writes real tokens
+  #     into two files on every container start, and both this repository's
+  #     `.gitignore` and the shipped template's said *SEC-001 depends on these
+  #     two lines* in a comment. A dependency stated in prose is the second copy
+  #     this register exists to prevent, one domain over.
+  #
+  #     `paths:` is the register's because which files hold fetched credentials
+  #     is a fact about a repository (ADR 0018); `.gitleaksignore` was placed
+  #     here for the same reason at contract 11. The assert also refuses a rule
+  #     git does not track — an ignore in `.git/info/exclude` or an uncommitted
+  #     `.gitignore` works on one machine and leaves the file unignored in every
+  #     clone, which is a pass that means nothing.
+  register_contract: 18
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -590,6 +606,18 @@ controls:
       - kind: file
         assert: secrets_gate_wired_at_all_loci
         args: { tool: gitleaks, ignore_file: .gitleaksignore }
+      # The rule that acts before a credential is a git object. Every other
+      # block above and below reads what git or the remote already has;
+      # `fetch-secrets.sh` writes these two files on the host at every container
+      # start, so an ignore rule is what stands between a real token and
+      # `git add -A`. Until contract 18 the dependency was a comment in
+      # `.gitignore` saying SEC-001 depended on it, which is a claim rather than
+      # a check — and the shipped devcontainer template carried the same comment
+      # into every repository that copies it.
+      - kind: file
+        assert: secret_files_are_gitignored
+        args:
+          paths: [.devcontainer/.env, .devcontainer/.env.docker]
       # The gate's own deployment, read back by the gate that wrote it — a
       # stamp nothing reads records a claim rather than establishing one (§ F).
       - kind: file

@@ -22,6 +22,7 @@ gate writes is deleted in turn below and the verdict checked.
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -105,6 +106,34 @@ def _deploy(root: Path, register: Register, tool: str = "gitleaks") -> None:
     steps = _render(_body((SKILL / "templates/ci-steps.yaml").read_text()), register, tool)
     workflow = root / ".github/workflows/ci.yml"
     workflow.write_text(workflow.read_text(encoding="utf-8") + steps, encoding="utf-8")
+    _ignore(root, register)
+
+
+def _ignore(root: Path, register: Register) -> None:
+    """Step 3.6, from register contract 18.
+
+    One line per path and never a glob, because `.env.docker` is derived from
+    `.env` and holds the same credentials — a glob that later misses a file
+    gives no signal, and the per-path form makes a missing one visible. The
+    paths are the register's `args.paths`; this function knows none of them.
+    """
+    paths = _secret_paths(register)
+    stamp = (
+        f"# ee-control: SEC-001  ee-skill: gate-secrets@{SKILL_VERSION}  "
+        f"register: v{register.version}  register-contract: {register.register_contract}\n"
+    )
+    gitignore = root / ".gitignore"
+    existing = gitignore.read_text(encoding="utf-8") if gitignore.exists() else ""
+    gitignore.write_text(existing + stamp + "".join(f"{p}\n" for p in paths), encoding="utf-8")
+
+
+def _secret_paths(register: Register) -> list[str]:
+    """SEC-001's `secret_files_are_gitignored` block, `args.paths`."""
+    control = next(c for c in register.controls if c.id == "SEC-001")
+    block = next(b for b in control.verify if b.assert_name == "secret_files_are_gitignored")
+    paths = block.args["paths"]
+    assert isinstance(paths, list), "the register's `paths:` must be a list"
+    return [str(entry) for entry in paths]
 
 
 def _verdict(root: Path, capsys: pytest.CaptureFixture[str]) -> tuple[int, str]:
@@ -254,8 +283,14 @@ def test_a_suppressed_ci_step_is_not_the_ci_locus(
 def test_removing_the_stamps_is_caught(
     deployed: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """A deployment whose provenance was stripped is not a deployment on record."""
-    for name in (".pre-commit-config.yaml", ".github/workflows/ci.yml"):
+    """A deployment whose provenance was stripped is not a deployment on record.
+
+    Three files, not two: register contract 18 added the ignore rule, and this
+    test caught the omission itself — stripping two of three stamps still left
+    one, and `provenance_stamp_present` passed on it. Which is the assert
+    behaving correctly and the test having gone stale.
+    """
+    for name in (".pre-commit-config.yaml", ".github/workflows/ci.yml", ".gitignore"):
         path = deployed / name
         kept = [
             line
@@ -280,3 +315,69 @@ def test_an_ignore_file_hiding_a_tracked_source_file_is_caught(
     code, out = _verdict(deployed, capsys)
     assert code == 1
     assert "src/app.py" in out
+
+
+# --- Step 3.6, the rule that acts before a credential is a git object -------
+
+
+def test_the_deployment_ignores_the_files_that_hold_credentials(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Register contract 18's block, passing after a deployment.
+
+    Before contract 18 this repository's `.gitignore` and the shipped
+    devcontainer template both carried a comment saying *SEC-001 depends on
+    these two lines*, and nothing read either. A dependency stated in prose is
+    the second copy the register exists to prevent.
+    """
+    _, out = _verdict(deployed, capsys)
+    assert "✓ file: secret_files_are_gitignored" in out
+
+
+def test_deleting_the_ignore_rule_is_caught(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A verify step never observed failing is not known to work."""
+    (deployed / ".gitignore").unlink()
+    make_repo(deployed, {})
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert "is not ignored" in out
+
+
+def test_an_ignore_rule_the_deployment_did_not_commit_is_caught(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The quiet failure: it protects this clone and no other.
+
+    `git check-ignore` exits 0 either way, so a check that stopped at the exit
+    code would report the same pass for a rule nobody else will ever have.
+    """
+    rules = (deployed / ".gitignore").read_text(encoding="utf-8")
+    (deployed / ".gitignore").unlink()
+    exclude = deployed / ".git/info/exclude"
+    exclude.parent.mkdir(parents=True, exist_ok=True)
+    exclude.write_text(rules, encoding="utf-8")
+    make_repo(deployed, {})
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert "does not track" in out
+
+
+def test_a_credential_file_already_in_git_is_reported_as_tracked(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The case an ignore rule cannot fix, told apart from the case it can.
+
+    The remedies differ — a rule fixes "not ignored", and only a history rewrite
+    and a rotated credential fix this — so a checker that conflated them would
+    recommend the wrong one.
+    """
+    register = _register()
+    leaked = deployed / _secret_paths(register)[0]
+    leaked.parent.mkdir(parents=True, exist_ok=True)
+    leaked.write_text("GITHUB_TOKEN=ghp_real\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(deployed), "add", "-f", str(leaked)], check=True)
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert "is tracked" in out

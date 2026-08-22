@@ -11,7 +11,7 @@
     "it has no equivalent of a custom manager. Those two literals are `uv` and",
     "`gitleaks`, the register's only `source: literal` tools.",
     "Widening enabledManagers here would produce duplicate proposals for every",
-    "ecosystem Dependabot already covers. See docs/04-build-plan.md § G."
+    "ecosystem Dependabot already covers. See docs/09-phase-1.5-review.md § G."
   ],
   "enabledManagers": ["custom.regex"],
 

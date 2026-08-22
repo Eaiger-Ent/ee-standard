@@ -2,9 +2,9 @@
 #
 # Deployed artefact — DOC-001's ci locus. Hand-edited since deployment: the
 # checkout action is pinned to a commit SHA (SUP-003) and markdownlint-cli2 is
-# invoked through npx so package-lock.json owns its version. Both are
-# narrowings; re-running `lint-md` would revert them, which is the amend
-# tracked in docs/04-build-plan.md § F.
+# invoked through node_modules/.bin so package-lock.json owns its version. Both
+# are narrowings; re-running `lint-md` would revert them, which is the amend
+# tracked in docs/09-phase-1.5-review.md § F.
 name: Lint
 
 on:

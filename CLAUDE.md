@@ -42,13 +42,27 @@ front door: it writes no gate configuration, owning the plan, the dispatch order
 and the whole-register verify instead. `docs/10-phase-2-review.md` holds the
 evidence for all nine, and § Where Phase 2 finished holds the closing audit —
 run over the register rather than over the ledger, because a ledger is a claim
-and the register is the thing. **Phase 2 is 10/11.** The one criterion still open
+and the register is the thing. **Phase 2 is 10/12.** One criterion still open
 is that the devcontainer template *builds*: this container has no Docker, so
 nothing here has run `devcontainer build`, and the commands for an operator are
 in `docs/08-adopting.md` § 2.0. One question the audit raised is Phase 3's and is
 recorded rather than fixed: SUP-002 verifies the dependency-update
 *configuration*, and whether the bot is **enabled** is platform state nothing
 checks.
+
+A second review on 2026-08-21 found four more, recorded in
+`docs/10-phase-2-review.md` § What the second review found. The one that was
+fixed is contract 18: SEC-001's every block acted *after* a credential was
+already a git object, and the `.gitignore` rule that acts before it was a
+comment claiming the control depended on it. `secret_files_are_gitignored` now
+reads that rule and requires git to track the file carrying it. The one **still
+open and the most serious** is `gate-repo`'s: its ruleset payload omits
+`parameters` on the `required_status_checks` rule, which GitHub's API requires —
+so the apply call 422s — and, separately, the rule as written names no status
+check at all, which `ruleset_recorded_matches_register` cannot see because it
+tests only that a rule of that *type* is present. The same `args:` feed the
+Phase 3 remote assert, so the gap is already inherited. Two doc-drift findings
+are fixed.
 Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
@@ -179,7 +193,7 @@ naming the control, the deploying skill and version, the register version **and
 the register contract** — `docs/00-concepts.md` § The provenance stamp has the
 format, one parser lives at `src/standard_check/provenance.py` (never write a
 second), and `tests/test_provenance_stamps.py` checks every stamp parses and
-names a real control. Ten files carry one: `.markdownlint.yaml`,
+names a real control. Eleven files carry one: `.markdownlint.yaml`,
 `.markdownlint-cli2.yaml`, `.github/workflows/lint.yml`,
 `.claude/hooks/md-lint.py`, `.github/workflows/standard-check.yml`,
 `.devcontainer/devcontainer.json`, `.github/dependabot.yml` — the one file whose
@@ -188,7 +202,10 @@ stamp sits at the top, because every line of it belongs to SUP-002 —
 `gate-build` that owns the file, `.github/rulesets/default-branch.json` — the
 one artefact that enforces nothing by existing, being a record of what the
 platform is asked to enforce — and, with one stamp per hook it owns rather than
-one at the top of the file, `.pre-commit-config.yaml`. A control whose artefacts a gate writes names it in
+one at the top of the file, `.pre-commit-config.yaml`, and — from contract 18,
+stamped per region for the same reason — `.gitignore`, whose two credential
+lines are the only stamped artefact that runs nothing and installs nothing.
+A control whose artefacts a gate writes names it in
 `deployed_by`, and `provenance_stamp_present` reads back a stamp naming **that
 control** — not merely one naming its gate, which credited a gate's three
 controls for any stamp it had written anywhere. The control's id reaches the
@@ -196,10 +213,12 @@ assert from the runner, and the schema rejects a register that writes it into
 `args:` itself, or one where `deployed_by` and the stamp block disagree. Keep the header when editing such
 files, note the edit in it, and respect the control's variance direction.
 
-A stamp *behind* the register is staleness, reported and never enforced —
-`gate-secrets`' and `gate-quality`'s older stamps read contracts 11 and 12
-against a register at 17, deliberately, because nothing they wrote here needs
-rewriting and doing it by hand would record a redeployment that did not happen. A stamp *ahead* of the
+A stamp *behind* the register is staleness, which is never enforced and — until
+Phase 5's sweep exists — is not reported either: `gate-secrets`' and
+`gate-quality`'s older stamps read contracts 11 and 12 against a register at 18,
+deliberately, because nothing they wrote here needs rewriting and doing it by
+hand would record a redeployment that did not happen. Nothing in the checker says
+so, and that is Phase 5's job rather than a defect. A stamp *ahead* of the
 register is a defect, and fails. An exemption
 in a deployed config is judged by what it hides
 ([ADR 0019](docs/adr/0019-exemptions-cannot-hide-tracked-files.md)): excluding a

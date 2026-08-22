@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 
 from conftest import a_register, make_repo
@@ -13,6 +14,7 @@ from standard_check.asserts_file import (
     dockerfile_final_user_is_non_root,
     lockfile_present_and_tracked,
     precommit_hook_present,
+    secret_files_are_gitignored,
 )
 
 _DIGEST = "sha256:" + "a" * 64
@@ -210,3 +212,109 @@ def test_requirements_txt_is_not_a_lockfile(tmp_path: Path) -> None:
         tmp_path / "r", {"pyproject.toml": "[project]\n", "requirements.txt": "flask\n"}
     )
     assert not lockfile_present_and_tracked(repo, a_register(), {}).passed
+
+
+# --- SEC-001's ignore rule, added at register contract 18 -------------------
+
+_SECRETS = [".devcontainer/.env", ".devcontainer/.env.docker"]
+_ARGS: Mapping[str, object] = {"paths": _SECRETS}
+
+
+def test_secret_files_are_gitignored(tmp_path: Path) -> None:
+    """The passing shape: ignored, untracked, by a rule git carries."""
+    repo = make_repo(
+        tmp_path / "r",
+        {".gitignore": ".devcontainer/.env\n.devcontainer/.env.docker\n", "src/app.py": "x = 1\n"},
+    )
+    (repo.root / ".devcontainer").mkdir()
+    (repo.root / ".devcontainer/.env").write_text("GITHUB_TOKEN=ghp_real\n", encoding="utf-8")
+    result = secret_files_are_gitignored(repo, a_register(), _ARGS)
+    assert result.passed, result.message
+    assert ".gitignore" in result.message
+
+
+def test_an_unignored_secret_file_fails(tmp_path: Path) -> None:
+    """The case the prose was guarding, and the one nothing checked until 18."""
+    repo = make_repo(tmp_path / "r", {".gitignore": "__pycache__/\n"})
+    result = secret_files_are_gitignored(repo, a_register(), _ARGS)
+    assert not result.passed
+    assert "is not ignored" in result.message
+    # Both are named, not just the first: a repository that ignored one of the
+    # two would otherwise be told about half its exposure.
+    assert ".devcontainer/.env" in result.message
+    assert ".devcontainer/.env.docker" in result.message
+
+
+def test_one_ignored_and_one_not_still_fails(tmp_path: Path) -> None:
+    """`.env.docker` is derived from `.env` and holds the same credentials.
+
+    A glob that catches the first and misses the second is the reason
+    `.gitignore` here lists both in their own right rather than leaving the
+    second to `.env*`.
+    """
+    repo = make_repo(tmp_path / "r", {".gitignore": ".devcontainer/.env\n"})
+    result = secret_files_are_gitignored(repo, a_register(), _ARGS)
+    assert not result.passed
+    assert ".devcontainer/.env.docker is not ignored" in result.message
+
+
+def test_a_tracked_secret_file_fails_and_says_why(tmp_path: Path) -> None:
+    """Ignoring a file git already carries changes nothing about it.
+
+    Reported separately from "not ignored" because the remedy is different: an
+    ignore rule fixes that one, and only a history rewrite and a rotated
+    credential fix this one.
+    """
+    repo = make_repo(
+        tmp_path / "r",
+        {".gitignore": "__pycache__/\n", ".devcontainer/.env": "GITHUB_TOKEN=ghp_real\n"},
+    )
+    result = secret_files_are_gitignored(repo, a_register(), _ARGS)
+    assert not result.passed
+    assert "is tracked" in result.message
+
+
+def test_an_ignore_rule_git_does_not_carry_fails(tmp_path: Path) -> None:
+    """The quiet one: it works here and nowhere else.
+
+    `.git/info/exclude` is not committed, so the file is ignored on the author's
+    machine and unignored in every clone — a pass that would mean nothing.
+    """
+    repo = make_repo(tmp_path / "r", {"src/app.py": "x = 1\n"})
+    exclude = repo.root / ".git/info/exclude"
+    exclude.parent.mkdir(parents=True, exist_ok=True)
+    exclude.write_text(".devcontainer/.env\n.devcontainer/.env.docker\n", encoding="utf-8")
+    result = secret_files_are_gitignored(repo, a_register(), _ARGS)
+    assert not result.passed
+    assert "does not track" in result.message
+
+
+def test_an_untracked_gitignore_fails_for_the_same_reason(tmp_path: Path) -> None:
+    """The shipped template's `.devcontainer/.gitignore`, if the copy is not committed."""
+    repo = make_repo(tmp_path / "r", {"src/app.py": "x = 1\n"})
+    (repo.root / ".devcontainer").mkdir()
+    (repo.root / ".devcontainer/.gitignore").write_text(".env\n.env.docker\n", encoding="utf-8")
+    result = secret_files_are_gitignored(repo, a_register(), _ARGS)
+    assert not result.passed
+    assert "does not track" in result.message
+
+
+def test_a_tracked_nested_gitignore_passes(tmp_path: Path) -> None:
+    """The template's own shape, once committed: rules relative to their directory."""
+    repo = make_repo(
+        tmp_path / "r",
+        {".devcontainer/.gitignore": ".env\n.env.docker\n", "src/app.py": "x = 1\n"},
+    )
+    result = secret_files_are_gitignored(repo, a_register(), _ARGS)
+    assert result.passed, result.message
+    assert ".devcontainer/.gitignore" in result.message
+
+
+def test_an_empty_paths_list_is_not_a_pass(tmp_path: Path) -> None:
+    """An assert that checks nothing must not report that nothing is wrong."""
+    repo = make_repo(tmp_path / "r", {".gitignore": "__pycache__/\n"})
+    empty: tuple[Mapping[str, object], ...] = ({}, {"paths": []}, {"paths": "not-a-list"})
+    for args in empty:
+        result = secret_files_are_gitignored(repo, a_register(), args)
+        assert not result.passed, args
+        assert "non-empty" in result.message

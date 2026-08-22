@@ -83,6 +83,11 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
     belongs to one control. `gate-supply-chain`'s other three stamps land in
     the workflow and the pre-commit config already listed — so the file count
     grows by one while the stamp count grows by four.
+
+    The eleventh is `.gitignore`, added at register contract 18 when SEC-001
+    stopped taking a comment's word for it. Every other artefact on this list
+    is something that runs, installs or declares; this one only prevents, and
+    it was the last part of a Tier-1 control still resting on prose.
     """
     assert set(_stamped_files()) == {
         ".markdownlint.yaml",
@@ -115,6 +120,14 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
         # intent, with the platform's own state left to the remote block and to
         # Phase 3.
         ".github/rulesets/default-branch.json",
+        # SEC-001's ignore rule, stamped at register contract 18. The eleventh
+        # file, and the only one whose stamped region is two lines that write
+        # nothing, run nothing and install nothing — they stop a credential
+        # becoming a git object at all, which is the one part of SEC-001 that
+        # acts before the fact rather than after it. Stamped per region, like
+        # `.pre-commit-config.yaml`: the rest of the file is build output and
+        # editor droppings belonging to no control.
+        ".gitignore",
     }
 
 
