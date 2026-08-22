@@ -300,3 +300,65 @@ def test_gov_003_passes_before_review_date(tmp_path: Path) -> None:
     make_repo(tmp_path, {})
     verdict, _message = gov_003(register, repo)
     assert verdict is Verdict.PASS
+
+
+# --- GOV-001 reads the required checks, from register contract 19 -----------
+
+
+def _with_required_checks(checks: list[str]) -> dict[str, Any]:
+    """A minimal register whose first control also records a ruleset.
+
+    GOV-001 finds the required checks by looking for whichever control carries a
+    `ruleset_recorded_matches_register` block, rather than by knowing CI-001 by
+    name — a register is free to call that control something else.
+    """
+    document = minimal_register()
+    document["controls"][0]["verify"].append(
+        {
+            "kind": "file",
+            "assert": "ruleset_recorded_matches_register",
+            "args": {
+                "path": ".github/rulesets/default-branch.json",
+                "require_pull_request": True,
+                "require_status_checks": True,
+                "allow_force_push": False,
+                "required_checks": checks,
+                "require_branches_up_to_date": True,
+            },
+        }
+    )
+    return document
+
+
+def test_gov_001_passes_when_the_reaching_job_is_a_required_check(tmp_path: Path) -> None:
+    """The half GOV-001's partial used to say it could not answer."""
+    register, repo = _load(tmp_path, _with_required_checks(["check"]))
+    make_repo(tmp_path, {".github/workflows/check.yml": _WORKFLOW_FULL_RUN})
+    verdict, message = gov_001(register, repo)
+    assert verdict is Verdict.PASS
+    assert "the recorded ruleset requires" in message
+
+
+def test_gov_001_fails_when_nothing_waits_for_the_reaching_job(tmp_path: Path) -> None:
+    """Reachable, gating, unsuppressed — and no ruleset requires it.
+
+    The job runs on a pull request and can fail, so every earlier version of
+    this control passed. Nothing waits for it, so it can go red and the merge
+    button stays green: theme T-3 one level out from the step, which is the
+    level GOV-001 could not see before the ruleset recorded its contexts.
+    """
+    register, repo = _load(tmp_path, _with_required_checks(["some-other-job"]))
+    make_repo(tmp_path, {".github/workflows/check.yml": _WORKFLOW_FULL_RUN})
+    verdict, message = gov_001(register, repo)
+    assert verdict is Verdict.FAIL
+    assert "no recorded ruleset requires" in message
+    assert "some-other-job" in message
+
+
+def test_gov_001_says_so_when_no_control_names_a_required_check(tmp_path: Path) -> None:
+    """A register with no recorded ruleset gets the old answer, and is told."""
+    register, repo = _load(tmp_path, minimal_register())
+    make_repo(tmp_path, {".github/workflows/check.yml": _WORKFLOW_FULL_RUN})
+    verdict, message = gov_001(register, repo)
+    assert verdict is Verdict.PASS
+    assert "is not answered here" in message

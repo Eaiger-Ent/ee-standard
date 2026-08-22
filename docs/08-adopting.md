@@ -561,8 +561,20 @@ record the ruleset the register requires. What is not verified — by anything,
 yet — is that GitHub is enforcing it. Both get said, and neither stands in for
 the other.
 
-**Three things the checker rejects in a recorded ruleset**, each of which GitHub
-itself would accept:
+**Name the checks you require, in your own register.** CI-001's
+`required_checks:` is a list of **job ids** from workflows that run on `push` or
+`pull_request` — `standard-check` and `lint-md` in this repository, whatever
+yours are called in yours. This is § 3.7 again: keeping ours would give you a
+ruleset waiting for checks your CI never reports, which blocks every merge
+rather than gating one.
+
+The checker holds the list to your workflows, so you cannot get it wrong
+quietly. A name no gating job produces fails, and so does a name whose job
+carries `continue-on-error` — a required check that always succeeds requires
+nothing.
+
+**Five things the checker rejects in a recorded ruleset**, each of which GitHub
+itself would accept, or in one case would not:
 
 1. **`enforcement: evaluate`.** It reports what would have happened and blocks
    nothing — a control declared and unreachable.
@@ -572,6 +584,14 @@ itself would accept:
 3. **A ruleset git does not track.** Nobody can review it, and the remote block
    cannot be reached without credentials either — so nothing at all about the
    control would have been verified.
+4. **A `required_status_checks` rule naming no check.** It requires nothing, so
+   a pull request merges with CI red while the control reports satisfied. This
+   is what `gate-repo` itself wrote until register contract 19.
+5. **A rule missing the `parameters` GitHub's schema requires** — on
+   `pull_request` and `required_status_checks` — or supplying them where the
+   schema accepts none, on `non_fast_forward` and `deletion`. This is the one
+   GitHub would *not* accept: the apply call returns 422, and a record that
+   cannot be applied is not a record of what protects your branch.
 
 **Already have branch protection?** Say so and let the gate transcribe it. This
 repository's own record was adopted rather than deployed: the ruleset was

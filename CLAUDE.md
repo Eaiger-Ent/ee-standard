@@ -42,7 +42,7 @@ front door: it writes no gate configuration, owning the plan, the dispatch order
 and the whole-register verify instead. `docs/10-phase-2-review.md` holds the
 evidence for all nine, and § Where Phase 2 finished holds the closing audit —
 run over the register rather than over the ledger, because a ledger is a claim
-and the register is the thing. **Phase 2 is 10/12.** One criterion still open
+and the register is the thing. **Phase 2 is 11/12.** The one criterion still open
 is that the devcontainer template *builds*: this container has no Docker, so
 nothing here has run `devcontainer build`, and the commands for an operator are
 in `docs/08-adopting.md` § 2.0. One question the audit raised is Phase 3's and is
@@ -51,18 +51,24 @@ recorded rather than fixed: SUP-002 verifies the dependency-update
 checks.
 
 A second review on 2026-08-21 found four more, recorded in
-`docs/10-phase-2-review.md` § What the second review found. The one that was
-fixed is contract 18: SEC-001's every block acted *after* a credential was
+`docs/10-phase-2-review.md` § What the second review found, and all four are
+closed. Contract 18: SEC-001's every block acted *after* a credential was
 already a git object, and the `.gitignore` rule that acts before it was a
-comment claiming the control depended on it. `secret_files_are_gitignored` now
-reads that rule and requires git to track the file carrying it. The one **still
-open and the most serious** is `gate-repo`'s: its ruleset payload omits
-`parameters` on the `required_status_checks` rule, which GitHub's API requires —
-so the apply call 422s — and, separately, the rule as written names no status
-check at all, which `ruleset_recorded_matches_register` cannot see because it
-tests only that a rule of that *type* is present. The same `args:` feed the
-Phase 3 remote assert, so the gap is already inherited. Two doc-drift findings
-are fixed.
+comment claiming the control depended on it — `secret_files_are_gitignored` now
+reads that rule and requires git to track the file carrying it. Contract 19,
+the serious one: `gate-repo`'s ruleset payload omitted the `parameters` GitHub's
+API requires on **two** rules, so every apply call 422'd, and the
+`required_status_checks` rule named no check at all — which
+`ruleset_recorded_matches_register` could not see, testing only that a rule of
+that *type* was present. `required_checks:` is now the register's and is held to
+the workflows: a named context must come from a gating job that does not
+suppress its own failure, so the list cannot become a second copy of the job ids.
+`.github/rulesets/default-branch.json` was re-transcribed and matches the API
+response exactly. GOV-001's partial **narrowed** rather than dropped — whether
+the repository says a job is required is answered from a file now; whether
+GitHub enforces it is Phase 3's, and letting the first stand in for the second
+is the substitution the assert refuses in its own message. Two doc-drift
+findings are fixed.
 Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
@@ -215,7 +221,7 @@ files, note the edit in it, and respect the control's variance direction.
 
 A stamp *behind* the register is staleness, which is never enforced and — until
 Phase 5's sweep exists — is not reported either: `gate-secrets`' and
-`gate-quality`'s older stamps read contracts 11 and 12 against a register at 18,
+`gate-quality`'s older stamps read contracts 11 and 12 against a register at 19,
 deliberately, because nothing they wrote here needs rewriting and doing it by
 hand would record a redeployment that did not happen. Nothing in the checker says
 so, and that is Phase 5's job rather than a defect. A stamp *ahead* of the
