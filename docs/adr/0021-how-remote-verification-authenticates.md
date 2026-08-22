@@ -171,6 +171,8 @@ code.
   — the control the ruleset assert verifies.
 - [ADR 0001: Block Secrets Before They Reach the Remote](0001-secrets-never-reach-the-remote.md)
   — the control the push-protection assert verifies.
+- [ADR 0022: What Must Be True Before CI Carries a Platform Token](0022-a-platform-token-ci-carries.md)
+  — takes up the token-scope trade-off recorded in § Consequences above.
 
 ## References
 

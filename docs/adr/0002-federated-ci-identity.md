@@ -71,6 +71,9 @@ itself lives in the cloud account.
 
 - [ADR 0001: Block Secrets Before They Reach the Remote](0001-secrets-never-reach-the-remote.md)
   — the same boundary, defended at commit time rather than build time.
+- [ADR 0022: What Must Be True Before CI Carries a Platform Token](0022-a-platform-token-ci-carries.md)
+  — applies this ADR's argument to platform tokens, and records that SEC-002's
+  `cloud_credentials:` list cannot see one.
 
 ## References
 

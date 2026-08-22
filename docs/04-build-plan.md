@@ -559,7 +559,12 @@ unreachable — and only a remote check catches it.
       in CI while passing locally. Flipping first would turn every run red for a
       control that holds
       ([`11-phase-3-review.md`](11-phase-3-review.md) § What this slice left
-      open)
+      open). What a stronger token would cost, and the controls the register
+      would need **before** one is introduced, are in
+      [ADR 0022](adr/0022-a-platform-token-ci-carries.md) at `Status: Proposed`.
+      It also records a finding independent of that decision: SEC-002 cannot
+      see a platform token at all, because `cloud_credentials:` names only
+      cloud provider keys
 - [ ] GOV-001 correctly fails a repo whose lint workflow exists but is not a
       required status check
 - [x] GOV-002 fails when a baseline file grows by one line — **already
