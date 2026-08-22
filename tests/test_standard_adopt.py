@@ -66,6 +66,11 @@ _ADOPTER = {
     ),
 }
 
+#: The status check this fixture's repository produces — the single job in the
+#: workflow above. CI-001's `required_checks` are job ids, so they are the
+#: adopter's own fact and not something inherited from the standard's register.
+_ADOPTER_CHECKS = ("build",)
+
 # Controls this adoption is expected to reach. DOC-001 belongs to `lint-md` in
 # another plugin and IAC-001 has no Terraform to analyse — both are planned
 # rather than deployed, which is what the plan-completeness test below is about.
@@ -102,6 +107,18 @@ def _adopter_register(root: Path) -> Path:
     """
     document = yaml.safe_load(REGISTER_PATH.read_text(encoding="utf-8"))
     document["tools"] = {"standard-check": document["tools"]["standard-check"]}
+    # The same rule, one control over. From contract 19 CI-001 names the status
+    # checks the branch must require, and those are job ids — `standard-check`
+    # and `lint-md` here, `build` in the repository this fixture builds. An
+    # adopter who kept ours would have a ruleset requiring checks their CI never
+    # reports, which blocks every merge rather than gating one. The assert says
+    # so; this is what saying so looks like from the adopter's side.
+    for control in document["controls"]:
+        if control["id"] != "CI-001":
+            continue
+        for block in control["verify"]:
+            if "required_checks" in block.get("args", {}):
+                block["args"]["required_checks"] = list(_ADOPTER_CHECKS)
     target = root / "adopter-register.yaml"
     target.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
     for control in document["controls"] + document.get("meta_controls", []):
@@ -320,10 +337,30 @@ def _deploy_all(root: Path, register: Register) -> None:
             ),
             register,
             "gate-repo",
-            **{"{{RULESET_NAME}}": "default-branch-protection"},
+            **_ruleset_values(register),
         ),
         encoding="utf-8",
     )
+
+
+def _ruleset_values(register: Register) -> dict[str, str]:
+    """`gate-repo`'s substitutions that are CI-001's `args:` rather than a register table.
+
+    From contract 19 the ruleset names the checks it requires, so the template
+    carries a placeholder for them. The contexts come from `_ADOPTER_CHECKS`,
+    the same constant `_adopter_register` writes into the register this run is
+    verified against — the deployment and the audit read one statement of what
+    this repository's checks are called, which is the whole of § 3.7.
+    """
+    control = next(c for c in register.controls if c.id == "CI-001")
+    block = next(b for b in control.verify if b.assert_name == "ruleset_recorded_matches_register")
+    return {
+        "{{RULESET_NAME}}": "default-branch-protection",
+        "{{REQUIRED_CHECKS}}": ", ".join(
+            f'{{ "context": "{check}" }}' for check in _ADOPTER_CHECKS
+        ),
+        "{{REQUIRE_BRANCHES_UP_TO_DATE}}": json.dumps(block.args["require_branches_up_to_date"]),
+    }
 
 
 def _verdict(root: Path, capsys: pytest.CaptureFixture[str]) -> tuple[int, str]:

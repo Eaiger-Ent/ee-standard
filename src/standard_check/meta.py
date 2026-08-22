@@ -88,6 +88,12 @@ def gov_001(register: Register, repo: Repo) -> tuple[Verdict, str]:
     runnable = [step for step in _workflow_steps(repo) if step.run and not step.suppressed]
     clean_steps = [step for step in runnable if step.gating]
     ungated = [step for step in runnable if not step.gating]
+    # The jobs a ruleset makes a merge wait for, from CI-001's `args:` — the one
+    # statement of them, read rather than restated. Register contract 19 put
+    # them there; before it, "reachable from a step that can fail" was the whole
+    # of this control and *reachable from a step anything waits for* was the
+    # partial beside it.
+    required_jobs = _required_jobs(register)
 
     def full_run(steps: list[WorkflowStep]) -> bool:
         return any(
@@ -95,18 +101,36 @@ def gov_001(register: Register, repo: Repo) -> tuple[Verdict, str]:
             for step in steps
         )
 
+    def in_a_required_job(steps: list[WorkflowStep]) -> bool:
+        return not required_jobs or any(step.job in required_jobs for step in steps)
+
     runs_everything = full_run(clean_steps)
     runs_everything_ungated = full_run(ungated)
     unreachable = []
     ungated_only = []
+    unrequired = []
     for control in register.controls:
         if control.rung != "blocking" or "ci" not in control.locus:
             continue
         if not applies(control, register, repo)[0]:
             continue
-        if runs_everything:
-            continue
-        if any(_reaches(control, step.run, register) for step in clean_steps):
+        # A step reaches a control either by naming it or by running the whole
+        # register — and the full-run case still has to survive the suppression
+        # check, or a swallowed `standard-check` would be credited with reaching
+        # everything.
+        reaching = [
+            step
+            for step in clean_steps
+            if (_FULL_RUN.search(step.run) and not _suppression_match(register, step.run))
+            or _reaches(control, step.run, register)
+        ]
+        if runs_everything or reaching:
+            # Reachable. The remaining question is whether anything waits for
+            # the job it is reachable from: a gating job no ruleset requires
+            # can go red and the merge button stays green, which is the same
+            # T-3 shape one level out from the step.
+            if not in_a_required_job(reaching):
+                unrequired.append(control.id)
             continue
         if runs_everything_ungated:
             ungated_only.append(control.id)
@@ -126,12 +150,46 @@ def gov_001(register: Register, repo: Repo) -> tuple[Verdict, str]:
             "blocking controls reached only from a workflow that runs on neither push nor "
             "pull_request, so it gates no merge: " + ", ".join(ungated_only)
         )
+    if unrequired:
+        problems.append(
+            "blocking controls reached only from a job no recorded ruleset requires, so the "
+            "job can fail and the merge button stays green: "
+            + ", ".join(unrequired)
+            + f" (required checks: {', '.join(sorted(required_jobs))})"
+        )
     if problems:
         return Verdict.FAIL, "; ".join(problems)
+    if not required_jobs:
+        return (
+            Verdict.PASS,
+            "every applicable blocking control is reachable from a CI step that can fail a "
+            "merge; no ruleset in this register names a required check, so whether anything "
+            "waits for that step is not answered here",
+        )
     return (
         Verdict.PASS,
-        "every applicable blocking control is reachable from a CI step that can fail a merge",
+        "every applicable blocking control is reachable from a CI step that can fail a merge, "
+        f"in a job the recorded ruleset requires ({', '.join(sorted(required_jobs))})",
     )
+
+
+def _required_jobs(register: Register) -> frozenset[str]:
+    """The status checks a recorded ruleset makes a merge wait for.
+
+    Read from whichever control records a ruleset rather than from a name this
+    module knows: it is CI-001 here, and a register is free to call it something
+    else. An empty set means no control names a required check, and GOV-001 then
+    answers only the half it always answered — said in the verdict rather than
+    silently.
+    """
+    for control in register.controls:
+        for block in control.verify:
+            if block.assert_name != "ruleset_recorded_matches_register":
+                continue
+            checks = block.args.get("required_checks")
+            if isinstance(checks, list):
+                return frozenset(str(check) for check in checks)
+    return frozenset()
 
 
 def _entries(text: str) -> int:
