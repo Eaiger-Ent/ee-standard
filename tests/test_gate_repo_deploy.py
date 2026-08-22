@@ -25,6 +25,7 @@ import json
 import re
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -37,21 +38,60 @@ REGISTER_PATH = REPO_ROOT / "controls.yaml"
 SKILL_VERSION = "0.1.0"
 RULESET_PATH = ".github/rulesets/default-branch.json"
 
-# A repository an adopter might bring: some source, and no branch protection
-# recorded anywhere.
-_ADOPTER = {"src/app.py": 'def main() -> None:\n    print("hello")\n'}
-
-
 def _register() -> Register:
     register, errors = load_register(REGISTER_PATH)
     assert register is not None, errors
     return register
 
 
+def _ci_args() -> dict[str, object]:
+    """CI-001's `ruleset_recorded_matches_register` block, `args:`.
+
+    Every value the skill substitutes comes from here, so a test that hard-coded
+    one would be testing a second copy of the register rather than the register.
+    """
+    control = next(c for c in _register().controls if c.id == "CI-001")
+    block = next(b for b in control.verify if b.assert_name == "ruleset_recorded_matches_register")
+    return dict(block.args)
+
+
+def _required_checks() -> list[str]:
+    checks = _ci_args()["required_checks"]
+    assert isinstance(checks, list), "the register's `required_checks:` must be a list"
+    return [str(entry) for entry in checks]
+
+
+def _gating_workflow() -> str:
+    """A workflow producing exactly the checks the register requires.
+
+    From register contract 19 a required check must be produced by a job in a
+    gating workflow, so an adopter with no such workflow has nothing a ruleset
+    could require. Built from `required_checks` rather than written out: the job
+    ids *are* the contexts, and that identity is the thing being tested.
+    """
+    jobs = "".join(
+        f"  {check}:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo {check}\n"
+        for check in _required_checks()
+    )
+    return "name: CI\n\non:\n  push:\n    branches: [main]\n  pull_request:\n\njobs:\n" + jobs
+
+
+# A repository an adopter might bring: some source, a workflow that gates, and
+# no branch protection recorded anywhere.
+_ADOPTER = {
+    "src/app.py": 'def main() -> None:\n    print("hello")\n',
+    ".github/workflows/ci.yml": _gating_workflow(),
+}
+
+
 def _render(template: str, register: Register) -> str:
+    args = _ci_args()
+    contexts = ", ".join(f'{{ "context": "{check}" }}' for check in _required_checks())
     text = template
     for placeholder, value in {
         "{{RULESET_NAME}}": "default-branch-protection",
+        "{{REQUIRED_CHECKS}}": contexts,
+        "{{REQUIRE_BRANCHES_UP_TO_DATE}}": json.dumps(args["require_branches_up_to_date"]),
         "{{SKILL_VERSION}}": SKILL_VERSION,
         "{{REGISTER_VERSION}}": register.version,
         "{{REGISTER_CONTRACT}}": str(register.register_contract),
@@ -79,6 +119,39 @@ def _deploy(root: Path, register: Register) -> None:
         _render(_body((SKILL / "templates/default-branch.json").read_text()), register),
         encoding="utf-8",
     )
+
+
+def _stripped(root: Path) -> Any:
+    """The recorded ruleset as GitHub would receive it — the gate's own filter.
+
+    `grep -v '^[[:space:]]*//'` is what Step 2 pipes the file through, so this
+    is the payload and not a convenience view of it.
+    """
+    text = (root / RULESET_PATH).read_text(encoding="utf-8")
+    body = "\n".join(
+        line for line in text.splitlines() if not line.lstrip().startswith("//")
+    )
+    parsed = json.loads(body)
+    assert isinstance(parsed, dict)
+    return parsed
+
+
+def _replace_rules(root: Path, rules: object) -> None:
+    """Write the record back with different rules, keeping its stamp.
+
+    Serialised as strict JSON with the stamp restored as the file's one comment,
+    because a rewrite that dropped it would fail `provenance_stamp_present` and
+    the test would then pass for the wrong reason.
+    """
+    path = root / RULESET_PATH
+    stamp = next(
+        line for line in path.read_text(encoding="utf-8").splitlines() if "ee-control:" in line
+    )
+    document = _stripped(root)
+    document["rules"] = rules
+    body = json.dumps(document, indent=2)
+    path.write_text("{\n" + stamp + body[1:], encoding="utf-8")
+    make_repo(root, {})
 
 
 def _verdict(root: Path, capsys: pytest.CaptureFixture[str]) -> tuple[int, str]:
@@ -192,10 +265,7 @@ def test_removing_any_required_rule_is_caught(
     list, so a record that drops one requirement is not a narrowing — it is the
     control not being met.
     """
-    _rewrite(
-        deployed,
-        lambda text: text.replace(f'{{ "type": "{rule}" }}', '{ "type": "creation" }'),
-    )
+    _rewrite(deployed, lambda text: text.replace(f'"type": "{rule}"', '"type": "creation"'))
     code, out = _verdict(deployed, capsys)
     assert code == 1
     assert "CI-001   FAIL" in out
@@ -282,6 +352,8 @@ def test_the_register_states_the_requirements_once(deployed: Path) -> None:
         "require_pull_request": True,
         "require_status_checks": True,
         "allow_force_push": False,
+        "required_checks": ["standard-check", "lint-md"],
+        "require_branches_up_to_date": True,
     }
 
 
@@ -299,3 +371,156 @@ def test_the_skill_confirms_before_it_calls() -> None:
     assert "It affects every collaborator, not only you" in text
     # And the failure path: a weaker ruleset is never the retry.
     assert "do not retry with a weaker ruleset" in text
+
+
+# --- What a recorded rule *does*, from register contract 19 ------------------
+
+
+@pytest.mark.parametrize("rule", ["pull_request", "required_status_checks"])
+def test_a_rule_without_parameters_is_a_payload_the_api_rejects(
+    deployed: Path, capsys: pytest.CaptureFixture[str], rule: str
+) -> None:
+    """The defect this contract was written for, watched failing.
+
+    Until contract 19 the template wrote every rule as a bare `{ "type": ... }`,
+    and GitHub's REST schema requires `parameters` on both of these. The apply
+    call returned 422, so `gate-repo` could not deploy the one control it exists
+    for — and the assert read rule *names*, so the record looked complete.
+    """
+    document = _stripped(deployed)
+    for entry in document["rules"]:
+        if entry["type"] == rule:
+            entry.pop("parameters")
+    _replace_rules(deployed, document["rules"])
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert "no 'parameters' object" in out
+    assert "422" in out
+
+
+def test_parameters_on_a_rule_that_takes_none_is_caught(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The same property in the other direction: the API rejects these too."""
+    document = _stripped(deployed)
+    for entry in document["rules"]:
+        if entry["type"] == "non_fast_forward":
+            entry["parameters"] = {"anything": True}
+    _replace_rules(deployed, document["rules"])
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert "does not accept" in out
+
+
+def test_a_status_check_rule_naming_no_check_is_not_a_gate(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A rule requiring zero checks lets a pull request merge with CI red.
+
+    This is what the recorded ruleset said before contract 19, and
+    `require_status_checks: true` was satisfied by it — the contract-14 shape,
+    where a verdict turns on a rule being present rather than on what it does.
+    """
+    document = _stripped(deployed)
+    for entry in document["rules"]:
+        if entry["type"] == "required_status_checks":
+            entry["parameters"]["required_status_checks"] = []
+    _replace_rules(deployed, document["rules"])
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert "does not require" in out
+    assert "no check at all" in out
+
+
+def test_dropping_one_required_check_is_caught(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Requiring some of them is not requiring them."""
+    kept, dropped = _required_checks()[0], _required_checks()[1]
+    document = _stripped(deployed)
+    for entry in document["rules"]:
+        if entry["type"] == "required_status_checks":
+            entry["parameters"]["required_status_checks"] = [{"context": kept}]
+    _replace_rules(deployed, document["rules"])
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert dropped in out
+
+
+def test_a_required_check_no_gating_job_produces_is_caught(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The cross-check that keeps `required_checks` from drifting from the workflows.
+
+    A renamed job leaves the register naming a context nothing reports, and
+    GitHub waits forever for it — every merge blocked rather than one gated. It
+    fails here instead, where the two can still be reconciled.
+    """
+    workflow = deployed / ".github/workflows/ci.yml"
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8").replace(
+            f"  {_required_checks()[0]}:", "  renamed-job:"
+        ),
+        encoding="utf-8",
+    )
+    make_repo(deployed, {})
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert "produced by no job in a gating workflow" in out
+
+
+def test_a_required_check_from_a_suppressed_job_is_caught(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A required check that always passes is theme T-3 wearing a ruleset.
+
+    GOV-001 catches a suppressed *step*; this is the same failure one level up,
+    arriving through the rule that is supposed to make the check matter.
+    """
+    workflow = deployed / ".github/workflows/ci.yml"
+    check = _required_checks()[0]
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8").replace(
+            f"  {check}:\n    runs-on: ubuntu-latest\n",
+            f"  {check}:\n    runs-on: ubuntu-latest\n    continue-on-error: true\n",
+        ),
+        encoding="utf-8",
+    )
+    make_repo(deployed, {})
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert "cannot fail" in out
+
+
+def test_a_non_strict_policy_disagreeing_with_the_register_is_caught(
+    deployed: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """With it off, a check that passed against stale code counts."""
+    document = _stripped(deployed)
+    for entry in document["rules"]:
+        if entry["type"] == "required_status_checks":
+            entry["parameters"]["strict_required_status_checks_policy"] = False
+    _replace_rules(deployed, document["rules"])
+    code, out = _verdict(deployed, capsys)
+    assert code == 1
+    assert "strict_required_status_checks_policy" in out
+
+
+def test_the_recorded_payload_matches_what_this_repository_has_on_the_platform() -> None:
+    """This repository's own record, against a response nobody transcribed twice.
+
+    The live ruleset is not fetched here — a test that needed credentials would
+    report SKIPPED on every machine that matters. What is held instead is the
+    property the first transcription broke: the record names the checks, and
+    they are the ones the register requires.
+    """
+    document = json.loads(
+        "\n".join(
+            line
+            for line in (REPO_ROOT / RULESET_PATH).read_text(encoding="utf-8").splitlines()
+            if not line.lstrip().startswith("//")
+        )
+    )
+    rule = next(r for r in document["rules"] if r["type"] == "required_status_checks")
+    contexts = [entry["context"] for entry in rule["parameters"]["required_status_checks"]]
+    assert contexts == _required_checks()

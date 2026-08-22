@@ -1299,11 +1299,11 @@ notice.
 `.gitignore` is now the eleventh stamped file, and the only one whose stamped
 region runs nothing, installs nothing and declares nothing. It only prevents.
 
-### 2 — `gate-repo` would POST a ruleset GitHub rejects (**open**)
+### 2 — `gate-repo` would POST a ruleset GitHub rejects (**closed at contract 19**)
 
-The most serious of the four, and untouched here because fixing it is a register
-change plus an assert change plus a re-transcription, and it deserves its own
-slice rather than being folded into this one.
+The most serious of the four. Recorded here as it was found, and closed the next
+day in its own slice — § What contract 19 changed has what the fix did and what
+it turned up on the way.
 
 Running the skill's own comment filter over the recorded artefact gives the
 literal payload it would send:
@@ -1347,12 +1347,13 @@ now closable: GOV-001's partial says *whether the CI workflow is a required
 status check … is not verified*, and a recorded ruleset carrying its contexts
 would answer exactly that, from a file, today.
 
-**What the fix looks like**, recorded so the next slice does not re-derive it:
-the required contexts become CI-001 `args:` — which checks a repository requires
-is precisely the kind of fact ADR 0018 puts in the register — both the record
-and the template render `parameters`, `_ruleset_problems` fails a status-check
-rule naming no context, `.github/rulesets/default-branch.json` is re-transcribed
-from the API, and the contract bumps.
+**What the fix looks like**, recorded before it was made: the required contexts
+become CI-001 `args:` — which checks a repository requires is precisely the kind
+of fact ADR 0018 puts in the register — both the record and the template render
+`parameters`, `_ruleset_problems` fails a status-check rule naming no context,
+`.github/rulesets/default-branch.json` is re-transcribed from the API, and the
+contract bumps. That is what contract 19 did, plus two things this paragraph did
+not anticipate.
 
 ### 3 and 4 — documentation behind the code (fixed)
 
@@ -1397,6 +1398,109 @@ Windows. The repository's owner ruled this acceptable for now. It is recorded
 here rather than fixed, and it is not what blocks the open build criterion —
 `devcontainer build` does not run `initializeCommand`.
 
+## What contract 19 changed
+
+The fix for § 2, and the two things it turned up that the fix's own sketch had
+not anticipated.
+
+### `pull_request` was broken too, not only `required_status_checks`
+
+The review found one rule missing its `parameters`. GitHub's schema requires
+them on **two**: `pull_request` needs `required_approving_review_count`,
+`dismiss_stale_reviews_on_push`, `dismissal_restriction`,
+`require_code_owner_review`, `require_last_push_approval` and
+`required_review_thread_resolution`. So the apply call had two reasons to fail
+rather than one, and a fix that addressed only the reported rule would have
+moved the 422 without removing it.
+
+`non_fast_forward` and `deletion` take no parameters at all, and the API rejects
+a payload supplying them. Both directions are checked, because a record the API
+rejects is not a record of anything — which is the property that failed here,
+stated once rather than as a list of rules to remember.
+
+### A required check must be one the repository produces
+
+`required_checks:` is the register's, and on its own that is a second copy of
+the workflows' job ids sitting in `controls.yaml`, free to drift from the jobs
+that produce them — theme T-2, in the file that exists to prevent T-2. That was
+not acceptable, and the answer is not to move the list somewhere else: which
+checks a repository requires is genuinely a repository's own decision
+(ADR 0018), so it belongs in the register.
+
+What makes it safe is that the assert holds it to the workflows. A named context
+must be produced by a job in a **gating** workflow, and that job must not carry
+`continue-on-error`. Two failures fall out, and both are real:
+
+- A **renamed job** leaves the register naming a context nothing reports.
+  GitHub waits forever for a check that never arrives, so the ruleset blocks
+  every merge rather than gating one. It fails here instead, while the two can
+  still be reconciled.
+- A **suppressed job** produces a check that always succeeds. Requiring it
+  requires nothing — theme T-3 arriving through the rule that is supposed to
+  make the check matter, which is the same shape contract 16 found in CI steps
+  and this one finds one level out.
+
+A repository whose required check comes from outside its own workflows — a SaaS
+status check, say — would fail this cross-check today. That case has not
+appeared, and a register field invented for it before it exists is a field
+nobody has tested. Recorded here as the decision it is.
+
+### The record was re-transcribed, and now matches
+
+`.github/rulesets/default-branch.json` was rewritten from
+`GET /repos/Eaiger-Ent/ee-standard/rulesets/20937135` and compared field by
+field against that response. It matches exactly, including
+`require_extra_approval_for_unattributed_changes`, a field GitHub added and the
+first transcription never had. `required_approving_review_count` is `0`, which
+is what the platform holds: CI-001 requires a pull request and does not require
+an approval on one. Transcribed rather than tightened — a record that says more
+than the platform does is as wrong as one that says less, and this file's whole
+job is to be true.
+
+### GOV-001's partial narrowed rather than dropped
+
+The review said closing this would *likely let GOV-001 drop its partial*. On
+doing the work, that was too strong, and the reason is worth keeping.
+
+Two questions were hiding inside *is the workflow a required status check*.
+Whether the **repository** says the job is required is now answerable from a
+file, and GOV-001 answers it: every blocking control must be reachable from a
+step in a job the recorded ruleset requires. A gating, unsuppressed job that no
+ruleset waits for can go red while the merge button stays green, and every
+earlier version of this control passed that repository.
+
+Whether **GitHub** enforces that ruleset is not answerable from any file, and
+nothing here may stand in for it. So the partial stays and says the smaller
+thing. Dropping it would have let the first question stand in for the second,
+which is the substitution `ruleset_recorded_matches_register` refuses in its own
+message and would have been a strange thing for the register to do beside it.
+
+GOV-001 finds the required checks by looking for whichever control carries a
+`ruleset_recorded_matches_register` block, not by knowing CI-001 by name — a
+register may call that control something else, and a meta-control that knew an
+id would be a rule about one repository's register living in the checker.
+
+Watched failing: a register whose required check names a different job fails
+GOV-001 with both the control and the required list in the message, and a
+register naming no required check at all gets the old verdict with the
+limitation stated in it rather than implied.
+
+### What this cost, and what it did not
+
+Nine new tests in `tests/test_gate_repo_deploy.py` and three in
+`tests/test_meta.py`, each watching one failure mode. The assert moved from
+`asserts_file` to `asserts_command`, which is where the workflow parsing lives
+and where the other asserts that read workflows already were — `asserts_command`
+imports `asserts_file`, so reading workflows from the latter would have been a
+cycle. The split between those two modules is by *what an assert reads*, not by
+`kind:`, and this move makes that more true rather than less.
+
+`standard-adopt`'s fixture gained `_ADOPTER_CHECKS`, one statement of what the
+adopter's job is called, read by both the deployment and the audit. That is
+`08-adopting.md` § 3.7 — *your register records your own files* — in miniature,
+and it is the first place in this repository where the adopter's register had to
+differ from ours in something other than `tools:`.
+
 ## Decisions the next slice needs
 
 Recorded here rather than settled silently, in the shape § H used.
@@ -1405,7 +1509,8 @@ Recorded here rather than settled silently, in the shape § H used.
 | --- | --- |
 | ~~`deploys.json` carries one `contractVersion` for the whole plugin~~ — **settled** by the second gate, see § `deploys.json` carries one contract per gate | Phase 5's criteria are *a version bump produces no recommendation, a contract bump does*. A per-plugin contract makes the second one fire for gates that did not change, and that is discovered as noise rather than as a bug |
 | A repo-root `LICENSE`, copied into the plugin | `check_plugin_license.py` fails without it and `pyproject.toml` already declares Apache-2.0. Phase 6 holds the criterion; the plugin directory exists from now on without one |
-| **`gate-repo`'s ruleset payload omits `parameters`** — see § 2 above. The apply call 422s, and the recorded ruleset requires no named check | Every adopter who runs `/gate-repo` hits it, and CI-001 is the control the whole Phase 3 remote story is built on. It is also the last thing standing between GOV-001 and dropping its partial |
+| ~~**`gate-repo`'s ruleset payload omits `parameters`**~~ — **settled** at register contract 19, see § What contract 19 changed | Every adopter who runs `/gate-repo` hit it, and CI-001 is the control the whole Phase 3 remote story is built on |
+| Whether a required status check produced **outside** the repository's own workflows needs a register field. The cross-check that keeps `required_checks` from drifting from the job ids would fail such a check today | Not urgent: no adopter has one yet, and a field invented before the case exists is a field nobody has tested. It becomes urgent the first time a repository requires a SaaS check |
 | Whether SUP-002 should declare a `remote` locus. It verifies the *configuration*; whether the bot is **enabled** is platform state nothing checks — see § What the audit found that Phase 3 owns | Adding one creates a fourth `kind: remote` block, and Phase 3 is where those are implemented rather than stubbed. Deciding it earlier would mean stubbing exactly the part that must not be stubbed |
 | ~~Whether `gate-secrets` should own `.devcontainer/setup.sh`'s scanner install~~ — **settled** at register contract 15: `gate-build` owns the file, each gate stamps its own region, see § `.devcontainer/setup.sh` gets an owner | It is a third site repeating the version, listed in `pinned_at`, and no gate currently claims it. Today it is nobody's, which is how a locus gets forgotten |
 | ~~Whether a stack's gate tools must be **present** in a lockfile the repository commits~~ — **settled yes** at register contract 13, see § The pin's existence | It is about the pin's *existence* rather than the invocation, so it is a new assert rather than a register edit, and every gate after this one inherits whichever answer is given |

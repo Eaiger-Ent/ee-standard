@@ -1198,6 +1198,292 @@ def _reaches(text: str, tool: str, invocation: str, control: str) -> bool:
     return False
 
 
+def ruleset_recorded_matches_register(
+    repo: Repo,
+    register: Register,
+    args: Mapping[str, object],
+) -> AssertResult:
+    """The branch ruleset a repository records says what the register requires.
+
+    **This verifies intent, not platform state.** A recorded ruleset GitHub has
+    never been told about protects nothing, and nothing here may stand in for
+    the `kind: remote` block beside it — that block reports SKIPPED (no
+    credentials) until Phase 3, deliberately, and its verdict is the one that
+    says the branch is protected.
+
+    What this closes is smaller and real. CI-001's only locus is `remote`, which
+    made `gate-repo` the one gate with no file to write, no stamp to leave and
+    nothing observable until a later phase. A gate that cannot be watched
+    working is the shape this repository's review record keeps re-opening
+    criteria over. Recording the ruleset as a reviewable artefact — derived from
+    the register's `args:` at deploy time — gives the deployment something a
+    reader and a checker can both see.
+
+    The requirements are the register's, and they are the *same* `args:` the
+    remote assert reads. Two blocks would be two definitions of "protected",
+    free to drift from each other.
+
+    **Register contract 19 made this read what a rule *does*, not that a rule of
+    that name is present.** Until then the recorded ruleset spelled every rule
+    as a bare `{"type": ...}`, and this assert checked only that each type
+    appeared. Two things were wrong with that, in opposite directions:
+
+    The record was not a payload. GitHub's REST schema requires `parameters` on
+    `pull_request` and `required_status_checks`, so `gate-repo`'s apply step
+    returned 422 for every adopter — a gate that could not deploy the control it
+    exists to deploy. The rules that take no parameters, `non_fast_forward` and
+    `deletion`, are checked in the other direction for the same reason: a
+    payload the API rejects is not a record of anything.
+
+    The record was also weaker than the control it recorded. A
+    `required_status_checks` rule naming **no context** requires no check, and
+    CI-001's `enforces` reads *at least one passing status check*. So a ruleset
+    that gated nothing satisfied `require_status_checks: true` — the same shape
+    as the four loci nothing read at contract 14, where a verdict turned on a
+    thing being present rather than on what the thing did.
+
+    `required_checks` is the register's, because which checks a repository
+    requires is a fact about that repository (ADR 0018). It is then held to the
+    workflows: a named context must be produced by a job in a **gating**
+    workflow and that job must not be suppressed. Without the cross-check the
+    register would carry a second copy of job ids, free to drift from the
+    workflows — theme T-2, in the file that exists to prevent it. With it, a
+    renamed job fails here rather than silently un-protecting the branch, and a
+    `continue-on-error` job cannot be a required check that always passes.
+    """
+    path = str(args.get("path", ""))
+    if not path:
+        return _fail("assert requires a 'path' argument naming the recorded ruleset")
+    if path not in repo.tracked:
+        return _fail(
+            f"{path} is not tracked — a ruleset git does not carry is not one anybody "
+            "can review, and this control's remote block cannot be reached without "
+            "credentials either"
+        )
+    # JSONC, like `.devcontainer/devcontainer.json`, and for the same reason: the
+    # stamp is a `//` comment and a file that cannot carry one cannot carry its
+    # own provenance. GitHub's API takes strict JSON, so the gate strips the
+    # comment lines on the way out — which is a filter on a payload, not a
+    # second copy of the ruleset.
+    try:
+        document = load_jsonc(repo.root / path)
+    except (OSError, ValueError) as exc:
+        return _fail(f"{path} is not readable JSON: {exc}")
+    if not isinstance(document, dict):
+        return _fail(f"{path} must be a JSON object describing one ruleset")
+
+    problems = _ruleset_problems(document, args, repo)
+    if problems:
+        return _fail("; ".join(problems))
+    checks = ", ".join(_required_checks(args)) or "none named"
+    return _ok(
+        f"{path} records a ruleset matching the register, requiring {checks} — intent "
+        "only; whether the platform enforces it is the remote block's, and is not "
+        "claimed here"
+    )
+
+
+#: How a GitHub ruleset spells each requirement. The *rules* are the register's
+#: — which requirements a protected branch must carry is `args:` — while the
+#: shape of GitHub's own JSON is not something a repository can differ on, so it
+#: stays here (ADR 0018).
+_RULE_TYPES = {
+    "require_pull_request": "pull_request",
+    "require_status_checks": "required_status_checks",
+    "allow_force_push": "non_fast_forward",
+}
+
+#: Rule types GitHub's REST schema requires a `parameters` object on, and those
+#: it accepts none for. Not a repository's choice — it is the API's own shape,
+#: and getting it wrong means the apply call is rejected rather than the control
+#: being weakened, which is why it is checked at all (ADR 0018).
+_RULES_NEEDING_PARAMETERS = frozenset({"pull_request", "required_status_checks"})
+_RULES_TAKING_NO_PARAMETERS = frozenset({"non_fast_forward", "deletion"})
+
+
+def _required_checks(args: Mapping[str, object]) -> list[str]:
+    raw = args.get("required_checks")
+    return [str(entry) for entry in raw] if isinstance(raw, list) else []
+
+
+def _check_contexts(repo: Repo) -> dict[str, bool]:
+    """Status check contexts this repository produces, and whether each is suppressed.
+
+    GitHub names a check run after the job's `name:` where it has one and after
+    the job id otherwise, so that is what a `required_status_checks` context has
+    to match. Only gating workflows count: a job in a `workflow_dispatch`-only
+    workflow reports no check on a pull request, so requiring it would block
+    every merge rather than gate one.
+    """
+    contexts: dict[str, bool] = {}
+    for workflow in repo.workflow_files():
+        doc = yaml.safe_load(repo.read(workflow))
+        if not isinstance(doc, dict) or not _is_gating(doc):
+            continue
+        jobs = doc.get("jobs")
+        if not isinstance(jobs, dict):
+            continue
+        for job_id, job in jobs.items():
+            if not isinstance(job, dict):
+                continue
+            contexts[str(job.get("name") or job_id)] = _truthy(job.get("continue-on-error"))
+    return contexts
+
+
+def _ruleset_problems(
+    document: Mapping[str, object],
+    args: Mapping[str, object],
+    repo: Repo,
+) -> list[str]:
+    """Where the recorded ruleset falls short of what the register requires."""
+    problems: list[str] = []
+    if document.get("enforcement") != "active":
+        problems.append(
+            f"enforcement is {document.get('enforcement')!r}, not 'active' — an evaluated "
+            "or disabled ruleset reports what would have happened and blocks nothing"
+        )
+    rules = document.get("rules")
+    by_type = {
+        str(rule.get("type")): rule
+        for rule in (rules if isinstance(rules, list) else [])
+        if isinstance(rule, dict)
+    }
+    if (
+        args.get("require_pull_request") is True
+        and _RULE_TYPES["require_pull_request"] not in by_type
+    ):
+        problems.append("no 'pull_request' rule — the default branch can be written to directly")
+    if (
+        args.get("require_status_checks") is True
+        and _RULE_TYPES["require_status_checks"] not in by_type
+    ):
+        problems.append("no 'required_status_checks' rule — a pull request can merge unchecked")
+    # `non_fast_forward` is the rule that *forbids* force-push, so the register's
+    # `allow_force_push: false` requires it to be present. Stated rather than
+    # inferred: the register says what is allowed and GitHub names what is
+    # blocked, and reading one as the other is how a control ends up inverted.
+    if args.get("allow_force_push") is False and _RULE_TYPES["allow_force_push"] not in by_type:
+        problems.append(
+            "no 'non_fast_forward' rule — history on the default branch can be rewritten"
+        )
+    problems.extend(_payload_problems(by_type))
+    problems.extend(_status_check_problems(by_type, args, repo))
+    target = document.get("conditions")
+    if isinstance(target, dict):
+        refs = target.get("ref_name")
+        include = refs.get("include") if isinstance(refs, dict) else None
+        if isinstance(include, list) and "~DEFAULT_BRANCH" not in include:
+            problems.append(
+                f"conditions target {include} rather than ~DEFAULT_BRANCH — a ruleset "
+                "naming a branch by name stops protecting it the day the default moves"
+            )
+    return problems
+
+
+def _payload_problems(by_type: Mapping[str, Mapping[str, object]]) -> list[str]:
+    """Whether GitHub's API would accept this document as written.
+
+    A record the API rejects is not a record of what protects the branch — it is
+    a description of a call that cannot be made. `gate-repo` POSTs this file
+    with its comment lines stripped and nothing else changed, so anything wrong
+    here is wrong on the wire.
+    """
+    problems: list[str] = []
+    for rule_type in sorted(_RULES_NEEDING_PARAMETERS & set(by_type)):
+        if not isinstance(by_type[rule_type].get("parameters"), dict):
+            problems.append(
+                f"the '{rule_type}' rule has no 'parameters' object, which GitHub's API "
+                "requires — the apply call is rejected with 422 and the control is not "
+                "deployed, however complete this file looks"
+            )
+    for rule_type in sorted(_RULES_TAKING_NO_PARAMETERS & set(by_type)):
+        if "parameters" in by_type[rule_type]:
+            problems.append(
+                f"the '{rule_type}' rule carries 'parameters', which GitHub's API does not "
+                "accept for it"
+            )
+    return problems
+
+
+def _status_check_problems(
+    by_type: Mapping[str, Mapping[str, object]],
+    args: Mapping[str, object],
+    repo: Repo,
+) -> list[str]:
+    """What the status-check rule actually requires, rather than that it exists."""
+    if args.get("require_status_checks") is not True:
+        return []
+    rule = by_type.get(_RULE_TYPES["require_status_checks"])
+    if rule is None:
+        return []  # already reported as an absent rule
+    required = _required_checks(args)
+    if not required:
+        return [
+            "the register requires status checks and names none in `required_checks` — a "
+            "rule requiring zero checks lets a pull request merge with CI red, so there is "
+            "nothing here for a ruleset to satisfy"
+        ]
+    parameters = rule.get("parameters")
+    if not isinstance(parameters, dict):
+        return []  # already reported as a payload the API rejects
+    entries = parameters.get("required_status_checks")
+    recorded = {
+        str(entry.get("context"))
+        for entry in (entries if isinstance(entries, list) else [])
+        if isinstance(entry, dict)
+    }
+    problems: list[str] = []
+    missing = [check for check in required if check not in recorded]
+    if missing:
+        problems.append(
+            "the recorded ruleset does not require " + ", ".join(missing) + " — a "
+            "'required_status_checks' rule naming "
+            + (f"only {', '.join(sorted(recorded))}" if recorded else "no check at all")
+            + " does not gate what the register says it gates"
+        )
+    strict = parameters.get("strict_required_status_checks_policy")
+    wanted = args.get("require_branches_up_to_date")
+    if isinstance(wanted, bool) and strict is not wanted:
+        problems.append(
+            f"strict_required_status_checks_policy is {strict!r} where the register says "
+            f"{wanted!r} — with it off, a check that passed against stale code counts"
+        )
+    problems.extend(_unproduced_checks(required, repo))
+    return problems
+
+
+def _unproduced_checks(required: list[str], repo: Repo) -> list[str]:
+    """A required check no gating job produces, or one a suppressed job produces.
+
+    The cross-check is what keeps `required_checks` from becoming a second copy
+    of the workflows' job ids. A context nothing produces blocks every merge
+    rather than gating one, and a context produced by a `continue-on-error` job
+    is a required check that always passes — which is the T-3 shape GOV-001
+    exists to catch, arriving through the ruleset instead of the workflow.
+    """
+    contexts = _check_contexts(repo)
+    if not contexts:
+        return [
+            "no gating workflow produces any status check, so no ruleset can require one — "
+            "a workflow that runs on neither push nor pull_request reports nothing on a "
+            "pull request"
+        ]
+    problems: list[str] = []
+    for check in required:
+        if check not in contexts:
+            problems.append(
+                f"required check '{check}' is produced by no job in a gating workflow "
+                f"(these are: {', '.join(sorted(contexts))}) — GitHub waits forever for a "
+                "check nothing reports, so this blocks every merge rather than gating one"
+            )
+        elif contexts[check]:
+            problems.append(
+                f"required check '{check}' comes from a job with continue-on-error, so it "
+                "reports success whatever happens — a required check that cannot fail"
+            )
+    return problems
+
+
 COMMAND_ASSERTS: dict[str, AssertFn] = {
     "no-static-cloud-keys": no_static_cloud_keys,
     "ci-installs-frozen": ci_installs_frozen,
@@ -1209,4 +1495,5 @@ COMMAND_ASSERTS: dict[str, AssertFn] = {
     "markdown_gate_wired_at_all_loci": markdown_gate_wired_at_all_loci,
     "secrets_gate_wired_at_all_loci": secrets_gate_wired_at_all_loci,
     "gate_wired_at_declared_loci": gate_wired_at_declared_loci,
+    "ruleset_recorded_matches_register": ruleset_recorded_matches_register,
 }

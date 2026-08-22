@@ -4,14 +4,22 @@
 //
 // Adopted rather than deployed: this ruleset was created by hand on
 // 2026-08-17, and this file was written when the gate that owns it was built.
-// It is what `GET /repos/Eaiger-Ent/ee-standard/rulesets/20937135` returns
-// today, transcribed — not what a deployment would have produced from nothing.
+// It is what `GET /repos/Eaiger-Ent/ee-standard/rulesets/20937135` returns,
+// transcribed — not what a deployment would have produced from nothing.
+//
+// **Re-transcribed on 2026-08-22, at register contract 19, because it was not.**
+// The first transcription kept every rule's `type` and dropped every
+// `parameters` object, which lost the two required checks — the whole of what
+// `required_status_checks` means — and left a payload GitHub's API rejects with
+// 422. The platform enforced the property; this record of it did not say so,
+// which is the more dangerous way round: nothing failed, and the file a reader
+// would trust was the incomplete one.
 //
 // The file is JSONC, as `.devcontainer/devcontainer.json` is, so that it can
 // carry its own stamp. `gate-repo` strips the comment lines before POSTing,
 // because GitHub's API takes strict JSON.
 {
-  // ee-control: CI-001  ee-skill: gate-repo@0.1.0  register: v0.17.0  register-contract: 17
+  // ee-control: CI-001  ee-skill: gate-repo@0.1.0  register: v0.19.0  register-contract: 19
   "name": "default-branch-protection",
   "target": "branch",
   "enforcement": "active",
@@ -22,8 +30,42 @@
     }
   },
   "rules": [
-    { "type": "pull_request" },
-    { "type": "required_status_checks" },
+    {
+      "type": "pull_request",
+      // `parameters` is required by GitHub's schema for this rule type, not
+      // optional detail. `required_approving_review_count: 0` is what the
+      // platform holds today: CI-001 requires a pull request, and does not
+      // require an approval on it. Transcribed rather than tightened — a record
+      // that says more than the platform does is as wrong as one that says less.
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
+        "require_extra_approval_for_unattributed_changes": true,
+        "required_reviewers": [],
+        "dismissal_restriction": { "enabled": false, "allowed_actors": [] },
+        "allowed_merge_methods": ["merge", "squash", "rebase"]
+      }
+    },
+    {
+      "type": "required_status_checks",
+      // The two contexts are the register's `required_checks`, and they are the
+      // job ids of the two gating workflows. A rule of this type naming no
+      // context requires no check at all, which is what this file said before
+      // contract 19 and what the assert now refuses.
+      "parameters": {
+        "required_status_checks": [
+          { "context": "standard-check" },
+          { "context": "lint-md" }
+        ],
+        "strict_required_status_checks_policy": true,
+        "do_not_enforce_on_create": false
+      }
+    },
+    // No `parameters` on either of these two, and that is GitHub's schema
+    // rather than an omission — the API rejects a payload that supplies them.
     { "type": "non_fast_forward" },
     // Not one of CI-001's requirements, and kept because it is on the platform.
     // An extra rule adds a restriction; the control forbids removing a required

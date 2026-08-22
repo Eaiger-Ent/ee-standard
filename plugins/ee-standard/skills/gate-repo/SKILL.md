@@ -56,14 +56,17 @@ never be pointed at different things by accident.
 ## Success criteria
 
 1. Every requirement written came from the register; none was chosen here.
-2. The recorded ruleset carries a provenance stamp naming CI-001, this skill and
+2. Every rule carries the `parameters` GitHub's schema requires for its type,
+   and every name in `REQUIRED_CHECKS` is a job in a gating workflow that does
+   not suppress its own failure.
+3. The recorded ruleset carries a provenance stamp naming CI-001, this skill and
    version, and the register's version and contract.
-3. The API call was made only after an explicit confirmation of its blast
+4. The API call was made only after an explicit confirmation of its blast
    radius, and its response was shown.
-4. `standard-check run --control CI-001` was run afterwards, its output shown,
+5. `standard-check run --control CI-001` was run afterwards, its output shown,
    and its verdict reported as given — **including the remote block's
    `SKIPPED (no credentials)`**, which is never reported as a pass.
-5. Nothing was written outside the target repository except the ruleset itself.
+6. Nothing was written outside the target repository except the ruleset itself.
 
 ---
 
@@ -83,12 +86,20 @@ If this fails, stop and show the error.
 | --- | --- |
 | `RULESET_PATH` | CI-001's `ruleset_recorded_matches_register` block, `args.path` |
 | `REQUIREMENTS` | the same block's remaining `args:` — each requirement and its value |
+| `REQUIRED_CHECKS` | the same block's `args.required_checks` — the status checks a merge must wait for |
+| `STRICT_CHECKS` | the same block's `args.require_branches_up_to_date` |
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
 
 `REQUIREMENTS` and the `kind: remote` block's `args:` are the **same** values,
 and that is deliberate: two blocks would be two definitions of "protected", free
 to drift. Read them once.
+
+**`REQUIRED_CHECKS` is a list of job ids, and an empty one is not a deployment.**
+A `required_status_checks` rule naming no context requires no check, so a pull
+request merges with CI red while the control reports satisfied. If the register
+names none, stop: the register is what needs fixing, not this file. Register
+contract 19 added the field for exactly this, after the rule shipped without it.
 
 ### 2. Read the platform's current state
 
@@ -102,6 +113,7 @@ gh api "repos/$OWNER/$NAME/branches/$DEFAULT/protection" 2>/dev/null
 | --- | --- |
 | `DEFAULT_BRANCH` | the repository's default branch |
 | `RULESETS` | every existing ruleset, with its id, name and enforcement |
+| `CONTEXTS` | the job ids of every workflow that runs on `push` or `pull_request`, and whether each carries `continue-on-error` |
 | `LEGACY_PROTECTION` | a classic branch-protection rule, if one exists |
 | `RECORDED` | `RULESET_PATH` in the repository, if it exists, and whether this skill wrote it |
 | `TOKEN_SCOPE` | whether the token can write rulesets |
@@ -126,9 +138,24 @@ blast radius plainly, in these terms:
 ## Step 1 — Record the ruleset
 
 Read `${CLAUDE_SKILL_DIR}/templates/default-branch.json` and substitute
-`{{RULESET_NAME}}`, `{{SKILL_VERSION}}`, `{{REGISTER_VERSION}}` and
-`{{REGISTER_CONTRACT}}`. Write it to `RULESET_PATH` and **git-add it**; a
-ruleset git does not carry is not one anybody can review.
+`{{RULESET_NAME}}`, `{{REQUIRED_CHECKS}}`, `{{REQUIRE_BRANCHES_UP_TO_DATE}}`,
+`{{SKILL_VERSION}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`. Write it
+to `RULESET_PATH` and **git-add it**; a ruleset git does not carry is not one
+anybody can review.
+
+`{{REQUIRED_CHECKS}}` becomes one `{ "context": "<job id>" }` object per entry
+in `REQUIRED_CHECKS`, comma-separated. Before writing them, check each against
+`CONTEXTS`:
+
+- **A name no gating job produces.** GitHub waits forever for a check nothing
+  reports, so the ruleset blocks every merge rather than gating one. Stop, show
+  `CONTEXTS`, and say which name has no job — the register and the workflows
+  disagree, and only a human knows which of the two is right.
+- **A name whose job carries `continue-on-error`.** It reports success whatever
+  happens, so requiring it requires nothing. Stop and say so.
+
+Do not quietly drop either kind. A ruleset that was accepted because it required
+less is a control silently downgraded.
 
 The file is JSONC, as `.devcontainer/devcontainer.json` is, and for the same
 reason: the stamp is a `//` comment and a file that cannot carry one cannot
@@ -145,6 +172,15 @@ needs stating rather than inferring: `allow_force_push: false` becomes the
 `non_fast_forward` rule, because the register says what is *allowed* and GitHub
 names what is *blocked*. Reading one as the other is how a control ends up
 inverted.
+
+**Every rule carries the `parameters` its type requires, and no others.**
+GitHub's REST schema requires a `parameters` object on `pull_request` and
+`required_status_checks`, and accepts none on `non_fast_forward` or `deletion`.
+The template already has this right; the point of saying it here is that a rule
+added by hand needs the same treatment. Until register contract 19 this skill
+wrote bare `{ "type": ... }` objects for all four, and the apply call in Step 2
+returned 422 every time — a gate that could not deploy the one control it
+exists for, with nothing to show for the failure but an error nobody had seen.
 
 Target `~DEFAULT_BRANCH`, never a branch name. A ruleset naming `main` stops
 protecting the default branch the day the default moves, silently.

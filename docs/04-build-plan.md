@@ -493,17 +493,16 @@ fixed in both.
       ([`10-phase-2-review.md`](10-phase-2-review.md) § What this slice found in
       the other four gates)
 
-- [ ] `gate-repo`'s ruleset payload is one GitHub's API accepts, and names the
-      status checks the branch must require — **found open by the second review,
-      2026-08-21** ([`10-phase-2-review.md`](10-phase-2-review.md) § 2). The
-      rule is spelled `{ "type": "required_status_checks" }` with no
-      `parameters`, which the REST schema requires, so the apply call 422s; and
-      a rule naming no context requires no check, which
-      `ruleset_recorded_matches_register` cannot see because it tests only that
-      a rule of that type is present. This repository's recorded ruleset is
-      therefore not the transcription its header claims — the platform requires
-      `standard-check` and `lint-md`, and the file names neither. Closing it
-      likely lets GOV-001 drop its partial
+- [x] `gate-repo`'s ruleset payload is one GitHub's API accepts, and names the
+      status checks the branch must require — found open by the second review on
+      2026-08-21, **closed 2026-08-22** at register contract 19
+      ([`10-phase-2-review.md`](10-phase-2-review.md) § What contract 19
+      changed). `required_checks:` is the register's and is held to the
+      workflows: a named context must come from a gating job that does not
+      suppress its own failure. The record was re-transcribed and now matches
+      the API response exactly. GOV-001's partial **narrowed** rather than
+      dropped — whether the repository says a job is required is now answered
+      from a file, and whether GitHub enforces it stays Phase 3's
 
 - [x] `standard-adopt` end-to-end on a scratch repo: plan → confirm → deploy →
       verify → commit, with the verify step genuinely able to fail — closed

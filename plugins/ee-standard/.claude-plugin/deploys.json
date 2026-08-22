@@ -32,7 +32,7 @@
       ]
     },
     "gate-repo": {
-      "contractVersion": 1,
+      "contractVersion": 2,
       "controls": ["CI-001"],
       "artifacts": [
         ".github/rulesets/default-branch.json"

@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.18.0
+version: 0.19.0
 
 meta:
   owner: platform-engineering
@@ -151,7 +151,30 @@ meta:
   #     git does not track — an ignore in `.git/info/exclude` or an uncommitted
   #     `.gitignore` works on one machine and leaves the file unignored in every
   #     clone, which is a pass that means nothing.
-  register_contract: 18
+  # 19: CI-001 says which checks the branch must require, and the assert reads
+  #     what the recorded rule *does* rather than that a rule of that name is
+  #     present. Both halves were broken, in opposite directions.
+  #
+  #     The record was not a payload: every rule was spelled as a bare
+  #     `{"type": ...}`, and GitHub's REST schema requires `parameters` on
+  #     `pull_request` and `required_status_checks`. `gate-repo`'s apply step
+  #     returned 422 for every adopter — a gate that could not deploy the one
+  #     control it exists for — and nothing caught it, because the assert read
+  #     rule names.
+  #
+  #     The record was also weaker than the control: a `required_status_checks`
+  #     rule naming no context requires no check, while CI-001's `enforces`
+  #     reads *at least one passing status check*. A ruleset gating nothing
+  #     satisfied `require_status_checks: true` — the contract-14 shape again,
+  #     a verdict turning on a thing being present rather than on what it does.
+  #
+  #     `required_checks:` is the register's because which checks a repository
+  #     requires is a fact about that repository (ADR 0018), and it is held to
+  #     the workflows rather than trusted: a named context must come from a job
+  #     in a gating workflow, and that job must not be suppressed. Without the
+  #     cross-check these would be a second copy of the job ids, free to drift
+  #     from the workflows that produce them.
+  register_contract: 19
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -898,6 +921,17 @@ controls:
           require_pull_request: true
           require_status_checks: true
           allow_force_push: false
+          # The checks a merge must wait for. Named here because which checks a
+          # repository requires is a fact about that repository, and held to the
+          # workflows by the assert so they cannot become a second copy of the
+          # job ids. Each must be a job in a workflow that runs on push or
+          # pull_request, and must not be suppressed — a required check that
+          # cannot fail is theme T-3 arriving through the ruleset.
+          required_checks: [standard-check, lint-md]
+          # `strict_required_status_checks_policy`. With it off, a check that
+          # passed against stale code still counts, so a merge can be gated by a
+          # run that never saw what it is merging.
+          require_branches_up_to_date: true
       - kind: file
         assert: provenance_stamp_present
         args: { skill: gate-repo }
@@ -911,6 +945,11 @@ controls:
           require_pull_request: true
           require_status_checks: true
           allow_force_push: false
+          # The same values the file block reads. Two lists would be two
+          # definitions of "protected", free to drift — and that drift would be
+          # invisible until Phase 3 implemented this block.
+          required_checks: [standard-check, lint-md]
+          require_branches_up_to_date: true
     owner: platform-engineering
     deployed_by: gate-repo
     variance: forbidden
@@ -1145,10 +1184,18 @@ meta_controls:
         # be seen from files is whether the workflow is a *required status
         # check* — the sharpest instance of theme T-3, and the one this control
         # was written for. That needs platform state, which is Phase 3.
+        # Narrowed at contract 19, not dropped. Two different questions hid
+        # inside "is it required": whether the *repository* says the job is
+        # required, which the recorded ruleset now answers from a file, and
+        # whether *GitHub* is enforcing that ruleset, which no file can answer
+        # and which stays Phase 3's. Dropping the partial outright would let the
+        # first stand in for the second, and a recorded ruleset the platform has
+        # never been told about protects nothing.
         partial:
           unverified: >-
-            whether the CI workflow is a required status check — reachability
-            from a step that can fail is verified, being required is not
+            whether GitHub enforces the recorded ruleset — reachability from a
+            step that can fail is verified, and so is that step's job being a
+            check the recorded ruleset requires; platform state is not
           expires: 2026-11-30
 
   - id: GOV-002

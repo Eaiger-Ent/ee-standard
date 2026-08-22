@@ -9,11 +9,18 @@
 // which is the reads-as-solved half-state DEV-001 exists to catch, one domain
 // over. The gate applies it and then reports that only Phase 3 can confirm it.
 //
-// The three rules below are CI-001's `args:`, rendered into GitHub's own
-// spelling. `non_fast_forward` is the rule that *forbids* force-push, so the
-// register's `allow_force_push: false` is what puts it here — the register says
-// what is allowed and GitHub names what is blocked, and reading one as the
-// other is how a control ends up inverted.
+// The rules below are CI-001's `args:`, rendered into GitHub's own spelling.
+// `non_fast_forward` is the rule that *forbids* force-push, so the register's
+// `allow_force_push: false` is what puts it here — the register says what is
+// allowed and GitHub names what is blocked, and reading one as the other is how
+// a control ends up inverted.
+//
+// **Every rule carries the `parameters` its type requires.** Until register
+// contract 19 this template wrote bare `{ "type": ... }` objects, and GitHub's
+// REST schema requires `parameters` on `pull_request` and
+// `required_status_checks` — so the apply call returned 422 and this gate could
+// not deploy the one control it exists for. `non_fast_forward` takes none, and
+// supplying one is rejected in the other direction.
 //
 // `~DEFAULT_BRANCH` rather than a branch name. A ruleset naming `main` stops
 // protecting the default branch the day the default moves, silently.
@@ -30,8 +37,37 @@
     }
   },
   "rules": [
-    { "type": "pull_request" },
-    { "type": "required_status_checks" },
+    {
+      "type": "pull_request",
+      // CI-001 requires a pull request. It does not require an approval on one,
+      // so the count is 0 rather than a number this template picked — a gate
+      // that quietly demanded a reviewer would be enforcing something the
+      // register never says, and `variance: forbidden` cuts both ways.
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
+        "required_reviewers": [],
+        "dismissal_restriction": { "enabled": false, "allowed_actors": [] }
+      }
+    },
+    {
+      "type": "required_status_checks",
+      // `{{REQUIRED_CHECKS}}` is CI-001's `required_checks`, one
+      // `{ "context": ... }` object per entry. A rule of this type naming no
+      // context requires no check at all — the ruleset would be accepted, the
+      // control would report satisfied, and a pull request could merge with CI
+      // red. That is what this template wrote before contract 19.
+      "parameters": {
+        "required_status_checks": [{{REQUIRED_CHECKS}}],
+        "strict_required_status_checks_policy": {{REQUIRE_BRANCHES_UP_TO_DATE}},
+        "do_not_enforce_on_create": false
+      }
+    },
+    // No `parameters` here, and that is GitHub's schema rather than an
+    // omission — the API rejects a payload that supplies them for this type.
     { "type": "non_fast_forward" }
   ]
 }
