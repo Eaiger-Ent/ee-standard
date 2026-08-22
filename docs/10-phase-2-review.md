@@ -26,9 +26,23 @@ first whose controls were **already passing** before it existed.
 
 The fifth is `gate-build`, in § The fourth gate, which closes two more of the
 four unread loci that slice found and replaces three near-copies of one assert
-with one that reads the control's own `locus:` list. The other two gates,
-`standard-adopt` and the devcontainer template are still outstanding, and the
-criteria that name them are still open.
+with one that reads the control's own `locus:` list.
+
+The sixth is `gate-iac`, in § The fifth gate, which closes the last of those
+four — and, in the course of doing so, found two ways a CI step could be
+credited as a locus without gating anything.
+
+The seventh is `gate-repo`, in § The sixth gate, and it completes the family.
+
+The eighth is the shipped devcontainer template, in § The template.
+
+The ninth is `standard-adopt`, in § The front door, which is the last piece of
+the phase.
+
+**Ten criteria of eleven are closed.** § Where Phase 2 finished holds the audit
+that closed them and the one that is still open — the devcontainer template
+building, which needs an operator with Docker and stays open until its output is
+recorded here.
 
 ## What closed, and how
 
@@ -760,6 +774,463 @@ referenced by no line of `SKILL.md`, because the ci locus had been described in
 prose rather than pointed at its template. A shipped file nothing references is
 a file nothing keeps current, which is precisely what P6 is for.
 
+## The fifth gate — `gate-iac`, register contract 16
+
+IAC-001, the last of the four unread loci — and the slice that found what the
+other three had been reading.
+
+### The gate that cannot be exercised here
+
+This repository has no `*.tf`, so IAC-001 reports `SKIPPED (predicate)` and
+always will. Every test in `tests/test_gate_iac_deploy.py` runs against a
+throwaway repository with Terraform in it, because a gate whose tests all ran
+against a repository the control skips would be a gate nothing had run.
+
+The same fact shapes the gate itself. This register pins neither `checkov` nor
+`tflint`, so the deployed control reports `UNCLASSIFIED — cannot verify` on both
+analyser blocks. The skill does **not** close that by installing them: an
+unpinned install leaves the version unrecorded, which is the condition
+`tool_versions_match_register` exists to fail. `UNCLASSIFIED` is the honest
+verdict and it is not a pass — `test_after_deploying_the_wiring_verifies`
+asserts the exit code is **not** `0` and calls that correct.
+
+### One hook, two analysers
+
+IAC-001's verify blocks are `checkov --directory . --compact --quiet` and
+`tflint --recursive`. The hook runs the *control*, and the control runs both.
+
+Two hooks each invoking one analyser would be two statements of what "analysed"
+means — a `--recursive` dropped at one locus and kept at another, discovered by
+a finding CI caught and pre-commit did not. The template names neither analyser,
+and two tests hold it: one checks the hook's `entry` names the control rather
+than the tools, the other that neither `run:` string appears anywhere under
+`plugins/`.
+
+### What this slice found in the other four gates
+
+Building the "suppressed step" test for IAC-001 turned up two defects in a check
+every gate uses, both of them the same shape as the ones contracts 11 and 14
+fixed: a locus read by something that could not tell enforcement from mention.
+
+**A suppressed step counted as a locus.** `continue-on-error: true` means the
+job succeeds whatever the gate reports. The tool runs; the merge is not gated on
+it. SEC-001 and SUP-003 carry no `no-failure-suppression` block of their own, so
+nothing else caught it — *declared and unreachable* one level in from the
+`workflow_dispatch` case § D found.
+
+**Installing a tool counted as running it.** This was the worse of the two, and
+it was `gate-secrets`' own shipped template that exposed it. The ci-locus check
+was a substring search over a step's whole `run:` text, and the install step
+mentions `gitleaks` six times — in a URL, in a tarball name, and as an argument
+to `tar`, `install` and `rm`. Measured:
+
+```text
+workflow with the secret-scan step deleted, install step kept
+  SEC-001  ✓ file: secrets_gate_wired_at_all_loci — pre-commit and ci loci
+           both reach gitleaks through 'gitleaks'
+```
+
+The scanner was installed and never run, and the control was green. Contract 11
+added that ci check precisely to stop a deleted scan step passing; it did not
+stop this one.
+
+Both are closed by one change: a tool is run by a step when it is the
+**command**, not when its name appears in one. `_commands()` splits a `run:`
+block on shell separators, strips prefix words (`sudo`, `env`, a `VAR=`
+assignment), and the invocation is matched at position 0. `_ci_run_mentions` and
+the generic locus assert both go through it.
+
+One existing test moved with the tightening rather than around it:
+`test_mandating_a_different_linter_changes_the_verdict` had a fixture running
+`uv run flake8 check` against a register naming `flake8 check`. The substring
+search accepted it; the command match does not, and it should not — that is ADR
+0020's point stated the other way round, so the register mutation now names the
+invocation the repository actually makes.
+
+### Watched failing
+
+Twelve cases, including the predicate itself: a repository with no Terraform is
+`SKIPPED (predicate)` and exits `0`, which is the state this repository is
+permanently in. Then, on the Terraform fixture: both loci failing before
+deployment, each artefact deleted in turn, the CI step suppressed, the stamps
+stripped, and the no-op path where an existing full audit reaches the control.
+
+### Preflight P1–P11 — `gate-iac`
+
+```text
+{"skill": "gate-iac", "overall": "PASS", "fails": 0}
+```
+
+Zero failures first time — the first gate for which that is true, and only
+because P2's 250-character description limit and P6's referenced-files rule had
+already been paid for by `gate-supply-chain` and `gate-build`.
+
+## The sixth gate — `gate-repo`, register contract 17
+
+CI-001, and the last gate. It is the only one whose effect is not a file.
+
+### The gate with nothing to verify
+
+Every other gate writes artefacts a checker can read. CI-001's only locus is
+`remote`, so `gate-repo` had no file to write, no stamp to leave and nothing at
+all observable until Phase 3 implements `kind: remote`. Its whole verify block
+would have reported `SKIPPED (no credentials)` — a gate whose correctness rested
+entirely on a phase that has not happened.
+
+That is the shape this review record keeps re-opening criteria over, so the
+ruleset is **recorded before it is applied**:
+`.github/rulesets/default-branch.json`, derived from CI-001's `args:` at deploy
+time, stamped like any other artefact, and read back by
+`ruleset_recorded_matches_register`.
+
+**And the record must not be mistaken for the enforcement.** GitHub does not
+read a path in a repository to decide what protects its default branch; only the
+API call does. A recorded ruleset the platform has never been told about
+protects nothing, which is the reads-as-solved half-state DEV-001 exists to
+catch, one domain over. So the assert says *intent only* in its own message, and
+the `remote` block is unchanged — still `SKIPPED (no credentials)`, still the
+verdict that would say the branch is protected. Every deployed run in
+`tests/test_gate_repo_deploy.py` exits `3`, never `0`, and the test that asserts
+it says why.
+
+### One statement of "protected", read twice
+
+The recorded file and the remote check take the **same** `args:` —
+`require_pull_request`, `require_status_checks`, `allow_force_push`. Two blocks
+would be two definitions, free to drift, and the drift would be invisible until
+Phase 3 made the second one executable. That is the worst moment to discover it,
+so `test_the_register_states_the_requirements_once` compares them.
+
+One mapping is stated rather than inferred: `allow_force_push: false` becomes
+GitHub's `non_fast_forward` rule. The register says what is *allowed* and GitHub
+names what is *blocked*, and reading one as the other is how a control ends up
+inverted.
+
+### Three things GitHub accepts and the checker does not
+
+Each is a ruleset that exists and protects less than it appears to:
+
+| Recorded | Why it fails |
+| --- | --- |
+| `enforcement: evaluate` | Reports what would have happened and blocks nothing — declared and unreachable |
+| `include: ["refs/heads/main"]` | Stops protecting the default branch the day the default moves, silently |
+| The file untracked | Nobody can review it, and the remote block cannot be reached without credentials either — so *nothing* about the control would have been verified |
+
+### JSONC, and the filter that has to survive it
+
+The record carries a `//` stamp, so it is JSONC, as `.devcontainer/devcontainer.json`
+is and for the same reason: a file that cannot carry a comment cannot carry its
+own provenance. GitHub's API takes strict JSON, so Step 2 pipes the file through
+`grep -v '^[[:space:]]*//'` on the way out.
+
+That is a filter on a payload rather than a second copy of the ruleset — but it
+only works while every comment sits on a line of its own.
+`test_the_recorded_ruleset_is_valid_json_once_the_comments_are_stripped` runs
+the gate's own filter over the gate's own template and parses the result, so a
+trailing comment fails here rather than at the API call.
+
+### The confirmation no test can hold
+
+This gate calls an API whose effect is immediate and shared. No test can prove a
+model asks first. What can be held is that the skill says to, in terms that name
+the blast radius — *it affects every collaborator, not only you* — that it does
+not treat `standard-adopt`'s plan approval as covering a call that is not a
+file, and that a failed call is never retried with a weaker ruleset. Those four
+sentences are asserted in `test_the_skill_confirms_before_it_calls`, which is a
+weaker guarantee than the others in this repository and is labelled as one.
+
+### What this repository recorded
+
+Adopted, not deployed. The ruleset was created by hand on 2026-08-17 and
+`GET /rulesets/20937135` returns four rules, not three: `pull_request`,
+`required_status_checks`, `non_fast_forward` and `deletion`. The record
+transcribes all four.
+
+`deletion` is not one of CI-001's requirements, and keeping it is deliberate. An
+extra rule adds a restriction; what the control forbids is removing a required
+one. A record that disagreed with what is enforced would be worse than one
+carrying more than the register asks for — and it is the disagreement, not the
+extra rule, that this file exists to make visible.
+
+Stated as a limit rather than left implicit: the assert checks that the required
+rules are **present**, not that no others are. CI-001 is `variance: forbidden`,
+and a stricter reading would fail this repository for protecting its branch more
+than the register asks. If that reading is wanted, it is a register change.
+
+### Preflight P1–P11 — `gate-repo`
+
+```text
+{"skill": "gate-repo", "overall": "PASS", "fails": 0}
+```
+
+## The template — `plugins/ee-standard/templates/devcontainer/`
+
+The eighth slice, and the first that is not code.
+
+### Where it lives, and why that was a decision
+
+`03-devcontainer.md` named two candidate homes and settled on neither: a public
+template repository, or a directory inside the plugin. The plugin won, and the
+argument is the one that document already made — `project-init`'s stated
+precondition is that `.devcontainer/devcontainer.json` exists, its guidance when
+it does not is *"clone the template repo"*, and **that repo is private**. Anyone
+whose access lapses loses the ability to start a project.
+
+A directory in the plugin is obtainable by anyone who can install the plugin,
+needs no org-admin action, and cannot drift from the register into a second
+repository nobody is auditing.
+
+### What it pins, resolved rather than copied
+
+The base image digest was **resolved from the registry while writing this**,
+not carried across from this repository's own devcontainer:
+
+```text
+GET https://mcr.microsoft.com/v2/devcontainers/base/manifests/trixie
+docker-content-digest: sha256:025b74bb5f7ac53edd77e01aa7188c359aab100e23a2f6220bde50bbb9fd31dd
+```
+
+It matches what this repository pins, which is the answer the copy would have
+given — and the point is that it was checked rather than assumed. The feature
+digest did **not**: `ghcr.io/devcontainers/features/github-cli:1` now resolves
+to `1.1.1` where this repository's lock file holds `1.1.0`. A tag had moved
+since Phase 0.5, and copying the lock file would have shipped a stale pin as a
+fresh one.
+
+### The criterion that needed a test rather than a review
+
+> The template pins no tool version by hand. Every tool it installs is either
+> sourced from a lockfile the consumer repo already commits, or from a single
+> toolchain file — never a literal inside `setup.sh`.
+
+[ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) singled this one out
+in advance as a criterion a template could meet **in letter**: it is about the
+*source* of a version, and a template with a resolution hole satisfies it. So it
+is a grep, not a reading — `_VERSION_LITERAL` in
+`tests/test_devcontainer_template.py` enumerates the shapes a real setup script
+uses, and `setup.sh` must contain none of them.
+
+And the grep is itself tested. `test_the_grep_would_catch_a_pin_if_one_appeared`
+feeds it five lines lifted from real scripts — `pip install --quiet uv==0.12.5`,
+`GITLEAKS_VERSION=8.30.1`, a version in a URL path, a bare `sha256sum -c` digest,
+`npm install -g markdownlint-cli2@0.18.1` — and requires each to fail. Two of
+those five slipped through the first pattern, which is the whole argument for
+writing that test: a pattern loose enough to match nothing passes the positive
+test while verifying nothing at all.
+
+A second test covers what the grep cannot. A script can pin nothing and still
+install something unpinned — `pip install uv`, `npm install -g` — which is worse,
+because the version is then whatever the registry served that day. Every install
+in the template is required to be frozen and guarded by a lockfile's presence.
+
+### The two lines that travel with the directory
+
+`fetch-secrets.sh` writes real credentials into `.devcontainer/.env`. The
+template ships its own `.gitignore` naming that file and its derived
+`.env.docker`, rather than telling an adopter to add them — a `.gitignore` you
+have to remember is one added after the first commit, which is one commit too
+late.
+
+Asserted twice, and deliberately: once on the file's contents, and once by
+`git ls-files` on a real copy with real-looking files in place.
+`.gitignore` semantics are subtle enough — a nested path, a leading slash, a
+negation — that reading the file is not the same as checking the behaviour.
+
+### What is verified, and what is not
+
+`test_the_copied_template_passes_the_controls_that_judge_it` copies the template
+into a throwaway repository and runs BLD-001 and DEV-001 against it. All three
+property blocks pass from the first line. The locus and stamp blocks fail, and
+the test asserts that too — a fresh copy has not run `gate-build`, which is the
+next step the README gives, and hiding that would be claiming a deployment that
+had not happened.
+
+**The build is not verified here and cannot be.** This devcontainer has no
+Docker, so a test claiming a successful build would claim something nothing ran.
+The exit criterion has two halves and only one of them is closed; the other
+needs an operator with Docker, and the commands are in `08-adopting.md` § 2.0:
+
+```bash
+grep -rl '{{' .devcontainer          # expect no output
+devcontainer build --workspace-folder .
+standard-check run --control BLD-001 --control DEV-001
+```
+
+Recorded as open rather than ticked. A criterion closed on a build nobody ran is
+the over-tick this document exists to catch.
+
+## The front door — `standard-adopt`
+
+The ninth slice, and the last. It writes no gate configuration: every artefact is
+written by the gate that owns the control, which is what keeps one control's
+config in one place. What it owns is the *plan*, the *order*, and the
+*verification*.
+
+### The fourth plan row nobody had noticed
+
+The plan has to name every control in the register — one absent from the plan
+reads as one that does not apply. Three rows were obvious: **deploy**, **dispatch
+elsewhere** (DOC-001 is `lint-md`'s, in another plugin) and **manual**.
+
+Writing the test found a fourth. **SEC-002 fits none of them.** It has no
+`deployed_by`, so it would have been planned as *manual* — telling a reader they
+owe an act they do not. It is satisfied by a workflow **not** referencing a
+static credential: there is nothing to write, and `gate-secrets` verifies it and
+writes nothing for it. `02-skill-family.md` had recorded that as correct rather
+than as a gap, in a sentence nobody had needed until there was a planner.
+
+So the skill has a **checked, not deployed** row, derived from `deploys.json`
+listing a control under a gate while the control names no `deployed_by`. A
+control satisfied by an absence has to be distinguishable from one nobody has
+got to yet.
+
+### The dispatch order is load-bearing in its first two positions
+
+Not alphabetical, and not the order the gates were built:
+
+1. `gate-build` — owns `.devcontainer/` and creates `setup.sh`, which two later
+   gates write their own regions into.
+2. `gate-supply-chain` — writes the frozen install every other gate's CI steps
+   run after. A lint step written before it lints against nothing.
+3. `gate-secrets`, then `gate-quality`, then `gate-iac` — the rest of the
+   file-writing gates, in an order that is preference rather than dependency.
+4. `gate-repo` last, because its effect is not a file and cannot be reviewed
+   before it takes effect.
+
+`test_the_dispatch_order_is_the_one_the_skill_states` reads the order out of
+`SKILL.md` rather than restating it, so a reordering there fails the test that
+exercises it instead of drifting from it silently.
+
+### What the end-to-end test reaches that no gate's test could
+
+Each gate's own test deploys it alone into a clean repository. Here all six run
+in sequence into one repository, and **four of them write into the same
+`.pre-commit-config.yaml`**. That is where "grouped by the artefact they write"
+is either true or discovered not to be: if any gate replaced the file rather than
+appending to it, the later ones would silently drop the earlier ones' hooks.
+`test_four_gates_share_one_pre_commit_config_without_overwriting_each_other`
+asserts all five hook ids survive.
+
+Two other things only exist at this level:
+
+**The verify step failing.** The criterion's operative clause is *"with the
+verify step genuinely able to fail"*. A deployed config is broken — `|| true` on
+the lint step — and the run is checked. It fails **two** controls at once,
+because both verify through `no-failure-suppression` over the whole workflow.
+
+**A gate breaking another gate's control.** The frozen install
+`gate-supply-chain` wrote is removed, and SUP-001 fails while everything else
+passes. That is exactly what a per-gate verify cannot see, and it is why Step 5
+runs the whole register rather than the controls just deployed.
+
+### What is proved, and what is not
+
+Stated here as plainly as it is in the test's own docstring, because this is the
+criterion most easily over-ticked.
+
+**Proved:** the pipeline works. Six gates compose, their artefacts do not
+overwrite each other, the order matters in the way the skill says, every deployed
+control carries its own stamp at the current contract, and the whole-register
+verify catches a break.
+
+**Not proved:** that a model follows the prose. `SKILL.md` is instructions, and
+instructions are followed or they are not. No test can establish it, and the
+limit is the same one every gate's tests carry.
+
+The criterion is ticked on the first and the second is recorded rather than
+glossed — which is the distinction seven re-opened boxes in this project exist to
+teach.
+
+### Preflight P1–P11 — `standard-adopt`
+
+```text
+{"skill": "standard-adopt", "overall": "PASS", "fails": 0}
+```
+
+One test moved to accommodate it. `test_the_templates_stamp_what_they_write`
+required every skill to ship templates, which is right for a gate and wrong for
+a dispatcher: `standard-adopt` ships none **because** it writes no artefacts. The
+test now skips a skill with no templates only after checking it is not a gate —
+a gate with no templates would be one whose deployment has no reviewable source.
+
+## Where Phase 2 finished
+
+Ten of eleven criteria. What follows is the audit that closed it, run over the
+register rather than over the ledger — because a ledger is a claim and the
+register is the thing.
+
+### Every control, and what reads each locus it declares
+
+| Control | Gate | Own stamp | Loci read by |
+| --- | --- | --- | --- |
+| SEC-001 | `gate-secrets` | yes | `secrets_gate_wired_at_all_loci`; remote deferred |
+| SEC-002 | — | no | `no-static-cloud-keys` — see below |
+| SUP-001 | `gate-supply-chain` | yes | `ci-installs-frozen`, over gating steps |
+| SUP-002 | `gate-supply-chain` | yes | `dependency_update_config_covers_all_ecosystems` — see below |
+| SUP-003 | `gate-supply-chain` | yes | `gate_wired_at_declared_loci` |
+| BLD-001 | `gate-build` | yes | `gate_wired_at_declared_loci` |
+| DEV-001 | `gate-build` | yes | `gate_wired_at_declared_loci` |
+| CI-001 | `gate-repo` | yes | `ruleset_recorded_matches_register`; remote deferred |
+| LNT-001 | `gate-quality` | yes | `linter-wired-at-all-loci` |
+| TYP-001 | `gate-quality` | yes | `typecheck-strict-and-blocking` |
+| TST-001 | `gate-quality` | yes | `tests-run-and-block` |
+| IAC-001 | `gate-iac` | yes | `gate_wired_at_declared_loci` |
+| DOC-001 | `lint-md` | no | `markdown_gate_wired_at_all_loci` |
+
+**Two rows have no locus-wiring assert, and neither is an oversight.** Saying so
+here rather than leaving the blank, because a blank in a table like this is
+exactly the silence three of this phase's slices were spent removing.
+
+**SEC-002 has nothing to wire.** *CI authenticates without a long-lived cloud
+credential* is satisfied by a workflow **not** referencing one.
+`no-static-cloud-keys` reads every workflow file, which is the whole of the `ci`
+locus for a control whose content is an absence. There is no gate to install, no
+artefact to write, and so no stamp — which is why it is `standard-adopt`'s
+*checked, not deployed* row rather than a gap.
+
+**SUP-002's `ci` locus is read, and measured.** Its assert reads a config file
+rather than a workflow step, so the question is fair: what fails in CI when that
+config is wrong? Measured by deleting `.github/dependabot.yml` from a copy of
+this repository —
+
+```text
+SUP-002  FAIL
+   ✗ file: dependency_update_config_covers_all_ecosystems — renovate.json enables
+     custom managers only, so it proposes no package-ecosystem updates, and
+     there is no .github/dependabot.yml to cover them
+```
+
+— and that failure reaches CI through the conformance step, which is the same
+route SUP-001's `tool_versions_match_register` takes. The locus is read.
+
+**DOC-001 carries no stamp block of its own**, and that is `lint-md`'s to add.
+The deployment here is stale by design (`lint-md@1.0.6` against 1.0.7) and
+`CLAUDE.md` records why re-running it is not the fix.
+
+### What the audit found that Phase 3 owns
+
+One thing, recorded rather than fixed: **SUP-002 verifies the configuration and
+not the bot**. A `dependabot.yml` is inert until Dependabot is enabled on the
+repository, and a `renovate.json` until the app is installed and its onboarding
+pull request left open. Both are platform acts, both are already flagged as a
+human's in `08-adopting.md` § 1.1 and in `gate-supply-chain`'s own output — and
+neither is *verified*, because verifying platform state is Phase 3's.
+
+Whether SUP-002 should therefore declare a `remote` locus is a register change
+this phase deliberately did not make: adding one would create a fourth
+`kind: remote` block, and Phase 3 is where those are implemented rather than
+stubbed.
+
+### The one criterion left open
+
+The devcontainer template **builds**. This container has no Docker, so nothing
+here has run `devcontainer build`, and the criterion says so rather than
+resting on the copy's controls passing. The commands are in `08-adopting.md`
+§ 2.0, and this section is where the output goes when an operator runs them.
+
+A criterion closed on a build nobody ran is the over-tick this document exists
+to catch — seven times, so far.
+
 ## Decisions the next slice needs
 
 Recorded here rather than settled silently, in the shape § H used.
@@ -768,5 +1239,6 @@ Recorded here rather than settled silently, in the shape § H used.
 | --- | --- |
 | ~~`deploys.json` carries one `contractVersion` for the whole plugin~~ — **settled** by the second gate, see § `deploys.json` carries one contract per gate | Phase 5's criteria are *a version bump produces no recommendation, a contract bump does*. A per-plugin contract makes the second one fire for gates that did not change, and that is discovered as noise rather than as a bug |
 | A repo-root `LICENSE`, copied into the plugin | `check_plugin_license.py` fails without it and `pyproject.toml` already declares Apache-2.0. Phase 6 holds the criterion; the plugin directory exists from now on without one |
+| Whether SUP-002 should declare a `remote` locus. It verifies the *configuration*; whether the bot is **enabled** is platform state nothing checks — see § What the audit found that Phase 3 owns | Adding one creates a fourth `kind: remote` block, and Phase 3 is where those are implemented rather than stubbed. Deciding it earlier would mean stubbing exactly the part that must not be stubbed |
 | ~~Whether `gate-secrets` should own `.devcontainer/setup.sh`'s scanner install~~ — **settled** at register contract 15: `gate-build` owns the file, each gate stamps its own region, see § `.devcontainer/setup.sh` gets an owner | It is a third site repeating the version, listed in `pinned_at`, and no gate currently claims it. Today it is nobody's, which is how a locus gets forgotten |
 | ~~Whether a stack's gate tools must be **present** in a lockfile the repository commits~~ — **settled yes** at register contract 13, see § The pin's existence | It is about the pin's *existence* rather than the invocation, so it is a new assert rather than a register edit, and every gate after this one inherits whichever answer is given |

@@ -1,0 +1,37 @@
+// Written to `.github/rulesets/default-branch.json` in the target repository,
+// then applied through the GitHub API. Double-brace placeholders are
+// substituted from the register before the file is written; none of them is a
+// value this file is allowed to decide.
+//
+// **This file is a record, not an enforcement.** GitHub does not read a path in
+// your repository to decide what a ruleset says — only the API call does that.
+// A recorded ruleset the platform has never been told about protects nothing,
+// which is the reads-as-solved half-state DEV-001 exists to catch, one domain
+// over. The gate applies it and then reports that only Phase 3 can confirm it.
+//
+// The three rules below are CI-001's `args:`, rendered into GitHub's own
+// spelling. `non_fast_forward` is the rule that *forbids* force-push, so the
+// register's `allow_force_push: false` is what puts it here — the register says
+// what is allowed and GitHub names what is blocked, and reading one as the
+// other is how a control ends up inverted.
+//
+// `~DEFAULT_BRANCH` rather than a branch name. A ruleset naming `main` stops
+// protecting the default branch the day the default moves, silently.
+// --- .github/rulesets/default-branch.json ---
+{
+  // ee-control: CI-001  ee-skill: gate-repo@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+  "name": "{{RULESET_NAME}}",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["~DEFAULT_BRANCH"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "pull_request" },
+    { "type": "required_status_checks" },
+    { "type": "non_fast_forward" }
+  ]
+}

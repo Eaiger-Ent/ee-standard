@@ -31,6 +31,21 @@
         ".pre-commit-config.yaml#build"
       ]
     },
+    "gate-repo": {
+      "contractVersion": 1,
+      "controls": ["CI-001"],
+      "artifacts": [
+        ".github/rulesets/default-branch.json"
+      ]
+    },
+    "gate-iac": {
+      "contractVersion": 1,
+      "controls": ["IAC-001"],
+      "artifacts": [
+        ".pre-commit-config.yaml#iac",
+        ".github/workflows/standard-check.yml#iac"
+      ]
+    },
     "gate-quality": {
       "contractVersion": 2,
       "controls": ["LNT-001", "TYP-001", "TST-001"],

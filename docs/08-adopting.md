@@ -35,6 +35,43 @@ test gates, wire the remaining gates by hand using this repository as the worked
 example, and run the checker. When Phase 2 finishes, most of § 2 and § 3 becomes
 one command.
 
+## 0 — The front door
+
+`/standard-adopt` is the only entry point you need. It reads the register, works
+out which controls apply to **your** repository from its files, shows a plan,
+dispatches the gates in dependency order, verifies through the checker, and
+commits.
+
+```bash
+/standard-adopt --repo . --register ./controls.yaml
+```
+
+Everything in the sections below is either a step it takes for you, or a step it
+tells you that you owe. Read § 1 first anyway: those are the acts no skill can
+take, and a plan that reaches them is a plan waiting on you.
+
+**What it will not do.** It writes no gate configuration itself — every artefact
+is written by the gate that owns the control, which is what keeps one control's
+config in one place. It will not commit on a failed verify. And it will not
+report exit `3` as a pass: SEC-001's and CI-001's remote blocks report
+`SKIPPED (no credentials)` until Phase 3, so `3` is the expected result today
+and the skill names which blocks were skipped rather than rounding up.
+
+**One confirmation, and one exception.** It asks once, covering the whole plan.
+`gate-repo` asks **again** on its own, and that is right rather than redundant:
+the plan covers what will be written to files, and a GitHub API call is not a
+file. Its ruleset is in force the moment the call returns, for everyone with
+access.
+
+**A control is never silently absent from the plan.** Four rows cover every
+control in the register — *deploy*, *dispatch elsewhere* (DOC-001 is `lint-md`'s,
+in another plugin), *checked, not deployed* (SEC-002 is satisfied by a workflow
+**not** referencing a static credential, so there is nothing to write), and
+*manual*. A control missing from the plan would read as one that does not apply.
+
+If you would rather deploy one gate at a time, each works standalone — § 3.1 to
+§ 3.6. `standard-adopt` exists to save you knowing which.
+
 ## 1 — Platform state: what only a human with admin can do
 
 None of this is code, none of it is in a pull request, and all of it is invisible
@@ -120,6 +157,51 @@ for a file.
 
 ## 2 — The development environment
 
+### 2.0 — Where the devcontainer comes from
+
+A conformant `.devcontainer/` ships with the plugin, at
+`plugins/ee-standard/templates/devcontainer/`. Copy it, replace the
+double-brace placeholders — `grep -rl '{{' .devcontainer` lists them — and run
+`/gate-build` to pin what you chose and stamp it.
+
+**Why it ships here rather than as a template repository.** `project-init` has
+one stated precondition: `.devcontainer/devcontainer.json` must already exist,
+and its guidance when it does not is *"clone the template repo or add the file
+manually"*. That template repo is private, so anyone whose access lapses loses
+the ability to start a project. A directory in the plugin is obtainable by
+anyone who can install the plugin.
+
+**What the template pins**: the image by digest, and every feature by digest in
+`devcontainer-lock.json`. **What it refuses to pin**: any tool version inside
+`setup.sh`. That is Phase 2's own exit criterion — *the template pins no tool
+version by hand; every tool it installs is either sourced from a lockfile the
+consumer repo already commits, or from a single toolchain file*. A template
+scattering pins through a shell script reproduces that problem in every
+repository that adopts the standard, and you have no
+`tool_versions_match_register` of your own until you adopt the register too.
+
+So `setup.sh` installs only from lockfiles you commit. Scanners, linters and
+analysers are installed by the gates that own their controls, each writing its
+own stamped region into that file.
+
+**Two lines that must survive the copy.** The template's own `.gitignore` names
+`.env` and `.env.docker`, and SEC-001 depends on them. Deleting it does not fail
+a build; it fails quietly, later, in someone else's clone — and a secret that
+reaches a remote is not undone by removing it.
+
+**How you know it worked**, in this order:
+
+```bash
+grep -rl '{{' .devcontainer          # expect no output
+devcontainer build --workspace-folder .
+standard-check run --control BLD-001 --control DEV-001
+```
+
+A fresh copy fails the loci and stamp blocks of both controls, which is correct:
+`gate-build` has not run yet. It should pass `devcontainer_user_is_non_root`,
+`devcontainer_image_digest_pinned` and `devcontainer_lock_covers_all_features`
+from the first line.
+
 Copy `.devcontainer/` from this repository as the worked example. Its operator
 guide is [`06-devcontainer-setup.md`](06-devcontainer-setup.md); the
 specification the shipped template will meet is
@@ -146,7 +228,7 @@ What matters when you adapt it:
 
 ## 3 — The gates
 
-Four gates are built — see § 3.1 to § 3.4. For the rest, until Phase 2
+All six gates are built — see § 3.1 to § 3.6. For the rest, until Phase 2
 ships them, wire the gates by copying this repository's own artefacts, which are
 the reference implementation:
 
@@ -341,7 +423,7 @@ being fixed.
 | A `tools.standard-check` entry with an `invocation` | Both controls' pre-commit gate is the checker, and a locus running a bare name resolves from `PATH` — what answered would be auditing your repository ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) | The gate stops before writing anything and says the invocation is missing |
 | A `tools.hadolint` entry, **if you have a Dockerfile** | BLD-001's container half runs the linter. An absent linter is `UNCLASSIFIED — cannot verify`, not a pass ([ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md)) | `standard-check run --control BLD-001` stops reporting UNCLASSIFIED for that block |
 
-That last row is § 3.5 in miniature — *your register records your own files*.
+That last row is § 3.7 in miniature — *your register records your own files*.
 This standard's register pins no `hadolint`, because this repository has no
 Dockerfile to lint, and a `pinned_at` naming a site that does not exist is a
 failure rather than a placeholder. A repository that does have one adds the
@@ -374,7 +456,111 @@ the same — but it needs **two** stamps. The read-back matches on the control
 being evaluated, so a hook stamped for BLD-001 alone leaves DEV-001's pre-commit
 locus unrecorded even though the same command enforces it.
 
-### 3.5 — Your register records your own files
+### 3.5 — `gate-iac`, and the verdict that is not a pass
+
+`/gate-iac` wires IAC-001 (*infrastructure code is statically analysed before
+apply*). It applies only if you have `*.tf` files: the predicate is evaluated
+against files and never self-declared, so a repository without them skips the
+control and there is nothing to deploy.
+
+**One hook runs both analysers.** IAC-001's verify blocks are
+`checkov --directory . --compact --quiet` and `tflint --recursive`, and the hook
+runs the *control* — `standard-check run --control IAC-001` executes both
+through the same path the audit uses. Two hooks each invoking one analyser would
+be two statements of what "analysed" means, free to drift from each other and
+from the register.
+
+**Two prerequisites, and how you know each is met.**
+
+| Prerequisite | Why | How you know it worked |
+| --- | --- | --- |
+| A `tools.checkov` and `tools.tflint` entry in your register | Without them the analysers are unpinned, and an absent analyser is `UNCLASSIFIED — cannot verify`, not a pass | `standard-check run --control IAC-001` stops reporting UNCLASSIFIED for those blocks |
+| A `tools.standard-check` entry with an `invocation` | The pre-commit gate is the checker, and a locus running a bare name resolves from `PATH` ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) | The gate stops before writing anything and says the invocation is missing |
+
+**Expect `UNCLASSIFIED` on the first run, and do not treat it as a pass.** This
+standard's register pins neither analyser, because this repository has no `*.tf`
+to analyse. The gate will **not** make the report green by installing an
+unpinned tool — that leaves the version unrecorded, which is exactly the
+condition `tool_versions_match_register` exists to fail.
+
+**Exit `1` has two causes and they are not the same.** A failing wiring or stamp
+block is a failed deployment. A failing `checkov` or `tflint` block is a
+*successful* deployment finding real problems in your Terraform — the gate
+working on its first run. Conflating them is how a working gate gets rolled
+back, so the skill reports which and quotes the block.
+
+**What it leaves alone.** `terraform validate` checks syntax and provider
+schema, which neither analyser does — a different check, not a predecessor. A
+second analyser such as `tfsec` is not a violation, but two analysers means two
+suppression files and only one of them is a place this standard checks
+([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)); the skill shows
+what each is configured to do and asks.
+
+**A suppressed step is not a locus.** From register contract 16, a CI step
+carrying `continue-on-error: true` does not satisfy any control's ci locus. The
+tool runs, the job succeeds whatever it reports, and the merge is not gated on
+it. The same tightening applies to every gate, not only this one.
+
+### 3.6 — `gate-repo`, the one that changes something outside your repository
+
+`/gate-repo` wires CI-001 (*the default branch cannot be written to without a
+passing check*). It is the only gate whose effect is not a file you review
+before it takes effect: it calls the GitHub API, and **the ruleset is in force
+the moment the call returns**, for everyone with access.
+
+So it confirms explicitly before acting, on every run, regardless of any plan
+already approved — including one approved in `standard-adopt`. That plan covers
+what will be written to files; this call is not a file. A re-run that would
+change nothing still asks, because a call whose effect is invisible until it is
+wrong is not one to make silently.
+
+**Two prerequisites, and how you know each is met.**
+
+| Prerequisite | Why | How you know it worked |
+| --- | --- | --- |
+| A token with `administration: write` on the repository | Writing a ruleset needs it, and it is granted by a human with admin (§ 1) | `gh api repos/<owner>/<name>/rulesets` returns rather than 403 |
+| Agreement that the default branch stops accepting direct pushes | It applies to **everyone**, including administrators, unless a bypass is configured | The gate states the blast radius before asking, and names who it affects |
+
+The gate stops **before writing anything** when the token lacks the permission.
+A skill that writes the record and cannot apply it leaves a repository looking
+protected in a diff and unprotected in fact.
+
+**A recorded ruleset is not a protected branch.** `gate-repo` writes
+`.github/rulesets/default-branch.json` and then applies it. GitHub does not read
+a path in your repository to decide what protects your default branch; only the
+API call does. The file is a record, and the checker verifies it as one:
+`ruleset_recorded_matches_register` says *intent only* in its own message.
+
+**Expect exit `3`.** CI-001's `remote` block reports `SKIPPED (no credentials)`
+until Phase 3 implements platform verification. What is verified is that you
+record the ruleset the register requires. What is not verified — by anything,
+yet — is that GitHub is enforcing it. Both get said, and neither stands in for
+the other.
+
+**Three things the checker rejects in a recorded ruleset**, each of which GitHub
+itself would accept:
+
+1. **`enforcement: evaluate`.** It reports what would have happened and blocks
+   nothing — a control declared and unreachable.
+2. **A ruleset targeting a branch by name.** `~DEFAULT_BRANCH` follows the
+   default; `refs/heads/main` stops protecting it the day your default moves,
+   silently.
+3. **A ruleset git does not track.** Nobody can review it, and the remote block
+   cannot be reached without credentials either — so nothing at all about the
+   control would have been verified.
+
+**Already have branch protection?** Say so and let the gate transcribe it. This
+repository's own record was adopted rather than deployed: the ruleset was
+created by hand in Phase 0.5, and the file is what the API returns today,
+including a `deletion` rule the register does not ask for. An extra rule adds a
+restriction; a record that disagrees with what is enforced is worse than one
+carrying more than the register requires.
+
+**Classic branch protection and a ruleset both apply**, and the union of their
+requirements is enforced. Removing the classic rule is a real reduction until
+the ruleset is confirmed active, so the gate confirms first and asks second.
+
+### 3.7 — Your register records your own files
 
 Two things in `controls.yaml` describe **the repository being checked**, not this
 one, and are the first edits an adopter makes to their copy:

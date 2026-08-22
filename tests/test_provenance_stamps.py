@@ -74,6 +74,10 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
     The ninth is `.devcontainer/setup.sh`, and it is the one file whose stamps
     all belong to gates other than the one that owns the file.
 
+    The tenth is `.github/rulesets/default-branch.json`, and it is the one
+    artefact that enforces nothing by existing — a record of what the platform
+    is asked to enforce, not the enforcement.
+
     The eighth is `.github/dependabot.yml`, SUP-002's, and it is the one file
     where a whole-file stamp is right rather than wrong: every line of it
     belongs to one control. `gate-supply-chain`'s other three stamps land in
@@ -105,6 +109,12 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
         # register contract 15. Shared file, per-region stamps, as
         # `.pre-commit-config.yaml` has been since Phase 2's first slice.
         ".devcontainer/setup.sh",
+        # CI-001's, from `gate-repo`. The only artefact any gate writes that
+        # enforces nothing by existing: GitHub does not read a path in this
+        # repository to decide what protects `main`. It is a record, verified as
+        # intent, with the platform's own state left to the remote block and to
+        # Phase 3.
+        ".github/rulesets/default-branch.json",
     }
 
 

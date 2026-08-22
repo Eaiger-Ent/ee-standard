@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.15.0
+version: 0.17.0
 
 meta:
   owner: platform-engineering
@@ -112,7 +112,30 @@ meta:
   #     the loci *it* installs the linter at — an absent linter is
   #     UNCLASSIFIED (ADR 0016) rather than a pass, and this register does not
   #     pin one because this repository has no Dockerfile to lint.
-  register_contract: 15
+  # 16: IAC-001 names the gate that writes its artefacts and is verified at both
+  #     loci it declares — the last of the four the contract-14 survey listed.
+  #     Its gate is the checker, as BLD-001's is and for the same reason: the
+  #     control's two `kind: command` blocks run checkov and tflint through the
+  #     path the audit uses, so one hook enforces both without a second wiring
+  #     for either. A repository with Terraform pins those two tools in its own
+  #     register; an absent analyser is UNCLASSIFIED (ADR 0016) rather than a
+  #     pass, and this register pins neither because this repository has no
+  #     `*.tf` to analyse.
+  # 17: CI-001 names the gate that writes its artefact — and it has one, which
+  #     was not obvious. Its only locus is `remote`, so `gate-repo` was the one
+  #     gate with no file to write, no stamp to leave and nothing verifiable
+  #     until Phase 3. A gate that cannot be observed working is what this
+  #     repository's review record keeps catching, so the ruleset is *recorded*
+  #     before it is applied: `.github/rulesets/default-branch.json`, derived
+  #     from this control's `args:` at deploy time, stamped like any other
+  #     artefact, and read back by `ruleset_recorded_matches_register`.
+  #
+  #     That assert verifies **intent, not platform state**, and says so in its
+  #     own message. A recorded ruleset GitHub has never been told about is the
+  #     reads-as-solved half-state DEV-001 exists to catch, one domain over — so
+  #     the remote block stays exactly where it was, reporting SKIPPED (no
+  #     credentials) until Phase 3 implements `kind: remote`.
+  register_contract: 17
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -836,6 +859,24 @@ controls:
     locus: [remote]
     applies_to: [always]
     verify:
+      # What the ruleset must say. One statement, read twice: the recorded
+      # artefact is compared against it now, and the platform's own state will
+      # be compared against it in Phase 3. Two `args:` blocks would be two
+      # definitions of "protected", free to drift.
+      - kind: file
+        assert: ruleset_recorded_matches_register
+        args:
+          path: .github/rulesets/default-branch.json
+          require_pull_request: true
+          require_status_checks: true
+          allow_force_push: false
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-repo }
+      # Unchanged, and deliberately. A recorded ruleset is what a repository
+      # *intends*; only the platform can say what it enforces, and nothing here
+      # may stand in for that. Reporting SKIPPED (no credentials) is the honest
+      # verdict until Phase 3.
       - kind: remote
         assert: default_branch_ruleset_satisfies
         args:
@@ -843,6 +884,7 @@ controls:
           require_status_checks: true
           allow_force_push: false
     owner: platform-engineering
+    deployed_by: gate-repo
     variance: forbidden
     baseline: null
     review_by: 2027-08-16
@@ -986,7 +1028,25 @@ controls:
         run: checkov --directory . --compact --quiet
       - kind: command
         run: tflint --recursive
+      # Two loci were declared from Phase 0 and neither was read: the blocks
+      # above run the analysers over the files, which is a different claim from
+      # something enforcing them before a commit lands and before a merge does.
+      # The last of the four controls the contract-14 survey listed (SUP-003,
+      # BLD-001, DEV-001, IAC-001), and the same move as the other three.
+      #
+      # One hook covers both analysers, because the hook runs the control and
+      # the control runs both. A repository with Terraform still has to pin
+      # `checkov` and `tflint` in its own `tools:` — an absent analyser is
+      # UNCLASSIFIED (ADR 0016) rather than a pass, and this register pins
+      # neither because this repository has no `*.tf` to analyse.
+      - kind: file
+        assert: gate_wired_at_declared_loci
+        args: { tool: standard-check }
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-iac }
     owner: platform-engineering
+    deployed_by: gate-iac
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16

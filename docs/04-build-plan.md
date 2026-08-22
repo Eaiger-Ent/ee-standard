@@ -405,12 +405,13 @@ fixed in both.
 
 ### Exit criteria — phase 2
 
-- [ ] Every adopter-facing step this phase introduces is in
+- [x] Every adopter-facing step this phase introduces is in
       [`08-adopting.md`](08-adopting.md) with its evidence — the gate skills'
       prerequisites, what `standard-adopt` needs before it can run, and what the
       template requires of a repository that copies it. `gate-secrets` (§ 3.1),
-      `gate-quality` (§ 3.2), `gate-supply-chain` (§ 3.3) and `gate-build`
-      (§ 3.4) have theirs written down; the other two do not
+      `gate-quality` (§ 3.2), `gate-supply-chain` (§ 3.3), `gate-build` (§ 3.4),
+      `gate-iac` (§ 3.5) and `gate-repo` (§ 3.6) have theirs written down, the
+      template has § 2.0, and `standard-adopt` has § 0 — the front door
 
 - [x] `gate-secrets` deploys onto a repo with none of its config, and
       `standard-check` then reports SEC-001 PASS for its local loci — closed
@@ -418,9 +419,8 @@ fixed in both.
       `gitleaks` by hand since Phase 0.5. Evidence, including each artefact
       deleted in turn and watched failing, in
       [`10-phase-2-review.md`](10-phase-2-review.md)
-- [ ] Every gate writes a provenance stamp its own verify step reads back —
-      holds for `gate-secrets`, `gate-quality`, `gate-supply-chain` and
-      `gate-build`, and the mechanism the
+- [x] Every gate writes a provenance stamp its own verify step reads back —
+      holds for all six gates, and the mechanism the
       rest inherit is in place: `provenance_stamp_present`, and a schema rule
       that rejects a register where it and `deployed_by` name different gates.
       Open until the gates exist. Reading back is now **per control**: a gate
@@ -428,27 +428,36 @@ fixed in both.
       two. What no control proves is that the deployment was *complete* — how
       many artefacts, at which loci — because that list is the plugin's
       `deploys.json` and reading it is Phase 5's sweep
-      ([ADR 0018](adr/0018-register-checker-boundary.md) § Applied — fifth pass)
+      ([ADR 0018](adr/0018-register-checker-boundary.md) § Applied — fifth pass).
+      **Closed 2026-08-21**: all six gates exist and each control reads back its
+      own stamp, verified end to end in `tests/test_standard_adopt.py`
 - [x] Gates and checker share one assert implementation — verified by there
       being one copy, not by comparing two. Closed 2026-08-19: the copy is
       `standard_check.asserts`, a gate reaches it only through
       `standard-check run --control <ID>`, and a gate that deploys a control it
       does not name there fails a test
-- [ ] The devcontainer template builds, and DEV-001 passes against it
-- [ ] The template pins no tool version by hand. Every tool it installs is
+- [ ] The devcontainer template builds, and DEV-001 passes against it — the
+      template ships at `plugins/ee-standard/templates/devcontainer/` and
+      DEV-001's and BLD-001's property blocks pass against a copy of it
+      (`tests/test_devcontainer_template.py`). **Open on the other half**: this
+      devcontainer has no Docker, so nothing here has built it, and a tick on a
+      build nobody ran is the over-tick this plan exists to catch. The commands
+      are in [`08-adopting.md`](08-adopting.md) § 2.0
+- [x] The template pins no tool version by hand. Every tool it installs is
       either sourced from a lockfile the consumer repo already commits, or from
       a single toolchain file (§ G's action 2) — never a literal inside
-      `setup.sh`. A template that scatters pins through a shell script
-      reproduces § G's problem in every repo that adopts the standard, and the
-      consumer has no `tool_versions_match_register` of their own until they
-      adopt the register too
+      `setup.sh`. **Closed 2026-08-21** as a grep rather than a reading, because
+      [ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) named this
+      criterion in advance as one a template could meet *in letter*
+      ([`10-phase-2-review.md`](10-phase-2-review.md) § The criterion that
+      needed a test rather than a review)
 - [x] The rule for exemptions in a deployed config is decided and **checkable**
       before any gate skill deploys one (§ H7) — closed 2026-08-18 by
       [ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md): an exemption
       may scope a gate to what git does not track, and may never hide a file it
       does. DOC-001's config now carries none at all
 
-- [ ] Every locus's invocation **resolves to** the pinned artefact, shown by
+- [x] Every locus's invocation **resolves to** the pinned artefact, shown by
       deleting the artefact and watching that locus fail — not inferred from
       where the version is recorded ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)).
       The criterion above is about the *source* of a version; `npx --no-install`
@@ -462,22 +471,35 @@ fixed in both.
       where `stack_tool_pinned_in_lockfile` made the pin's existence a verdict
       ([`10-phase-2-review.md`](10-phase-2-review.md) § The pin's existence).
       Contract 14 added SUP-003's two, whose gate is the checker itself. Open
-      for the loci the remaining gates will write
+      for no loci: every gate now writes and verifies each locus its controls
+      declare
 
-- [ ] Every SKILL.md passes preflight P1–P11 — the four gates built so far all
-      pass with zero failures, each recorded in `10-phase-2-review.md` under its
-      own § Preflight P1–P11 heading. Open until the other five skills exist
-- [ ] Every control's declared `locus:` is read by something. Found open in
+- [x] Every SKILL.md passes preflight P1–P11 — all six gates and
+      `standard-adopt` pass with zero failures, each recorded in
+      `10-phase-2-review.md` under its own § Preflight P1–P11 heading. The
+      `standard-check` and `standard-variance` skills are Phase 3's and Phase
+      5's respectively, and are not this phase's to ship
+- [x] Every control's declared `locus:` is read by something. Found open in
       Phase 2: SUP-003, BLD-001, DEV-001 and IAC-001 each declared
       `[pre-commit, ci]` and verified only their property, so a repository with
       no pre-commit hook of any kind reported PASS
       ([`10-phase-2-review.md`](10-phase-2-review.md) § It found a locus nothing
-      had ever read). SUP-003 closed at register contract 14, BLD-001 and
-      DEV-001 at 15, and one assert now reads the control's own `locus:` list
-      rather than knowing two by name. IAC-001 closes with `gate-iac`
+      had ever read). **Closed 2026-08-21** across contracts 14, 15 and 16, with
+      one assert reading the control's own `locus:` list rather than knowing two
+      by name. Contract 16 also closed two ways a CI step could be credited as a
+      locus without gating anything: a suppressed step, and the step that
+      *installs* a tool rather than running it
+      ([`10-phase-2-review.md`](10-phase-2-review.md) § What this slice found in
+      the other four gates)
 
-- [ ] `standard-adopt` end-to-end on a scratch repo: plan → confirm → deploy →
-      verify → commit, with the verify step genuinely able to fail
+- [x] `standard-adopt` end-to-end on a scratch repo: plan → confirm → deploy →
+      verify → commit, with the verify step genuinely able to fail — closed
+      2026-08-21 by `tests/test_standard_adopt.py`, which drives every gate in
+      the skill's own dispatch order through their shipped templates and watches
+      the verify step fail on a suppressed lint step. **What is proved is that
+      the pipeline works, not that a model follows the prose**; that limit is
+      recorded in [`10-phase-2-review.md`](10-phase-2-review.md) § What is
+      proved, and what is not
 
 That last clause matters. A verify step that has never been observed failing is
 not known to work — deliberately break a deployed config and confirm the run
@@ -584,10 +606,70 @@ Wire the mechanism that keeps deployments current.
 - [ ] The sweep runs unattended and produces a report nobody has to ask for
 - [ ] A repo that has never deployed is distinguishable from one deployed and
       current, and from one deployed and stale
+- [ ] Taking an upstream skill release is a supported operation with a recorded
+      outcome: **redeployed**, or **declined with the disagreement named**.
+      Refreshing a provenance stamp by hand — recording a redeployment that did
+      not happen — is not one of the outcomes
+- [ ] A deployment behind because nobody has redeployed is distinguishable from
+      one behind because the release would revert a narrowing this register
+      holds. The first is a chore; the second is a decision, and reporting them
+      the same way trains everyone to ignore both
 
 The first two criteria are the whole noise argument, expressed as a test. If a
 documentation-only release triggers a recommendation, the mechanism will be
 ignored within a month and the phase has failed regardless of what else passes.
+
+### Accepting an upstream skill release
+
+A skill the family does not own will keep shipping. The benefit of those
+releases is the reason to depend on a marketplace at all, so *not* taking them
+is a cost, not a safe default — but taking one blindly reverts whatever this
+register narrowed. `lint-md` is the worked example, and it is carried here
+rather than in Phase 6 because the amendment is only half of it: raising an
+issue is Phase 6's, and being **able to accept the answer** is this phase's.
+
+The current state, measured 2026-08-22: `lint-md@1.0.7` is installed and is the
+marketplace latest; the deployed stamps read `lint-md@1.0.6`. Re-running the
+skill today changes nothing — six of seven steps hit a presence check and the
+seventh prompts — so the deployment is not *at risk*, it is *unrefreshable*: the
+stamp would claim 1.0.7 wrote artefacts 1.0.7 would not write. That is the gap
+this phase closes.
+
+Four rows separate the installed skill from what this register will accept. Two
+are ours to argue upstream, two are plain defects:
+
+| Row | What 1.0.7 does | Why it cannot be deployed here |
+| --- | --- | --- |
+| 1 | Writes `npx --no-install markdownlint-cli2` at every locus | [ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) measured `--no-install` falling through to `PATH`; the register pins `tools.markdownlint-cli2.invocation` to `node_modules/.bin/markdownlint-cli2` |
+| 2 | Writes `.claude/**` into `ignores` | Right intention, wrong mechanism — see below |
+| 3 | Guards that step with `grep -q "node_modules"` | Matches this repo's *comment* explaining why the list was removed, so the skip is a coincidence of wording |
+| 4 | Prompts to overwrite `.markdownlint.yaml` | Does not recognise an `ee-control:` header, so accepting drops the DOC-001 stamp |
+
+Row 2 is the one to get right, because the exclusion is **correct in intent**.
+Two different things share the `.claude` prefix:
+
+- **Claude's auto-memory** — `~/.claude/projects/*/memory/*.md`. A feature this
+  repository neither owns nor authors, and its files have no reason to satisfy
+  DOC-001. Genuinely out of scope.
+- **The repository's own `.claude/`** — `hooks/md-lint.py` and `settings.json`
+  today, both tracked, both authored here. Squarely in scope.
+
+An `ignores` entry cannot tell them apart, and it is aimed at the wrong one: the
+memory files live under `$HOME`, outside the repository, so a repo-root
+`**/*.md` glob never reaches them — 49 files linted, none of them memory. The
+only locus that *could* reach one is the PostToolUse hook, which already skips
+them by location (incubator [#409](https://github.com/EqualExperts/ee-skills-incubator/issues/409)).
+So the exclusion is already achieved, by a mechanism that names the real reason.
+What `ignores: ["\.claude/**"]` adds is hiding anything the repository later
+authors under `.claude/` — which is what
+[ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md) forbids and
+`markdown_gate_wired_at_all_loci` fails.
+
+The general rule this phase owes a mechanism to: **an exclusion is scoped by
+what it is for, not by where it sits.** A path outside the repository is out of
+scope by location and needs no exemption; a path inside it is in scope and an
+exemption weakens the control. A skill that cannot express the difference should
+be told so, not worked around locally.
 
 ## Phase 6 — Promotion
 
@@ -620,9 +702,14 @@ makes four.
 - [ ] All the submissions raised: the family (one issue per skill), the
       `governance` category, the `skill-update` widening, the `CONTRIBUTING.md`
       corrections, and what remains of the `lint-md` amendment from Phase 1.5
-      § F — `lint-md@1.0.7` shipped most of #530 on 2026-08-20, leaving the
-      ADR 0020 invocation and the ADR 0019 exemption, so this is a follow-up on
-      an open issue and closing it means naming those two
+      § F. `lint-md@1.0.7` shipped most of #530 on 2026-08-20 and **#530 is
+      closed** — its closing comment records `npx --no-install` as the fix, so
+      this is a **new** amendment arguing against a shipped decision rather than
+      a follow-up on an open one, and it must carry ADR 0020's measurement
+      rather than assert the conclusion. Four rows, not two: the ADR 0020
+      invocation, the ADR 0019 exemption, the `node_modules` guard that matches
+      prose, and the overwrite prompt that does not recognise a provenance
+      header — enumerated in § Accepting an upstream skill release
 - [ ] `ee-standard` installable from the marketplace **as one plugin**, with
       every skill in it — not as one plugin per skill
 - [ ] The consumer repo re-adopts from the *marketplace* copy and still passes —
