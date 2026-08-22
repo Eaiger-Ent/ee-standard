@@ -621,10 +621,70 @@ Wire the mechanism that keeps deployments current.
 - [ ] The sweep runs unattended and produces a report nobody has to ask for
 - [ ] A repo that has never deployed is distinguishable from one deployed and
       current, and from one deployed and stale
+- [ ] Taking an upstream skill release is a supported operation with a recorded
+      outcome: **redeployed**, or **declined with the disagreement named**.
+      Refreshing a provenance stamp by hand — recording a redeployment that did
+      not happen — is not one of the outcomes
+- [ ] A deployment behind because nobody has redeployed is distinguishable from
+      one behind because the release would revert a narrowing this register
+      holds. The first is a chore; the second is a decision, and reporting them
+      the same way trains everyone to ignore both
 
 The first two criteria are the whole noise argument, expressed as a test. If a
 documentation-only release triggers a recommendation, the mechanism will be
 ignored within a month and the phase has failed regardless of what else passes.
+
+### Accepting an upstream skill release
+
+A skill the family does not own will keep shipping. The benefit of those
+releases is the reason to depend on a marketplace at all, so *not* taking them
+is a cost, not a safe default — but taking one blindly reverts whatever this
+register narrowed. `lint-md` is the worked example, and it is carried here
+rather than in Phase 6 because the amendment is only half of it: raising an
+issue is Phase 6's, and being **able to accept the answer** is this phase's.
+
+The current state, measured 2026-08-22: `lint-md@1.0.7` is installed and is the
+marketplace latest; the deployed stamps read `lint-md@1.0.6`. Re-running the
+skill today changes nothing — six of seven steps hit a presence check and the
+seventh prompts — so the deployment is not *at risk*, it is *unrefreshable*: the
+stamp would claim 1.0.7 wrote artefacts 1.0.7 would not write. That is the gap
+this phase closes.
+
+Four rows separate the installed skill from what this register will accept. Two
+are ours to argue upstream, two are plain defects:
+
+| Row | What 1.0.7 does | Why it cannot be deployed here |
+| --- | --- | --- |
+| 1 | Writes `npx --no-install markdownlint-cli2` at every locus | [ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) measured `--no-install` falling through to `PATH`; the register pins `tools.markdownlint-cli2.invocation` to `node_modules/.bin/markdownlint-cli2` |
+| 2 | Writes `.claude/**` into `ignores` | Right intention, wrong mechanism — see below |
+| 3 | Guards that step with `grep -q "node_modules"` | Matches this repo's *comment* explaining why the list was removed, so the skip is a coincidence of wording |
+| 4 | Prompts to overwrite `.markdownlint.yaml` | Does not recognise an `ee-control:` header, so accepting drops the DOC-001 stamp |
+
+Row 2 is the one to get right, because the exclusion is **correct in intent**.
+Two different things share the `.claude` prefix:
+
+- **Claude's auto-memory** — `~/.claude/projects/*/memory/*.md`. A feature this
+  repository neither owns nor authors, and its files have no reason to satisfy
+  DOC-001. Genuinely out of scope.
+- **The repository's own `.claude/`** — `hooks/md-lint.py` and `settings.json`
+  today, both tracked, both authored here. Squarely in scope.
+
+An `ignores` entry cannot tell them apart, and it is aimed at the wrong one: the
+memory files live under `$HOME`, outside the repository, so a repo-root
+`**/*.md` glob never reaches them — 49 files linted, none of them memory. The
+only locus that *could* reach one is the PostToolUse hook, which already skips
+them by location (incubator [#409](https://github.com/EqualExperts/ee-skills-incubator/issues/409)).
+So the exclusion is already achieved, by a mechanism that names the real reason.
+What `ignores: ["\.claude/**"]` adds is hiding anything the repository later
+authors under `.claude/` — which is what
+[ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md) forbids and
+`markdown_gate_wired_at_all_loci` fails.
+
+The general rule this phase owes a mechanism to: **an exclusion is scoped by
+what it is for, not by where it sits.** A path outside the repository is out of
+scope by location and needs no exemption; a path inside it is in scope and an
+exemption weakens the control. A skill that cannot express the difference should
+be told so, not worked around locally.
 
 ## Phase 6 — Promotion
 
@@ -657,9 +717,14 @@ makes four.
 - [ ] All the submissions raised: the family (one issue per skill), the
       `governance` category, the `skill-update` widening, the `CONTRIBUTING.md`
       corrections, and what remains of the `lint-md` amendment from Phase 1.5
-      § F — `lint-md@1.0.7` shipped most of #530 on 2026-08-20, leaving the
-      ADR 0020 invocation and the ADR 0019 exemption, so this is a follow-up on
-      an open issue and closing it means naming those two
+      § F. `lint-md@1.0.7` shipped most of #530 on 2026-08-20 and **#530 is
+      closed** — its closing comment records `npx --no-install` as the fix, so
+      this is a **new** amendment arguing against a shipped decision rather than
+      a follow-up on an open one, and it must carry ADR 0020's measurement
+      rather than assert the conclusion. Four rows, not two: the ADR 0020
+      invocation, the ADR 0019 exemption, the `node_modules` guard that matches
+      prose, and the overwrite prompt that does not recognise a provenance
+      header — enumerated in § Accepting an upstream skill release
 - [ ] `ee-standard` installable from the marketplace **as one plugin**, with
       every skill in it — not as one plugin per skill
 - [ ] The consumer repo re-adopts from the *marketplace* copy and still passes —
