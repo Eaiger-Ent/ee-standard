@@ -9,66 +9,20 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 (`standard-check`, in `src/standard_check/`) audits them.
 
 Current status: Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
-with no re-opened criteria outstanding. **Phase 2 is in progress**. Its first
-slice landed 2026-08-19: the `plugins/ee-standard/` skeleton, `gate-secrets` as
-the reference gate, and `standard-check run --control <ID>`, the one entry point
-a gate verifies through. Its second landed 2026-08-21 at register contract 12:
-`gate-quality`, the first gate owning more than one control (LNT-001, TYP-001,
-TST-001 — three controls, two shared files), a `deploys.json` carrying one
-contract **per gate** rather than per plugin, and `stacks:` invocations moved to
-the form that reaches the artefact a lockfile pins. Its third landed the same
-day at contract 13: `stack_tool_pinned_in_lockfile`, which closes
-[ADR 0020](docs/adr/0020-a-locus-reaches-the-pinned-artefact.md)'s case C by
-making the *existence* of a pin a verdict rather than only the invocation that
-reaches it, and `ecosystems.<name>.add_dev_dependency`, without which a gate
-could fail a control for an unpinned tool and not pin it.
-Its fourth landed at contract 14: `gate-supply-chain`, whose three controls were
-already green — and SUP-003 was green for the wrong reason, declaring
-`locus: [pre-commit, ci]` with nothing reading either. Its fifth landed at
-contract 15: `gate-build`, which closed the same defect in BLD-001 and DEV-001,
-gave `.devcontainer/setup.sh` an owner per region, and replaced three near-copies
-of one assert with `gate_wired_at_declared_loci`, which reads the control's own
-`locus:` list. Its sixth landed at contract 16: `gate-iac`, closing the last of the four — and
-finding two more ways a CI step could be credited as a locus without gating
-anything, a suppressed step and the step that *installs* a tool rather than
-running it. Its seventh landed at contract 17: `gate-repo`, the only gate whose
-effect is not a file, which records the branch ruleset before applying it so
-that something is verifiable before Phase 3 — as **intent**, never as
-enforcement. Its eighth shipped the devcontainer template at
-`plugins/ee-standard/templates/devcontainer/`, which pins its image and features
-by digest and — checked by a grep rather than a reading — no tool version by
-hand. Its ninth shipped `standard-adopt`, the
-front door: it writes no gate configuration, owning the plan, the dispatch order
-and the whole-register verify instead. `docs/10-phase-2-review.md` holds the
-evidence for all nine, and § Where Phase 2 finished holds the closing audit —
-run over the register rather than over the ledger, because a ledger is a claim
-and the register is the thing. **Phase 2 is 11/12.** The one criterion still open
-is that the devcontainer template *builds*: this container has no Docker, so
-nothing here has run `devcontainer build`, and the commands for an operator are
-in `docs/08-adopting.md` § 2.0. One question the audit raised is Phase 3's and is
-recorded rather than fixed: SUP-002 verifies the dependency-update
-*configuration*, and whether the bot is **enabled** is platform state nothing
-checks.
+with no re-opened criteria outstanding. **Phase 2 is 11/12** and **Phase 3 is in
+progress**; the register is at contract 19. `docs/04-build-plan.md` is the only
+list of outstanding work and `uv run python scripts/plan_progress.py` is its
+derived view — never keep a second copy of that status here. The slice-by-slice
+record, and the evidence behind every criterion either phase ticks, lives in
+`docs/10-phase-2-review.md` — including § Where Phase 2 finished, the closing
+audit run over the register rather than over the ledger, and § What the second
+review found — and in `docs/11-phase-3-review.md`, including what each slice
+deliberately left open.
 
-A second review on 2026-08-21 found four more, recorded in
-`docs/10-phase-2-review.md` § What the second review found, and all four are
-closed. Contract 18: SEC-001's every block acted *after* a credential was
-already a git object, and the `.gitignore` rule that acts before it was a
-comment claiming the control depended on it — `secret_files_are_gitignored` now
-reads that rule and requires git to track the file carrying it. Contract 19,
-the serious one: `gate-repo`'s ruleset payload omitted the `parameters` GitHub's
-API requires on **two** rules, so every apply call 422'd, and the
-`required_status_checks` rule named no check at all — which
-`ruleset_recorded_matches_register` could not see, testing only that a rule of
-that *type* was present. `required_checks:` is now the register's and is held to
-the workflows: a named context must come from a gating job that does not
-suppress its own failure, so the list cannot become a second copy of the job ids.
-`.github/rulesets/default-branch.json` was re-transcribed and matches the API
-response exactly. GOV-001's partial **narrowed** rather than dropped — whether
-the repository says a job is required is answered from a file now; whether
-GitHub enforces it is Phase 3's, and letting the first stand in for the second
-is the substitution the assert refuses in its own message. Two doc-drift
-findings are fixed.
+The one Phase 2 criterion still open is that the devcontainer template *builds*:
+this container has no Docker, so nothing here has run `devcontainer build`, and
+the commands for an operator are in `docs/08-adopting.md` § 2.0.
+
 Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
@@ -78,16 +32,11 @@ ticked, four of them on 2026-08-18 by the review recorded as
 ran on neither push nor pull_request, a tool compared only at filenames the
 checker itself named, and ADR 0018 recorded as implemented with one of its
 ratified moves never made.
-**Phase 3 is in progress.** Its first slice landed 2026-08-22 and implements
-`kind: remote`: `src/standard_check/remote.py` (transport, credential discovery,
-the failure taxonomy), `asserts_remote.py` (the two asserts the register
-declares), and `rulesets.py`, which gives the recorded ruleset and the platform
-response **one** reading of what "protected" means. Reasoned in
-[ADR 0021](docs/adr/0021-how-remote-verification-authenticates.md), which
-ADR 0018 requires to exist. `docs/11-phase-3-review.md` holds the evidence and
-the three criteria the slice deliberately left open.
 
-Four outcomes, and only two are about the repository: **no token** is
+`kind: remote` reads platform API state (`src/standard_check/remote.py`,
+`asserts_remote.py`, `rulesets.py`), reasoned in
+[ADR 0021](docs/adr/0021-how-remote-verification-authenticates.md). It has
+four outcomes, and only two are about the repository: **no token** is
 `SKIPPED (no credentials)`; a token that was **rejected, under-scoped or shown
 an answer that does not settle the control** is `UNCLASSIFIED`; only an actual
 answer is `PASS`/`FAIL`. GitHub omits `security_and_analysis` for a caller
