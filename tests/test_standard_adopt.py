@@ -33,7 +33,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, make_repo
+from conftest import REPO_ROOT, make_repo, requires_tool
 from standard_check.cli import main
 from standard_check.register import Register, load_register
 
@@ -450,6 +450,7 @@ def test_before_adopting_the_register_is_mostly_failing(
         assert re.search(rf"^  {control}\s+FAIL", out, re.MULTILINE), control
 
 
+@requires_tool("gitleaks")
 def test_after_adopting_every_local_locus_verifies(
     adopted: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

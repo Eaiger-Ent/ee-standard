@@ -260,6 +260,32 @@ uv run pytest                       619 passed, 2 skipped   (3.14.7, the pin)
 UV_PYTHON=3.13 uv run --frozen pytest   619 passed, 2 skipped   (3.13.15, the floor)
 ```
 
+### What the floor job found on its first run
+
+It failed, and not over the interpreter. `support-floor.yml` installs uv and
+nothing else, because its subject is Python — and two tests asserting SEC-001
+reaches `PASS` got `UNCLASSIFIED` instead, because `gitleaks` was not on that
+runner's `PATH`. The checker was right: an absent tool is `UNCLASSIFIED`
+(ADR 0016). The tests were asserting something about a binary without saying so.
+
+They had passed everywhere they had ever run — this devcontainer installs
+gitleaks in `setup.sh`, and the conformance job installs it before the test
+step — so the dependency was invisible for as long as every environment happened
+to satisfy it. It is the same hidden input `tests/conftest.py` already strips for
+ambient authentication, one input over, and it took an environment that
+deliberately had less in it to surface.
+
+`requires_tool(name)` in `conftest.py` is the fix: skip, with the tool named,
+rather than fail for a reason unrelated to the test's subject. Skipping rather
+than tolerating `UNCLASSIFIED` is deliberate — a test that accepted that verdict
+would keep passing in the devcontainer if the tool disappeared, which is
+silence reading as agreement.
+
+```text
+with gitleaks on PATH      619 passed, 2 skipped
+with gitleaks removed      617 passed, 4 skipped
+```
+
 ## Related ADRs
 
 - [ADR 0018: Draw the Boundary Between Register and Checker](0018-register-checker-boundary.md)

@@ -28,7 +28,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, make_repo
+from conftest import REPO_ROOT, make_repo, requires_tool
 from standard_check.cli import main
 from standard_check.register import Register, load_register
 
@@ -162,6 +162,7 @@ def test_before_deploying_the_control_fails_at_both_local_loci(
     assert "no tracked file carries a provenance stamp" in out
 
 
+@requires_tool("gitleaks")
 def test_after_deploying_both_local_loci_verify(
     deployed: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

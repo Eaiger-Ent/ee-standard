@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,31 @@ def _no_ambient_github_token(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     for name in TOKEN_VARIABLES:
         monkeypatch.delenv(name, raising=False)
+
+
+def requires_tool(name: str) -> pytest.MarkDecorator:
+    """Skip a test whose subject is a real binary's verdict, when it is absent.
+
+    The companion to `_no_ambient_github_token` above, for the other hidden
+    input. A `kind: command` block runs an external tool and the exit code is
+    the verdict, so a test asserting PASS is asserting something about a binary
+    on PATH — and with the binary missing the checker correctly reports
+    UNCLASSIFIED (ADR 0016), which reads as a test failure for a reason that has
+    nothing to do with what the test is about.
+
+    That is not hypothetical: `support-floor.yml` installs uv and nothing else,
+    because its subject is the interpreter, and these two tests failed there
+    over an absent `gitleaks` while passing on both interpreters. Declaring the
+    dependency is what makes the suite say which of the two happened.
+
+    Skipping rather than tolerating UNCLASSIFIED: a test that accepted it would
+    keep passing in the devcontainer if the tool disappeared, which is the
+    silence-reading-as-agreement shape this repository keeps finding.
+    """
+    return pytest.mark.skipif(
+        shutil.which(name) is None,
+        reason=f"{name} is not on PATH — this test asserts a verdict that binary produces",
+    )
 
 
 def make_repo(root: Path, files: dict[str, str], commit: bool = True) -> Repo:
