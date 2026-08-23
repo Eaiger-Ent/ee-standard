@@ -1,6 +1,6 @@
 # ADR 0023: Choose the Smallest Model a Task Can Be Trusted To
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-08-23
 
 Nothing in this repository says which model an agent or sub-agent runs on. That
@@ -168,6 +168,12 @@ value is the judgement about what is redundant; the edit is a transcription of
 that judgement. `/adr-check` is mechanical section-presence and sits in S,
 where `/adr-review` — which judges content — does not.
 
+`/doctor` is in no class. It is the built-in health check, it is run by hand,
+and it selects no model, so there is nothing for a floor to apply to. The
+diagnostic skills that *do* select one — `/skill-doctor`, `/skill-preflight`,
+`/security-review` — are in R because they satisfy R's definition, not because
+they share a name with it.
+
 The ladder this ADR recognises is `haiku` < `sonnet` < `opus`. A model not on
 that ladder — `fable`, or anything later — has no floor until an explicit
 decision places it, and may not be used for R or C work before then. Guessing
@@ -290,15 +296,6 @@ floors at all: do not set `CLAUDE_CODE_SUBAGENT_MODEL`.
   also how a control quietly stays advisory for a year. The promotion decision
   should be dated when this is accepted, not deferred to whenever someone
   notices.
-
-## Open question
-
-The instruction this ADR records named "doctor" among the always-opus set. It
-has been read as the diagnostic class — `/skill-doctor` and `/skill-preflight`
-— and `/security-review` was added to R by the same reasoning. If "doctor"
-meant `/doctor`, the built-in health check, it selects no model and the row is
-empty. This must be settled before the ADR is accepted, because a class list
-that guesses at a member is a class list nobody can check.
 
 ## Related ADRs
 
