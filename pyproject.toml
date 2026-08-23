@@ -36,7 +36,12 @@ build-backend = "hatchling.build"
 packages = ["src/standard_check"]
 
 [tool.ruff]
-target-version = "py313"
+# No `target-version`. Ruff infers it from `requires-python` above, and that is
+# the right source: the linter must model the *oldest* interpreter this package
+# claims to support, not whichever one the environment happens to run
+# (ADR 0027). Written out, `py313` was a third copy of the floor, free to drift
+# from it — and it had already drifted from the interpreter, linting for 3.13
+# while CI executed 3.14.
 line-length = 100
 src = ["src", "tests"]
 # No `extend-exclude`. `.claude/hooks/md-lint.py` sat behind one on the grounds

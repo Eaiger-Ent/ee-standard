@@ -1,0 +1,8 @@
+# The interpreter every locus runs the gates on (ADR 0027). Not a floor: this
+# selects, where `requires-python` in pyproject.toml only constrains. uv reads
+# this file at every locus, so no locus repeats the value and there is nothing
+# to keep in step — which is why controls.yaml records the file rather than the
+# number under `tools.python`.
+#
+# renovate: datasource=python-version depName=python
+3.13

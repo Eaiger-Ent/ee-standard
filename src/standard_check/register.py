@@ -73,11 +73,12 @@ _TOOL_ALLOWED = (
     "version",
     "sha256",
     "lockfile",
+    "toolchain",
     "pinned_at",
     "invocation",
     "release_repo",
 )
-_TOOL_SOURCES = ("lockfile", "literal")
+_TOOL_SOURCES = ("lockfile", "literal", "toolchain")
 _ECOSYSTEM_ALLOWED = (
     "manifest",
     "lockfiles",
@@ -206,6 +207,9 @@ class Tool:
     nothing to keep in step — the duplication is *eliminated*. `source: literal`
     means no package manager owns the tool, so the version lives here and each
     locus repeats it; those repetitions are reconciled rather than removed.
+    `source: toolchain` is the third case (ADR 0027): a version file a human
+    writes and every locus reads, so the duplication is eliminated as a
+    lockfile's is, but no package manager maintains it.
     """
 
     name: str
@@ -213,6 +217,13 @@ class Tool:
     version: str | None = None
     sha256: str | None = None
     lockfile: str | None = None
+    # The toolchain file that owns the version, when a human writes it and every
+    # locus reads it. Neither of the other two sources is true of an interpreter
+    # (ADR 0027): `literal` would mean the value lives in the register and each
+    # locus repeats it, and `lockfile` would mean a package manager produced it.
+    # Like a lockfile there is no version at any locus to keep in step, so what
+    # must hold is that the file is there.
+    toolchain: str | None = None
     # Every locus that repeats a `literal` version. A register fact from
     # contract 8 (ADR 0018, fourth pass): these were four of this repository's
     # own filenames inside the checker, so renaming a workflow removed it from
@@ -828,7 +839,39 @@ class _Validator:
                 # version, bound above and read below.
                 tool_version = entry.get("version")
                 lockfile = entry.get("lockfile")
-                if source == "lockfile":
+                toolchain = entry.get("toolchain")
+                if source == "toolchain":
+                    # The mirror of the lockfile rule, for the same reason: the
+                    # file is the authority, and a copy of the number beside it
+                    # is the drift the source value exists to remove.
+                    if tool_version is not None:
+                        self.error(
+                            f"{at}.version",
+                            "a toolchain-sourced tool carries no version here — the toolchain "
+                            "file is the authority, and a copy beside it is the drift this "
+                            "field exists to prevent",
+                        )
+                        continue
+                    if not isinstance(toolchain, str) or not toolchain.strip():
+                        self.error(
+                            f"{at}.toolchain",
+                            "must name the toolchain file that owns the version",
+                        )
+                        continue
+                    if lockfile is not None:
+                        self.error(
+                            f"{at}.lockfile",
+                            "a toolchain file is not a lockfile — no package manager produced "
+                            "it, which is why this source value exists",
+                        )
+                        continue
+                elif toolchain is not None:
+                    self.error(
+                        f"{at}.toolchain",
+                        "only a toolchain-sourced tool names a toolchain file",
+                    )
+                    continue
+                elif source == "lockfile":
                     if tool_version is not None:
                         self.error(
                             f"{at}.version",
@@ -841,6 +884,7 @@ class _Validator:
                         self.error(f"{at}.lockfile", "must name the lockfile that owns the version")
                         continue
                 elif not isinstance(tool_version, str) or not tool_version.strip():
+                    # `literal` is the only source whose version lives here.
                     self.error(f"{at}.version", f"must be a non-empty string, got {tool_version!r}")
                     continue
                 sha = entry.get("sha256")
@@ -853,12 +897,12 @@ class _Validator:
                 if pinned_at is None:
                     continue
                 invocation = entry.get("invocation")
-                if source == "lockfile" and (
+                if source in ("lockfile", "toolchain") and (
                     not isinstance(invocation, str) or not invocation.strip()
                 ):
                     self.error(
                         f"{at}.invocation",
-                        "a lockfile-sourced tool must record how a locus reaches the pinned "
+                        f"a {source}-sourced tool must record how a locus reaches the pinned "
                         "artefact — an authority no invocation resolves to is not an authority",
                     )
                     continue
@@ -875,6 +919,13 @@ class _Validator:
                         "no release to download",
                     )
                     continue
+                if source == "toolchain" and release_repo is not None:
+                    self.error(
+                        f"{at}.release_repo",
+                        "a toolchain-sourced tool's version is resolved by the tool that reads "
+                        "the file, so there is no release for the register to name",
+                    )
+                    continue
                 if source == "literal" and invocation is not None:
                     self.error(
                         f"{at}.invocation",
@@ -888,6 +939,7 @@ class _Validator:
                     version=tool_version.strip() if isinstance(tool_version, str) else None,
                     sha256=sha,
                     lockfile=str(lockfile) if isinstance(lockfile, str) else None,
+                    toolchain=toolchain.strip() if isinstance(toolchain, str) else None,
                     pinned_at=pinned_at,
                     invocation=invocation.strip() if isinstance(invocation, str) else None,
                     release_repo=release_repo,
@@ -1303,20 +1355,21 @@ class _Validator:
     def _pinned_at(self, raw: object, source: str, at: str) -> tuple[str, ...] | None:
         """The loci that repeat a `literal` tool's version. None on error.
 
-        Required under `source: literal` and rejected under `source: lockfile`,
-        which is the same asymmetry as `version:` and for the same reason: a
-        lockfile-sourced tool has no version at any locus to keep in step, so a
-        list of loci here would describe repetitions that do not exist.
+        Required under `source: literal` and rejected under the other two, which
+        is the same asymmetry as `version:` and for the same reason: neither a
+        lockfile-sourced nor a toolchain-sourced tool has a version at any locus
+        to keep in step, so a list of loci here would describe repetitions that
+        do not exist.
 
         Required rather than optional because an empty list is indistinguishable
         from a tool nobody pins, and "nothing was compared" reading as a pass is
         the § A defect this field was moved out of the checker to stop.
         """
-        if source == "lockfile":
+        if source in ("lockfile", "toolchain"):
             if raw is not None:
                 self.error(
                     f"{at}.pinned_at",
-                    "a lockfile-sourced tool has no version at any locus to keep in step, so "
+                    f"a {source}-sourced tool has no version at any locus to keep in step, so "
                     "there are no loci to list",
                 )
                 return None

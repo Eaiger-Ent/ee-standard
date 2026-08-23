@@ -279,14 +279,40 @@ annotations are only worth writing if something reads them — a repository
 carrying them without the bot installed has a mechanism on paper and none in
 fact, which is what `docs/09-phase-1.5-review.md` § G records.
 
-Prefer `lockfile`. It is the only option that eliminates duplication rather than
-reconciling it, and it is available whenever the tool is installable from an
-ecosystem the repo already locks.
+`source: toolchain` is the third case, and it behaves like `lockfile` for a
+different reason: the version lives in a file every locus reads, so again no
+locus repeats it — but no package manager produced or maintains the file. A
+human writes it. `.python-version` is the case that created the field
+([ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md)):
 
-**`pinned_at` is required under `source: literal`** and rejected under
-`source: lockfile`, the same asymmetry as `version:` and for the same reason: a
-lockfile-sourced tool has no version at any locus to keep in step, so there are
-no repetitions to list.
+```yaml
+  python:
+    source: toolchain
+    toolchain: .python-version
+    invocation: uv run
+```
+
+Neither existing value would have been true. `literal` means the number lives in
+the register and each locus repeats it; `lockfile` means a package manager owns
+it. The interpreter is neither, and recording it as either would have been a
+claim the register could not keep.
+
+Prefer `lockfile`, then `toolchain`. Both eliminate duplication rather than
+reconciling it — a `literal` tool is the case where nothing else is available.
+`lockfile` comes first because a package manager maintains the file; a toolchain
+file is maintained by whoever remembers, which is why the bot annotation matters
+more there rather than less.
+
+**`pinned_at` is required under `source: literal`** and rejected under the other
+two, the same asymmetry as `version:` and for the same reason: neither a
+lockfile-sourced nor a toolchain-sourced tool has a version at any locus to keep
+in step, so there are no repetitions to list.
+
+**`toolchain` names the file that owns the version** and is required under
+`source: toolchain`, rejected under the other two. `lockfile:` beside it is a
+schema error rather than a synonym — the distinction between a file a package
+manager writes and a file a person writes is the whole content of the third
+source value.
 
 **`release_repo` names where a literal tool's release is fetched from**, as
 `owner/name`. It is optional, and rejected under `source: lockfile` — a
@@ -298,10 +324,13 @@ an internal mirror is a reasonable thing for a repository to differ on without
 the checker changing, so it answers *yes* to
 [ADR 0018](adr/0018-register-checker-boundary.md)'s test.
 
-**`invocation` is its mirror** — required under `source: lockfile`, rejected
-under `source: literal`. A literal tool is installed onto `PATH` at each locus,
-so its pin is the version; a lockfile tool is resolved out of a package tree, so
-its pin is an artefact and the register records how a locus reaches it:
+**`invocation` is its mirror** — required under `source: lockfile` and
+`source: toolchain`, rejected under `source: literal`. A literal tool is
+installed onto `PATH` at each locus, so its pin is the version; the other two
+are resolved by something that reads an authority file, so the register records
+how a locus reaches it. `.python-version` selects nothing on its own: `uv run`
+reads it and `python3` does not, so a locus spelling the second gets the system
+interpreter no matter what the file says.
 
 ```yaml
   markdownlint-cli2:
@@ -330,7 +359,9 @@ assert checks each declared locus against this form, so a locus reverting to
 `tool_versions_match_register` reads exactly these paths. A declared site that
 does not exist fails, and so does one that exists but holds no pin — both are
 the same silence, and silence reading as agreement is what this field was moved
-out of the checker to stop. Until contract 8 the loci were four of this
+out of the checker to stop. A toolchain file is held to the same two rules for
+the same reason: untracked fails, and tracked-but-naming-no-version fails, since
+either leaves every locus resolving as though the file were not there. Until contract 8 the loci were four of this
 repository's own filenames inside `standard-check`, so renaming a workflow took
 it out of comparison with no verdict changing, and an adopting repository was
 told its tools were pinned at no known locus against paths it had never had

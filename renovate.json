@@ -11,7 +11,12 @@
     "it has no equivalent of a custom manager. Those two literals are `uv` and",
     "`gitleaks`, the register's only `source: literal` tools.",
     "Widening enabledManagers here would produce duplicate proposals for every",
-    "ecosystem Dependabot already covers. See docs/09-phase-1.5-review.md § G."
+    "ecosystem Dependabot already covers. See docs/09-phase-1.5-review.md § G.",
+    "The third custom manager is `.python-version`, which Dependabot does not",
+    "cover either. Its value is a bare line rather than a pin beside a tool",
+    "name, so the annotation carries the datasource and the file pattern",
+    "carries the rest — the same shape as the two literals, one field further",
+    "apart."
   ],
   "enabledManagers": ["custom.regex"],
 
@@ -27,6 +32,14 @@
       "matchStrings": [
         "# renovate: datasource=(?<datasource>pypi) depName=(?<depName>\\S+)\\s+[^\\n]*?==(?<currentValue>\\d+\\.\\d+\\.\\d+)",
         "# renovate: datasource=(?<datasource>pypi) depName=(?<depName>\\S+)\\s+version:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ]
+    },
+    {
+      "description": "The interpreter, whose authority is a toolchain file (ADR 0027)",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.python-version$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>python-version) depName=(?<depName>\\S+)\\s+(?<currentValue>\\d+\\.\\d+)\\s*$"
       ]
     },
     {

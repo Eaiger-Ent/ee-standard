@@ -619,6 +619,28 @@ one, and are the first edits an adopter makes to their copy:
 | Every file that repeats a pinned tool version | `tools.<tool>.pinned_at` | `tool_versions_match_register` compares exactly these paths. A path listed here that does not exist is a failure, and so is one that exists and holds no pin — which is how a renamed workflow is caught rather than silently dropped from comparison |
 | Which package ecosystems you are in, and what a frozen install looks like in them | `ecosystems:` | Detected from your manifests. If your CI installs with an idiom the register has not heard of, add it there rather than working around it in the checker |
 | Where a literal-pinned tool's release comes from | `tools.<tool>.release_repo` | A fork or an internal mirror is a reasonable thing to differ on. A gate skill downloads from exactly this repository, so a wrong value fails at the checksum rather than installing something else |
+| Which interpreter your gates run on, and the file that says so | `tools.<tool>.toolchain` | `.python-version` is uv's spelling; `.nvmrc`, `.tool-versions` and `.go-version` are other toolchain managers' spellings of the same thing. The register names the file, the file names the version, and SUP-001 fails if git does not track it |
+
+**Pin the interpreter, and do not mistake a floor for a pin.** This is the
+fourth row, and it is the one an adopter is most likely to think is already
+done. A support constraint — `requires-python`, an `engines` field, a `go`
+directive — declares which versions the *package* works on. It selects nothing:
+a resolver satisfies it with whatever the machine already has, so two loci
+answer differently without either being misconfigured. This repository ran its
+own gates on 3.13 locally and 3.14 in CI for exactly that reason, with nothing
+reporting it, until [ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md).
+
+```bash
+# The gap, in your own repository. If these two disagree, nothing is wrong with
+# your configuration — there is no configuration, which is the problem.
+uv run python -V                                     # what a local gate runs on
+gh run view --log | grep -iE 'Using CPython|platform linux'   # what CI ran on
+```
+
+Commit the toolchain file, keep the support floor honest, and let the linter
+derive its target from the floor rather than restating it — ruff reads
+`requires-python` when `target-version` is absent, and a written-out
+`target-version` is a third copy free to drift from both.
 
 Get the first one wrong and SUP-001 tells you so by name — *"recorded as pinned
 at X, which does not exist"*. That message is the check working: this repository
@@ -753,7 +775,8 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 2 | Default-branch ruleset created | `repos/O/R/branches/BRANCH --jq .protected` is `true`, and a direct push is refused |
 | 3 | Secret scanning push protection on | `.security_and_analysis.secret_scanning_push_protection.status` is `enabled` |
 | 4 | `.github/dependabot.yml` covers every ecosystem present | A Dependabot pull request appears |
-| 5 | Renovate installed, if any version is a literal | Its Dependency Dashboard lists the expected number of sites |
+| 5 | Renovate installed, if any version is a literal or a toolchain file | Its Dependency Dashboard lists the expected number of sites |
+| 5a | The interpreter is pinned by a toolchain file, not by a support floor | `standard-check run --control SUP-001` passes, and the version your CI log reports is the one the file names |
 | 6 | Devcontainer image digest-pinned, lock file complete, user stated | `uv run standard-check` reports DEV-001 and BLD-001 passing |
 | 7 | Gates wired at every locus the control declares | LNT-001, TYP-001, DOC-001, TST-001 passing |
 | 7b | Quality gates wired at every locus **and** stamped | `standard-check run --control LNT-001 --control TYP-001 --control TST-001` exits `0` — every block ✓, nothing skipped |
