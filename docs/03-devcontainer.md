@@ -181,6 +181,15 @@ introduced**, not in anticipation. The predicate system in the register already
 models this: a repo with no `*.tf` skips IAC-001, and by the same logic it has no
 business installing OpenTofu.
 
+**A pinned feature is not a pinned interpreter**, and the two are easy to
+conflate — this repository did, and ran its gates on 3.13 locally and 3.14 in CI
+until [ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md). A feature pins
+what the *image* installs; the interpreter that runs the gates is whatever the
+project's resolver picks, and a support constraint like `requires-python`
+selects nothing. The template's job is the first; a toolchain file at the
+repository root — `.python-version`, `.nvmrc`, `.go-version` — is the second,
+and nothing in `.devcontainer/` can stand in for it.
+
 The `.devcontainer/` directory carries `fetch-secrets.sh`, `setup.sh`,
 `check-auth.sh`, `devcontainer.json`, `devcontainer-lock.json`, and
 `claude-user-settings.json` — the same file set as the existing template, with

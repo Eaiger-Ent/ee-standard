@@ -177,15 +177,31 @@ sketch rather than a deviation from it:
 | `"remoteUser": "vscode"` stated explicitly | BLD-001 is a Tier-1 control of this register. Relying on the image's default is exactly the "declared but unreachable" shape (T-3) the repo exists to catch. |
 | Claude Code as a pinned **feature** | `03-devcontainer.md` ranks a version-pinned feature above `curl … \| sh`. `ghcr.io/anthropics/devcontainer-features/claude-code` is official and lock-file-covered, which removes one of the three pipes-to-shell and shortens `setup.sh` to wiring only. |
 
-Two settings are the genuinely open choices, both in `devcontainer.json`:
-Python **3.13** — change it in that one place if the checker should target
-something else — and `installTools: false`, which stops the Python feature
-installing an unpinned grab-bag of linters. That would reintroduce the
-unversioned-global-install problem the spec calls out.
+One setting in `devcontainer.json` is a genuinely open choice:
+`installTools: false`, which stops the Python feature installing an unpinned
+grab-bag of linters. That would reintroduce the unversioned-global-install
+problem the spec calls out.
 
-`setup.sh` pins `markdownlint-cli2` to the version the register records for
-DOC-001. Change that pin and CI's together, never one alone; two unversioned
-copies of one tool is the drift this repo exists to prevent.
+**The python feature's `version` is not the interpreter your gates run on**, and
+until [ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md) this page said it
+was — *"change it in that one place"*, where there were three places and the one
+that decided the answer in CI was none of them. The feature installs the
+`python3` that runs `pip install uv` in `setup.sh` and answers
+`#!/usr/bin/env python3`. It runs no gate.
+
+The interpreter the gates run on is `.python-version`, at the repository root,
+and uv reads it at every locus. That is the one place, and now it really is one:
+
+| File | What it decides |
+| --- | --- |
+| `.python-version` | The interpreter every locus runs the gates on. **Change this one.** |
+| `pyproject.toml` `requires-python` | Which interpreters `standard-check` claims to support. A floor, published in package metadata — not this container's choice |
+| `devcontainer.json` python feature | Which `python3` bootstraps uv. Deliberately not held equal to the first, and today it is not: the feature is 3.13 and the pin is 3.14 |
+
+`setup.sh` does **not** pin `markdownlint-cli2`. It runs `npm ci`, so
+`package-lock.json` is the authority and there is no version here to keep in
+step with CI's — the change ADR 0020 made, one tool at a time, for exactly the
+drift the previous sentence on this page warned about while creating it.
 
 The `.gitignore` entries for `.devcontainer/.env` and `.devcontainer/.env.docker`
 are load-bearing, not hygiene — they are the half of the "secrets fetched, never
