@@ -79,6 +79,12 @@ targeted is precisely a protection that everyone believes is still on.
   convention redundant before it was ever ratified.
 - [ADR 0014: Make Remote-Locus Controls Satisfiable on This Repository](0014-satisfying-remote-locus-controls.md)
   — made this control satisfiable at all on this repository.
+- [ADR 0017: Report a Partially Implemented Control as Partial](0017-partial-verification-is-reported.md)
+  — CI-001 was the first control to declare a partial while its ruleset was
+  unread.
+- [ADR 0021: How Remote Verification Authenticates](0021-how-remote-verification-authenticates.md)
+  — how the ruleset state this control requires is actually read back, and what
+  an empty effective-rules answer means.
 
 ## References
 

@@ -137,6 +137,13 @@ abandoned — the fallback is recorded, not assumed.
   — its push-protection half depends on the same capability.
 - [ADR 0015: Work on Branches While the Default Branch Is Unprotected](0015-interim-branch-discipline.md)
   — the interim posture until this decision lands.
+- [ADR 0016: Give "Could Not Verify" Its Own Exit Code](0016-exit-codes-for-unverifiable-controls.md)
+  — the verdict this repository reported while the remote loci were unreadable.
+- [ADR 0017: Report a Partially Implemented Control as Partial](0017-partial-verification-is-reported.md)
+  — this decision was a precondition for GOV-001's partial expiring.
+- [ADR 0021: How Remote Verification Authenticates](0021-how-remote-verification-authenticates.md)
+  — the implementation that closed the audit gap this decision opened the way
+  for.
 
 ## References
 

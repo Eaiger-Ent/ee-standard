@@ -375,7 +375,7 @@ and not merely lazier.
 This repository deploying Option 1 while the standard requires Option 3 of
 adopters is defensible only while the difference is **recorded where adopters do
 not inherit it**. It belongs in this ADR and in
-[`04-build-plan.md`](04-build-plan.md); it must not appear in `controls.yaml`,
+[`04-build-plan.md`](../04-build-plan.md); it must not appear in `controls.yaml`,
 and above all not under `plugins/`, which is what an adopter installs.
 
 There is precedent for enforcing that mechanically rather than remembering it:
@@ -390,8 +390,8 @@ it is. That is exactly what makes it worth writing down.
 
 ### 7. The adopter-facing consequence
 
-Whatever is decided, [`08-adopting.md`](08-adopting.md) owes it a section under
-the standing requirement in [`04-build-plan.md`](04-build-plan.md): an adopter
+Whatever is decided, [`08-adopting.md`](../08-adopting.md) owes it a section under
+the standing requirement in [`04-build-plan.md`](../04-build-plan.md): an adopter
 whose CI reports SEC-001 `UNCLASSIFIED` will reach for a PAT, and the guide
 currently gives them no steer at all. That is a gap this ADR opens and Phase 3
 must close before its adopter criterion can be ticked.
@@ -438,6 +438,9 @@ must close before its adopter criterion can be ticked.
   — the machinery Option 4 would have to weaken.
 - [ADR 0001: Block Secrets Before They Reach the Remote](0001-secrets-never-reach-the-remote.md)
   — the control whose remote half is the thing that cannot be verified.
+- [ADR 0023: Choose the Smallest Model a Task Can Be Trusted To](0023-smallest-model-a-task-can-be-trusted-to.md)
+  — the other Accepted-2026-08-23 ADR adding a register fact; neither has
+  precedence over the other for the next contract number.
 
 ## References
 

@@ -195,6 +195,11 @@ is the point: an exemption may exist, and may not hide anything.
   the register.
 - [ADR 0009: Lint From One Pinned Definition at Every Locus](0009-single-lint-definition.md)
   — LNT-001, whose `.claude/**` exclusion was the instance that prompted this.
+- [ADR 0020: Invoke a Pinned Tool by the Path Its Lockfile Owns](0020-a-locus-reaches-the-pinned-artefact.md)
+  — `markdown_gate_wired_at_all_loci` carries both this rule and that one.
+- [ADR 0024: Keep Only Direction Values in the Variance Vocabulary](0024-variance-vocabulary-is-direction-only.md)
+  — this ADR's Option 2 was rejected as `justified` under another name; ADR 0024
+  records the removal it refers to.
 
 ## References
 

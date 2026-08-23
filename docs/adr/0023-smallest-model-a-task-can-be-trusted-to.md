@@ -253,7 +253,16 @@ which is what stops "we will check that later" from becoming permanent.
 ### 5. A contract bump
 
 The register gains a field a skill reading it must understand, so
-`meta.register_contract` goes to 20.
+`meta.register_contract` moves to the next contract.
+
+**Not a fixed number.** [ADR 0022](0022-a-platform-token-ci-carries.md)
+requirement 2 also adds a register fact — `platform_credentials:` — and was
+accepted the same day as this ADR, so whichever lands first takes the next
+contract and the other takes the one after. Neither ADR has precedence over the
+other and none is claimed here; the register is at 19 and the number is read
+from it at the time of the change, not predicted. ADR 0018 § Decision batches
+bumps per pass rather than per ADR for exactly this reason: if both land
+together they share one bump.
 
 ### 6. The adopter-facing steps
 

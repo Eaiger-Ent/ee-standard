@@ -72,6 +72,15 @@ narrowing or loosening of "no secrets in commits".
 
 - [ADR 0008: Protect the Default Branch by Ruleset](0008-protected-default-branch.md)
   — the other control whose enforcement lives in platform state, not files.
+- [ADR 0002: Federate CI Cloud Identity via OIDC](0002-federated-ci-identity.md)
+  — SEC-002; the other half of "no long-lived credential in this repository".
+- [ADR 0014: Make Remote-Locus Controls Satisfiable on This Repository](0014-satisfying-remote-locus-controls.md)
+  — made SEC-001's push-protection half verifiable on this repository.
+- [ADR 0021: How Remote Verification Authenticates](0021-how-remote-verification-authenticates.md)
+  — how the push-protection half is read, and why an under-scoped token refuses
+  to answer rather than reporting it off.
+- [ADR 0022: What Must Be True Before CI Carries a Platform Token](0022-a-platform-token-ci-carries.md)
+  — the token SEC-001's remote half needs in CI, and what must precede it.
 
 ## References
 

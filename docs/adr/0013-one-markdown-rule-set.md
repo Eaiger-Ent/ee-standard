@@ -67,6 +67,10 @@ recorded as control DOC-001 at `rung: blocking` with
 
 - [ADR 0009: Lint From One Pinned Definition at Every Locus](0009-single-lint-definition.md)
   — the code half of the same discipline.
+- [ADR 0019: Verify Exemptions Against the Files a Repository Tracks](0019-exemptions-cannot-hide-tracked-files.md)
+  — governs what DOC-001's deployed config may exclude.
+- [ADR 0020: Invoke a Pinned Tool by the Path Its Lockfile Owns](0020-a-locus-reaches-the-pinned-artefact.md)
+  — how each of DOC-001's declared loci reaches the pinned markdownlint-cli2.
 
 ## References
 

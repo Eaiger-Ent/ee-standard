@@ -72,6 +72,10 @@ fail the build" — any local deviation is precisely the defect.
   — makes this control's verdict unbypassable at the merge.
 - [ADR 0009: Lint From One Pinned Definition at Every Locus](0009-single-lint-definition.md)
   — shares the no-suppression assertion.
+- [ADR 0010: Enforce Strict Static Typing From Birth](0010-strict-typing-from-birth.md)
+  — TYP-001; the same terminal-exit-code discipline for the type checker.
+- [ADR 0016: Give "Could Not Verify" Its Own Exit Code](0016-exit-codes-for-unverifiable-controls.md)
+  — the same principle applied to the checker's own exit status.
 
 ## References
 

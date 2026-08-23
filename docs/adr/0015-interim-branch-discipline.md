@@ -2,6 +2,7 @@
 
 **Status:** Superseded
 **Date:** 2026-08-17
+**Superseded by:** [ADR 0008: Protect the Default Branch by Ruleset](0008-protected-default-branch.md)
 
 Superseded by [ADR 0008](0008-protected-default-branch.md) on 2026-08-17, the
 same day it was written, and **never ratified** — the gap it proposed to bridge
@@ -9,6 +10,12 @@ by convention was closed by real enforcement before the proposal was decided.
 The `default-branch-protection` ruleset (id `20937135`) makes CI-001's
 requirement mechanical, so a convention standing in for it has nothing left to
 do.
+
+ADR 0008 is dated 2026-08-16, a day *earlier* than this ADR. The supersession is
+not backwards: ADR 0008 recorded CI-001 as a control before the platform could
+satisfy it, this ADR proposed a convention to stand in for it in the meantime,
+and the ruleset landed the same day this was written — so the stand-in was
+overtaken by the thing it stood in for, which had been decided first.
 
 Kept rather than deleted because the interval was real: every Phase 1 commit
 reached `main` ungated, and this record is what makes that visible instead of

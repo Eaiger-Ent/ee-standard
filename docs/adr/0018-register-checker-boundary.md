@@ -304,6 +304,15 @@ deployment was recorded. No control proves the deployment was complete.
   — the reason the transport, the repository identity and the failure taxonomy
   for `kind: remote` are held in the checker, recorded because this ADR requires
   such a reason to exist.
+- [ADR 0019: Verify Exemptions Against the Files a Repository Tracks](0019-exemptions-cannot-hide-tracked-files.md)
+  — classified under this ADR's test as a rule that stays in the checker.
+- [ADR 0020: Invoke a Pinned Tool by the Path Its Lockfile Owns](0020-a-locus-reaches-the-pinned-artefact.md)
+  — made `source: lockfile` mean what this ADR's third pass said it meant.
+- [ADR 0023: Choose the Smallest Model a Task Can Be Trusted To](0023-smallest-model-a-task-can-be-trusted-to.md)
+  — `agent_models:` is a register fact under this ADR's test.
+- [ADR 0024: Keep Only Direction Values in the Variance Vocabulary](0024-variance-vocabulary-is-direction-only.md)
+  — the variance vocabulary is a register-format property, so the closed set
+  stays in the checker under this ADR's test.
 
 ## References
 

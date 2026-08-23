@@ -266,7 +266,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
-| `docs/adr/` | One ADR per control, plus the open decisions at `Status: Proposed` |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All are `Accepted` except 0015, `Superseded`; there are no open decisions. An Accepted ADR whose record goes stale is **amended in place** with a dated section — 0006, 0016, 0018, 0019, 0020 and 0024 all do this — and superseded only when the decision itself is replaced, as 0008 replaced 0015 |
 
 `README.md` § "The register at a glance" lists the thirteen Tier-1 controls, with
 the three meta-controls described below the table.
