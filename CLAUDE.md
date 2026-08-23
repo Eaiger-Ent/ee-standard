@@ -97,6 +97,29 @@ holds too: an effective-rules response of `[]` **is** an answer, and fails.
 Tests must never depend on ambient auth — `tests/conftest.py` strips
 `GITHUB_TOKEN`/`GH_TOKEN` autouse.
 
+Per [ADR 0022](docs/adr/0022-a-platform-token-ci-carries.md) (**Accepted**
+2026-08-23), **a platform token in CI is governed rather than forbidden**, and
+its absence is what still blocks the `--require-complete` flip: the Actions
+`GITHUB_TOKEN` cannot read `security_and_analysis`, so SEC-001's remote block is
+`UNCLASSIFIED` in CI while passing locally.
+
+**Requirements 1 and 2 of that ADR § What the register must gain land before any
+token** — this is the one ordering it rules out absolutely. SEC-002 cannot see a
+platform token today, because `no-static-cloud-keys` reads `cloud_credentials:`
+and every name in it is a cloud provider key, so a `GH_ADMIN_TOKEN` secret would
+leave SEC-002 green over a standing administrative credential.
+
+This repository takes **Option 1** — a fine-grained token scoped to this
+repository, `Administration: read`, held as an ordinary repository secret —
+because the six accounts that could read it are organisation owners who already
+hold admin here, and classic PATs are not in use. **An adopter takes Option 3**,
+the deployment-environment gate, because its contributors are not organisation
+owners. That is a posture difference rather than an exception, and **it must
+never reach `controls.yaml` or anything under `plugins/`**, which is what an
+adopter installs (ADR 0022 requirement 6). Note also that a `pull_request` run
+receives repository secrets unless the pull request comes from a fork, and that
+a guard written in a workflow file is a guard the pull request is editing.
+
 Per [ADR 0014](docs/adr/0014-satisfying-remote-locus-controls.md) (**Accepted**
 and implemented 2026-08-17), this repository **is public**: write nothing that
 assumes privacy, and treat anything committed as publishable. CI-001 and SEC-001

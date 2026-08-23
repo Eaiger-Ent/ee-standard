@@ -177,7 +177,15 @@ cannot read `security_and_analysis`**, so SEC-001's remote block will report
 before that is resolved would turn every CI run red for a control that holds.
 Resolving it means either granting the workflow a token that can see the setting
 or recording why that block is not answerable from CI — a decision, not an
-oversight.
+oversight. It is now written up as
+[ADR 0022](adr/0022-a-platform-token-ci-carries.md), **Accepted** 2026-08-23, which
+records four options, the requirements the register would need before any token
+is introduced, the threat model that makes this repository's own posture simpler
+than an adopter's, and one finding that stands whatever is decided: **SEC-002 cannot
+see a platform token**, because `no-static-cloud-keys` reads
+`cloud_credentials:` and every name in it is a cloud provider key. A secret
+called `GH_ADMIN_TOKEN` would leave SEC-002 reporting `PASS` over a standing
+administrative credential.
 
 **GOV-003 on `review_by`, and `gate-repo`'s per-mutation confirmation.** Neither
 depends on this slice; both are simply not in it.
