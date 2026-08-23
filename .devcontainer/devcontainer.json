@@ -18,6 +18,12 @@
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/node:2": {},
+    // Bootstrap, not the project interpreter. This installs the `python3` that
+    // runs `pip install uv` in setup.sh and answers `#!/usr/bin/env python3`;
+    // the interpreter the gates run on is `.python-version`, and uv resolves it
+    // (ADR 0027). The two are allowed to differ, and from contract 20 they do —
+    // which is why the register pins the toolchain file and deliberately not
+    // this line. Raising it would be a container rebuild for no verdict.
     "ghcr.io/devcontainers/features/python:1": {
       "version": "3.13",
       "installTools": false
