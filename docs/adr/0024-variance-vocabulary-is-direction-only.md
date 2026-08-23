@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-23
+**Revision:** 1
 
 Recorded retrospectively. The decision was taken and implemented at register
 contract 3 on 2026-08-17 ([#8](https://github.com/Eaiger-Ent/ee-standard/pull/8)),

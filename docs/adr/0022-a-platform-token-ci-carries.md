@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-23
+**Revision:** 1
 
 Phase 3's first slice made `kind: remote` real and immediately produced a
 question it cannot answer for itself. SEC-001's remote block reports

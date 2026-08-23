@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-16
+**Revision:** 1
 
 Rationale for control **SUP-002** in `controls.yaml`.
 

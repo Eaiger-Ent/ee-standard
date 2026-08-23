@@ -266,10 +266,28 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All are `Accepted` except 0015, `Superseded`; there are no open decisions. An Accepted ADR whose record goes stale is **amended in place** with a dated section — 0006, 0016, 0018, 0019, 0020 and 0024 all do this — and superseded only when the decision itself is replaced, as 0008 replaced 0015 |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All are `Accepted` except 0015, `Superseded`; there are no open decisions |
 
 `README.md` § "The register at a glance" lists the thirteen Tier-1 controls, with
 the three meta-controls described below the table.
+
+An Accepted ADR whose decision stands but whose record went stale is **amended
+in place**; supersession is for a decision that has been *replaced*, which is
+0015 and only 0015 ([ADR 0024](docs/adr/0024-variance-vocabulary-is-direction-only.md)).
+Superseding instead would restate a correct decision to change one clause, which
+is the second copy this repo exists to prevent. Per
+[ADR 0025](docs/adr/0025-an-amendment-is-a-recorded-revision.md) an amendment is
+a **numbered revision**: every ADR carries `**Revision:** N`, and one above 1
+carries a `## Revision History` table giving each revision's date, a one-line
+summary and its ratifier. `grep -L '\*\*Revision:\*\* 1' docs/adr/*.md` lists
+the amended ones. `tests/test_adr_revisions.py` holds the form — the count must
+equal the rows and a count above 1 must be matched by an amendment in the body,
+so the two halves fail each other. It is a test rather than a control because it
+governs how this repository records its own decisions, not what a conformant
+repository contains (ADR 0022 requirement 6). It does **not** check that a
+summary is accurate; that is recorded as the residual risk, not covered.
+`adr-toolkit@0.1.11` models no revision or approver at all, so `/adr-check` and
+`/adr-consistency` neither check these fields nor object to them.
 
 Gate skills live in `plugins/ee-standard/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,

@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-18
+**Revision:** 2
 
 Ratified from [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § H6.
 
@@ -225,3 +226,12 @@ to remove.
   order `--no-install` does and does not change.
 - [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § H6 — the finding and
   its measurements.
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-18 | Original decision: invoke a `lockfile`-sourced tool by the path its package manager owns, recorded as `tools.<tool>.invocation`. | Nathan Carney |
+| 2 | 2026-08-20 | § Applied to the quality gates — register contract 12, measured. The rule extended from DOC-001 to the quality gates, with the fall-through to `PATH` measured rather than asserted. | Nathan Carney |
+
+Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.

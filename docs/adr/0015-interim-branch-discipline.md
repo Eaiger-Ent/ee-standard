@@ -3,6 +3,7 @@
 **Status:** Superseded
 **Date:** 2026-08-17
 **Superseded by:** [ADR 0008: Protect the Default Branch by Ruleset](0008-protected-default-branch.md)
+**Revision:** 1
 
 Superseded by [ADR 0008](0008-protected-default-branch.md) on 2026-08-17, the
 same day it was written, and **never ratified** — the gap it proposed to bridge

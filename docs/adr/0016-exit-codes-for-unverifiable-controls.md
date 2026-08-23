@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-17
+**Revision:** 4
 
 Ratified decision from
 [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
@@ -194,3 +195,14 @@ on.
 ## References
 
 - [argparse — exit status 2 for usage errors](https://docs.python.org/3/library/argparse.html)
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-17 | Original decision: exit `3` for unverified-but-not-violated, `1` for verified violations, `0` for a complete run, and `--require-complete` to promote `3` to `1`. | Nathan Carney |
+| 2 | 2026-08-17 | Ratified with one clause overtaken between drafting and ratification: ADR 0014 was implemented and the repository made public, but `kind: remote` stayed deferred to Phase 3, so the red state persists until Phase 3 rather than until 0014 resolves. | Nathan Carney |
+| 3 | 2026-08-17 | § Ratified tolerance added on implementation. `main` became a required status check with no bypass actors, so "CI turns red" had become "no pull request can merge, including the ones that would fix it". The workflow tolerates exit `3` and only `3`. | Nathan Carney |
+| 4 | 2026-08-23 | § Ratified tolerance's third bullet corrected. "Expires by construction" did not hold: Phase 3 landed and the tolerance did not expire, because the Actions `GITHUB_TOKEN` cannot read `security_and_analysis`. The bound moved to [ADR 0022](0022-a-platform-token-ci-carries.md) requirements 1 and 2. | Nathan Carney |
+
+Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.

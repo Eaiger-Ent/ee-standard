@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-16
+**Revision:** 2
 
 Rationale for control **SUP-003** in `controls.yaml`.
 
@@ -100,3 +101,12 @@ What is gone is standing permission to deviate without one.
 ## References
 
 - [SLSA v1.0 Build levels](https://slsa.dev/spec/v1.0/levels)
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-16 | Original decision: SUP-003, third-party actions pinned to 40-character commit SHAs, owner-published actions exempt. | Nathan Carney |
+| 2 | 2026-08-17 | Variance `justified` → `narrowing-only` at register contract 3, per [ADR 0024](0024-variance-vocabulary-is-direction-only.md). The SHA-pinning decision and the owner exemption are unchanged. Option 2's variance conclusion annotated as overtaken. | Nathan Carney |
+
+Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.

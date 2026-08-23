@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-16
+**Revision:** 2
 
 Rationale for control **IAC-001** in `controls.yaml`.
 
@@ -104,3 +105,12 @@ answer is a register change and not a fourth variance value; ADR 0024
 - [Checkov](https://www.checkov.io/1.Welcome/What%20is%20Checkov.html)
 - [tflint](https://github.com/terraform-linters/tflint)
 - [CIS Google Cloud Platform Benchmark](https://www.cisecurity.org/benchmark/google_cloud_computing_platform)
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-16 | Original decision: IAC-001, checkov and tflint over all infrastructure code in CI with blocking exit codes. | Nathan Carney |
+| 2 | 2026-08-17 | Variance `justified` → `narrowing-only` at register contract 3, per [ADR 0024](0024-variance-vocabulary-is-direction-only.md). The decision to run both analysers is unchanged. Option 2's variance conclusion annotated as overtaken. | Nathan Carney |
+
+Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.

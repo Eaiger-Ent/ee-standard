@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-23
+**Revision:** 1
 
 Nothing in this repository says which model an agent or sub-agent runs on. That
 is not a gap between two rules — it is the absence of any rule, and the absence

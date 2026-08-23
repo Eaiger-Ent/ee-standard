@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-18
+**Revision:** 2
 
 Ratified from [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § H7.
 
@@ -209,3 +210,12 @@ is the point: an exemption may exist, and may not hide anything.
   restates.
 - [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § H7 — the finding, and
   the measurements behind it.
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-18 | Original decision: no exemption in a deployed gate configuration may exclude a file the repository tracks, checked rather than prohibited. | Nathan Carney |
+| 2 | 2026-08-19 | § Applied — TYP-001, register contract 9. The rule extended beyond DOC-001 to the type checker's exclusions. | Nathan Carney |
+
+Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.

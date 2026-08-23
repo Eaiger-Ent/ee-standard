@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-16
+**Revision:** 1
 
 Rationale for control **SEC-001** in `controls.yaml`. The register entry is the
 control; this record explains why it exists and why it sits where it does.

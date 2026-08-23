@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-17
+**Revision:** 6
 
 Ratified decision from
 [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
@@ -318,3 +319,16 @@ deployment was recorded. No control proves the deployment was complete.
 
 - [OpenSSF Baseline](https://baseline.openssf.org/)
 - [Open Policy Agent — policy language](https://www.openpolicyagent.org/docs/policy-language)
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-17 | Original decision: classify every verdict-deciding rule by whether a reasonable Equal Experts repository could need it to differ without changing the checker. | Nathan Carney |
+| 2 | 2026-08-17 | § Applied — first pass, register contract 3. Package ecosystems, pinned tool versions and the gitleaks checksum moved to the register; `requirements.txt` removed as a lockfile. | Nathan Carney |
+| 3 | 2026-08-17 | § Applied — second pass, register contract 5. DOC-001's 250-character ceiling, tool name and editor extension id moved into the verify block's `args:`, establishing where a per-control tool fact goes. | Nathan Carney |
+| 4 | 2026-08-18 | § Applied — third pass, register contract 6. Mandated tool names and their per-locus evidence moved to a `stacks:` section keyed by predicate. | Nathan Carney |
+| 5 | 2026-08-18 | § Applied — fourth pass, register contract 8. SEC-002's credential names, `tools.<tool>.pinned_at` and `ecosystems.<name>.frozen_install` moved; SUP-001's `applies_to` widened to `[always]`. | Nathan Carney |
+| 6 | 2026-08-20 | § Applied — fifth pass, register contract 12. | Nathan Carney |
+
+Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.
