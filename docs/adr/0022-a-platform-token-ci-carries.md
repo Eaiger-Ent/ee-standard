@@ -19,6 +19,38 @@ repository that defines the standard.
 
 ## Background
 
+### The environment this decision is being taken in
+
+Stated first, because it changes the answer rather than colouring it.
+
+`ee-standard` is an **authoring environment**, not a build project. Its purpose
+is to define the controls a real project will run, and it is audited by its own
+checker mainly so that the standard has a worked example. It has one active
+user.
+
+Access is wider than usage, and both facts matter. Six accounts hold push and
+admin — `alexandrethsilva`, `scottcutts`, `Mawdo81`, `WhoMe192`, `efordee24`,
+`samdixon-create` — and **none is a direct collaborator**; all inherit it as
+Eaiger-Ent organisation owners. So the people who could read a repository secret
+here are people who already hold admin on this repository.
+
+The organisation uses **fine-grained personal access tokens only**; classic PATs
+are not used.
+
+Those three facts together dissolve most of the threat this ADR was written
+about. A fine-grained token scoped to this repository with `Administration:
+read`, exposed to org owners who already have admin on it, grants its readers
+nothing they do not already hold. The escalation worth defending against was
+always the *classic* PAT's blast radius across every repository its owner can
+reach — and that instrument is not in use.
+
+**What this does not dissolve** is the standard itself. An adopting repository
+will have contributors who are not org owners, conventions this organisation
+does not hold, and a threat model this one does not have. The controls below are
+for them. This section is the reason this repository may deploy the credential
+more simply than it requires an adopter to — and the reason that difference has
+to be *recorded* rather than inherited.
+
 ### What is actually missing
 
 One header on one endpoint. `GET /repos/{owner}/{repo}` returns
@@ -83,10 +115,12 @@ see and hold it.
 **Pros:** Closes the one gap. Cheap to create. The exposure to same-repo pull
 requests is a non-event *provided* the token is fine-grained and single-repo,
 because its readers are already admins.
-**Cons:** Requires three new register facts and at least one new control before
-it is safe to add — see § What the register must gain. It is still a standing
-credential, still owned by a person, and the correctness of "fine-grained and
-single-repo" is only partly machine-checkable.
+**Cons:** Requires requirements 1 and 2 in place before it is safe to add — see
+§ What the register must gain. It is still a standing credential, still owned by
+a person, and the correctness of "fine-grained and single-repo" is only partly
+machine-checkable. **This is the recommended option for this repository**, on
+the threat model in § The environment this decision is being taken in; it is not
+recommended for an adopter.
 
 ### Option 2: A GitHub App installation token
 
@@ -136,6 +170,14 @@ repository secret, and the environment carries either or both of:
 Both are available on public repositories at every current plan tier, which this
 repository is ([ADR 0014](0014-satisfying-remote-locus-controls.md)).
 
+**Untested here.** The branch-policy behaviour follows from documented semantics
+and has not been observed on this repository. This repository's own record is a
+list of what happens when a mechanism is credited without being observed
+([`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § H), so before the gates
+deploy this to an adopter it should be tested the cheap way: an environment
+holding a non-secret dummy value, and one throwaway pull request that tries to
+read it.
+
 ```yaml
 jobs:
   platform-state:
@@ -160,7 +202,7 @@ itself unblock `--require-complete` there. It splits conformance across two
 workflows, and a scheduled check that fails is noticed later than one that blocks
 a merge. It also adds platform state that nothing in the register verifies —
 an environment whose branch policy is later widened would silently undo this,
-which is requirement 5 below.
+which is requirement 5 below — a cost this repository avoids by not taking Option 3.
 
 **Two limits, stated rather than implied.** This makes exfiltration *recorded*
 rather than impossible: anything merged to `main` runs with the credential, so
@@ -186,32 +228,70 @@ convenience of one control. Refused on that basis rather than on effort.
 
 ## Decision
 
-**Not yet taken.** This ADR is `Proposed`, and it exists to stop the token being
-added before the controls that govern it.
+**Proposed.** The recommendation below is settled; ratifying it is a human act.
 
-What *is* settled is the precondition: **no platform token may be introduced
-into CI until the register can see it.** Adding the secret first and the
-controls afterwards would mean a period in which SEC-002 reports `PASS` over a
-standing administrative credential — and this repository's own review record
+**Two different questions, and conflating them is what made this ADR long.**
+What *this* repository does to unblock `--require-complete` and what the
+*register* requires of an adopting repository are not the same decision, because
+they do not share a threat model (§ The environment this decision is being taken
+in).
+
+### For this repository: Option 1
+
+A **fine-grained** personal access token, scoped to this repository, with
+`Administration: read` and nothing else, held as an ordinary repository secret.
+
+Option 3's environment gate defends against readers who do not already have
+admin. Here there are none: the six accounts that can read a repository secret
+are organisation owners who already hold admin on this repository, and the
+instrument whose blast radius reaches beyond it — the classic PAT — is not in
+use. Building a deployment environment, a branch policy and required reviewers
+to protect a credential from people it grants nothing to would be machinery
+defending an empty room, and it carries its own cost: requirement 5, below,
+exists only to check that the gate is still shut.
+
+This is a **posture difference, not an exception to a control**. Nothing in the
+register is violated by it, and § What the register must gain applies in full.
+
+### For an adopting repository: Option 3, with Option 2 where it can be had
+
+An adopter has contributors who are not organisation owners, so the exfiltration
+path Option 3 closes is real for them. The environment gate is the shape the
+gates should deploy, and an org-owned App minting a one-hour token (Option 2) is
+better still where the organisation can register one — it is ADR 0002's own
+argument applied to the platform instead of the cloud.
+
+**Option 4 is refused** for everyone: a `partial` block denies a `0` exit by
+design, so it does not work as stated, and making it work would mean weakening
+the verdict vocabulary for one control's convenience.
+
+### The precondition, which the posture difference does not relax
+
+**No platform token may be introduced into CI until the register can see it.**
+Adding the secret first and the controls afterwards would mean a period in which
+SEC-002 reports `PASS` over a standing administrative credential — and this
+repository's review record
 ([`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § H) is a list of what
-happens when a control is credited for something it never read.
+happens when a control is credited for something it never read. Requirements 1
+and 2 land before the token, not alongside it.
 
-The recommendation, to be ratified or rejected: **Option 3 for the credential's
-location, and Option 2 for its kind, if a credential is introduced at all.**
-Option 3 moves the exfiltration path behind platform configuration a pull request
-cannot edit, and Option 2's short-lived token is ADR 0002's own reasoning applied
-consistently. Option 1 is acceptable only with every requirement in the next
-section in place, and Option 4 is refused because it would weaken `partial` to
-suit one control.
+### What the fine-grained-only convention does and does not buy
 
-**One empirical check is owed before Option 3 is relied on.** The branch-policy
-behaviour above follows from documented semantics and has *not* been tested on
-this repository. This repository's own record is a list of what happens when a
-mechanism is credited without being observed
-([`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § H), so it should be
-tested the cheap way — an environment holding a non-secret dummy value, and one
-throwaway pull request that tries to read it — before any real credential
-depends on it.
+It removes the escalation this ADR was most concerned with, and it is why
+Option 1 is sufficient here. It does not make requirement 4 unnecessary — it
+makes it **cheap to justify**. "We use fine-grained tokens only" is a
+convention; the `X-OAuth-Scopes` check is what makes it a fact, and the
+distinction between those two is the thesis of this repository rather than a
+preference of this ADR. Adopters are other organisations, with other
+conventions, and the register cannot assume theirs.
+
+If Eaiger-Ent *enforces* the convention — organisation settings can block
+classic PATs from accessing organisation resources outright — that is
+enforcement rather than habit and is the stronger thing to cite. It could not be
+confirmed while writing this: reading
+`GET /orgs/{org}/personal-access-token-requests` returns 403 for a token without
+organisation administration scope. Someone with organisation admin should check
+it, and the answer belongs here.
 
 ## What the register must gain
 
@@ -264,22 +344,48 @@ API lets a fine-grained token enumerate its own permissions, so "scoped to this
 repository, `Administration: read` only" stays a human act recorded at issue
 time. It must be written down as such rather than implied to be checked.
 
-### 5. The environment gate is itself unverified platform state
+### 5. If Option 3 is deployed, its gate is itself unverified platform state
+
+**Conditional, and it does not apply to this repository.** Option 1 is
+recommended here, so there is no environment to verify. It applies wherever the
+gates deploy Option 3 — which is every adopter.
 
 Option 3 depends on a deployment branch policy and, ideally, required reviewers.
-Both are platform state, and nothing in the register reads them — so an
+Both are platform state, and nothing in the register reads them, so an
 environment whose branch policy was later widened to "all branches" would
-silently return the credential to every pull request, with every control still
+silently return the credential to every pull request with every control still
 green.
 
 That is the same shape as the audit gap
-[ADR 0014](0014-satisfying-remote-locus-controls.md) recorded and Phase 3 closed:
-a protection that holds in fact and is proven by nothing. If Option 3 is taken,
-its environment configuration needs a `kind: remote` block of its own reading
+[ADR 0014](0014-satisfying-remote-locus-controls.md) recorded and Phase 3
+closed: a protection that holds in fact and is proven by nothing. It needs a
+`kind: remote` block reading
 `GET /repos/{owner}/{repo}/environments/{name}` — otherwise the mechanism
-protecting the credential is the one thing in this design nobody checks.
+protecting the credential is the one thing in the design nobody checks.
 
-### 6. The adopter-facing consequence
+Note the shape of this: choosing the simpler posture *removes* a requirement
+rather than deferring one, which is the honest reason Option 1 is cheaper here
+and not merely lazier.
+
+### 6. The posture difference must not reach an adopter
+
+This repository deploying Option 1 while the standard requires Option 3 of
+adopters is defensible only while the difference is **recorded where adopters do
+not inherit it**. It belongs in this ADR and in
+[`04-build-plan.md`](04-build-plan.md); it must not appear in `controls.yaml`,
+and above all not under `plugins/`, which is what an adopter installs.
+
+There is precedent for enforcing that mechanically rather than remembering it:
+`tests/test_plugin.py` already fails if any value the register pins appears
+anywhere under `plugins/`. The same shape of test should assert that this
+repository's own credential arrangement does not appear in a shipped gate — so
+that a gate cannot quietly deploy an authoring environment's convenience into a
+build project.
+
+This is the requirement most likely to be skipped, because nothing breaks when
+it is. That is exactly what makes it worth writing down.
+
+### 7. The adopter-facing consequence
 
 Whatever is decided, [`08-adopting.md`](08-adopting.md) owes it a section under
 the standing requirement in [`04-build-plan.md`](04-build-plan.md): an adopter
@@ -301,11 +407,14 @@ must close before its adopter criterion can be ticked.
 
 **Trade-offs and risks:**
 
-- Six requirements to close one `UNCLASSIFIED`. That is a poor ratio, and it is
-  a legitimate reason to accept the tolerance for longer rather than to build all
-  of it. Note that Option 3 does not escape the ratio — it removes the
-  exfiltration path but adds requirement 5, because the gate protecting the
-  credential would otherwise be the one thing nobody checks.
+- Six requirements apply to this repository — 1, 2, 3, 4, 6 and 7 — to close one
+  `UNCLASSIFIED`. That is still a poor ratio, and accepting ADR 0016's tolerance
+  for longer remains a legitimate answer. What is *not* legitimate is building
+  the token without requirements 1 and 2, which is the only ordering this ADR
+  rules out absolutely.
+- Requirements 1 to 4 are owed to adopters whether or not this repository ever
+  carries a token, so the ratio is misleading if read as the cost of unblocking
+  one flip. Most of this work is the standard's, not this repository's.
 - Requirement 4 checks the token's kind, not its scope. Over-reading it as
   "the register verifies the token is minimal" would be the substitution this
   repository keeps catching.

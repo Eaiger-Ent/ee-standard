@@ -101,8 +101,8 @@ Tests must never depend on ambient auth — `tests/conftest.py` strips
 [ADR 0022](docs/adr/0022-a-platform-token-ci-carries.md) (`Status: Proposed`):
 the Actions `GITHUB_TOKEN` cannot read `security_and_analysis`, so SEC-001's
 remote block is `UNCLASSIFIED` in CI while passing locally. **Do not add a
-platform token to CI before the controls in that ADR § What the register must
-gain exist** — SEC-002 cannot see one today, because `no-static-cloud-keys`
+platform token to CI before requirements 1 and 2 of that ADR § What the register
+must gain exist** — SEC-002 cannot see one today, because `no-static-cloud-keys`
 reads `cloud_credentials:` and every name in it is a cloud provider key, so a
 `GH_ADMIN_TOKEN` secret would leave SEC-002 green over a standing
 administrative credential. Note also that a `pull_request` run receives repo

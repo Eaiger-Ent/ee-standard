@@ -179,8 +179,9 @@ Resolving it means either granting the workflow a token that can see the setting
 or recording why that block is not answerable from CI — a decision, not an
 oversight. It is now written up as
 [ADR 0022](adr/0022-a-platform-token-ci-carries.md), `Status: Proposed`, which
-records four options, the controls the register would need before any token is
-introduced, and one finding that stands whatever is decided: **SEC-002 cannot
+records four options, the requirements the register would need before any token
+is introduced, the threat model that makes this repository's own posture simpler
+than an adopter's, and one finding that stands whatever is decided: **SEC-002 cannot
 see a platform token**, because `no-static-cloud-keys` reads
 `cloud_credentials:` and every name in it is a cloud provider key. A secret
 called `GH_ADMIN_TOKEN` would leave SEC-002 reporting `PASS` over a standing
