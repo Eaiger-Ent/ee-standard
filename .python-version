@@ -5,4 +5,4 @@
 # number under `tools.python`.
 #
 # renovate: datasource=python-version depName=python
-3.13
+3.14
