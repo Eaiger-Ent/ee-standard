@@ -291,6 +291,14 @@ deployment only once those two rows ship
 Enforcement is never Claude: gates are pinned binaries reading pinned configs;
 a skill may install or explain a gate but cannot be one.
 
+Which model an agent or sub-agent runs on is decided by
+[ADR 0023](docs/adr/0023-smallest-model-a-task-can-be-trusted-to.md)
+(**Accepted** 2026-08-23, **not implemented**): three classes, a floor per
+class, and `CLAUDE_CODE_SUBAGENT_MODEL` forbidden because it outranks every one
+of them. Do not restate the floors here — the register's `agent_models:` block
+is the source once it lands, and `.claude/agents/*.md` frontmatter is the only
+copy the harness reads.
+
 ## Documents
 
 Read `docs/00-concepts.md` first for the vocabulary, then:
