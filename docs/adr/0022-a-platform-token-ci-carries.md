@@ -1,7 +1,7 @@
 # ADR 0022: What Must Be True Before CI Carries a Platform Token
 
-**Status:** Proposed
-**Date:** 2026-08-22
+**Status:** Accepted
+**Date:** 2026-08-23
 
 Phase 3's first slice made `kind: remote` real and immediately produced a
 question it cannot answer for itself. SEC-001's remote block reports
@@ -228,7 +228,10 @@ convenience of one control. Refused on that basis rather than on effort.
 
 ## Decision
 
-**Proposed.** The recommendation below is settled; ratifying it is a human act.
+**Accepted 2026-08-23.** Ratified on the threat model in § The environment this
+decision is being taken in, which the repository owner confirmed: one active
+user, all admin access inherited by organisation owners, and fine-grained
+personal access tokens only.
 
 **Two different questions, and conflating them is what made this ADR long.**
 What *this* repository does to unblock `--require-complete` and what the
