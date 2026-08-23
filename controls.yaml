@@ -283,6 +283,11 @@ tools:
     pinned_at:
       - .devcontainer/setup.sh
       - .github/workflows/standard-check.yml
+      # Not a gate, and still a locus: `support-floor.yml` installs uv to run
+      # the tests on the oldest interpreter `requires-python` claims. A site
+      # that installs a pinned tool is a site that can drift from the register,
+      # whether or not a verdict depends on it.
+      - .github/workflows/support-floor.yml
   # The interpreter every other Python tool runs inside, and until contract 20
   # the only tool here that no locus pinned and nothing compared. `source:
   # toolchain` is neither of the other two and both would be false: the value

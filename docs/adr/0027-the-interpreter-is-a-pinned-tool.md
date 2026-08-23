@@ -207,6 +207,85 @@ made for `invocation`.
   so none does anything with it; a future one that does has a field to read
   rather than a filename to guess.
 
+## Applied — the first move, and what it made visible
+
+The pin landed at 3.13, the version the devcontainer already had, so that the
+mechanism could be verified without also changing what ran. Moving it is the
+first exercise of the decision, and it separated the three facts in practice
+rather than on paper:
+
+| | Before | After |
+| --- | --- | --- |
+| `.python-version` — what runs the gates | 3.13 | **3.14** |
+| `requires-python` — what the package supports | `>=3.13` | `>=3.13`, unchanged |
+| ruff's target — what the linter models | 3.13, derived | 3.13, derived |
+| the devcontainer feature — what bootstraps | 3.13 | 3.13, unchanged |
+
+Three of the four do not move, and each for its own reason. The support claim is
+not this repository's environment. Ruff follows the support claim, so it is
+still right to lint for 3.13 — the code must run there. And the feature is
+bootstrap: it installs the `python3` that runs `pip install uv` in `setup.sh`
+and answers `#!/usr/bin/env python3`, neither of which is a gate.
+
+**That last one is the case this ADR predicted.** § Consequences recorded that
+pinning the feature "would break the first time the project interpreter moves
+ahead of the image's". This is that time, and nothing broke: uv resolves 3.14
+inside a container whose system interpreter is 3.13, and the register does not
+compare them because it never claimed they were equal.
+
+### The claim the move left untested
+
+Moving the environment to 3.14 meant nothing ran on 3.13 any more, while
+`requires-python` went on saying 3.13 works — and adopters install
+`standard-check` as a dependency, so somebody is on that floor. A property
+declared and verified nowhere is the shape this repository exists to catch, and
+the move would have created one.
+
+`.github/workflows/support-floor.yml` is the answer: it reads the floor out of
+`requires-python` and runs the test suite on it. It is not a gate, and it is
+deliberately absent from CI-001's `required_checks:` — a support claim failing
+is a thing to know about, not a reason a conformant change cannot merge. The
+response is to widen the floor or fix the code, never to make the job required.
+
+It is also the only place `UV_PYTHON` appears, which is the residual risk named
+in § Consequences. The floor is a different interpreter from the pinned one by
+definition, so the job that tests it has to override the pin — and the override
+being used on purpose, in one reviewed file, is the difference between a known
+escape hatch and an unmonitored one.
+
+Measured, both ends pass:
+
+```text
+uv run pytest                       619 passed, 2 skipped   (3.14.7, the pin)
+UV_PYTHON=3.13 uv run --frozen pytest   619 passed, 2 skipped   (3.13.15, the floor)
+```
+
+### What the floor job found on its first run
+
+It failed, and not over the interpreter. `support-floor.yml` installs uv and
+nothing else, because its subject is Python — and two tests asserting SEC-001
+reaches `PASS` got `UNCLASSIFIED` instead, because `gitleaks` was not on that
+runner's `PATH`. The checker was right: an absent tool is `UNCLASSIFIED`
+(ADR 0016). The tests were asserting something about a binary without saying so.
+
+They had passed everywhere they had ever run — this devcontainer installs
+gitleaks in `setup.sh`, and the conformance job installs it before the test
+step — so the dependency was invisible for as long as every environment happened
+to satisfy it. It is the same hidden input `tests/conftest.py` already strips for
+ambient authentication, one input over, and it took an environment that
+deliberately had less in it to surface.
+
+`requires_tool(name)` in `conftest.py` is the fix: skip, with the tool named,
+rather than fail for a reason unrelated to the test's subject. Skipping rather
+than tolerating `UNCLASSIFIED` is deliberate — a test that accepted that verdict
+would keep passing in the devcontainer if the tool disappeared, which is
+silence reading as agreement.
+
+```text
+with gitleaks on PATH      619 passed, 2 skipped
+with gitleaks removed      617 passed, 4 skipped
+```
+
 ## Related ADRs
 
 - [ADR 0018: Draw the Boundary Between Register and Checker](0018-register-checker-boundary.md)

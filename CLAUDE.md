@@ -46,6 +46,15 @@ derives it from `requires-python`, and writing it out was a third copy that had
 already drifted. The gap was invisible because there was no second copy to spot:
 the devcontainer ran 3.13.15 and CI ran 3.14.7 from the same three files.
 
+The pin now reads **3.14**, and three things deliberately do not follow it:
+`requires-python` stays `>=3.13`, ruff still targets 3.13 because that is the
+floor, and the devcontainer's python feature stays 3.13 because it bootstraps
+`pip install uv` and runs no gate — the case ADR 0027 § Consequences predicted.
+`.github/workflows/support-floor.yml` runs the test suite on the floor so that
+claim stays verified; it is **not** a gate and must never enter CI-001's
+`required_checks:`. It is also the only place `UV_PYTHON` is set, which is the
+one thing that outranks `.python-version`.
+
 `kind: remote` reads platform API state (`src/standard_check/remote.py`,
 `asserts_remote.py`, `rulesets.py`), reasoned in
 [ADR 0021](docs/adr/0021-how-remote-verification-authenticates.md). It has
