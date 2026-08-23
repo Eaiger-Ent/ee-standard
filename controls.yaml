@@ -174,7 +174,22 @@ meta:
   #     in a gating workflow, and that job must not be suppressed. Without the
   #     cross-check these would be a second copy of the job ids, free to drift
   #     from the workflows that produce them.
-  register_contract: 19
+  # 20: `tools:` gains a third `source` — `toolchain` — and the interpreter,
+  #     which was the one tool this register pins nothing about while every
+  #     other Python tool runs inside it. Measured on 2026-08-23, the same three
+  #     files produced 3.13.15 in the devcontainer and 3.14.7 in CI, because the
+  #     only constraint written down was `requires-python = ">=3.13"` and a
+  #     floor selects nothing: uv answered with whatever each machine already
+  #     had. There was no second copy of the version to catch — there was no
+  #     copy, and two loci filled the gap independently (ADR 0027).
+  #
+  #     `toolchain` is a third value rather than a reuse because both existing
+  #     ones would be false: `literal` means the version lives here and each
+  #     locus repeats it, `lockfile` means a package manager produced the file.
+  #     A toolchain file is neither, and it behaves like a lockfile where it
+  #     counts — every locus reads it, so nothing repeats the value and the
+  #     assert checks the file is there rather than comparing copies.
+  register_contract: 20
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -268,6 +283,33 @@ tools:
     pinned_at:
       - .devcontainer/setup.sh
       - .github/workflows/standard-check.yml
+  # The interpreter every other Python tool runs inside, and until contract 20
+  # the only tool here that no locus pinned and nothing compared. `source:
+  # toolchain` is neither of the other two and both would be false: the value
+  # does not live here to be repeated (`literal`), and no package manager
+  # produced the file (`lockfile`). A human writes `.python-version` and every
+  # locus reads it through uv, so the duplication is removed rather than
+  # reconciled — and there is no version at any locus to keep in step, only a
+  # file that must be there.
+  #
+  # Measured before the pin (ADR 0027): the devcontainer ran 3.13.15 and CI ran
+  # 3.14.7, from the same three files. `requires-python = ">=3.13"` is a floor,
+  # and a floor selects nothing — so uv answered with what each machine had,
+  # and the gate deciding conformance ran on an interpreter no file named.
+  #
+  # That floor stays a floor, and stays in pyproject.toml. It is the package's
+  # support claim, not this repository's environment; narrowing it to force the
+  # environment would tell an adopter that standard-check does not work on 3.14,
+  # which is false. The two facts are recorded separately from here on.
+  python:
+    source: toolchain
+    toolchain: .python-version
+    # How a locus reaches the interpreter the file names. `python3` would be the
+    # system interpreter the container's feature installs, which bootstraps
+    # `pip install uv` and answers `#!/usr/bin/env python3` and runs no gate
+    # (ADR 0020: a bare name resolves from PATH, and what answered would be
+    # a different interpreter from the one pinned here).
+    invocation: uv run
 
 # ---------------------------------------------------------------------------
 # Package ecosystems, and what counts as a lockfile for each. ADR 0018: this

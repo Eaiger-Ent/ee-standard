@@ -24,6 +24,8 @@ import json
 import re
 
 from conftest import REPO_ROOT, a_register
+from standard_check.asserts_file import toolchain_version
+from standard_check.register import Tool
 
 
 def _managed() -> tuple[str, ...]:
@@ -33,15 +35,36 @@ def _managed() -> tuple[str, ...]:
     not be scanned — the prose in `04-build-plan.md` describes the mechanism
     rather than pinning anything.
 
-    Derived from `tools.<tool>.pinned_at` plus the register itself, rather than
-    listed here. It was a third copy of the same list — the checker had one, the
-    register's loci were another — and a copy is what let a renamed workflow
-    drop out of comparison unnoticed (§ H2). Now adding a locus to the register
-    is what puts it under this test.
+    Derived from `tools.<tool>.pinned_at` plus the toolchain files plus the
+    register itself, rather than listed here. It was a third copy of the same
+    list — the checker had one, the register's loci were another — and a copy is
+    what let a renamed workflow drop out of comparison unnoticed (§ H2). Now
+    adding a locus to the register is what puts it under this test.
+
+    A toolchain file has no `pinned_at` — nothing repeats its value, which is the
+    point of the source (ADR 0027) — but it is still a version a bot has to
+    update, and Dependabot does not cover it either. Omitting it here would
+    leave the interpreter in exactly the § G state: annotated, and read by
+    nothing.
     """
     register = a_register()
     sites = {site for tool in register.tools.values() for site in tool.pinned_at}
+    sites |= {tool.toolchain for tool in register.tools.values() if tool.toolchain}
     return ("controls.yaml", *sorted(sites))
+
+
+def _pinned_version(tool: Tool) -> str | None:
+    """What the register says this tool is pinned at, whatever owns the value.
+
+    A `literal` tool carries it; a `toolchain` tool's authority is a file, so it
+    is read from there. `lockfile` tools have no version anywhere for a bot
+    annotation to name.
+    """
+    if tool.source == "literal":
+        return tool.version
+    if tool.source == "toolchain" and tool.toolchain:
+        return toolchain_version((REPO_ROOT / tool.toolchain).read_text(encoding="utf-8"))
+    return None
 
 # The annotation may be indented — it sits inside a YAML mapping in the
 # register and at column zero in the shell script. The group starts at the `#`
@@ -98,6 +121,7 @@ def test_every_match_extracts_the_version_the_register_records() -> None:
     by_dep = {
         "uv": register.tools["uv"],
         "gitleaks/gitleaks": register.tools["gitleaks"],
+        "python": register.tools["python"],
     }
     patterns = _patterns()
     seen: set[tuple[str, str]] = set()
@@ -107,9 +131,10 @@ def test_every_match_extracts_the_version_the_register_records() -> None:
             for match in pattern.finditer(text):
                 dep = match.group("depName")
                 assert dep in by_dep, f"{relative}: annotation names unknown dependency {dep!r}"
-                assert match.group("currentValue") == by_dep[dep].version, (
+                expected = _pinned_version(by_dep[dep])
+                assert match.group("currentValue") == expected, (
                     f"{relative}: manager extracts {match.group('currentValue')} for {dep}, "
-                    f"register records {by_dep[dep].version}"
+                    f"register records {expected}"
                 )
                 seen.add((dep, relative))
     assert seen, "no customManager matched anything in this repository"
@@ -173,6 +198,13 @@ def test_the_manager_count_matches_the_sites_the_register_implies() -> None:
             text = (REPO_ROOT / relative).read_text(encoding="utf-8")
             if _pins(text, name, tool.version):
                 expected += 1
+
+    # A toolchain-sourced tool is pinned at exactly one site by definition: the
+    # file that is its authority. There is no search to do — that no locus
+    # repeats the value is the whole reason the source exists (ADR 0027) — and
+    # counting it by the same name-and-version scan would find it in
+    # `controls.yaml` too, where the register names the file and not the number.
+    expected += sum(1 for tool in register.tools.values() if tool.source == "toolchain")
 
     matched = sum(
         1

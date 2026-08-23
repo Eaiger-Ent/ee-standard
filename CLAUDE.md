@@ -10,7 +10,7 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 
 Current status: Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
 with no re-opened criteria outstanding. **Phase 2 is 11/12** and **Phase 3 is in
-progress**; the register is at contract 19. `docs/04-build-plan.md` is the only
+progress**; the register is at contract 20. `docs/04-build-plan.md` is the only
 list of outstanding work and `uv run python scripts/plan_progress.py` is its
 derived view — never keep a second copy of that status here. The slice-by-slice
 record, and the evidence behind every criterion either phase ticks, lives in
@@ -32,6 +32,19 @@ ticked, four of them on 2026-08-18 by the review recorded as
 ran on neither push nor pull_request, a tool compared only at filenames the
 checker itself named, and ADR 0018 recorded as implemented with one of its
 ratified moves never made.
+
+Per [ADR 0027](docs/adr/0027-the-interpreter-is-a-pinned-tool.md) (**Accepted**
+and implemented 2026-08-23, register contract 20), the interpreter the gates run
+on is a pinned tool, and `.python-version` is its authority. `tools:` gained a
+third `source` — `toolchain` — because both existing values would be false: the
+value does not live in the register to be repeated (`literal`) and no package
+manager produced the file (`lockfile`). **A support floor is not a pin.**
+`requires-python` stays a floor and stays a support claim; narrowing it to force
+the environment would tell an adopter that `standard-check` does not work on a
+newer interpreter. `[tool.ruff] target-version` is deliberately absent — ruff
+derives it from `requires-python`, and writing it out was a third copy that had
+already drifted. The gap was invisible because there was no second copy to spot:
+the devcontainer ran 3.13.15 and CI ran 3.14.7 from the same three files.
 
 `kind: remote` reads platform API state (`src/standard_check/remote.py`,
 `asserts_remote.py`, `rulesets.py`), reasoned in
@@ -266,7 +279,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All 26 are `Accepted`; there are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All 27 are `Accepted`; there are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the thirteen Tier-1 controls, with

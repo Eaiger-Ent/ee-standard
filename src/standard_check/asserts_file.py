@@ -502,6 +502,23 @@ def dockerfile_final_user_is_non_root(
 # `markdown_gate_wired_at_all_loci` in `asserts_command`, which reads all four.
 
 
+#: A version-shaped line in a toolchain file. The whole content is the value, so
+#: unlike every other pin in this repository there is no tool name beside it to
+#: match on (ADR 0027). Comment lines are skipped: uv accepts them in
+#: `.python-version`, and the `# renovate:` annotation a bot reads lives in one.
+#:
+#: One implementation, read by the assert below and by
+#: `tests/test_renovate_managers.py`, which has to know the same thing to check
+#: that the bot's manager extracts the value the file actually names.
+_TOOLCHAIN_VALUE = re.compile(r"^\s*(?!#)\s*v?(\d+(?:\.\d+)*)\s*$", re.MULTILINE)
+
+
+def toolchain_version(text: str) -> str | None:
+    """The version a toolchain file names, or None if it names none."""
+    match = _TOOLCHAIN_VALUE.search(text)
+    return match.group(1) if match else None
+
+
 def tool_versions_match_register(
     repo: Repo,
     register: Register,
@@ -530,12 +547,32 @@ def tool_versions_match_register(
     # A lockfile-sourced tool has nothing to reconcile: the loci invoke it
     # through the package manager, so there is no version at any locus to
     # disagree with. What must hold instead is that the lockfile is there.
+    #
+    # A toolchain-sourced tool is the same shape for a different reason
+    # (ADR 0027): a human writes the file and every locus reads it, so again no
+    # locus repeats the value. An untracked one is worse than a drifted pin —
+    # every locus falls back to whatever it would have resolved anyway, which is
+    # the state that put CI on 3.14 and the devcontainer on 3.13 with nothing
+    # reporting it.
     literal = [tool for tool in register.tools.values() if tool.source == "literal"]
     for tool in register.tools.values():
         if tool.source == "lockfile" and tool.lockfile and tool.lockfile not in repo.tracked:
             problems.append(
                 f"{tool.name} is sourced from {tool.lockfile}, which is not tracked"
             )
+        if tool.source == "toolchain" and tool.toolchain:
+            if tool.toolchain not in repo.tracked:
+                problems.append(
+                    f"{tool.name} is sourced from {tool.toolchain}, which is not tracked"
+                )
+            elif toolchain_version(repo.read(tool.toolchain)) is None:
+                # The same silence one level down as a declared `pinned_at` site
+                # holding no pin: the file is tracked and names no version, so
+                # every locus resolves as though it were absent.
+                problems.append(
+                    f"{tool.toolchain} names no version, though the register records it as "
+                    f"the authority for {tool.name}"
+                )
     for tool in literal:
         for path in tool.pinned_at:
             # A declared site that is not there is the rename this check used to
@@ -589,8 +626,8 @@ def tool_versions_match_register(
     sites = sum(len(tool.pinned_at) for tool in literal)
     return _ok(
         f"{checked} version pin(s) across {sites} declared locus/loci and {len(literal)} "
-        f"literal tool(s) match the register; {sourced} sourced from a lockfile, with no "
-        "version to keep in step"
+        f"literal tool(s) match the register; {sourced} sourced from a lockfile or a "
+        "toolchain file, with no version to keep in step"
     )
 
 

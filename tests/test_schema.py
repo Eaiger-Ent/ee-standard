@@ -267,6 +267,87 @@ def test_lockfile_sourced_tool_carries_no_loci(tmp_path: Path) -> None:
     assert any("tools.markdownlint-cli2.pinned_at" in e for e in errors)
 
 
+def test_toolchain_sourced_tool_carries_no_version(tmp_path: Path) -> None:
+    """The lockfile rule, one source over: the file is the authority (ADR 0027).
+
+    A number beside the file that owns it is the same second copy, and it is the
+    one that would go stale silently — the loci would keep reading the file and
+    agreeing with each other while the register disagreed with all of them.
+    """
+    document = minimal_register()
+    document["tools"] = {
+        "python": {
+            "source": "toolchain",
+            "toolchain": ".python-version",
+            "invocation": "uv run",
+            "version": "3.13",
+        }
+    }
+    assert any("tools.python.version" in e for e in _errors_for(tmp_path, document))
+
+
+def test_toolchain_sourced_tool_names_its_file(tmp_path: Path) -> None:
+    """Without the path there is no authority, only a claim that one exists."""
+    document = minimal_register()
+    document["tools"] = {"python": {"source": "toolchain", "invocation": "uv run"}}
+    assert any("tools.python.toolchain" in e for e in _errors_for(tmp_path, document))
+
+
+def test_toolchain_sourced_tool_carries_no_loci(tmp_path: Path) -> None:
+    """Nothing repeats the value — that is the whole reason for the source."""
+    document = minimal_register()
+    document["tools"] = {
+        "python": {
+            "source": "toolchain",
+            "toolchain": ".python-version",
+            "invocation": "uv run",
+            "pinned_at": [".devcontainer/devcontainer.json"],
+        }
+    }
+    assert any("tools.python.pinned_at" in e for e in _errors_for(tmp_path, document))
+
+
+def test_toolchain_sourced_tool_records_how_a_locus_reaches_it(tmp_path: Path) -> None:
+    """ADR 0020's requirement, carried across: an authority no invocation
+    resolves to is not an authority. `.python-version` selects nothing on its
+    own — uv is what reads it, and a locus running `python3` gets the system
+    interpreter regardless of what the file says.
+    """
+    document = minimal_register()
+    document["tools"] = {"python": {"source": "toolchain", "toolchain": ".python-version"}}
+    assert any("tools.python.invocation" in e for e in _errors_for(tmp_path, document))
+
+
+def test_only_a_toolchain_sourced_tool_names_a_toolchain_file(tmp_path: Path) -> None:
+    document = minimal_register()
+    document["tools"] = {
+        "gitleaks": {
+            "source": "literal",
+            "version": "8.30.1",
+            "pinned_at": [".devcontainer/setup.sh"],
+            "toolchain": ".python-version",
+        }
+    }
+    assert any("tools.gitleaks.toolchain" in e for e in _errors_for(tmp_path, document))
+
+
+def test_a_toolchain_file_is_not_a_lockfile(tmp_path: Path) -> None:
+    """The two are distinguished because no package manager produced the one —
+    which is the fact that makes the third source value necessary rather than a
+    synonym for the second.
+    """
+    document = minimal_register()
+    document["tools"] = {
+        "python": {
+            "source": "toolchain",
+            "toolchain": ".python-version",
+            "lockfile": "uv.lock",
+            "invocation": "uv run",
+        }
+    }
+    assert any("tools.python.lockfile" in e for e in _errors_for(tmp_path, document))
+
+
 def test_an_uncompilable_frozen_install_pattern_is_a_schema_error(tmp_path: Path) -> None:
     """Compiled at schema time, like `suppression`, and for the same reason.
 
