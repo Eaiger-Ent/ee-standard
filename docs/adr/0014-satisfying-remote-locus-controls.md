@@ -136,7 +136,7 @@ abandoned — the fallback is recorded, not assumed.
   — the control this decision unblocks.
 - [ADR 0001: Block Secrets Before They Reach the Remote](0001-secrets-never-reach-the-remote.md)
   — its push-protection half depends on the same capability.
-- [ADR 0015: Work on Branches While the Default Branch Is Unprotected](0015-interim-branch-discipline.md)
+- [ADR 0015: Work on Branches While the Default Branch Is Unprotected](archive/0015-interim-branch-discipline.md)
   — the interim posture until this decision lands.
 - [ADR 0016: Give "Could Not Verify" Its Own Exit Code](0016-exit-codes-for-unverifiable-controls.md)
   — the verdict this repository reported while the remote loci were unreadable.

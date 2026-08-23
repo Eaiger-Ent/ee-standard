@@ -42,6 +42,11 @@ import pytest
 from conftest import REPO_ROOT
 
 ADR_DIR = REPO_ROOT / "docs" / "adr"
+ARCHIVE_DIR = ADR_DIR / "archive"
+
+# ADR 0026: the two statuses that mean "no longer in force". `Draft` and
+# `Proposed` are live work, not history, and stay in the active directory.
+TERMINAL = {"Superseded", "Deprecated"}
 
 REVISION = re.compile(r"^\*\*Revision:\*\* (\d+)$", re.M)
 STATUS = re.compile(r"^\*\*Status:\*\* (\w+)$", re.M)
@@ -60,11 +65,16 @@ AMENDMENT_MARKER = re.compile(
 
 
 def adr_files() -> list[Path]:
-    return sorted(ADR_DIR.glob("[0-9][0-9][0-9][0-9]-*.md"))
+    """Both directories. An archived ADR is frozen, not exempt: it still has to
+    declare a revision, and it is the one kind of ADR that must name a
+    replacement."""
+    return sorted(
+        [*ADR_DIR.glob("[0-9][0-9][0-9][0-9]-*.md"), *ARCHIVE_DIR.glob("[0-9][0-9][0-9][0-9]-*.md")]
+    )
 
 
 def _ids(paths: list[Path]) -> list[str]:
-    return [p.name[:4] for p in paths]
+    return [("archive/" if p.parent.name == "archive" else "") + p.name[:4] for p in paths]
 
 
 ADRS = adr_files()
@@ -173,3 +183,69 @@ def test_a_superseded_adr_names_its_replacement(adr: Path) -> None:
             f"{adr.name} is Superseded but names no `**Superseded by:**`. "
             "A replacement in prose is not a field a reader can find."
         )
+
+
+@pytest.mark.parametrize("adr", ADRS, ids=_ids(ADRS))
+def test_status_and_location_agree(adr: Path) -> None:
+    """Checked in both directions, which is what makes the archive safe.
+
+    ADR 0026 § Alternatives Considered concedes Option 1's objection: a
+    directory that says "not active" is a second encoding of what
+    `**Status:**` already says, and two encodings of one fact drift. They
+    cannot drift if neither is trusted alone.
+    """
+    status = STATUS.search(adr.read_text()).group(1)  # type: ignore[union-attr]
+    archived = adr.parent.name == "archive"
+
+    if status in TERMINAL:
+        assert archived, (
+            f"{adr.name} is {status} but sits in the active directory. Move it "
+            f"to docs/adr/archive/ (ADR 0026). It keeps its number."
+        )
+    else:
+        assert not archived, (
+            f"{adr.name} is {status} but sits in docs/adr/archive/, which holds "
+            f"only {' and '.join(sorted(TERMINAL))} ADRs. An ADR still in force "
+            "belongs in the active directory."
+        )
+
+
+@pytest.mark.parametrize("adr", ADRS, ids=_ids(ADRS))
+def test_a_replacement_reference_resolves(adr: Path) -> None:
+    """A `**Superseded by:**` naming a file that is not there is worse than
+    none: it reads as an answer. Archiving rewrites paths, so this is the
+    check most likely to catch a botched move."""
+    text = adr.read_text()
+    match = re.search(r"^\*\*Superseded by:\*\* \[[^\]]+\]\(([^)]+)\)", text, re.M)
+    if match is None:
+        return
+    target = (adr.parent / match.group(1)).resolve()
+    assert target.is_file(), (
+        f"{adr.name} is superseded by {match.group(1)}, which does not resolve "
+        f"from {adr.parent}. Archiving moves files; it does not move links."
+    )
+
+
+def test_no_live_control_cites_an_archived_adr() -> None:
+    """A control's stated reasoning may not be a decision the corpus has
+    marked as no longer current.
+
+    The schema already requires `rationale_adr` to resolve, so archiving one
+    fails as "file does not exist". That diagnoses the symptom; ADR 0026
+    § A live control's `rationale_adr` names the rule.
+    """
+    import yaml
+
+    register = yaml.safe_load((REPO_ROOT / "controls.yaml").read_text())
+    archived = {p.name for p in ARCHIVE_DIR.glob("*.md")}
+    offenders = [
+        (control["id"], control["rationale_adr"])
+        for control in register["controls"]
+        if Path(control["rationale_adr"]).name in archived
+        or "/archive/" in control["rationale_adr"]
+    ]
+    assert not offenders, (
+        "these controls cite an archived ADR as their reasoning: "
+        + ", ".join(f"{cid} -> {path}" for cid, path in offenders)
+        + ". Repoint rationale_adr at the superseding ADR in the same change."
+    )

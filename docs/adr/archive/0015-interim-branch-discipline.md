@@ -2,10 +2,10 @@
 
 **Status:** Superseded
 **Date:** 2026-08-17
-**Superseded by:** [ADR 0008: Protect the Default Branch by Ruleset](0008-protected-default-branch.md)
+**Superseded by:** [ADR 0008: Protect the Default Branch by Ruleset](../0008-protected-default-branch.md)
 **Revision:** 1
 
-Superseded by [ADR 0008](0008-protected-default-branch.md) on 2026-08-17, the
+Superseded by [ADR 0008](../0008-protected-default-branch.md) on 2026-08-17, the
 same day it was written, and **never ratified** — the gap it proposed to bridge
 by convention was closed by real enforcement before the proposal was decided.
 The `default-branch-protection` ruleset (id `20937135`) makes CI-001's
@@ -44,7 +44,7 @@ than gating it. That is theme **T-3** — the gates are declared and, at the mer
 unreachable.
 
 CI-001 exists to close this, and did. Its mechanism became *available* on
-2026-08-17, when [ADR 0014](0014-satisfying-remote-locus-controls.md) was
+2026-08-17, when [ADR 0014](../0014-satisfying-remote-locus-controls.md) was
 implemented and the repository went public: the rulesets API changed from `403`
 to an empty list. Availability was not application, though — for a few hours the
 capability existed and no ruleset did, so `main` stayed unprotected and this
@@ -115,11 +115,11 @@ verifies is precisely what the register refuses to count as a control.
 
 ## Related ADRs
 
-- [ADR 0014: Make Remote-Locus Controls Satisfiable on This Repository](0014-satisfying-remote-locus-controls.md)
+- [ADR 0014: Make Remote-Locus Controls Satisfiable on This Repository](../0014-satisfying-remote-locus-controls.md)
   — implemented 2026-08-17, which made enforcement possible but not yet real.
-  This ADR is superseded by [ADR 0008](0008-protected-default-branch.md) once the
+  This ADR is superseded by [ADR 0008](../0008-protected-default-branch.md) once the
   ruleset exists and CI-001 verifies against it, not on publication alone.
-- [ADR 0008: Protect the Default Branch by Ruleset](0008-protected-default-branch.md)
+- [ADR 0008: Protect the Default Branch by Ruleset](../0008-protected-default-branch.md)
   — the control this interim posture stands in for, and does not satisfy.
 
 ## References

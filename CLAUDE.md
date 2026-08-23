@@ -266,16 +266,25 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All are `Accepted` except 0015, `Superseded`; there are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All 26 are `Accepted`; there are no open decisions |
+| `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the thirteen Tier-1 controls, with
 the three meta-controls described below the table.
 
-An Accepted ADR whose decision stands but whose record went stale is **amended
-in place**; supersession is for a decision that has been *replaced*, which is
-0015 and only 0015 ([ADR 0024](docs/adr/0024-variance-vocabulary-is-direction-only.md)).
-Superseding instead would restate a correct decision to change one clause, which
-is the second copy this repo exists to prevent. Per
+**An ADR is written once and stands on its own** ([ADR 0026](docs/adr/0026-an-adr-stands-on-its-own.md)).
+Editing an accepted one is the exception, permitted only where the decision is
+unchanged **and** the record has become factually false — ADR 0016 asserting a
+bound that had stopped holding is the model case. Anything that changes *what
+was decided* is a new ADR that supersedes, however small it looks; when in
+doubt, supersede. Recording implementation (`## Applied — pass N`) is not
+amendment and needs no revision. Do not read the seven amended ADRs as a norm:
+they are this repo amending its own process in one week.
+
+Where that exception does apply, the ADR is **amended in place** rather than
+superseded ([ADR 0024](docs/adr/0024-variance-vocabulary-is-direction-only.md)) —
+superseding would restate a correct decision to change one clause, which is the
+second copy this repo exists to prevent. Per
 [ADR 0025](docs/adr/0025-an-amendment-is-a-recorded-revision.md) an amendment is
 a **numbered revision**: every ADR carries `**Revision:** N`, and one above 1
 carries a `## Revision History` table giving each revision's date, a one-line
@@ -288,6 +297,15 @@ repository contains (ADR 0022 requirement 6). It does **not** check that a
 summary is accurate; that is recorded as the residual risk, not covered.
 `adr-toolkit@0.1.11` models no revision or approver at all, so `/adr-check` and
 `/adr-consistency` neither check these fields nor object to them.
+
+An ADR reaching a terminal status moves to `docs/adr/archive/` **keeping its
+number**, which is never reused — only its path changes. The same test checks
+status and location agree **in both directions**, so the directory cannot
+disagree with the header; it also fails a live control whose `rationale_adr`
+cites an archived ADR, because a control's stated reasoning may not be a
+decision the corpus has retired. Archiving breaks inbound links: rewrite them in
+the same change. Note the cost — `adr-toolkit` globs `docs/adr/*.md`, so an
+archived ADR leaves the corpus `/adr-consistency` scans.
 
 Gate skills live in `plugins/ee-standard/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,
