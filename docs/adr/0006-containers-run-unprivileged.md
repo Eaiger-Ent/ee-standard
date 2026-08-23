@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-16
+**Revision:** 2
 
 Rationale for control **BLD-001** in `controls.yaml`.
 
@@ -91,3 +92,12 @@ against a repository with no Dockerfile is a category error, not a finding.
 
 - [CIS Docker Benchmark](https://www.cisecurity.org/benchmark/docker)
 - [hadolint](https://github.com/hadolint/hadolint)
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-16 | Original decision: BLD-001, the final stage of every Dockerfile declares a non-root user explicitly. | Nathan Carney |
+| 2 | 2026-08-18 | Extended to devcontainers at register contract 7 — `containerUser` / `remoteUser` reach the same property, and an unstated user fails as `USER root` does. Verify blocks narrowed to the shape each can read. | Nathan Carney |
+
+Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.

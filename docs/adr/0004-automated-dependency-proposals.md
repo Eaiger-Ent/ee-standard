@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-16
+**Revision:** 1
 
 Rationale for control **SUP-002** in `controls.yaml`.
 
@@ -73,6 +74,10 @@ intent.
   — the pinning that makes proposals meaningful.
 - [ADR 0007: Pin Devcontainer Image and Features](0007-pinned-devcontainer-features.md)
   — relies on this control for digest bumps.
+- [ADR 0005: Pin CI Actions to Commit SHAs](0005-pinned-ci-actions.md)
+  — SUP-003, whose SHA bumps this control proposes.
+- [ADR 0012: Statically Analyse Infrastructure Code Before Apply](0012-iac-static-analysis.md)
+  — IAC-001, whose two analysers this control keeps current.
 
 ## References
 

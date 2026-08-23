@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-17
+**Revision:** 1
 
 Ratified decision from
 [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
@@ -122,6 +123,13 @@ not the whole of it.
   annotation; Phase 3 reading the platform state is what actually does it.
 - [ADR 0008: Protect the Default Branch by Ruleset](0008-protected-default-branch.md)
   — the platform state GOV-001 must eventually read.
+- [ADR 0018: Draw the Boundary Between Register and Checker](0018-register-checker-boundary.md)
+  — the partial-declaration field landed in the same contract-3 pass.
+- [ADR 0022: What Must Be True Before CI Carries a Platform Token](0022-a-platform-token-ci-carries.md)
+  — refused an Option 4 that would have weakened this machinery for one
+  control's convenience.
+- [ADR 0023: Choose the Smallest Model a Task Can Be Trusted To](0023-smallest-model-a-task-can-be-trusted-to.md)
+  — AGT-001 declares its unverifiable runtime half as a partial under this ADR.
 
 ## References
 

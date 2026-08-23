@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-16
+**Revision:** 1
 
 Rationale for control **DEV-001** in `controls.yaml`.
 
@@ -70,6 +71,9 @@ reference for everything that executes.
   same immutability rule for workflow dependencies.
 - [ADR 0004: Automate Dependency Update Proposals](0004-automated-dependency-proposals.md)
   — proposes the digest bumps that keep pins current.
+- [ADR 0006: Run Containers as a Non-Root User](0006-containers-run-unprivileged.md)
+  — BLD-001, extended at contract 7 to the same `devcontainer.json` this control
+  pins.
 
 ## References
 

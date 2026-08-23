@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-17
+**Revision:** 4
 
 Ratified decision from
 [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
@@ -121,6 +122,29 @@ it:
   is what flips the step to `--require-complete`; the tolerance cannot outlive
   the condition that justified it.
 
+**Amended 2026-08-23: the third bullet is no longer true, and the bound has
+moved.** Phase 3 implemented `kind: remote` verification and the tolerance did
+not expire. The reason is one this ADR could not have known: the Actions
+`GITHUB_TOKEN` cannot read `security_and_analysis`, so SEC-001's remote block is
+`UNCLASSIFIED` in CI while passing locally — an under-scoped token, which
+[ADR 0021](0021-how-remote-verification-authenticates.md) settled must refuse to
+guess rather than report a violation it did not observe. Satisfying Phase 3 was
+necessary and turned out not to be sufficient.
+
+The tolerance is now bound by
+[ADR 0022](0022-a-platform-token-ci-carries.md) instead: it ends when
+requirements 1 and 2 of § What the register must gain land and CI carries a
+platform token the register can see. That ADR records the reason and accepts the
+cost by name.
+
+The first two bullets are unchanged and still hold — only exit `3` is tolerated,
+and the incompleteness is still printed on every run. What is recorded here is
+that "expires by construction" was a claim about a mechanism, and the mechanism
+had a second precondition nobody had looked for. A bound that moves is
+acceptable; a bound that moves without the ADR stating it is the drift this ADR
+exists to end, and it stood unamended for the six days between Phase 3 landing
+and the audit that found it.
+
 What is *not* tolerated is the version of this that would have been easier:
 removing `standard-check` from the ruleset's required checks. A gate that exists
 but is not a required check is theme **T-3** — declared and unreachable — which
@@ -155,7 +179,30 @@ on.
   — resolving it is what returns this repository to exit `0`.
 - [ADR 0011: Make Test Failures Terminal](0011-test-failures-are-terminal.md) —
   the same principle applied to a test suite's exit code.
+- [ADR 0022: What Must Be True Before CI Carries a Platform Token](0022-a-platform-token-ci-carries.md)
+  — where the ratified tolerance's bound moved to, per the amendment above.
+- [ADR 0021: How Remote Verification Authenticates](0021-how-remote-verification-authenticates.md)
+  — the four outcomes that produce the incomplete state, and why an under-scoped
+  token refuses to answer rather than reporting a violation.
+- [ADR 0020: Invoke a Pinned Tool by the Path Its Lockfile Owns](0020-a-locus-reaches-the-pinned-artefact.md)
+  — reads an absent artefact as `UNCLASSIFIED` under these semantics.
+- [ADR 0018: Draw the Boundary Between Register and Checker](0018-register-checker-boundary.md)
+  — landed these semantics in the same contract-3 pass, and classifies which
+  rules deciding a verdict may live in the checker at all.
+- [ADR 0023: Choose the Smallest Model a Task Can Be Trusted To](0023-smallest-model-a-task-can-be-trusted-to.md)
+  — AGT-001's unverifiable runtime half produces the same incomplete state.
 
 ## References
 
 - [argparse — exit status 2 for usage errors](https://docs.python.org/3/library/argparse.html)
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-17 | Original decision: exit `3` for unverified-but-not-violated, `1` for verified violations, `0` for a complete run, and `--require-complete` to promote `3` to `1`. | Nathan Carney |
+| 2 | 2026-08-17 | Ratified with one clause overtaken between drafting and ratification: ADR 0014 was implemented and the repository made public, but `kind: remote` stayed deferred to Phase 3, so the red state persists until Phase 3 rather than until 0014 resolves. | Nathan Carney |
+| 3 | 2026-08-17 | § Ratified tolerance added on implementation. `main` became a required status check with no bypass actors, so "CI turns red" had become "no pull request can merge, including the ones that would fix it". The workflow tolerates exit `3` and only `3`. | Nathan Carney |
+| 4 | 2026-08-23 | § Ratified tolerance's third bullet corrected. "Expires by construction" did not hold: Phase 3 landed and the tolerance did not expire, because the Actions `GITHUB_TOKEN` cannot read `security_and_analysis`. The bound moved to [ADR 0022](0022-a-platform-token-ci-carries.md) requirements 1 and 2. | Nathan Carney |
+
+Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.

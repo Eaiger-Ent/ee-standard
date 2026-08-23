@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-22
+**Revision:** 1
 
 Phase 3's first slice makes `kind: remote` a verdict rather than a placeholder.
 Doing that puts three rules into `src/standard_check/` — how the checker reaches

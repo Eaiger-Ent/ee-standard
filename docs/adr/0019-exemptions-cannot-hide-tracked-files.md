@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-18
+**Revision:** 2
 
 Ratified from [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § H7.
 
@@ -195,6 +196,11 @@ is the point: an exemption may exist, and may not hide anything.
   the register.
 - [ADR 0009: Lint From One Pinned Definition at Every Locus](0009-single-lint-definition.md)
   — LNT-001, whose `.claude/**` exclusion was the instance that prompted this.
+- [ADR 0020: Invoke a Pinned Tool by the Path Its Lockfile Owns](0020-a-locus-reaches-the-pinned-artefact.md)
+  — `markdown_gate_wired_at_all_loci` carries both this rule and that one.
+- [ADR 0024: Keep Only Direction Values in the Variance Vocabulary](0024-variance-vocabulary-is-direction-only.md)
+  — this ADR's Option 2 was rejected as `justified` under another name; ADR 0024
+  records the removal it refers to.
 
 ## References
 
@@ -204,3 +210,12 @@ is the point: an exemption may exist, and may not hide anything.
   restates.
 - [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § H7 — the finding, and
   the measurements behind it.
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-18 | Original decision: no exemption in a deployed gate configuration may exclude a file the repository tracks, checked rather than prohibited. | Nathan Carney |
+| 2 | 2026-08-19 | § Applied — TYP-001, register contract 9. The rule extended beyond DOC-001 to the type checker's exclusions. | Nathan Carney |
+
+Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.

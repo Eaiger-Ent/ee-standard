@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-16
+**Revision:** 1
 
 Rationale for control **LNT-001** in `controls.yaml`.
 
@@ -75,6 +76,15 @@ while making any loosening a register change first.
   principle applied to prose.
 - [ADR 0010: Strict Typing From Birth](0010-strict-typing-from-birth.md) — the
   companion quality gate.
+- [ADR 0011: Make Test Failures Terminal](0011-test-failures-are-terminal.md)
+  — TST-001; the same no-suppression rule applied to the test command.
+- [ADR 0012: Statically Analyse Infrastructure Code Before Apply](0012-iac-static-analysis.md)
+  — IAC-001, which applies this one-definition discipline to the analysis
+  configs.
+- [ADR 0018: Draw the Boundary Between Register and Checker](0018-register-checker-boundary.md)
+  — moved this control's tool versions and per-locus evidence into the register.
+- [ADR 0019: Verify Exemptions Against the Files a Repository Tracks](0019-exemptions-cannot-hide-tracked-files.md)
+  — LNT-001's `.claude/**` exclusion was the instance that prompted it.
 
 ## References
 

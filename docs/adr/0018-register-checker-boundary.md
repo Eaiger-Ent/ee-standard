@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-17
+**Revision:** 6
 
 Ratified decision from
 [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
@@ -304,8 +305,30 @@ deployment was recorded. No control proves the deployment was complete.
   — the reason the transport, the repository identity and the failure taxonomy
   for `kind: remote` are held in the checker, recorded because this ADR requires
   such a reason to exist.
+- [ADR 0019: Verify Exemptions Against the Files a Repository Tracks](0019-exemptions-cannot-hide-tracked-files.md)
+  — classified under this ADR's test as a rule that stays in the checker.
+- [ADR 0020: Invoke a Pinned Tool by the Path Its Lockfile Owns](0020-a-locus-reaches-the-pinned-artefact.md)
+  — made `source: lockfile` mean what this ADR's third pass said it meant.
+- [ADR 0023: Choose the Smallest Model a Task Can Be Trusted To](0023-smallest-model-a-task-can-be-trusted-to.md)
+  — `agent_models:` is a register fact under this ADR's test.
+- [ADR 0024: Keep Only Direction Values in the Variance Vocabulary](0024-variance-vocabulary-is-direction-only.md)
+  — the variance vocabulary is a register-format property, so the closed set
+  stays in the checker under this ADR's test.
 
 ## References
 
 - [OpenSSF Baseline](https://baseline.openssf.org/)
 - [Open Policy Agent — policy language](https://www.openpolicyagent.org/docs/policy-language)
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-17 | Original decision: classify every verdict-deciding rule by whether a reasonable Equal Experts repository could need it to differ without changing the checker. | Nathan Carney |
+| 2 | 2026-08-17 | § Applied — first pass, register contract 3. Package ecosystems, pinned tool versions and the gitleaks checksum moved to the register; `requirements.txt` removed as a lockfile. | Nathan Carney |
+| 3 | 2026-08-17 | § Applied — second pass, register contract 5. DOC-001's 250-character ceiling, tool name and editor extension id moved into the verify block's `args:`, establishing where a per-control tool fact goes. | Nathan Carney |
+| 4 | 2026-08-18 | § Applied — third pass, register contract 6. Mandated tool names and their per-locus evidence moved to a `stacks:` section keyed by predicate. | Nathan Carney |
+| 5 | 2026-08-18 | § Applied — fourth pass, register contract 8. SEC-002's credential names, `tools.<tool>.pinned_at` and `ecosystems.<name>.frozen_install` moved; SUP-001's `applies_to` widened to `[always]`. | Nathan Carney |
+| 6 | 2026-08-20 | § Applied — fifth pass, register contract 12. | Nathan Carney |
+
+Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.

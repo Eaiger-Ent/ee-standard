@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-16
+**Revision:** 1
 
 Rationale for control **CI-001** in `controls.yaml`.
 
@@ -73,12 +74,18 @@ targeted is precisely a protection that everyone believes is still on.
   — its push-protection half lives in the same platform-state locus.
 - [ADR 0011: Test Failures Are Terminal](0011-test-failures-are-terminal.md) —
   the check this ruleset makes unbypassable.
-- [ADR 0015: Work on Branches While the Default Branch Is Unprotected](0015-interim-branch-discipline.md)
+- [ADR 0015: Work on Branches While the Default Branch Is Unprotected](archive/0015-interim-branch-discipline.md)
   — **superseded by this ADR** on 2026-08-17. It proposed a convention to stand
   in for this control while no ruleset existed; creating the ruleset made the
   convention redundant before it was ever ratified.
 - [ADR 0014: Make Remote-Locus Controls Satisfiable on This Repository](0014-satisfying-remote-locus-controls.md)
   — made this control satisfiable at all on this repository.
+- [ADR 0017: Report a Partially Implemented Control as Partial](0017-partial-verification-is-reported.md)
+  — CI-001 was the first control to declare a partial while its ruleset was
+  unread.
+- [ADR 0021: How Remote Verification Authenticates](0021-how-remote-verification-authenticates.md)
+  — how the ruleset state this control requires is actually read back, and what
+  an empty effective-rules answer means.
 
 ## References
 
