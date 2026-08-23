@@ -748,7 +748,7 @@ makes four.
 
 | Excluded | Why |
 | --- | --- |
-| Tier 2 and Tier 3 controls | Tier 1 must be proven end to end first. Adding controls is cheap once the machinery works and expensive before. |
+| Tier 2 and Tier 3 controls | Tier 1 must be proven end to end first. Adding controls is cheap once the machinery works and expensive before. **[ADR 0023](adr/0023-smallest-model-a-task-can-be-trusted-to.md)'s `AGT-001` is the first Tier-2 control queued behind this** — Accepted 2026-08-23, and deliberately unimplemented until Phase 4 has proven Tier 1. |
 | Auto-fix | Notify, never redeploy. Proposed fixes are a Phase 5+ conversation, and only ever as a PR. |
 | Non-GitHub platforms | `remote` verification is GitHub-shaped. Another platform means another assert set, which is a real project, not a flag. |
 | Replacing `lint-md`, `project-init`, `devcontainer-check` | They work. The standard composes with them. |
