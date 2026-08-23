@@ -303,7 +303,8 @@ Listed so that adoption is a decision rather than a copy.
 
 | Local to the predecessor | Note |
 | --- | --- |
-| Python 3.14, `uv sync`, `.venv/bin/pytest` paths | This repo pins 3.13 via a devcontainer feature and runs `uv run` |
+| `uv sync`, `.venv/bin/pytest` paths | This repo reaches its tools through `uv run`, so the lockfile is the authority rather than a path (ADR 0020) |
+| Nothing pinning the interpreter beyond `requires-python` | Transferred as a *defect*, and found here in the same shape: a floor selects nothing, so this repo's gates ran on 3.13 locally and 3.14 in CI until [ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md). `.python-version` is the pin; the predecessor has no equivalent |
 | GCP project `ee-slides`, region `europe-west2`, the `--account`/`--region` rule | Real and hard-won, and entirely specific to that project's estate |
 | The dev → latest → prod deployment vocabulary | Including that prod is data-only there |
 | EE template IDs, the `@equalexperts.com` account requirement | Domain-specific |

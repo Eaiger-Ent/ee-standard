@@ -598,6 +598,16 @@ Sequence, per [`03-devcontainer.md`](03-devcontainer.md):
       operator had to ask about, work out, or already know is a gap in it, and
       the fix belongs in the guide rather than in a reply to the question
 
+- [ ] **The adopter ends up with a pinned interpreter, not a floor.** No gate
+      writes `.python-version` today: contract 20 made the interpreter a
+      register-pinned tool and [`08-adopting.md`](08-adopting.md) § 3.7 tells an
+      adopter to commit one, but telling is what this repository keeps finding
+      insufficient ([ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md)).
+      Decide in this phase whether `gate-build` writes it or the guide is
+      enough, and judge it by what the consumer repo actually has — a
+      `requires-python` and no toolchain file is the exact state that had this
+      repository's own gates on two interpreters
+
 - [ ] The consumer repo reaches full Tier-1 conformance
 - [ ] No step required knowledge held only by the author
 - [ ] `project-init` and `standard-adopt` compose without fighting over
