@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-17
-**Revision:** 6
+**Revision:** 7
 
 Ratified decision from
 [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
@@ -237,6 +237,25 @@ class of defect this ADR exists to remove, not an instance of it to tolerate.
 | `[[tool.mypy.overrides]]` blanket-override detection | The shape of one tool's own configuration format. It is keyed on the register's tool name rather than assumed, so a repository mandating a different checker has no such table read against it |
 | The closed set of gate roles (`lint`, `typecheck`) | A property of the register format: a role the checker has no assert for could not be verified however well it were declared |
 
+### Still staying in the checker — the platform-credential additions
+
+Register contract 23 gave SEC-003 a `kind: remote` block reading the expiry of
+the credential the run carries ([ADR 0022](0022-a-platform-token-ci-carries.md)
+requirement 3). The number it compares against is the register's —
+`platform_credentials.<entry>.max_lifetime_hours`, moved there at contract 22 —
+and three rules beside it are not.
+
+| Rule | Why it is not a register fact |
+| --- | --- |
+| The `github-authentication-token-expiration` header, and its `YYYY-MM-DD HH:MM:SS UTC` shape | GitHub's spelling of GitHub's answer. A repository needing a different header name is not exercising a variance; it is talking to a different platform |
+| `GITHUB_ACTIONS=true` as how a run knows it is a CI job | The platform's own variable, set by the platform. SEC-003's locus is `ci`, so the block has to know whether this run *is* CI — and no repository could reasonably need that announced differently while still running on Actions |
+| `/rate_limit` as the endpoint asked when the question is about the credential rather than the repository | Detection implementation, chosen because it answers for any valid token and needs no permission on the repository. Which endpoint carries a header is not a rule a repository sets |
+
+The boundary holds in the direction that matters: **widen the register's
+maximum and the same token changes verdict**, with no checker change, which is
+the test the third pass introduced for `stacks:` and the fourth for
+`cloud_credentials:`.
+
 ### Applied — fifth pass, register contract 12
 
 One rule, and it moves *into* the checker rather than out of it — the direction
@@ -330,5 +349,6 @@ deployment was recorded. No control proves the deployment was complete.
 | 4 | 2026-08-18 | § Applied — third pass, register contract 6. Mandated tool names and their per-locus evidence moved to a `stacks:` section keyed by predicate. | Nathan Carney |
 | 5 | 2026-08-18 | § Applied — fourth pass, register contract 8. SEC-002's credential names, `tools.<tool>.pinned_at` and `ecosystems.<name>.frozen_install` moved; SUP-001's `applies_to` widened to `[always]`. | Nathan Carney |
 | 6 | 2026-08-20 | § Applied — fifth pass, register contract 12. | Nathan Carney |
+| 7 | 2026-08-24 | § Still staying in the checker — the platform-credential additions. Records why the token-expiry header, the Actions variable and the credential-probe endpoint are the checker's, while the maximum they are compared against is the register's. | Nathan Carney |
 
 Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.

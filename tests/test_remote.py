@@ -9,23 +9,35 @@ SKIPPED (no credentials) and UNCLASSIFIED a given non-answer earns.
 
 from __future__ import annotations
 
+import datetime
+import email.message
 import json
 import subprocess
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from conftest import a_register, make_repo, minimal_register, write_register
+from conftest import a_register, make_repo, minimal_register, register_with, write_register
 from standard_check import remote as remote_module
 from standard_check.asserts_remote import (
     REMOTE_ASSERTS,
     default_branch_ruleset_satisfies,
     github_push_protection_enabled,
+    platform_token_expires_within,
 )
-from standard_check.remote import GitHub, NoCredentials, Unreadable, Unresolvable
+from standard_check.remote import (
+    CI_VARIABLE,
+    OAUTH_SCOPES_HEADER,
+    TOKEN_EXPIRY_HEADER,
+    GitHub,
+    NoCredentials,
+    Unreadable,
+    Unresolvable,
+)
 from standard_check.repo import Repo
 from standard_check.runner import Verdict, run_control
 
@@ -63,14 +75,24 @@ def satisfying_rules(
 class FakeGitHub(GitHub):
     """A GitHub whose answers are supplied rather than fetched."""
 
-    def __init__(self, responses: dict[str, Any], slug: str = "acme/widget") -> None:
+    def __init__(
+        self,
+        responses: dict[str, Any],
+        slug: str = "acme/widget",
+        headers: dict[str, str] | None = None,
+    ) -> None:
         super().__init__(slug=slug, token="t")
         object.__setattr__(self, "_responses", responses)
+        object.__setattr__(self, "_headers", headers or {})
 
     def get(self, path: str) -> Any:
         answer = self._responses[path]  # type: ignore[attr-defined]
         if isinstance(answer, Exception):
             raise answer
+        return answer
+
+    def headers(self, path: str) -> Mapping[str, str]:
+        answer: Mapping[str, str] = self._headers  # type: ignore[attr-defined]
         return answer
 
 
@@ -193,6 +215,8 @@ def test_the_token_is_sent_as_a_bearer_header(monkeypatch: pytest.MonkeyPatch) -
     seen: dict[str, Any] = {}
 
     class Response:
+        headers = email.message.Message()
+
         def read(self) -> bytes:
             return json.dumps({"ok": True}).encode()
 
@@ -431,3 +455,105 @@ def test_there_is_no_second_copy_of_the_rule_vocabulary() -> None:
         assert not hasattr(module, "_RULE_TYPES"), (
             f"{module.__name__} has its own rule-type map — one reading, two readers"
         )
+
+
+# --- SEC-003's remote block: the expiry of the credential CI carries ---------
+
+
+def _in_actions(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(CI_VARIABLE, "true")
+
+
+def _expiring_in(hours: float) -> FakeGitHub:
+    when = datetime.datetime.now(tz=datetime.UTC) + datetime.timedelta(hours=hours)
+    return FakeGitHub({}, headers={TOKEN_EXPIRY_HEADER: when.strftime("%Y-%m-%d %H:%M:%S UTC")})
+
+
+def test_a_token_expiring_inside_the_registers_maximum_passes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _in_actions(monkeypatch)
+    result = platform_token_expires_within(_expiring_in(1), a_register(), {})
+    assert result.passed
+    assert "24h" in result.message
+
+
+def test_a_token_outliving_the_registers_maximum_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The case the requirement exists for: a standing credential in CI."""
+    _in_actions(monkeypatch)
+    result = platform_token_expires_within(_expiring_in(24 * 90), a_register(), {})
+    assert not result.passed
+    assert "24h" in result.message
+
+
+def test_the_maximum_moves_with_the_register(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Widen the register and the same token passes — the assert holds no number."""
+    _in_actions(monkeypatch)
+    token = _expiring_in(24 * 20)
+    assert not platform_token_expires_within(token, a_register(), {}).passed
+
+    def permit_a_month(document: dict[str, Any]) -> None:
+        document["platform_credentials"].append(
+            {"name": "PLATFORM_READ_TOKEN", "triggers": ["push"], "max_lifetime_hours": 720}
+        )
+
+    assert platform_token_expires_within(token, register_with(tmp_path, permit_a_month), {}).passed
+
+
+def test_a_classic_token_with_no_expiry_set_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An absent header **is** the answer when the instrument would have said."""
+    _in_actions(monkeypatch)
+    classic = FakeGitHub({}, headers={OAUTH_SCOPES_HEADER: "repo, workflow"})
+    result = platform_token_expires_within(classic, a_register(), {})
+    assert not result.passed
+    assert "never expires" in result.message
+
+
+def test_an_absent_header_on_another_instrument_is_not_a_violation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """And is not the answer when it is GitHub declining to give one.
+
+    The same shape `github_push_protection_enabled` refuses: a fine-grained or
+    installation token reports its expiry *through* this header, so reading its
+    absence as "never expires" would report a violation produced by not having
+    looked.
+    """
+    _in_actions(monkeypatch)
+    with pytest.raises(Unreadable) as raised:
+        platform_token_expires_within(FakeGitHub({}, headers={}), a_register(), {})
+    assert "was not read" in str(raised.value)
+
+
+def test_an_expiry_that_cannot_be_placed_in_time_is_unreadable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _in_actions(monkeypatch)
+    odd = FakeGitHub({}, headers={TOKEN_EXPIRY_HEADER: "next Tuesday"})
+    with pytest.raises(Unreadable):
+        platform_token_expires_within(odd, a_register(), {})
+
+
+def test_outside_actions_the_block_declines_rather_than_answering() -> None:
+    """SEC-003's locus is `ci`, and a developer's token is a different credential."""
+    with pytest.raises(Unreadable) as raised:
+        platform_token_expires_within(_expiring_in(1), a_register(), {})
+    assert "not a GitHub Actions job" in str(raised.value)
+
+
+def test_a_register_naming_no_platform_credential_has_no_maximum(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """No number in the register means no comparison, not a default in the checker."""
+    _in_actions(monkeypatch)
+
+    def forget_them(document: dict[str, Any]) -> None:
+        del document["platform_credentials"]
+
+    with pytest.raises(Unreadable) as raised:
+        platform_token_expires_within(_expiring_in(1), register_with(tmp_path, forget_them), {})
+    assert "no maximum lifetime" in str(raised.value)

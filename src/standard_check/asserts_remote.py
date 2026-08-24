@@ -18,11 +18,20 @@ these, so "protected" has one definition rather than two.
 
 from __future__ import annotations
 
+import datetime
+import re
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from standard_check.asserts_file import AssertResult
-from standard_check.remote import GitHub, Unreadable
+from standard_check.remote import (
+    CREDENTIAL_PROBE_PATH,
+    OAUTH_SCOPES_HEADER,
+    TOKEN_EXPIRY_HEADER,
+    GitHub,
+    Unreadable,
+    runs_in_github_actions,
+)
 from standard_check.rulesets import by_rule_type, required_checks, requirement_problems
 
 if TYPE_CHECKING:
@@ -35,6 +44,94 @@ def _ok(message: str) -> AssertResult:
 
 def _fail(message: str) -> AssertResult:
     return AssertResult(False, message)
+
+
+# `2026-11-14 15:37:26 UTC`, the one shape GitHub sends. Parsed strictly rather
+# than leniently: an expiry this cannot place in time is not an expiry it can
+# compare, and guessing at a format would decide a control on a misreading.
+_EXPIRY = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) UTC$")
+
+
+def _register_maximum(register: Register) -> int:
+    """The longest lifetime any credential in the register may have.
+
+    The register's number, not the checker's (ADR 0018). A register naming no
+    platform credential has no maximum to compare against, and a comparison
+    against a number nobody wrote is the invented default this repository keeps
+    catching.
+    """
+    if not register.platform_credentials:
+        raise Unreadable(
+            "the register names no platform credential, so there is no maximum lifetime "
+            "to compare this token against — add a `platform_credentials:` entry"
+        )
+    return max(credential.max_lifetime_hours for credential in register.platform_credentials)
+
+
+def platform_token_expires_within(
+    github: GitHub,
+    register: Register,
+    _args: Mapping[str, object],
+) -> AssertResult:
+    """The credential CI carries expires inside the register's maximum.
+
+    ADR 0022 requirement 3. Without it, "we will use a short-expiry token" is a
+    promise rather than a property — the decaying policy ADR 0002 rejected a
+    static cloud key for, applied to the platform instead of the cloud.
+
+    **Two absences that look alike and are not.** A response carrying no expiry
+    header means the credential does not expire *if the instrument is one that
+    would have said so* — a classic token with no expiration date set. For a
+    fine-grained or installation token the header is how expiry is reported at
+    all, so its absence is GitHub declining to answer, and reporting a violation
+    from it would be the substitution `github_push_protection_enabled` refuses
+    one function above.
+
+    **And this is a `locus: [ci]` control.** The token in a developer's shell is
+    not the token CI carries, so answering from it would settle a question about
+    a different credential. Outside GitHub Actions the block declines rather
+    than passing or failing.
+    """
+    if not runs_in_github_actions():
+        raise Unreadable(
+            "this run is not a GitHub Actions job, so the token in the environment is not "
+            "the credential CI carries — SEC-003's ci locus is answered by the run that "
+            "carries it, and a developer's own token settles nothing about it"
+        )
+    maximum = _register_maximum(register)
+    headers = github.headers(CREDENTIAL_PROBE_PATH)
+    reported = headers.get(TOKEN_EXPIRY_HEADER, "").strip()
+    if not reported:
+        if OAUTH_SCOPES_HEADER in headers:
+            return _fail(
+                "the token CI carries is a classic personal access token with no expiry "
+                f"date set, so it never expires — the register permits at most {maximum}h"
+            )
+        raise Unreadable(
+            f"GitHub returned no {TOKEN_EXPIRY_HEADER} header for this token, and it is "
+            "not the instrument whose silence means 'never expires' — what CI carries "
+            "was not read, and nothing here claims it was"
+        )
+    match = _EXPIRY.match(reported)
+    if match is None:
+        raise Unreadable(
+            f"{TOKEN_EXPIRY_HEADER} read {reported!r}, which is not the "
+            "'YYYY-MM-DD HH:MM:SS UTC' shape this can place in time"
+        )
+    expires = datetime.datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S").replace(
+        tzinfo=datetime.UTC
+    )
+    remaining = expires - datetime.datetime.now(tz=datetime.UTC)
+    hours = remaining.total_seconds() / 3600
+    if hours > maximum:
+        return _fail(
+            f"the token CI carries expires {expires.isoformat()}, which is {hours:.0f}h "
+            f"away — the register permits at most {maximum}h"
+        )
+    return _ok(
+        f"the token CI carries expires {expires.isoformat()}, inside the {maximum}h the "
+        "register permits"
+    )
 
 
 def github_push_protection_enabled(
@@ -133,4 +230,5 @@ def default_branch_ruleset_satisfies(
 REMOTE_ASSERTS = {
     "github_push_protection_enabled": github_push_protection_enabled,
     "default_branch_ruleset_satisfies": default_branch_ruleset_satisfies,
+    "platform_token_expires_within": platform_token_expires_within,
 }

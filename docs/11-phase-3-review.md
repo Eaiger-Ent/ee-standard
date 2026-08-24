@@ -4,7 +4,7 @@ The evidence for Phase 3's criteria, so that
 [`04-build-plan.md`](04-build-plan.md) can stay a list of outstanding work.
 A criterion there is one checkable sentence; the reasoning for a tick is here.
 
-**Scope of this record.** Three slices so far.
+**Scope of this record.** Four slices so far.
 
 The first implements `kind: remote` itself — the transport, the two asserts the
 register declares, and the taxonomy that decides what a non-answer is worth. It
@@ -369,3 +369,108 @@ under `plugins/` — is also open. Nothing breaks when it is skipped, which ADR
 
 None. It is recorded because the flip's criterion names ADR 0022 as its blocker,
 and two of that ADR's seven requirements are now closed rather than pending.
+
+## The fourth slice — the expiry becomes a verdict, and answers nowhere yet
+
+### What this slice built
+
+SEC-003's `kind: remote` block, at register contract 23 — ADR 0022 requirement
+3. `max_lifetime_hours` had been in the register since contract 22 and nothing
+read it, which is the shape of a promise rather than a control.
+
+`platform_token_expires_within` reads the
+`github-authentication-token-expiration` header GitHub returns for the
+credential the run is authenticated with, and fails one that outlives the
+largest lifetime `platform_credentials:` permits.
+
+### The finding: the Actions token does not report an expiry
+
+This slice predicted nothing and observed one thing. ADR 0022 confirmed the
+header live for a fine-grained PAT while it was being written; nobody had asked
+what the **Actions** `GITHUB_TOKEN` returns. This pull request's own CI run is
+the first time this repository asked:
+
+```text
+SEC-003  UNCLASSIFIED   CI carries no platform credential the register does not name
+  ? remote: platform_token_expires_within — GitHub returned no
+    github-authentication-token-expiration header for this token, and it is not
+    the instrument whose silence means 'never expires' — what CI carries was not
+    read, and nothing here claims it was
+```
+
+**The design decision this vindicates is the one that cost the most to argue
+for.** Requirement 3 says, in as many words, that *a token with no expiry
+fails*. Had the block been written to that letter, this CI run would be **red**
+— for a credential that certainly expires, within the hour, and that no
+adopter could do anything about. Separating "the instrument said it never
+expires" from "the instrument does not report expiry at all" is what kept a
+false violation out of a gate, and it is the same separation
+`github_push_protection_enabled` makes about `security_and_analysis`.
+
+### Is a block that answers nowhere a declared-but-unreachable control?
+
+Theme T-3 is worth asking about here rather than waving away, because the block
+is silent at both places this repository runs today: `UNCLASSIFIED` locally
+because a developer's token is not the credential CI carries, and `UNCLASSIFIED`
+in CI because the platform-minted token reports no expiry.
+
+It is not T-3, and the reason is what the control is *for*. SEC-003 governs a
+**standing** platform credential in CI — the one ADR 0022 decided this
+repository would carry and has not yet introduced. A fine-grained PAT does
+report its expiry, as the ADR observed and as this repository's own local token
+demonstrates. So the block is silent for the credential that needs no policing
+and live for the one that does, from the moment it exists. A control that
+answers only when the thing it governs is present is a control that applies,
+not one that is unreachable.
+
+What would be T-3 is leaving it here without saying so, which is what this
+section exists to prevent.
+
+### What it costs, stated rather than hidden
+
+A local `standard-check` run now exits `3` rather than `0` — 12 passed, 1
+skipped (predicate), 1 unclassified. That is not a regression to repair: a
+control the run cannot answer is one it must not claim.
+
+**In CI the count of unclassified blocks goes from one to two.** SEC-001's
+remote block was already `UNCLASSIFIED` there, because the Actions token cannot
+read `security_and_analysis`; SEC-003's now joins it. The
+`--require-complete` flip was blocked before this slice and is blocked by one
+more thing after it, so the two resolutions belong together rather than
+separately:
+
+1. **The token ADR 0022 chose.** A fine-grained `Administration: read` token
+   would answer SEC-001's block *and* report its own expiry, closing both at
+   once. It is what requirements 3 and 4 were written to precede.
+2. **Or a `partial:` declaration on SEC-003's remote block for the CI locus**,
+   naming the platform-minted token as the case that cannot be answered and
+   carrying an expiry. ADR 0017's machinery exists for exactly this, and it does
+   not unblock the flip on its own — a partial denies a `0` exit by design,
+   which ADR 0022 § Option 4 already refused for SEC-001.
+
+The first is the route; the second is what to write down if the first is
+deferred again.
+
+### Evidence
+
+| Property | How it was checked |
+| --- | --- |
+| A token expiring inside the maximum passes | `tests/test_remote.py::test_a_token_expiring_inside_the_registers_maximum_passes` |
+| One outliving it fails | `::test_a_token_outliving_the_registers_maximum_fails` |
+| The number is the register's, not the checker's | `::test_the_maximum_moves_with_the_register` — the same token, two registers, two verdicts |
+| A classic token with no expiry set fails | `::test_a_classic_token_with_no_expiry_set_fails` |
+| An absent header on another instrument is not a violation | `::test_an_absent_header_on_another_instrument_is_not_a_violation` |
+| An unparseable expiry is not guessed at | `::test_an_expiry_that_cannot_be_placed_in_time_is_unreadable` |
+| Outside Actions the block declines | `::test_outside_actions_the_block_declines_rather_than_answering` |
+| A register naming no credential has no maximum | `::test_a_register_naming_no_platform_credential_has_no_maximum` |
+| What CI actually answers | The CI run quoted above, not a prediction |
+
+`GITHUB_ACTIONS` joined the token variables `tests/conftest.py` strips autouse.
+A block that branches on it would otherwise take one path on a laptop and the
+other in CI — the same hidden input the suite already refuses for credentials,
+wearing a different name.
+
+### Criteria this slice closes
+
+None. It closes ADR 0022 requirement 3, and adds one observation the flip's
+criterion has to account for.

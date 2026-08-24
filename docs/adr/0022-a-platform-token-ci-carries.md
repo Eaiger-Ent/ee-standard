@@ -436,7 +436,7 @@ one exists.
 | --- | --- | --- |
 | 1. A control that can see a platform token at all | **Implemented** | SEC-003, Tier 1, `rung: blocking`, `variance: forbidden`, `baseline: null`, `locus: [ci]`, verified by the `no_unregistered_workflow_secrets` file assert |
 | 2. A register fact naming what may be carried, and where | **Implemented** | `platform_credentials:`, beside `cloud_credentials:` — `name`, `triggers`, `max_lifetime_hours` |
-| 3. Expiry must be verified, not promised | Open | `max_lifetime_hours` is recorded and nothing reads it yet |
+| 3. Expiry must be verified, not promised | **Implemented** at contract 23 | SEC-003's `kind: remote` block, `platform_token_expires_within` — reads the `github-authentication-token-expiration` header against the register's maximum, and answers only inside an Actions job |
 | 4. A classic token must be refused | Open | |
 | 5. The environment gate is itself unverified platform state | Not applicable here | Option 1 is this repository's posture, so there is no environment |
 | 6. The posture difference must not reach an adopter | Open | |
@@ -456,6 +456,41 @@ a statement rather than a default: GitHub creates it at the start of each job
 and expires it when the job finishes, so the event that started the job cannot
 change what the token reaches. A standing credential names its events, and that
 is what makes Option 3 checkable rather than a convention.
+
+## Applied — pass 2: requirement 3, the expiry becomes a verdict
+
+Landed 2026-08-24 at register contract 23. `max_lifetime_hours` had been in the
+register since contract 22 and nothing read it, which is the shape of a promise
+rather than a control — precisely what this requirement was written against.
+
+**One thing the requirement did not settle, and this pass had to.** An absent
+expiry header does not mean one thing. On a **classic** token it is how "no
+expiry date was set" is reported, and that fails. On a fine-grained or
+installation token the header is how expiry is reported *at all*, so its absence
+is GitHub declining to answer, and reporting a violation from it would be the
+substitution SEC-001's remote block already refuses
+([ADR 0021](0021-how-remote-verification-authenticates.md)). The block therefore
+fails the first and is UNCLASSIFIED on the second, using the same
+`X-OAuth-Scopes` presence that requirement 4 turns into a refusal of its own.
+
+**What the Actions token turned out to answer.** This ADR confirmed the expiry
+header live for a fine-grained PAT. The **Actions** `GITHUB_TOKEN` returns no
+such header at all — observed on the CI run that landed this pass, not
+predicted — so SEC-003's remote block is `UNCLASSIFIED` in CI beside SEC-001's,
+and the block is live only for a credential that reports its expiry. That is
+the standing token this requirement was written to police, and the one this
+repository has not yet introduced: the block is silent for the credential that
+needs no policing and answers for the one that does. Had the requirement's
+letter been implemented — *a token with no expiry fails* — that CI run would
+have been red for a credential that expires within the hour.
+
+**And the block answers only inside a GitHub Actions job.** SEC-003's locus is
+`ci`. The token in a developer's shell is a different credential, so a verdict
+from it would settle a question about the wrong thing — this repository's own
+`GITHUB_TOKEN` is a fine-grained PAT expiring in about three months, which is
+unremarkable for a laptop and would be a violation in CI. The cost is stated
+rather than hidden: a local `standard-check` run now exits `3` rather than `0`,
+because a control it cannot answer is one it must not claim.
 
 ## Related ADRs
 
