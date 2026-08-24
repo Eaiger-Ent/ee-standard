@@ -6,6 +6,19 @@
 
 ## Background
 
+**The problem.** LNT-001 says ruff lints and formats Python at three places:
+the editor, pre-commit, and CI. Two of those three were verified to be running
+ruff. The editor was not, and it was not running ruff. A devcontainer feature
+had configured autopep8 to format Python files, and nothing in this repository
+was capable of noticing.
+
+Two things had to be true for that to happen, and both are architectural rather
+than accidental. An editor has no exit code, so the technique this repository
+uses to verify a locus — make the wrong thing fail a command — does not apply
+to it. And a devcontainer feature contributes editor configuration as well as
+software, so a component we pin for what it installs also decides things we
+never reviewed.
+
 LNT-001 declares `locus: [editor, pre-commit, ci]`. Three loci, one pinned
 tool, one configuration — *pin once, reference many*.
 
@@ -76,7 +89,7 @@ asks whether the pinned extension is *present*. Presence does not exclude.
 Honest and free. An editor cannot fail a build, so calling it a locus alongside
 CI arguably overstates what it does.
 
-Rejected. The editor is where a developer meets a violation first, and the rung
+**Rejected.** The editor is where a developer meets a violation first, and the rung
 vocabulary already has words for a gate that does not block — `advisory` and
 `warn` — so the register can describe a non-blocking locus without pretending
 it does not exist. More decisively, dropping the claim does not change the
@@ -89,7 +102,7 @@ repository exists to prevent, not a remedy for it.
 Put `[python].editor.defaultFormatter` into `customizations.vscode.settings`
 and rely on the repository's own metadata winning over the feature's.
 
-Rejected, on the specification's own words. Both values land in the same
+**Rejected, on the specification's own words.** Both values land in the same
 machine-scoped file, and the containers.dev merge table gives exactly one
 instruction for the `customizations` property:
 
@@ -110,7 +123,15 @@ tracked file: it appears in a diff, it passes under the same gates as
 everything else, and a `kind: file` assert can read it without knowing anything
 about devcontainer metadata.
 
+**Chosen.** It is the only one of the three that both changes the behaviour and
+leaves evidence a checker can read.
+
 ## Decision
+
+**We choose Option 3: the editor locus is configured by a tracked
+`.vscode/settings.json` in the repository, and verified there.**
+
+That decision has five parts.
 
 1. **`.vscode/settings.json` is the editor locus's configuration**, tracked, and
    the only place this repository binds editor behaviour for a gated file type.
