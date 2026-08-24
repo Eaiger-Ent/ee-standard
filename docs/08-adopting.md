@@ -980,7 +980,7 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 7b | Quality gates wired at every locus **and** stamped | `standard-check run --control LNT-001 --control TYP-001 --control TST-001` exits `0` — every block ✓, nothing skipped |
 | 7a | Secrets gate wired at pre-commit **and** CI, and stamped | `standard-check run --control SEC-001` shows both local blocks ✓; with an admin-scoped token the remote block is ✓ too and it exits `0` |
 | 7c | The branch protection you recorded is the one GitHub enforces | `standard-check run --control CI-001` with a token — the remote block reports the rules in effect, not the file |
-| 8 | The conformance run is a required status check | GOV-001 passing without its partial declaration (Phase 3) |
+| 8 | The conformance run is a required status check | `uv run standard-check` with a token reports GOV-001 `PASS` — from register contract 26 it reads which checks GitHub actually enforces on your default branch, and fails one your register requires and the platform does not. Without a token it reports `SKIPPED (no credentials)` and says which half it did verify |
 
 ## When something is wrong with the standard itself
 

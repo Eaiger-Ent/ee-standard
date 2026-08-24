@@ -266,7 +266,18 @@ meta:
   #     be discovered — narrowing it means matching a credential to its entry,
   #     which needs a way to identify the running token that GitHub does not
   #     offer.
-  register_contract: 25
+  # 26: GOV-001's `partial:` is gone, because the half it declared unverified
+  #     is read. The meta-control now asks GitHub which status checks a merge
+  #     to the default branch actually waits for, and fails when a check the
+  #     register requires is not among them — the chain from a control to a
+  #     blocked merge is read end to end rather than in two pieces nothing
+  #     joins.
+  #
+  #     A meta-control gained a third input to do it: the resolved platform
+  #     target, handed in by the runner exactly as it is handed to a control's
+  #     blocks. Resolving it inside the meta-control would let two verdicts in
+  #     one report describe different repositories.
+  register_contract: 26
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -1486,24 +1497,19 @@ meta_controls:
     verify:
       - kind: command
         run: standard-check meta GOV-001
-        # ADR 0017. The file-level half genuinely passes: workflow steps are
-        # read, invocations are matched, suppression is detected. What cannot
-        # be seen from files is whether the workflow is a *required status
-        # check* — the sharpest instance of theme T-3, and the one this control
-        # was written for. That needs platform state, which is Phase 3.
-        # Narrowed at contract 19, not dropped. Two different questions hid
-        # inside "is it required": whether the *repository* says the job is
-        # required, which the recorded ruleset now answers from a file, and
-        # whether *GitHub* is enforcing that ruleset, which no file can answer
-        # and which stays Phase 3's. Dropping the partial outright would let the
-        # first stand in for the second, and a recorded ruleset the platform has
-        # never been told about protects nothing.
-        partial:
-          unverified: >-
-            whether GitHub enforces the recorded ruleset — reachability from a
-            step that can fail is verified, and so is that step's job being a
-            check the recorded ruleset requires; platform state is not
-          expires: 2026-11-30
+        # The `partial:` this block carried from contract 3 is gone at contract
+        # 26, because the thing it declared unverified is now read. Two
+        # questions hid inside "is it required", and contract 19 separated
+        # them: whether the *repository* says the job is required, which the
+        # recorded ruleset answers from a file, and whether *GitHub* enforces
+        # that ruleset, which no file can answer. GOV-001 now asks the platform
+        # the second one and fails a required check GitHub does not enforce —
+        # a recorded ruleset nobody was told about protects nothing.
+        #
+        # Removing a partial is not the same act as satisfying it, so it is
+        # worth saying which happened: the property is verified, not waived.
+        # Without a token the meta-control reports SKIPPED (no credentials) and
+        # says what it did verify, which still denies the run a `0` (ADR 0016).
 
   - id: GOV-002
     title: No baseline grew

@@ -6,6 +6,7 @@ import copy
 import json
 import shutil
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +14,7 @@ import pytest
 import yaml
 
 from standard_check.register import Register, load_register
-from standard_check.remote import CI_VARIABLE, TOKEN_VARIABLES
+from standard_check.remote import CI_VARIABLE, TOKEN_VARIABLES, GitHub
 from standard_check.repo import Repo
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -37,6 +38,30 @@ def _no_ambient_github_token(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     for name in (*TOKEN_VARIABLES, CI_VARIABLE):
         monkeypatch.delenv(name, raising=False)
+
+
+class FakeGitHub(GitHub):
+    """A GitHub whose answers are supplied rather than fetched."""
+
+    def __init__(
+        self,
+        responses: dict[str, Any],
+        slug: str = "acme/widget",
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(slug=slug, token="t")
+        object.__setattr__(self, "_responses", responses)
+        object.__setattr__(self, "_headers", headers or {})
+
+    def get(self, path: str) -> Any:
+        answer = self._responses[path]  # type: ignore[attr-defined]
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    def headers(self, path: str) -> Mapping[str, str]:
+        answer: Mapping[str, str] = self._headers  # type: ignore[attr-defined]
+        return answer
 
 
 def requires_tool(name: str) -> pytest.MarkDecorator:

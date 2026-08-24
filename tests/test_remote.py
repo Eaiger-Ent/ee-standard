@@ -15,13 +15,19 @@ import json
 import subprocess
 import urllib.error
 import urllib.request
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from conftest import a_register, make_repo, minimal_register, register_with, write_register
+from conftest import (
+    FakeGitHub,
+    a_register,
+    make_repo,
+    minimal_register,
+    register_with,
+    write_register,
+)
 from standard_check import remote as remote_module
 from standard_check.asserts_remote import (
     REMOTE_ASSERTS,
@@ -71,30 +77,6 @@ def satisfying_rules(
         {"type": "non_fast_forward"},
         {"type": "deletion"},
     ]
-
-
-class FakeGitHub(GitHub):
-    """A GitHub whose answers are supplied rather than fetched."""
-
-    def __init__(
-        self,
-        responses: dict[str, Any],
-        slug: str = "acme/widget",
-        headers: dict[str, str] | None = None,
-    ) -> None:
-        super().__init__(slug=slug, token="t")
-        object.__setattr__(self, "_responses", responses)
-        object.__setattr__(self, "_headers", headers or {})
-
-    def get(self, path: str) -> Any:
-        answer = self._responses[path]  # type: ignore[attr-defined]
-        if isinstance(answer, Exception):
-            raise answer
-        return answer
-
-    def headers(self, path: str) -> Mapping[str, str]:
-        answer: Mapping[str, str] = self._headers  # type: ignore[attr-defined]
-        return answer
 
 
 def protected_repo(

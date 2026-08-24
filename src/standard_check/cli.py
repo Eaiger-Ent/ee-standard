@@ -154,7 +154,7 @@ def _cmd_run(
     meta_results = (
         []
         if ids is not None
-        else [run_meta_control(meta, register, repo) for meta in register.meta_controls]
+        else [run_meta_control(meta, register, repo, remote) for meta in register.meta_controls]
     )
     print(render(register, results, meta_results))
     verdicts = [r.verdict for r in results] + [m[2] for m in meta_results]
@@ -175,7 +175,11 @@ def _cmd_run(
 
 
 def _cmd_meta(
-    repo_path: Path, register_path: Path | None, meta_id: str, require_complete: bool
+    repo_path: Path,
+    register_path: Path | None,
+    meta_id: str,
+    require_complete: bool,
+    github_repo: str | None = None,
 ) -> int:
     register, code = _load(repo_path, register_path)
     if register is None:
@@ -186,7 +190,8 @@ def _cmd_meta(
             file=sys.stderr,
         )
         return 2
-    verdict, message = META_CHECKS[meta_id](register, Repo(repo_path))
+    repo = Repo(repo_path)
+    verdict, message = META_CHECKS[meta_id](register, repo, resolve_remote(repo, github_repo))
     print(f"{meta_id}: {verdict} — {message}")
     return exit_code([verdict], require_complete=require_complete)
 
@@ -262,7 +267,9 @@ def _dispatch(args: argparse.Namespace, repo_path: Path, register_path: Path | N
         case "schema":
             return _cmd_schema(repo_path, register_path)
         case "meta":
-            return _cmd_meta(repo_path, register_path, args.id, args.require_complete)
+            return _cmd_meta(
+                repo_path, register_path, args.id, args.require_complete, args.github_repo
+            )
         case "assert":
             return _cmd_assert(repo_path, register_path, args.name)
         case "explain":
