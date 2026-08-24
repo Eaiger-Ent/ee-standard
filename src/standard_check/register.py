@@ -109,10 +109,12 @@ _GATE_ALLOWED = (
     "invocation",
     "pre_commit",
     "editor_extension",
+    "editor_binding",
     "strict_key",
     "coverage_key",
     "config",
 )
+_BINDING_ALLOWED = ("language", "setting")
 _GATE_REQUIRED = ("tool", "invocation", "config")
 _CONFIG_ALLOWED = ("file", "section")
 # The roles a gate can play. Closed, and a property of the register format
@@ -300,6 +302,27 @@ class ConfigLocation:
 
 
 @dataclass(frozen=True)
+class EditorBinding:
+    """The file type a gate's editor extension must hold, and where that is said.
+
+    A register fact from contract 21, ADR 0029 points 3 and 4
+    (`docs/adr/0029-the-editor-locus-is-configured-by-the-repository.md`).
+    Which language a gate owns is a repository decision — a
+    stack could mandate a formatter for one file type and not another — and so
+    is which setting constitutes holding it, since not every linter is its
+    language's formatter. Both answer *yes* to ADR 0018's boundary test, so
+    neither belongs in the checker.
+
+    `language` is the VS Code language id, used as the `[<language>]` selector.
+    `setting` is the key inside that selector whose value must be the gate's
+    `editor_extension`.
+    """
+
+    language: str
+    setting: str
+
+
+@dataclass(frozen=True)
 class Gate:
     """A tool that enforces one control for one stack, and how each locus runs it.
 
@@ -327,6 +350,13 @@ class Gate:
     package: str | None = None
     pre_commit: str | None = None
     editor_extension: str | None = None
+    # The file type `editor_extension` must hold, and the setting that says so.
+    # Presence of an extension is not the extension being the tool that runs:
+    # `charliermarsh.ruff` was installed the whole time a devcontainer feature
+    # had Python files bound to autopep8 (ADR 0029 point 4). Omitting this
+    # asserts the gate's tool holds no file type — true of a linter that is not
+    # its language's formatter.
+    editor_binding: EditorBinding | None = None
     strict_key: str | None = None
     # Where the tool's allow-list lives, as a dotted path from the config file's
     # root. ADR 0019 applied to a coverage list: `files = [...]` is an exemption
@@ -1097,6 +1127,27 @@ class _Validator:
             found.append(ConfigLocation(file=file, section=section))
         return tuple(found)
 
+    def _editor_binding(self, raw: object, at: str) -> EditorBinding | None:
+        """The `[language].setting` a gate's extension must hold.
+
+        Returns None both when absent — which asserts the gate holds no file
+        type — and when malformed, having recorded the error. The caller
+        distinguishes the two by whether an error was raised, because a binding
+        that failed to parse must not read as a deliberate omission.
+        """
+        if not isinstance(raw, dict):
+            self.error(at, "must be a {language, setting} mapping")
+            return None
+        self._unknown_keys(raw, _BINDING_ALLOWED, at)
+        values: dict[str, str] = {}
+        for key in _BINDING_ALLOWED:
+            value = raw.get(key)
+            if not isinstance(value, str) or not value.strip():
+                self.error(f"{at}.{key}", "must be a non-empty string")
+                return None
+            values[key] = value.strip()
+        return EditorBinding(language=values["language"], setting=values["setting"])
+
     def _gate(self, raw: object, role: str, at: str) -> Gate | None:
         if not isinstance(raw, dict):
             self.error(at, "must be a mapping")
@@ -1123,6 +1174,21 @@ class _Validator:
                 self.error(f"{at}.{key}", "must be a non-empty string when present")
                 return None
             optional[key] = value.strip()
+        binding_raw = raw.get("editor_binding")
+        binding = None
+        if binding_raw is not None:
+            binding = self._editor_binding(binding_raw, f"{at}.editor_binding")
+            # A binding with no extension to bind is theme T-3 inside the
+            # register: stated, and unverifiable by construction. Recorded and
+            # carried on from, rather than returned on — a gate with two
+            # problems should report both, and returning here would hide the
+            # locus check that fires on the same missing field.
+            if binding is not None and optional["editor_extension"] is None:
+                self.error(
+                    f"{at}.editor_binding",
+                    "requires editor_extension — a file type must be held by an extension",
+                )
+                binding = None
         config = self._config_locations(raw.get("config"), f"{at}.config")
         if not config:
             return None
@@ -1134,6 +1200,7 @@ class _Validator:
             package=optional["package"],
             pre_commit=optional["pre_commit"],
             editor_extension=optional["editor_extension"],
+            editor_binding=binding,
             strict_key=optional["strict_key"],
             coverage_key=optional["coverage_key"],
         )

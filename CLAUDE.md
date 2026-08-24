@@ -9,8 +9,8 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 (`standard-check`, in `src/standard_check/`) audits them.
 
 Current status: Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
-with no re-opened criteria outstanding. **Phase 2 is 11/13** and **Phase 3 is in
-progress**; the register is at contract 20. `docs/04-build-plan.md` is the only
+with no re-opened criteria outstanding. **Phase 2 is 12/13** and **Phase 3 is in
+progress**; the register is at contract 21. `docs/04-build-plan.md` is the only
 list of outstanding work and `uv run python scripts/plan_progress.py` is its
 derived view — never keep a second copy of that status here. The slice-by-slice
 record, and the evidence behind every criterion either phase ticks, lives in
@@ -19,12 +19,14 @@ audit run over the register rather than over the ledger, and § What the second
 review found — and in `docs/11-phase-3-review.md`, including what each slice
 deliberately left open.
 
-Two Phase 2 criteria are still open. The **devcontainer template** has not been
+One Phase 2 criterion is still open. The **devcontainer template** has not been
 built: the 2026-08-24 rebuild was of this repository's own container, and the
 template at `plugins/ee-standard/templates/devcontainer/` is a different
 artefact — this container has no Docker, so nothing here has run
 `devcontainer build`, and the commands for an operator are in
-`docs/08-adopting.md` § 2.0. The other is points 3 and 4 of ADR 0029, below.
+`docs/08-adopting.md` § 2.0. It is **deferred to Phase 4**, which has to build
+the template from placeholders to exist at all, so doing it here would be a
+rehearsal of the same build.
 
 Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
@@ -68,19 +70,31 @@ tools"* — where every other property states a rule, so a binding written in
 competes on undefined terms. Workspace scope wins by documented rule instead.
 `devcontainer.json` installs the extension and keeps container concerns;
 `.vscode/settings.json` decides which tool holds a gated file type; neither
-restates the other. The file is hand-written and carries no provenance stamp —
-adopted, not deployed, like the DEV-001 and LNT-001 regions of
-`devcontainer.json`.
+restates the other. The file was hand-written and carries an LNT-001 stamp from
+contract 21, when `gate-quality` learned to write it — adopted first and stamped
+when its gate caught up, the order the DEV-001 and LNT-001 regions of
+`devcontainer.json` went in.
 
 **A feature's VS Code customizations are an untrusted default**, and DEV-001's
 digest pin does not reach them: it governs what a feature installs, never what
 it configures. That is how `python:1` came to bind Python files to autopep8 in a
-repository whose LNT-001 pins ruff. **`linter-wired-at-all-loci` cannot catch
-it today** — it reads `editor_extension` from `stacks:` and asks whether the
-pinned extension is *present*, and presence does not exclude: `charliermarsh.ruff`
-was installed the whole time autopep8 held the file type. Points 3 and 4 of that
-ADR — the `stacks:` binding field, and changing the assert from presence to
-exclusivity — are **not implemented**, and are a Phase 2 criterion.
+repository whose LNT-001 pins ruff, with `linter-wired-at-all-loci` reporting
+PASS the whole time: it asked whether the pinned extension was *present*, and
+presence does not exclude — `charliermarsh.ruff` was installed throughout.
+
+Points 3 and 4 of that ADR are **implemented at register contract 21**. Gates
+carry an `editor_binding` — a `language` and the `setting` that holds it — and
+the assert fails three states: another extension holding the language, **nobody**
+holding it, and the binding restated in `devcontainer.json`. The middle one is
+the case that occurred and the reason an absent binding is a violation rather
+than a default: the autopep8 binding came from a feature, so no tracked file
+said anything, and an assert objecting only to a wrong value would have passed
+it. The third fails on agreement too, because the merge rule is undefined and
+agreeing today is luck. The typescript lint gate declares **no** binding —
+eslint is not TypeScript's formatter — and that absence is a statement, like
+`coverage_key`'s. What is still not closed is what ADR 0029 § Consequences said
+would not be: an extension may use its bundled binary, and on a fresh container
+create the environment does not exist when the extension host starts.
 
 Per [ADR 0030](docs/adr/0030-uv-is-bootstrapped-from-a-pinned-release.md)
 (**Accepted** and implemented 2026-08-24) that feature is **gone**. It existed
@@ -299,10 +313,13 @@ naming the control, the deploying skill and version, the register version **and
 the register contract** — `docs/00-concepts.md` § The provenance stamp has the
 format, one parser lives at `src/standard_check/provenance.py` (never write a
 second), and `tests/test_provenance_stamps.py` checks every stamp parses and
-names a real control. Eleven files carry one: `.markdownlint.yaml`,
+names a real control. Twelve files carry one: `.markdownlint.yaml`,
 `.markdownlint-cli2.yaml`, `.github/workflows/lint.yml`,
 `.claude/hooks/md-lint.py`, `.github/workflows/standard-check.yml`,
-`.devcontainer/devcontainer.json`, `.github/dependabot.yml` — the one file whose
+`.devcontainer/devcontainer.json`, `.vscode/settings.json` — the second of
+`gate-quality`'s two editor-locus artefacts, added at contract 21, because
+installing an extension and that extension holding a file type are separate
+claims — `.github/dependabot.yml` — the one file whose
 stamp sits at the top, because every line of it belongs to SUP-002 —
 `.devcontainer/setup.sh`, whose every stamp belongs to a gate other than the
 `gate-build` that owns the file, `.github/rulesets/default-branch.json` — the

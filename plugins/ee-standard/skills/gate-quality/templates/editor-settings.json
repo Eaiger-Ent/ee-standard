@@ -1,0 +1,40 @@
+// The editor locus, second half: which tool *holds* a gated file type.
+// `editor-extensions.json` installs the extension; this decides that the
+// extension is the one that runs. They are separate artefacts because they are
+// separate claims — an extension was installed the whole time another one held
+// the file type, and LNT-001 called that a pass (ADR 0029 point 4).
+//
+// **Workspace scope, and only workspace scope.** Write this to
+// `.vscode/settings.json` in the repository, never into `devcontainer.json`.
+// The containers.dev merge table gives one instruction for `customizations` —
+// "Merging is left to the tools" — where every other property states a rule, so
+// a binding written there lands in the same machine-scoped file a devcontainer
+// feature's does and competes on undefined terms. A tracked workspace file wins
+// by documented rule instead (ADR 0029 point 1). The checker fails a repository
+// that sets this binding in both places, agreement included: agreeing today is
+// luck, not a rule.
+//
+// **A missing binding is a violation, not a default.** The state this catches
+// is the one where nothing tracked said anything and a devcontainer feature
+// decided — `ghcr.io/devcontainers/features/python:1` published
+//   "[python]": { "editor.defaultFormatter": "ms-python.autopep8" }
+// in a repository whose register pinned ruff. DEV-001's digest pin governs what
+// a feature installs and says nothing about what it configures, so nothing saw
+// it. Say the binding rather than correct one.
+//
+// Every value is the register's: the language and the setting are
+// `stacks.{{STACK}}.gates.lint.editor_binding`, and the extension is that
+// gate's `editor_extension`. A gate whose register entry declares no
+// `editor_binding` binds no file type, and this artefact is not written for it
+// — eslint is a linter and not TypeScript's formatter.
+//
+// LNT-001 is the only one of this gate's three controls declaring an `editor`
+// locus, so the stamp names it alone.
+//
+// --- .vscode/settings.json — merged into what is already there ---
+{
+  // ee-control: LNT-001  ee-skill: gate-quality@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+  "[{{EDITOR_LANGUAGE}}]": {
+    "{{EDITOR_BINDING_SETTING}}": "{{EDITOR_EXTENSION}}"
+  }
+}

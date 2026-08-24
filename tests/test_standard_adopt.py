@@ -149,6 +149,16 @@ def _fill(text: str, register: Register, gate: str, **extra: str) -> str:
         "{{LINT_HOOK_ID}}": stack.gates["lint"].pre_commit or "",
         "{{LINT_INVOCATION}}": stack.gates["lint"].invocation,
         "{{EDITOR_EXTENSION}}": stack.gates["lint"].editor_extension or "",
+        "{{EDITOR_LANGUAGE}}": (
+            stack.gates["lint"].editor_binding.language
+            if stack.gates["lint"].editor_binding
+            else ""
+        ),
+        "{{EDITOR_BINDING_SETTING}}": (
+            stack.gates["lint"].editor_binding.setting
+            if stack.gates["lint"].editor_binding
+            else ""
+        ),
         "{{TYPECHECK_TOOL}}": stack.gates["typecheck"].tool,
         "{{TYPECHECK_HOOK_ID}}": stack.gates["typecheck"].pre_commit or "",
         "{{TYPECHECK_INVOCATION}}": stack.gates["typecheck"].invocation,
@@ -314,6 +324,24 @@ def _deploy_all(root: Path, register: Register) -> None:
         ),
         encoding="utf-8",
     )
+    # Step 3b — the binding, at workspace scope. Installing the extension above
+    # says the tool is available; this says it is the tool that runs. The gap
+    # between those two is what ADR 0029 point 4 closes, and until contract 21
+    # nothing here would have noticed a feature holding the file type instead.
+    if register.stacks["python"].gates["lint"].editor_binding is not None:
+        (root / ".vscode").mkdir(exist_ok=True)
+        (root / ".vscode/settings.json").write_text(
+            _fill(
+                _payload(
+                    _gate("gate-quality") / "editor-settings.json",
+                    comment="//",
+                    marker="// --- .vscode/settings.json",
+                ),
+                register,
+                "gate-quality",
+            ),
+            encoding="utf-8",
+        )
     _hooks(
         root,
         _fill(_payload(_gate("gate-quality") / "precommit-hooks.yaml"), register, "gate-quality"),

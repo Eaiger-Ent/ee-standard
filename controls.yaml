@@ -189,7 +189,30 @@ meta:
   #     A toolchain file is neither, and it behaves like a lockfile where it
   #     counts — every locus reads it, so nothing repeats the value and the
   #     assert checks the file is there rather than comparing copies.
-  register_contract: 20
+  # 21: The editor locus is verified by exclusion rather than by presence, and
+  #     the register says what is bound. `stacks.<stack>.gates.<role>` gains
+  #     `editor_binding` — a language and the setting that holds it — and
+  #     `linter-wired-at-all-loci` fails when a gated file type is held by
+  #     another extension or by nobody (ADR 0029 points 3 and 4).
+  #
+  #     Presence never excluded. `charliermarsh.ruff` was installed for the
+  #     whole time `ghcr.io/devcontainers/features/python:1` bound Python files
+  #     to `ms-python.autopep8`, and LNT-001 reported that as passing: DEV-001's
+  #     digest pin governs what a feature installs and says nothing about what
+  #     it configures, so nothing in this register saw the formatter change.
+  #
+  #     An **unstated** binding fails too, and that is the case that mattered:
+  #     the autopep8 binding was written by a feature, so no tracked file said
+  #     anything at all. An assert objecting only to a wrong value in a file
+  #     nobody had written would have passed the exact state it exists to catch.
+  #     Stating the binding at workspace scope is therefore the requirement, not
+  #     a way of correcting one.
+  #
+  #     Which language a gate owns and which setting holds it are both register
+  #     facts: a stack may mandate a formatter for one file type and not
+  #     another, and not every linter is its language's formatter — eslint
+  #     declares no binding here for that reason.
+  register_contract: 21
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -543,6 +566,22 @@ stacks:
         invocation: uv run ruff check
         pre_commit: ruff
         editor_extension: charliermarsh.ruff
+        # Which file type that extension must *hold*, and where the repository
+        # says so. Added at contract 21 (ADR 0029 points 3 and 4): the extension
+        # being installed is not the extension being the tool that runs, and the
+        # difference is not academic — `python:1` published
+        #   "[python]": { "editor.defaultFormatter": "ms-python.autopep8" }
+        # and shipped the extension to match, so autopep8 formatted Python in a
+        # repository pinning ruff while `charliermarsh.ruff` sat installed
+        # beside it and this control passed.
+        #
+        # The binding is read from `.vscode/settings.json`, at workspace scope,
+        # because it is the only scope that wins by documented rule — the
+        # containers.dev merge table says of `customizations` only that
+        # "merging is left to the tools" (ADR 0029). A binding absent there is a
+        # violation, not a default: the state this catches is the one where
+        # nothing tracked said anything and a feature decided.
+        editor_binding: {language: python, setting: editor.defaultFormatter}
         config:
           - {file: pyproject.toml, section: tool.ruff}
           - {file: ruff.toml}
@@ -580,6 +619,12 @@ stacks:
         invocation: node_modules/.bin/eslint
         pre_commit: eslint
         editor_extension: dbaeumer.vscode-eslint
+        # No `editor_binding`, and deliberately: eslint is a linter and not
+        # TypeScript's formatter, so demanding it hold
+        # `editor.defaultFormatter` would mandate a binding no reasonable
+        # repository writes. Omitting the field asserts this gate's tool holds
+        # no file type, the same shape `coverage_key`'s absence has. A stack
+        # that does mandate a TypeScript formatter states it here.
         config:
           - {file: eslint.config.*}
           - {file: .eslintrc*}

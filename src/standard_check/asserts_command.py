@@ -560,6 +560,75 @@ def _applicable_gates(repo: Repo, register: Register, role: str) -> dict[str, Ga
     }
 
 
+# Where a repository states editor behaviour, and where it must not. Both paths
+# are VS Code's own layout rather than anything a register could vary, so they
+# stay in the checker (ADR 0018) — what is bound, and by which extension, comes
+# from `stacks:`.
+_WORKSPACE_SETTINGS = ".vscode/settings.json"
+_DEVCONTAINER = ".devcontainer/devcontainer.json"
+
+
+def _settings(repo: Repo, path: str, *, at: tuple[str, ...] = ()) -> dict[str, Any]:
+    """A settings mapping from a JSONC file, or an empty one.
+
+    `at` walks into a nested object — `devcontainer.json` holds its settings
+    under `customizations.vscode.settings`, where `.vscode/settings.json` is the
+    mapping itself.
+    """
+    if not repo.exists(path):
+        return {}
+    node: object = load_jsonc(repo.root / path)
+    for key in at:
+        node = node.get(key) if isinstance(node, dict) else None
+    return node if isinstance(node, dict) else {}
+
+
+def _binding_problems(repo: Repo, stack: str, gate: Gate) -> list[str]:
+    """Whether the gate's extension *holds* its file type, not merely exists.
+
+    ADR 0029 point 4. Presence never excluded: `charliermarsh.ruff` was
+    installed for the whole time `ghcr.io/devcontainers/features/python:1` had
+    Python files bound to `ms-python.autopep8`, and the assert called that a
+    pass. The binding is read at workspace scope because that is the only scope
+    that wins by documented rule — the containers.dev merge table says of
+    `customizations` only that "merging is left to the tools".
+
+    An **unstated** binding fails, and this is the case that matters: the
+    autopep8 binding was written by a feature, so no tracked file said anything
+    at all. An assert that only objected to a wrong value in a file nobody had
+    written would have passed the state it exists to catch.
+    """
+    binding = gate.editor_binding
+    if binding is None or not gate.editor_extension:
+        return []
+    selector = f"[{binding.language}]"
+    problems = []
+    scoped = _settings(repo, _WORKSPACE_SETTINGS).get(selector)
+    held = scoped.get(binding.setting) if isinstance(scoped, dict) else None
+    if held is None:
+        problems.append(
+            f"{stack}: editor locus — {_WORKSPACE_SETTINGS} does not set "
+            f'"{selector}".{binding.setting}, so whichever extension a feature or '
+            f"the base image binds holds {binding.language} files"
+        )
+    elif str(held) != gate.editor_extension:
+        problems.append(
+            f"{stack}: editor locus — {binding.language} files are bound to {held}, "
+            f"not to {gate.editor_extension}, which {gate.tool} is pinned as"
+        )
+    # A second statement of the binding, in the file ADR 0029 point 1 takes it
+    # out of. Wrong even when it agrees: it lands in the same machine-scoped
+    # file a feature's does and competes on undefined terms, so agreeing today
+    # is luck rather than a rule.
+    container = _settings(repo, _DEVCONTAINER, at=("customizations", "vscode", "settings"))
+    if isinstance(container.get(selector), dict) and binding.setting in container[selector]:
+        problems.append(
+            f"{stack}: editor locus — {_DEVCONTAINER} also sets "
+            f'"{selector}".{binding.setting}; the binding belongs at workspace scope alone'
+        )
+    return problems
+
+
 def _wired_problems(repo: Repo, stack: str, gate: Gate) -> list[str]:
     """Where this gate is not wired, across the loci it names."""
     problems = []
@@ -572,6 +641,7 @@ def _wired_problems(repo: Repo, stack: str, gate: Gate) -> list[str]:
         problems.append(
             f"{stack}: editor locus — no editor configuration installs {gate.editor_extension}"
         )
+    problems += _binding_problems(repo, stack, gate)
     if gate.pre_commit and not _hook_mentions(repo, gate.pre_commit):
         problems.append(f"{stack}: pre-commit locus — no {gate.pre_commit} hook")
     if not _ci_run_mentions(
@@ -588,10 +658,14 @@ def linter_wired_at_all_loci(
 ) -> AssertResult:
     """The mandated linter is configured once and wired at every declared locus.
 
-    Which linter, where its configuration lives, its pre-commit hook id and its
-    editor extension id all come from the register's `stacks:` (ADR 0018). They
-    were a checker-side dictionary knowing ruff and eslint, so "the standard
-    mandates ruff" was a decision no reviewer could find.
+    Which linter, where its configuration lives, its pre-commit hook id, its
+    editor extension id and the file type that extension must hold all come
+    from the register's `stacks:` (ADR 0018). They were a checker-side
+    dictionary knowing ruff and eslint, so "the standard mandates ruff" was a
+    decision no reviewer could find.
+
+    From contract 21 the editor locus is verified by exclusion rather than by
+    presence — see `_binding_problems` for why presence was not enough.
     """
     role = str(args.get("role", ""))
     if role not in ("lint", "typecheck"):

@@ -187,6 +187,40 @@ Feature-contributed extensions remain installed. `ms-python.autopep8` will still
 be on disk; it will not be the formatter. Uninstalling it is not available from
 `devcontainer.json`, and this decision does not pretend otherwise.
 
+## Applied — points 3 and 4, register contract 21
+
+Points 1, 2 and 5 landed with the decision: `.vscode/settings.json` is tracked
+and holds the bindings, `devcontainer.json` keeps container concerns, and the
+locus is verified by reading a file rather than by an exit code. Points 3 and 4
+were carried as a Phase 2 exit criterion and landed on 2026-08-24.
+
+`stacks.<stack>.gates.<role>` gained `editor_binding` — a `language` and the
+`setting` that holds it — and `linter-wired-at-all-loci` now reads it. The
+python lint gate declares `{language: python, setting: editor.defaultFormatter}`;
+the typescript lint gate declares none, because eslint is not TypeScript's
+formatter and mandating that binding would mandate something no reasonable
+repository writes. Omitting the field asserts the gate's tool holds no file
+type, the shape `coverage_key`'s absence already had.
+
+The assert fails three states, each observed failing in
+`tests/test_gate_quality_deploy.py` rather than reasoned about:
+
+| State | Why it is a violation |
+| --- | --- |
+| Another extension holds the language | The state that occurred. Presence never excluded — `charliermarsh.ruff` was installed throughout |
+| Nobody holds it | The state it occurred *in*: the binding came from a feature, so no tracked file said anything. An assert objecting only to a wrong value would pass this |
+| `devcontainer.json` sets it too | Wrong even when the two agree, because the merge rule for `customizations` is undefined and agreement is then luck |
+
+`gate-quality` gained a `templates/editor-settings.json` and a Step 3b, and its
+`contractVersion` in `.claude-plugin/deploys.json` went to 3. Point 4 changed a
+`verify` block, so the two points bumped the register contract once between
+them rather than twice: they landed together.
+
+**What is still not closed is what § Consequences said would not be.** An
+extension may use its bundled binary, and on a fresh container create the
+project environment does not exist when the extension host starts. That is
+unchanged, and this ADR never claimed otherwise.
+
 ## Related ADRs
 
 - [ADR 0007](0007-pinned-devcontainer-features.md) — pins features by digest.

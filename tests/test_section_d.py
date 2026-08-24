@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from conftest import a_register, make_repo
+from conftest import a_register, editor_settings, make_repo
 from standard_check.asserts_command import (
     actions_pinned_to_sha,
     ci_installs_frozen,
@@ -242,6 +242,7 @@ def test_lint_via_pre_commit_run_all_files(tmp_path: Path) -> None:
                 "repos:\n  - repo: local\n    hooks:\n      - id: ruff\n"
             ),
             ".vscode/extensions.json": json.dumps({"recommendations": ["charliermarsh.ruff"]}),
+            ".vscode/settings.json": editor_settings("charliermarsh.ruff"),
             ".github/workflows/ci.yml": _wf("      - run: pre-commit run --all-files\n"),
         },
     )
@@ -259,6 +260,7 @@ def test_editor_locus_via_vscode_extensions(tmp_path: Path) -> None:
                 "repos:\n  - repo: local\n    hooks:\n      - id: ruff\n"
             ),
             ".vscode/extensions.json": json.dumps({"recommendations": ["charliermarsh.ruff"]}),
+            ".vscode/settings.json": editor_settings("charliermarsh.ruff"),
             ".github/workflows/ci.yml": _wf("      - run: uv run ruff check .\n"),
         },
     )
