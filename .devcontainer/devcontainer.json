@@ -97,27 +97,15 @@
       // many, rather than an editor with rules of its own.
       //   LNT-001 — ruff, from [tool.ruff] in pyproject.toml
       //   DOC-001 — markdownlint, from .markdownlint.yaml
+      //
+      // Installing the extension is all this file does for that locus. Which
+      // tool holds a gated file type is settled in .vscode/settings.json, at
+      // workspace scope — the containers.dev merge table specifies no rule for
+      // `customizations`, so a binding written here would compete with a
+      // feature's on undefined terms (ADR 0029).
       "extensions": ["charliermarsh.ruff", "DavidAnson.vscode-markdownlint"],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
-
-        // Names the environment containerEnv above creates. Without it the
-        // editor selected `/usr/local/python/current/bin/python` — the feature
-        // this file's own comment calls "Bootstrap, not the project
-        // interpreter" — and reached the project environment only by guessing
-        // at a `.venv` beside the workspace, which is no longer where it is.
-        //
-        // Read from the environment rather than repeated, so the path has one
-        // authority in this file.
-        "python.defaultInterpreterPath": "${containerEnv:UV_PROJECT_ENVIRONMENT}/bin/python",
-
-        // The editor's ruff must be the one uv.lock pins, never the extension's
-        // bundled copy. `fromEnvironment` is already the extension default and
-        // still falls back when it cannot find one — the fallback is what ran on
-        // 2026-08-24 — so this states the intent that the interpreter path above
-        // is what actually enforces. If the two disagree, the editor lints
-        // against a ruff no locus pinned.
-        "ruff.importStrategy": "fromEnvironment",
 
         // Nothing in this repository serves anything. Every port the rebuild
         // forwarded was one of the editor's own loopback services — code-server,

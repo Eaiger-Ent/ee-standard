@@ -206,6 +206,19 @@ editor's interpreter setting so the two cannot disagree. It does not close the
 race on a fresh create, which nothing without a Dockerfile can; it removes the
 stale half, which is the half that recurs on every rebuild.
 
+**A feature pin governs installation, not configuration.** DEV-001 pins every
+feature by digest, and a digest-pinned feature still contributes VS Code
+extensions *and settings* that nobody in the adopting repository wrote —
+`python:1` sets `[python].editor.defaultFormatter` to autopep8, which is not the
+linter LNT-001 pins. The template does not fight this in `devcontainer.json`:
+the containers.dev merge table specifies no rule for `customizations`, so a
+binding written there competes with the feature's on undefined terms. Editor
+bindings for gated file types belong in a tracked `.vscode/settings.json`, at
+workspace scope, which wins by documented rule and appears in a diff
+([ADR 0029](adr/0029-the-editor-locus-is-configured-by-the-repository.md)).
+`devcontainer.json` keeps container concerns; `.vscode/settings.json` keeps the
+editor locus; neither restates the other.
+
 **The template forwards no ports.** A repository that serves nothing still
 accumulates forwarded ports, because the editor's own loopback services — the
 server, the extension host, the agent host, each language server — bind
