@@ -650,7 +650,11 @@ unreachable — and only a remote check catches it.
       against the default branch's merge-base. GOV-002 reads the register, not
       platform state, so nothing here is deferred to this phase; the box is
       listed for completeness of the meta-control set
-- [ ] GOV-003 fails on a control past `review_by`
+- [x] GOV-003 fails on a control past `review_by` — closed 2026-08-24 by
+      Phase 3's second slice, which built nothing: the check has held since
+      the checker was first written, and the same verdict covers an expired
+      `partial:` declaration, which is the same expiry mechanism
+      ([`11-phase-3-review.md`](11-phase-3-review.md) § The second slice)
 - [ ] `gate-repo` confirms before every remote mutation, independently of the
       plan-level confirmation
 

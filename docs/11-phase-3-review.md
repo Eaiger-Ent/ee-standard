@@ -4,7 +4,7 @@ The evidence for Phase 3's criteria, so that
 [`04-build-plan.md`](04-build-plan.md) can stay a list of outstanding work.
 A criterion there is one checkable sentence; the reasoning for a tick is here.
 
-**Scope of this record.** One slice so far.
+**Scope of this record.** Two slices so far.
 
 The first implements `kind: remote` itself — the transport, the two asserts the
 register declares, and the taxonomy that decides what a non-answer is worth. It
@@ -197,3 +197,80 @@ depends on this slice; both are simply not in it.
 | Remote verification passes against a real repository | **Closed** | § Evidence above |
 | Adopter-facing steps in `08-adopting.md` | Open | § 4.1 covers the credentials and the scopes; the *required status check* half is GOV-001's, and the criterion covers the whole phase |
 | No-credentials reporting | Half | The reporting half is closed and tested; the workflow half waits on the flip above |
+
+## The second slice — GOV-003 was already closed
+
+### What this slice built
+
+Nothing. It is a verification slice: the criterion *"GOV-003 fails on a control
+past `review_by`"* was satisfied by `src/standard_check/meta.py` when the
+checker was first built (`1e21364`, 2026-08-16), and the box had stayed
+unticked because nobody had gone and looked. Recording that is cheaper than
+re-deriving it a third time, and leaving it unticked would misreport what
+Phase 3 has left.
+
+The box sits in Phase 3 for the same reason GOV-002's does: the meta-control
+set is listed together so the phase's coverage of it is legible. Neither reads
+platform state, so neither ever depended on the remote locus.
+
+### What GOV-003 actually checks, and why it is one check
+
+`gov_003` compares two expiries against today, and returns a single verdict
+over both: a control past its `review_by`, and a verify block whose `partial:`
+declaration has expired. [ADR 0017](adr/0017-partial-verification-is-reported.md)
+gives a partial declaration an expiry precisely so that *partial* cannot become
+permanent, so the two are the same mechanism — an expiry that turns silence
+into a build failure — and splitting them would have been two names for one
+rule.
+
+### Evidence
+
+Against the register as it stands, both halves hold:
+
+```console
+$ uv run standard-check meta GOV-003
+GOV-003: PASS — no control is past its review date, and no partial declaration
+expired
+exit 0
+```
+
+The failing direction was exercised end to end rather than only in the suite,
+by running the real register with one date moved back. First a control past its
+review date:
+
+```console
+$ uv run standard-check --register past-review.yaml meta GOV-003
+GOV-003: FAIL — past their review date: SEC-001 (review_by 2001-01-01)
+exit 1
+```
+
+Then the other half, with GOV-001's `partial:` expiry moved instead — the case
+ADR 0017 wrote the expiry for:
+
+```console
+$ uv run standard-check --register expired-partial.yaml meta GOV-003
+GOV-003: FAIL — past their review date: GOV-001 (partial declaration expired
+2001-01-01: whether GitHub enforces the recorded ruleset — …)
+exit 1
+```
+
+Neither probe register was committed; each was the tracked `controls.yaml` with
+a single ISO date rewritten. The suite covers the same two directions at
+`tests/test_meta.py::test_gov_003_fails_past_review_date`,
+`::test_gov_003_passes_before_review_date` and — for the partial half —
+`::test_gov_003_fails_an_expired_partial_declaration`, all passing.
+
+### What this slice does not close
+
+It says nothing about whether the `review_by` dates in the register are
+*right*. GOV-003 enforces that a date is not in the past; it cannot know
+whether a control was actually reviewed on the day someone moved its date
+forward. That is the same limit ADR 0022 § requirement 4 states about token
+kind versus token scope, and it is a property of what an expiry can mean rather
+than a gap to close.
+
+### Criteria this slice closes
+
+| Criterion | State | Evidence |
+| --- | --- | --- |
+| GOV-003 fails on a control past `review_by` | **Closed** | § Evidence above — both halves, end to end and in the suite |
