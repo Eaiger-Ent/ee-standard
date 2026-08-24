@@ -21,6 +21,30 @@ returns — for everyone with access, not only for whoever ran the skill. So it
 confirms explicitly before acting, **regardless of any plan already approved**,
 including a plan approved in `standard-adopt`.
 
+## Every call that changes platform state, and what confirms it
+
+Three calls in this skill use a method other than `GET`. **Each one asks for
+itself, every time**, and an answer to one is never an answer to another: they
+have different blast radii, one of them *reduces* what protects the branch, and
+a mutation that inherits another's approval is one nobody agreed to.
+
+| Call | Step | What it changes | Asked as |
+| --- | --- | --- | --- |
+| `POST /repos/{owner}/{name}/rulesets` | 2 | Creates the ruleset. The default branch is protected the moment it returns | Step 2's **create** question |
+| `PUT /repos/{owner}/{name}/rulesets/{id}` | 2 | Replaces an existing ruleset entire — including anything it carries that the record does not | Step 2's **update** question, which names what the call drops |
+| `DELETE /repos/{owner}/{name}/branches/{branch}/protection` | 3 | Removes the classic branch-protection rule, reducing what protects the branch until the ruleset is confirmed active | Step 3's own question, asked after the ruleset is active and never in the same breath |
+
+**No confirmation here is waivable by an earlier approval**, including a plan
+approved in `standard-adopt`. That plan covers what will be written to files;
+none of these is a file. Never treat one of these questions as redundant, never
+pass a flag that suppresses it, and never ask them as one question with one
+answer.
+
+A call that is not in this table is a call this skill does not make. If one
+turns out to be needed, it needs its own row and its own confirmation before it
+is made — adding it silently to a step is how a gate acquires an effect nobody
+reviewed.
+
 **Two rules govern everything below.**
 
 **The register decides, this skill writes.** Which requirements a protected
@@ -64,7 +88,7 @@ never be pointed at different things by accident.
 4. The API call was made only after an explicit confirmation of its blast
    radius, and its response was shown.
 5. `standard-check run --control CI-001` was run afterwards, its output shown,
-   and its verdict reported as given — **including the remote block's
+   and its verdict reported as given — **including a remote block that reported
    `SKIPPED (no credentials)`**, which is never reported as a pass.
 6. Nothing was written outside the target repository except the ruleset itself.
 
@@ -194,7 +218,15 @@ unreachable, and the checker rejects it.
 ## Step 2 — Confirm, then apply
 
 **Ask via AskUserQuestion before the API call, every time.** Not "shall I
-proceed with the plan" — name the change:
+proceed with the plan" — name the change. Which of the two questions below to
+ask is decided by `RULESETS`: whether the platform already carries a ruleset of
+this name. Ask exactly one of them, and ask it even on a re-run that would
+change nothing.
+
+Neither is waivable by an earlier approval. `standard-adopt`'s plan step covers
+what will be written to files; neither of these calls is a file.
+
+### 2a. No ruleset of this name exists — create
 
 > This creates an active ruleset on `<owner>/<name>`. From the moment it
 > returns, `<default branch>` cannot be pushed to directly by anyone, every
@@ -202,9 +234,6 @@ proceed with the plan" — name the change:
 > rewritten. It affects every collaborator, not only you. Apply it?
 
 Options: **Apply now** / **Record only, do not apply**.
-
-This confirmation is not waivable by an earlier approval. `standard-adopt`'s
-plan step covers what will be written to files; this call is not a file.
 
 **On Apply now:**
 
@@ -216,6 +245,39 @@ grep -v '^[[:space:]]*//' "$RULESET_PATH" |
   gh api --method POST "repos/$OWNER/$NAME/rulesets" --input -
 ```
 
+### 2b. A ruleset of this name already exists — update
+
+`PUT` it rather than creating a second. Two rulesets targeting one branch is two
+places a requirement can be removed from, and only one of them is the one
+anybody looks at.
+
+**A `PUT` replaces the ruleset entire**, so anything the live one carries and
+the record does not is dropped by the call — a bypass list, an extra rule, a
+wider `include`. That is a different change from creating one, and it is the
+direction that can *weaken* protection, so it gets its own question with its own
+words. Read `GET repos/$OWNER/$NAME/rulesets/$ID` first and name the difference:
+
+> This replaces ruleset `<id>` on `<owner>/<name>`. It requires `<what it
+> requires now>`; afterwards it requires `<what the record requires>`. This call
+> drops `<anything the live ruleset carries and the record does not — or
+> "nothing">`. It affects every collaborator, not only you. Apply it?
+
+Options: **Apply now** / **Record only, do not apply**.
+
+**If the diff is empty, ask anyway**, and say the diff is empty. A call whose
+effect is invisible until it is wrong is not one to make silently, and "nothing
+changes" is the answer the person is entitled to hear rather than one to act on
+for them.
+
+**On Apply now:**
+
+```bash
+grep -v '^[[:space:]]*//' "$RULESET_PATH" |
+  gh api --method PUT "repos/$OWNER/$NAME/rulesets/$ID" --input -
+```
+
+### Either way
+
 Show the response. If it fails, show the error verbatim and **do not retry with
 a weaker ruleset** — a ruleset that was accepted because it required less is a
 control silently downgraded, and CI-001 is `variance: forbidden` with
@@ -223,12 +285,8 @@ control silently downgraded, and CI-001 is `variance: forbidden` with
 
 **On Record only:** say plainly that the file is written, that nothing on the
 platform has changed, and that CI-001 is **not** deployed. A recorded ruleset
-protects nothing.
-
-**If a ruleset with this name already exists**, use `PUT
-repos/$OWNER/$NAME/rulesets/$ID` rather than creating a second. Two rulesets
-targeting one branch is two places a requirement can be removed from, and only
-one of them is the one anybody looks at.
+protects nothing. Do not re-ask in the same run: an answer of *record only* is
+an answer, not a step to retry until it changes.
 
 ---
 
@@ -240,9 +298,30 @@ leaving the old one is safe but confusing, and removing it is a real reduction
 in what protects the branch until the ruleset is confirmed active.
 
 Show what the classic rule requires, show what the ruleset requires, and ask via
-**AskUserQuestion** whether to remove the classic rule. Options: Remove / Keep.
-Do not remove it in the same breath as creating the ruleset: confirm the ruleset
-is active first, then ask.
+**AskUserQuestion** whether to remove the classic rule:
+
+> This removes classic branch protection from `<default branch>` on
+> `<owner>/<name>`. It currently requires `<what the classic rule requires>`;
+> after this, only ruleset `<id>` protects the branch. Anything the classic rule
+> required and the ruleset does not stops being required. Remove it?
+
+Options: **Remove** / **Keep**.
+
+This is a third confirmation, not a continuation of Step 2's. Step 2 asked about
+adding protection; this asks about taking some away, and an approval to apply a
+ruleset is not an approval to delete what stood beside it. **Do not remove it in
+the same breath as creating the ruleset**: confirm the ruleset is active first —
+`GET repos/$OWNER/$NAME/rulesets/$ID` returning `"enforcement": "active"` — then
+ask.
+
+**On Remove:**
+
+```bash
+gh api --method DELETE "repos/$OWNER/$NAME/branches/$DEFAULT/protection"
+```
+
+**On Keep:** say that both apply and that the union of their requirements is
+enforced, which is safe and confusing rather than wrong. Do not ask again.
 
 ---
 
@@ -261,18 +340,20 @@ Report the verdict as given:
 
 | Exit | Meaning | What to say |
 | --- | --- | --- |
-| `0` | Verified and clean | Not reachable today — see below |
-| `1` | A verified violation | The recorded ruleset does not match the register — show the block verbatim |
+| `0` | Verified and clean | Both halves answered: the record matches the register **and** GitHub is enforcing it |
+| `1` | A verified violation | The recorded ruleset, or the enforced one, does not match the register — show the block verbatim |
 | `2` | Usage error, or the target is not a repository | Fix the invocation; nothing was verified |
-| `3` | No violation, but something could not be verified | The expected result — say which block was skipped and why |
+| `3` | No violation, but something could not be verified | The remote block could not answer — say which block was skipped and why |
 
-**Exit `3` is the expected result, and saying so precisely matters.** CI-001's
-`remote` block reports `SKIPPED (no credentials)` until Phase 3 implements
-`kind: remote`. What is verified is that the repository **records** the ruleset
-the register requires. What is not verified — by anything, yet — is that GitHub
+**Which of `0` and `3` you get turns on credentials, and saying which one
+happened matters more than which one it was.** CI-001's `remote` block reads
+the ruleset GitHub is enforcing, so with a token that can read it the run
+verifies both halves and exits `0`. Without one the block reports
+`SKIPPED (no credentials)`, the run exits `3`, and what is verified is only that
+the repository **records** the ruleset the register requires — not that GitHub
 is enforcing it.
 
-Say both. The API call's response is evidence that it was applied; it is not
+Say which. The API call's response is evidence that it was applied; it is not
 evidence that it is still applied tomorrow, and it is not this checker's verdict.
 Never report `3` as a clean pass, and never re-run with a flag that hides it.
 
@@ -288,9 +369,11 @@ gate-repo deployed CI-001 in <owner>/<name>.
   applied   POST /repos/<owner>/<name>/rulesets → 201, ruleset id <id>
             ~DEFAULT_BRANCH: pull request required, checks required,
             force-push forbidden, enforcement active
-Verified: standard-check run --control CI-001 → exit 3
-  the recorded ruleset matches the register; whether GitHub enforces it is
-  SKIPPED (no credentials) until Phase 3, and is not claimed here.
+Verified: standard-check run --control CI-001 → exit 0
+  the recorded ruleset matches the register, and the ruleset GitHub enforces
+  on <default branch> satisfies it.
+  (Without credentials: exit 3 — the record matches, and whether GitHub
+  enforces it is SKIPPED (no credentials) and is not claimed here.)
 ```
 
 **Recorded only:**
@@ -318,7 +401,7 @@ was called.
 | The API call fails | Show the error verbatim. Do not retry with a weaker ruleset |
 | A ruleset of this name already exists | `PUT` it rather than creating a second |
 | Verify exits `1` | The record disagrees with the register. Report a failed deployment |
-| Verify exits `3` | The expected result. Report what is verified and what is not |
+| Verify exits `3` | The remote block could not answer. Report what is verified and what is not |
 
 ## Idempotency
 

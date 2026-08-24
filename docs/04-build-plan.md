@@ -683,8 +683,19 @@ unreachable — and only a remote check catches it.
       the checker was first written, and the same verdict covers an expired
       `partial:` declaration, which is the same expiry mechanism
       ([`11-phase-3-review.md`](11-phase-3-review.md) § The second slice)
-- [ ] `gate-repo` confirms before every remote mutation, independently of the
-      plan-level confirmation
+- [x] `gate-repo` confirms before every remote mutation, independently of the
+      plan-level confirmation — closed 2026-08-24 by Phase 3's tenth slice. The
+      gate made three calls that change platform state and confirmed one of
+      them: `PUT /rulesets/{id}` was a line of prose inside the *create*
+      question's own step, and `DELETE /branches/{branch}/protection` was not
+      written down at all — the two that can *reduce* protection. Each now has
+      its own question naming its own change, and
+      `tests/test_gate_repo_confirmation.py` **enumerates** them rather than
+      counting them: every `gh api` in the skill carrying a method other than
+      `GET` must appear in the skill's own table and have a question standing
+      between it and the call before it, so a fourth mutation fails the build
+      until it has both ([`11-phase-3-review.md`](11-phase-3-review.md)
+      § The tenth slice)
 
 ### The one place this repository does not do what it asks of everyone else
 

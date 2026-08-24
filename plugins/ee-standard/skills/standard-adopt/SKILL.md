@@ -192,9 +192,11 @@ non-zero until they are deployed or the register says they do not apply.
 
 **This confirmation does not cover `gate-repo`.** That gate calls the GitHub API
 and its ruleset is in force the moment the call returns, for everyone with
-access. It confirms again on its own, and it is right to — this plan covers what
-will be written to files, and that call is not a file. Do not describe its
-second confirmation as redundant, and never pass a flag that suppresses it.
+access. It confirms again on its own — once for each call that changes platform
+state, not once for the gate — and it is right to: this plan covers what will be
+written to files, and none of those calls is a file. Do not describe any of them
+as redundant, never pass a flag that suppresses one, and do not offer to answer
+them here on the user's behalf.
 
 ---
 
