@@ -477,10 +477,13 @@ is editing. `any` is legitimate only for a credential the platform mints per
 job and revokes with it: the event cannot change what such a token reaches,
 because it does not outlive the job that ran under it.
 
-`max_lifetime_hours` is a positive whole number of hours. Nothing reads it yet;
-requirement 3 of that ADR — a `kind: remote` assert reading the
-`github-authentication-token-expiration` response header — is what turns it
-from a promise into a verdict, and it lands before any standing credential does.
+`max_lifetime_hours` is a positive whole number of hours, and from contract 23
+SEC-003's `kind: remote` block reads it: `platform_token_expires_within`
+compares the `github-authentication-token-expiration` header GitHub returns for
+the credential the run carries against the **largest** lifetime any entry
+permits, and fails a token that outlives it. The block answers only inside a
+GitHub Actions job — SEC-003's locus is `ci`, and a developer's own token is a
+different credential — and is UNCLASSIFIED everywhere else.
 
 That a workflow spells the platform token `${{ github.token }}` as often as
 `${{ secrets.GITHUB_TOKEN }}` is detection and stays in the checker, as

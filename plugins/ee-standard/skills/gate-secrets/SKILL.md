@@ -307,12 +307,20 @@ Report the verdict as given:
 | `2` | Usage error, or the target is not a repository | Fix the invocation; nothing was verified |
 | `3` | No violation, but something could not be verified | Deployment succeeded **at the local loci**; say which block was skipped and why |
 
-Exit `3` is the expected result today, and saying so precisely matters.
-SEC-001's `remote` block — GitHub secret scanning push protection — reports
-`SKIPPED (no credentials)` until Phase 3 implements `kind: remote`. The two
-local loci are verified; the remote one is not, and is not claimed. Enabling
-push protection is a platform act a human with admin takes
-(`docs/08-adopting.md` § 1).
+Exit `3` is the expected result today, and saying so precisely matters. Two
+blocks can decline, for different reasons, and neither is a failure:
+
+- **SEC-001's `remote` block** — GitHub secret scanning push protection —
+  reports `SKIPPED (no credentials)` with no token, and `UNCLASSIFIED` with one
+  that cannot read `security_and_analysis`. Enabling push protection is a
+  platform act a human with admin takes (`docs/08-adopting.md` § 1).
+- **SEC-003's `remote` block** — the expiry of the credential CI carries —
+  reports `UNCLASSIFIED` anywhere that is not a GitHub Actions job, because the
+  token in the shell you are running this from is not the one CI carries. It is
+  answered by the CI run, not by this deployment.
+
+The local loci are verified either way; the remote ones are not, and are not
+claimed.
 
 Never report `3` as a clean pass, and never re-run with a flag that hides it.
 

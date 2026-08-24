@@ -226,7 +226,21 @@ meta:
   #     Option 3 checkable — a standing credential names the events it may
   #     appear under, so a branch adding `pull_request:` to reach the secret
   #     fails rather than self-triggering quietly.
-  register_contract: 22
+  # 23: SEC-003 gains a `kind: remote` block — ADR 0022 requirement 3. The
+  #     register recorded `max_lifetime_hours` at contract 22 and nothing read
+  #     it, which is the shape of a promise rather than a control:
+  #     `platform_token_expires_within` compares the expiry GitHub reports for
+  #     the credential the run carries against the longest lifetime this
+  #     register permits, and fails one that outlives it.
+  #
+  #     Two absences that look alike are separated rather than collapsed. No
+  #     expiry header on a **classic** token means the token never expires,
+  #     which fails; on a fine-grained or installation token the header is how
+  #     expiry is reported at all, so its absence is GitHub declining to answer
+  #     and the block is UNCLASSIFIED. Reading the second as the first would
+  #     report a violation produced by not having looked, which is the
+  #     substitution SEC-001's remote block already refuses.
+  register_contract: 23
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -874,6 +888,21 @@ controls:
     verify:
       - kind: file
         assert: no_unregistered_workflow_secrets
+      # ADR 0022 requirement 3, at contract 23. The file block above reads
+      # which secrets a workflow names; it cannot read what one of them *is*.
+      # A maximum lifetime recorded in `platform_credentials:` and compared
+      # against nothing is the promise ADR 0002 rejected a static cloud key
+      # for, so this block reads the expiry GitHub reports for the credential
+      # the run is authenticated with and fails one that outlives the register's
+      # maximum.
+      #
+      # It answers only inside a GitHub Actions job. SEC-003's locus is `ci`,
+      # and the token in a developer's shell is a different credential — a
+      # verdict from it would settle a question nobody asked. Everywhere else
+      # the block is UNCLASSIFIED, which denies the run a `0` exit rather than
+      # claiming a pass (ADR 0016).
+      - kind: remote
+        assert: platform_token_expires_within
     owner: platform-engineering
     variance: forbidden
     baseline: null

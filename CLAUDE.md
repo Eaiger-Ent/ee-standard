@@ -193,9 +193,19 @@ why the control could be added before any credential exists. An entry's
 branch that adds `pull_request:` to reach a standing secret fails in the
 register, which is not the file the pull request is editing. `GITHUB_TOKEN` is
 the only entry, at `triggers: any`, because GitHub expires it with the job.
-`max_lifetime_hours` is recorded and read by nothing until requirement 3 lands.
-**Requirements 3, 4 and 6 are still open, and all three come before the token**,
-not after it (ADR 0022 § Applied — pass 1).
+**Requirement 3 landed at contract 23**: SEC-003 gained a `kind: remote` block,
+`platform_token_expires_within`, which reads the
+`github-authentication-token-expiration` header against the largest
+`max_lifetime_hours` the register permits. Two absences that look alike are kept
+apart — no header on a **classic** token means it never expires and fails, while
+on a fine-grained or installation token the header is how expiry is reported at
+all, so its absence is GitHub declining to answer and the block is
+`UNCLASSIFIED`. **The block answers only inside a GitHub Actions job**, because
+SEC-003's locus is `ci` and a developer's own token is a different credential;
+the accepted cost is that a **local `standard-check` run now exits `3` rather
+than `0`**, which is the honest report rather than a regression. **Requirements
+4 and 6 are still open, and both come before the token**, not after it
+(ADR 0022 § Applied — pass 2).
 
 This repository takes **Option 1** — a fine-grained token scoped to this
 repository, `Administration: read`, held as an ordinary repository secret —

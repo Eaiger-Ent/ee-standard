@@ -48,6 +48,36 @@ TOKEN_VARIABLES = ("GITHUB_TOKEN", "GH_TOKEN")
 #: block that hangs would stall an audit that has verdicts for everything else.
 TIMEOUT_SECONDS = 15
 
+#: The endpoint asked when the question is about the **credential** rather than
+#: about the repository. `/rate_limit` answers for any valid token, is exempt
+#: from rate limiting itself, and needs no permission on the repository — so a
+#: token that cannot see this repository can still be asked when it expires,
+#: which is a fact about the token and not about what it may read.
+CREDENTIAL_PROBE_PATH = "/rate_limit"
+
+#: When the presented token expires, as GitHub reports it. Absent when the
+#: credential does not expire at all — which is a fact about the credential
+#: only when the instrument is one that would otherwise say (see
+#: `OAUTH_SCOPES_HEADER`).
+TOKEN_EXPIRY_HEADER = "github-authentication-token-expiration"
+
+#: Present on responses to a **classic** personal access token, and absent for
+#: fine-grained tokens and app installation tokens. The header's presence
+#: therefore identifies the instrument (ADR 0022 requirement 4).
+OAUTH_SCOPES_HEADER = "x-oauth-scopes"
+
+#: How GitHub Actions announces itself to everything running in a job. Read
+#: rather than inferred: SEC-003 is a `locus: [ci]` control, and the credential
+#: a developer's shell holds is not the credential CI carries — answering the
+#: control from it would report on the wrong token (ADR 0018: a platform's own
+#: variable is not a rule a repository could reasonably need to differ).
+CI_VARIABLE = "GITHUB_ACTIONS"
+
+
+def runs_in_github_actions(environ: Mapping[str, str] | None = None) -> bool:
+    environ = os.environ if environ is None else environ
+    return environ.get(CI_VARIABLE, "").strip().lower() == "true"
+
 
 class Unreadable(RuntimeError):
     """The platform was asked and did not settle the question.
@@ -94,6 +124,24 @@ class GitHub:
         assert's job is to decide a control, and it can only do that once there
         is something to decide from.
         """
+        return self._fetch(path)[0]
+
+    def headers(self, path: str) -> Mapping[str, str]:
+        """The response headers of a GET, keyed in lower case.
+
+        A few of GitHub's answers are about the **credential** rather than about
+        the repository, and they arrive in headers rather than in the body:
+        when the token expires, and whether it is a classic personal access
+        token. The body is discarded here for the same reason `get` discards
+        the headers — a caller should read one thing.
+
+        HTTP header names are case-insensitive and GitHub has shipped more than
+        one casing of the expiry header, so they are lower-cased on the way in
+        rather than matched as sent.
+        """
+        return self._fetch(path)[1]
+
+    def _fetch(self, path: str) -> tuple[Any, Mapping[str, str]]:
         request = urllib.request.Request(
             f"{self.api}{path}",
             headers={
@@ -106,6 +154,7 @@ class GitHub:
         try:
             with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
                 body = response.read().decode("utf-8")
+                received = {str(k).lower(): str(v) for k, v in response.headers.items()}
         except urllib.error.HTTPError as exc:
             raise Unreadable(_http_explanation(exc.code, path, self.slug)) from exc
         except urllib.error.URLError as exc:
@@ -115,7 +164,7 @@ class GitHub:
                 f"{self.api}{path} did not answer within {TIMEOUT_SECONDS}s"
             ) from exc
         try:
-            return json.loads(body)
+            return json.loads(body), received
         except ValueError as exc:
             raise Unreadable(f"{path} returned a body that is not JSON: {exc}") from exc
 

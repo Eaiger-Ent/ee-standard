@@ -490,6 +490,15 @@ written in the file the pull request is editing. And `secrets: inherit`, which
 hands a called workflow every secret you hold — no allow-list can enumerate
 that, so name what the called workflow actually needs and pass those.
 
+**SEC-003 also asks GitHub when your CI credential expires.** From register
+contract 23 it carries a `kind: remote` block reading the
+`github-authentication-token-expiration` header against the largest
+`max_lifetime_hours` your register permits. It answers **only inside a GitHub
+Actions job**: the token in your shell is not the one CI carries, so anywhere
+else it reports `UNCLASSIFIED` and the run exits `3`. That is the honest state
+rather than a fault — a control answered from the wrong credential would be
+worse than one not answered.
+
 **If you are about to give CI a platform token, read ADR 0022 first.** It sets
 out four options and recommends a different one for you than this repository
 takes: an adopter's contributors are not organisation owners, so the credential
@@ -847,10 +856,11 @@ uv run standard-check --repo ../other --register ./controls.yaml
 
 ### 4.1 — Remote checks: what they need, and what they refuse to guess
 
-Two Tier-1 controls verify **platform state** rather than files, and no file can
-answer them. CI-001 asks which rules GitHub has in force on your default branch;
-SEC-001 asks whether secret scanning push protection is enabled. Everything
-below is [ADR 0021](adr/0021-how-remote-verification-authenticates.md).
+Three Tier-1 controls verify **platform state** rather than files, and no file
+can answer them. CI-001 asks which rules GitHub has in force on your default
+branch; SEC-001 asks whether secret scanning push protection is enabled; SEC-003
+asks when the credential CI carries expires. Everything below is
+[ADR 0021](adr/0021-how-remote-verification-authenticates.md).
 
 **Give it a token.** The checker reads `GITHUB_TOKEN`, then `GH_TOKEN`. Nothing
 is read from `gh`'s configuration and no binary has to be installed. The token
@@ -874,7 +884,7 @@ available:
         run: uv run standard-check
 ```
 
-**The scopes are not the same for the two controls**, and this is the part that
+**The scopes are not the same for each control**, and this is the part that
 surprises people:
 
 | Control | Reads | Needs |
@@ -882,6 +892,7 @@ surprises people:
 | CI-001 | `GET /repos/{owner}/{repo}/rules/branches/{branch}` | Read access to the repository. The default Actions `GITHUB_TOKEN` is enough on a public repository |
 | SEC-001 | `security_and_analysis` on `GET /repos/{owner}/{repo}` | **Repository administration read.** GitHub omits the whole object for a caller without it |
 | `gate-repo`, to *create* the ruleset | `POST /repos/{owner}/{repo}/rulesets` | `administration: write`, granted by a human with admin (§ 3.6) |
+| SEC-003 | The `github-authentication-token-expiration` header on `GET /rate_limit` | Nothing beyond a valid token — the question is about the credential, not about the repository |
 
 The middle row is the one to plan for. A token that cannot see
 `security_and_analysis` gets an answer with the setting simply absent — not

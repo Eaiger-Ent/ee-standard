@@ -13,7 +13,7 @@ import pytest
 import yaml
 
 from standard_check.register import Register, load_register
-from standard_check.remote import TOKEN_VARIABLES
+from standard_check.remote import CI_VARIABLE, TOKEN_VARIABLES
 from standard_check.repo import Repo
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -21,7 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 @pytest.fixture(autouse=True)
 def _no_ambient_github_token(monkeypatch: pytest.MonkeyPatch) -> None:
-    """No test's verdict may depend on who is logged in.
+    """No test's verdict may depend on who is logged in, or on where it runs.
 
     A remote block reads `GITHUB_TOKEN` from the environment, and both this
     devcontainer and GitHub Actions set one. Without this fixture the same test
@@ -29,8 +29,13 @@ def _no_ambient_github_token(monkeypatch: pytest.MonkeyPatch) -> None:
     CI — a suite whose results depend on ambient authentication, which is the
     kind of hidden input the checker exists to refuse. Tests that want
     credentials pass them explicitly.
+
+    `GITHUB_ACTIONS` goes with them, from register contract 23. SEC-003's remote
+    block answers only inside an Actions job, so a test that did not set the
+    variable would take one branch on a laptop and the other in CI — the same
+    hidden input wearing a different name.
     """
-    for name in TOKEN_VARIABLES:
+    for name in (*TOKEN_VARIABLES, CI_VARIABLE):
         monkeypatch.delenv(name, raising=False)
 
 
