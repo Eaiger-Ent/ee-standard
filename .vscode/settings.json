@@ -11,11 +11,17 @@
 
   // LNT-001 — ruff formats Python, from [tool.ruff] in pyproject.toml.
   //
-  // `ghcr.io/devcontainers/features/python:1` publishes
+  // `ghcr.io/devcontainers/features/python:1` published
   //   "[python]": { "editor.defaultFormatter": "ms-python.autopep8" }
-  // and contributes the extension to match, so until this line existed the
+  // and contributed the extension to match, so until this line existed the
   // formatter in a repository pinning ruff was autopep8. Presence of
   // charliermarsh.ruff never excluded it — both were installed the whole time.
+  //
+  // ADR 0030 has since removed that feature from this container, which removes
+  // today's source and not the class: any feature may bind a file type, and
+  // the base image carries a devcontainer.metadata label of its own. The
+  // binding is stated here so it does not depend on which features are listed
+  // (ADR 0029).
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff"
   },
@@ -28,16 +34,23 @@
   "ruff.importStrategy": "fromEnvironment",
 
   // Names the environment `containerEnv` creates in devcontainer.json, read
-  // back rather than repeated so the path has one authority. Without it the
-  // editor takes the feature's value — the bootstrap interpreter that
-  // devcontainer.json's own comment disclaims.
+  // back rather than repeated so the path has one authority. It used to
+  // displace `python.defaultInterpreterPath` as the python feature set it; with
+  // that feature gone (ADR 0030) it states the path outright rather than
+  // correcting one, and an extension that resolves the interpreter has an
+  // answer that does not depend on a search.
   "python.defaultInterpreterPath": "${env:UV_PROJECT_ENVIRONMENT}/bin/python",
 
   // TYP-001 — mypy in strict mode is the type checker, from [tool.mypy] in
-  // pyproject.toml. Pylance arrives with the same feature and reports its own
-  // diagnostics from its own rules; two type checkers at one locus is the
-  // second definition ADR 0009 forbids for lint and ADR 0029 generalises.
-  // Pylance stays as the language server — completion, navigation, hover — and
-  // stops being a verdict.
+  // pyproject.toml. Pylance reports its own diagnostics from its own rules; two
+  // type checkers at one locus is the second definition ADR 0009 forbids for
+  // lint and ADR 0029 generalises. This turns its verdicts off and leaves it a
+  // language server — completion, navigation, hover.
+  //
+  // It arrived with the python feature, which ADR 0030 removed, so no Pylance
+  // is installed here today and this line binds nothing. It stays because the
+  // ADR names re-adding `ms-python.python` as the supported way to get the
+  // language server back, and a repository that does so should not have to
+  // rediscover that it also brings a type checker.
   "python.analysis.typeCheckingMode": "off"
 }
