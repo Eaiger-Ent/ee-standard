@@ -18,14 +18,19 @@
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/node:2": {},
-    // Bootstrap, not the project interpreter. This installs the `python3` that
-    // runs `pip install uv` in setup.sh and answers `#!/usr/bin/env python3`;
-    // the interpreter the gates run on is `.python-version`, and uv resolves it
-    // (ADR 0027). The two are allowed to differ, and from contract 20 they do —
-    // which is why the register pins the toolchain file and deliberately not
-    // this line. Raising it would be a container rebuild for no verdict.
+    // Bootstrap, not the project interpreter: this installs the `python3` that
+    // runs `pip install uv` in setup.sh. The interpreter the gates run on is
+    // `.python-version`, and uv resolves it (ADR 0027) — the register pins the
+    // toolchain file and deliberately not this line, so nothing here is
+    // *asserted* equal to it.
+    //
+    // Held at the same value all the same, from ADR 0028 revision 2. Not
+    // asserting an equality and not wanting one are different things, and
+    // lagging bought nothing: a bare `python3` in a login shell is this
+    // interpreter, and a first-party script reached that way ran below the
+    // support floor while every gate passed.
     "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.13",
+      "version": "3.14",
       "installTools": false
     },
     "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}

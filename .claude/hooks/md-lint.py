@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 # ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.5.0  register-contract: 5
 #
 # Deployed artefact — DOC-001's editor locus, as a PostToolUse hook. Hand-edited

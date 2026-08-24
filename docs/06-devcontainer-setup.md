@@ -196,7 +196,19 @@ and uv reads it at every locus. That is the one place, and now it really is one:
 | --- | --- |
 | `.python-version` | The interpreter every locus runs the gates on. **Change this one.** |
 | `pyproject.toml` `requires-python` | Which interpreters `standard-check` claims to support. A floor, published in package metadata — not this container's choice |
-| `devcontainer.json` python feature | Which `python3` bootstraps uv. Deliberately not held equal to the first, and today it is not: the feature is 3.13 and the pin is 3.14 |
+| `devcontainer.json` python feature | Which `python3` bootstraps uv, and what a bare `python3` in a login shell resolves to. Set to the same version as the first, though nothing *asserts* they are equal — see below |
+
+**The feature's value and the register's silence are different things.** The
+register does not compare the feature to `.python-version` ([ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md)),
+and it should not — they answer different questions and may legitimately
+diverge. But leaving the feature *behind* bought nothing and cost a real gap:
+`.python-version` binds only what goes through uv, so `./scripts/plan_progress.py`
+ran on the feature's 3.13 while mypy and ruff checked it at 3.14
+([ADR 0028](adr/0028-the-support-floor-is-what-we-run.md) revision 2). Tracked
+scripts now read `#!/usr/bin/env -S uv run python` so a shebang cannot resolve
+from `PATH`, and the feature was raised as well. Either alone would have closed
+it; both are here because the shebang holds outside this container and the
+feature version holds for anything that ignores a shebang.
 
 `setup.sh` does **not** pin `markdownlint-cli2`. It runs `npm ci`, so
 `package-lock.json` is the authority and there is no version here to keep in

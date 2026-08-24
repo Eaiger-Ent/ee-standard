@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Derived progress view over the build plan's exit criteria.
 
 `docs/04-build-plan.md` is the single source of truth for what "done" means
