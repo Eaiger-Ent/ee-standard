@@ -254,10 +254,8 @@ report could describe different repositories. Without a token GOV-001 reports
 `SKIPPED (no credentials)` **and says which half it did verify**, because a bare
 skip would throw away the file-level chain that was read.
 
-**The `--require-complete` flip is no longer blocked, and has not been taken.**
-What is left is a decision rather than a blocker: a pull request from a fork
-receives no repository secret, so SEC-001's remote block is `UNCLASSIFIED` there
-and the flip would fail it. Decide what a fork run should do before flipping.
+**The `--require-complete` flip was taken on 2026-08-24**, with the fork
+carve-out described above under the verdict vocabulary.
 
 This repository takes **Option 1** — a fine-grained token scoped to this
 repository, `Administration: read`, held as an ordinary repository secret —
@@ -277,12 +275,23 @@ stay Tier 1 — do not re-tier a control to make a report green.
 
 Per [ADR 0016](docs/adr/0016-exit-codes-for-unverifiable-controls.md) and
 [ADR 0017](docs/adr/0017-partial-verification-is-reported.md) (both **Accepted**
-2026-08-17, neither implemented), the checker's verdict vocabulary is settled:
+2026-08-17, both **implemented**), the checker's verdict vocabulary is settled:
 exit `3` means no violation was found but something could not be verified, `1`
 means a verified violation, `0` means every applicable control was verified, and
 `--require-complete` promotes `3` to `1`. A control whose tool is absent is
 `UNCLASSIFIED`, not `FAIL`. A verification block declares its own partial
 implementation **in the register**, with an expiry — never in the checker.
+
+**The `Standard` workflow passes `--require-complete` from 2026-08-24**, which
+ended ADR 0016's ratified tolerance (that ADR's revision 5). A run that cannot
+verify a control fails rather than printing that it could not and passing. **One
+case survives and must not be widened**: a pull request from a fork receives no
+repository secret, so SEC-001's remote block cannot answer, and that run
+tolerates `3` and only `3` — a verified violation still fails it. The carve-out
+is bounded by a fact about the platform rather than by a phase, and
+`tests/test_conformance_step.py` runs the step's own script with the checker
+stubbed and asserts both branches, because a tolerance nobody exercises is one
+that quietly becomes general.
 
 ## Commands
 

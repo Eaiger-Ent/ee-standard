@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-17
-**Revision:** 4
+**Revision:** 5
 
 Ratified decision from
 [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
@@ -151,6 +151,39 @@ but is not a required check is theme **T-3** — declared and unreachable — wh
 is the failure GOV-001 exists to catch and the one this repository was founded
 on.
 
+**Amended 2026-08-24: the tolerance has ended, and one narrower case replaces
+it.** The `Standard` workflow's Conformance step passes `--require-complete`.
+A run that cannot verify a control now fails, rather than printing that it could
+not and passing anyway.
+
+Two things had to land, and neither alone was enough. `PLATFORM_READ_TOKEN`
+(register contract 25) let SEC-001 and SEC-003 answer in CI, which is the bound
+the 2026-08-23 amendment moved this to. And GOV-001 dropped its `partial:`
+(contract 26), which had denied the run a `0` **by design** whatever the
+credentials — ADR 0017 gives a partial that property precisely so a control
+cannot be part-verified quietly. The 2026-08-23 amendment named the token and
+not the partial, so the bound it moved to was still short by one thing; that is
+recorded here rather than smoothed over, because this ADR has now twice named a
+condition that turned out to have a second precondition nobody had looked for.
+
+**The case that survives is a fork.** A pull request from a fork receives no
+repository secret, so `${{ secrets.PLATFORM_READ_TOKEN || github.token }}`
+resolves to the job token, SEC-001's remote block cannot read
+`security_and_analysis`, and the run reports `UNCLASSIFIED` for a control that
+holds. Failing there would fail a contributor for a credential this repository
+deliberately does not give them. A fork run therefore tolerates exit `3`, and
+only `3`.
+
+It is a narrower exception than the one it replaces and it is bounded
+differently — not by a phase or an ADR, but by a fact about the platform that
+will not change: a fork does not get the secret. Its two guards are the first
+two bullets above, unchanged: a verified violation still fails, and the
+incompleteness is still printed. What is new is that the carve-out is
+**exercised** — `tests/test_conformance_step.py` runs the step's script with the
+checker stubbed and asserts both branches, because a tolerance nobody exercises
+is one that quietly becomes general, which is what happened to the tolerance
+this replaces.
+
 ## Consequences
 
 **Positive outcomes:**
@@ -204,5 +237,6 @@ on.
 | 2 | 2026-08-17 | Ratified with one clause overtaken between drafting and ratification: ADR 0014 was implemented and the repository made public, but `kind: remote` stayed deferred to Phase 3, so the red state persists until Phase 3 rather than until 0014 resolves. | Nathan Carney |
 | 3 | 2026-08-17 | § Ratified tolerance added on implementation. `main` became a required status check with no bypass actors, so "CI turns red" had become "no pull request can merge, including the ones that would fix it". The workflow tolerates exit `3` and only `3`. | Nathan Carney |
 | 4 | 2026-08-23 | § Ratified tolerance's third bullet corrected. "Expires by construction" did not hold: Phase 3 landed and the tolerance did not expire, because the Actions `GITHUB_TOKEN` cannot read `security_and_analysis`. The bound moved to [ADR 0022](0022-a-platform-token-ci-carries.md) requirements 1 and 2. | Nathan Carney |
+| 5 | 2026-08-24 | § Ratified tolerance ended. The Conformance step passes `--require-complete`; a pull request from a fork tolerates exit `3` and only `3`, because a fork receives no repository secret. Records that the 2026-08-23 bound named the token and not GOV-001's `partial:`, and so was short by one thing. | Nathan Carney |
 
 Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.
