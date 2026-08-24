@@ -128,8 +128,8 @@ leaves evidence a checker can read.
 
 ## Decision
 
-**We choose Option 3: the editor locus is configured by a tracked
-`.vscode/settings.json` in the repository, and verified there.**
+**We will configure the editor locus in a tracked `.vscode/settings.json` held
+in the repository, and verify it there. This is Option 3.**
 
 That decision has five parts.
 

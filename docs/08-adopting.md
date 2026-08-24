@@ -291,6 +291,31 @@ than an installation one.
 `"python.defaultInterpreterPath": "${env:UV_PROJECT_ENVIRONMENT}/bin/python"`
 reads back a path set once in `containerEnv`, rather than repeating it.
 
+**Better, if your stack allows it: do not install the feature.** Everything
+above is a correction applied after the fact, and
+[ADR 0030](adr/0030-uv-is-bootstrapped-from-a-pinned-release.md) removes the
+cause instead. Ask what the feature is for. If it is there so that something can
+run `pip install uv`, it is not needed: uv is a single static binary that
+requires no Python, and `uv sync` fetches the interpreter your `.python-version`
+names. Install uv the way you install any other pinned tool — the release
+tarball for the container's architecture, verified against the `.sha256` the
+vendor publishes beside it — then delete
+`ghcr.io/devcontainers/features/python:1` from `devcontainer.json` and its entry
+from `devcontainer-lock.json`.
+
+Three extensions stop arriving, both settings stop being written, and only one
+interpreter exists in the container. The cost is Pylance: Python completion,
+navigation and hover go with it. Add `ms-python.python` back to
+`devcontainer.json` if you want it — as a line someone reviewed, which is the
+difference between choosing it and inheriting it.
+
+**Do not reach for a leaner base image.** It is the obvious suspicion and it is
+wrong. `mcr.microsoft.com/devcontainers/base:trixie` is Debian plus
+`common-utils:2` and `git:1`; it declares no `customizations` and contributes no
+extensions and no bindings. Every extension in the container comes from a
+feature the repository listed itself. A leaner base removes none of them, and
+costs you the non-root `vscode` user BLD-001 stands on.
+
 ## 3 — The gates
 
 All six gates are built — see § 3.1 to § 3.6, and § 0 for the front door that

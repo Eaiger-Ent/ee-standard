@@ -206,6 +206,17 @@ editor's interpreter setting so the two cannot disagree. It does not close the
 race on a fresh create, which nothing without a Dockerfile can; it removes the
 stale half, which is the half that recurs on every rebuild.
 
+**A feature you barely use still charges full price.** The ladder ranks *how* a
+tool is installed, and it is worth asking first whether a feature is needed at
+all. This repository listed `python:1` to obtain a `python3` that runs one line,
+`pip install uv`, after which uv owns the environment and the feature's
+interpreter is never used again — and in exchange took three extensions, two
+editor settings and a second interpreter on `PATH`. uv is a static binary that
+needs no Python and fetches the interpreter itself, so the feature buys nothing
+that a checksum-verified release artefact does not
+([ADR 0030](adr/0030-uv-is-bootstrapped-from-a-pinned-release.md)). Rank a
+feature against what it costs, not only against how it installs.
+
 **A feature pin governs installation, not configuration.** DEV-001 pins every
 feature by digest, and a digest-pinned feature still contributes VS Code
 extensions *and settings* that nobody in the adopting repository wrote —

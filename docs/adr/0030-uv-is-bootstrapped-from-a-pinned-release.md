@@ -1,6 +1,6 @@
 # ADR 0030: Bootstrap uv From a Pinned Release, and Remove the Python Feature
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-08-24
 **Revision:** 1
 
@@ -117,9 +117,9 @@ interpreter for anything to resolve to by accident.
 
 ## Decision
 
-**We choose Option 3: install uv from a pinned, checksum-verified GitHub
-release, and remove `ghcr.io/devcontainers/features/python:1` from the
-devcontainer.**
+**We will install uv from a pinned, checksum-verified GitHub release, and
+remove `ghcr.io/devcontainers/features/python:1` from the devcontainer. This is
+Option 3.**
 
 Concretely:
 
