@@ -4,7 +4,7 @@ The evidence for Phase 3's criteria, so that
 [`04-build-plan.md`](04-build-plan.md) can stay a list of outstanding work.
 A criterion there is one checkable sentence; the reasoning for a tick is here.
 
-**Scope of this record.** Six slices so far.
+**Scope of this record.** Seven slices so far.
 
 The first implements `kind: remote` itself — the transport, the two asserts the
 register declares, and the taxonomy that decides what a non-answer is worth. It
@@ -616,3 +616,81 @@ and SEC-003's expiry) close with the same credential.
 None. Phase 3 stays at 3/8: the flip and its no-credentials half, GOV-001
 against a non-required check, `gate-repo`'s per-mutation confirmation, and the
 adopter criterion covering the whole phase.
+
+## The seventh slice — the token exists, and both blocks answered
+
+### What this slice built
+
+The register entry for `PLATFORM_READ_TOKEN` at contract 25, and the workflow
+line that hands it to `standard-check` in place of the job token. The secret
+itself was set by a human on 2026-08-24, after every requirement ADR 0022
+§ The precondition puts before a token was closed.
+
+### What CI answered
+
+Two `UNCLASSIFIED` blocks became answers on the first run:
+
+```text
+SEC-001  PASS   A commit containing a secret cannot reach the remote
+SEC-003  FAIL   CI carries no platform credential the register does not name
+  ✓ file:   every secret referenced by a workflow is one of the 2 the register names
+  ✗ remote: the token CI carries expires 2026-11-22T15:47:02+00:00, which is
+            2161h away — the register permits at most 2160h
+  ✓ remote: the token CI carries returned no x-oauth-scopes, so it is not a
+            classic personal access token
+Summary: 12 passed, 1 failed, 1 skipped (predicate), 0 skipped (no credentials),
+0 unclassified
+```
+
+**Zero unclassified**, where every CI run since Phase 3 began has carried at
+least one. SEC-001's remote block — the one ADR 0022 was written about — passes
+in CI for the first time.
+
+### The failure, which is the interesting part
+
+The expiry block failed by **forty-four minutes**, and it was right to.
+
+The policy was ninety days. The number written into the register was 2160
+hours, which is ninety days of arithmetic and not ninety days of GitHub: the
+token, issued for "90 days", had **2160.73 hours** left when the run read it,
+because an expiry is a timestamp rather than a count of hours from the moment
+anything looks at it. A ceiling of exactly 2160 therefore rejects the option a
+person picks when they pick ninety days.
+
+The register now says 2184 — ninety-one days. **That extra day is what the
+policy costs to state in hours, not slack granted to make a report green**, and
+the distinction is worth being explicit about because the second thing is
+precisely what this repository forbids elsewhere: *do not re-tier a control to
+make a report green*. The alternative was a shorter-lived token, which was
+available, and which is a decision for whoever holds the credential rather than
+for whoever wrote the number.
+
+Two things are worth keeping from this:
+
+1. **The correction was one number in the register.** No checker change, no new
+   assert, no exception. That is the boundary ADR 0018 draws working as
+   intended — a repository that wants ninety-one days and one that wants seven
+   are the same code.
+2. **It is the first control in this register corrected by its own first
+   observation rather than by review.** Every earlier correction in this
+   repository came from someone re-reading something. This one came from asking
+   the platform and being told a number nobody had predicted — which is what
+   the remote locus was built for.
+
+### What it did not do
+
+**The `--require-complete` flip is still unavailable, and credentials were never
+the whole of it.** GOV-001 carries a `partial:` declaration, and ADR 0017 gives
+a partial the property of denying a `0` exit **by design** — so the run above
+would exit `3` even with SEC-003 green, and `--require-complete` would turn that
+`3` into a `1`. No token affects this.
+
+The workflow comment used to name the token as one of two blockers. It now names
+the one that is left, which is GOV-001's remote half — also Phase 3's open
+GOV-001 criterion. Those are one piece of work, not two.
+
+### Criteria this slice closes
+
+None, and the flip's criterion is now better understood rather than closer: its
+blocker was recorded as "blocked on a token, not on the flip", and the token
+turns out to have been the smaller half.

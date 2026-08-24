@@ -566,12 +566,26 @@ the test keeping this arrangement out of what an adopter installs. The register
 names it at contract 25 and the conformance workflow hands it to
 `standard-check`.
 
-**`max_lifetime_hours` is a permission, not a measurement.** The register says
-2160 hours — 90 days — which is the longest life it allows a standing platform
-credential, not a description of the token that happens to exist. Whoever issues
-the credential does not get to define what is permitted by choosing an expiry;
-SEC-003's remote block reads what GitHub reports for the running credential and
-fails one that outlives the register.
+**`max_lifetime_hours` is a permission, not a measurement.** It is the longest
+life the register allows a standing platform credential, not a description of
+the token that happens to exist. Whoever issues the credential does not get to
+define what is permitted by choosing an expiry; SEC-003's remote block reads
+what GitHub reports for the running credential and fails one that outlives the
+register.
+
+**The block failed on its first live run, by forty-four minutes.** The policy is
+ninety days and the number was 2160 hours, which is ninety days of arithmetic
+and not ninety days of GitHub: the token, issued for "90 days", had **2160.73
+hours** left when the run read it, because an expiry is a timestamp rather than
+a count of hours from the moment anything looks at it. The register now says
+2184 — ninety-one days — and the extra day is what the policy costs to state in
+hours rather than slack granted to make a report green. The alternative was a
+shorter token, which was available and is a decision for whoever holds the
+credential rather than for whoever wrote the number.
+
+That is also the first time a control in this register has been corrected by
+its own first observation rather than by review, and the correction was one
+number in the register with no change to the checker.
 
 **And it raises the ceiling for every credential**, because
 `platform_token_expires_within` compares against the largest lifetime any entry

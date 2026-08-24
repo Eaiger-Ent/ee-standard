@@ -766,17 +766,25 @@ platform_credentials:
   #
   # `max_lifetime_hours` is a **permission rather than a measurement**: it is
   # the longest life this register allows a standing platform credential, not a
-  # description of the token that happens to exist. 2160 hours is 90 days.
-  # SEC-003's remote block reads what GitHub reports for the credential a run
-  # actually carries and fails one that outlives this — so a token issued for
-  # longer is caught by the check rather than by whoever remembers to look.
+  # description of the token that happens to exist. SEC-003's remote block reads
+  # what GitHub reports for the credential a run actually carries and fails one
+  # that outlives this — so a token issued for longer is caught by the check
+  # rather than by whoever remembers to look.
+  #
+  # The policy is ninety days. The number is 2184 hours — ninety-one — and the
+  # extra day is not slack, it is what the policy costs to state in hours. The
+  # first live run of this block measured a token issued for "90 days" with
+  # 2160.73 hours left, so a ceiling of exactly 2160 rejected the option a
+  # person picks when they pick ninety days. GitHub's expiry is a timestamp
+  # rather than a count of hours from the moment anything reads it, and no
+  # amount of care in the checker recovers a day the register never allowed.
   #
   # Both events are named because both need the answer: a push run and a pull
   # request run each verify the same controls, and the flip that ends ADR 0016's
   # tolerance has to hold on the runs that gate a merge.
   - name: PLATFORM_READ_TOKEN
     triggers: [push, pull_request]
-    max_lifetime_hours: 2160
+    max_lifetime_hours: 2184
   - name: GITHUB_TOKEN
     # Created by GitHub at the start of each job and expired when that job
     # finishes; 24 hours is the documented ceiling, reached only where a

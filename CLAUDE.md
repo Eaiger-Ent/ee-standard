@@ -231,9 +231,14 @@ from an oversight. **Every requirement that precedes the token is now closed**
 a repository secret set 2026-08-24, named in the register at contract 25 and
 handed to `standard-check` by the conformance workflow with a
 `|| github.token` fallback for pull requests from forks, which receive no
-repository secret. Its `max_lifetime_hours: 2160` is a **permission rather than
+repository secret. Its `max_lifetime_hours: 2184` is a **permission rather than
 a measurement** — the longest life the register allows a standing credential,
-not a description of the token — and it raises the ceiling
+not a description of the token. The policy is ninety days; the number is
+ninety-one, because the block failed on its first live run by forty-four minutes
+against a ceiling of 2160: a token issued for "90 days" had 2160.73 hours left
+when the run read it, since an expiry is a timestamp and not a count of hours
+from the moment anything looks. That extra day is what the policy costs to state
+in hours, not slack granted to make a report green — and it raises the ceiling
 `platform_token_expires_within` compares against for every credential, because
 that assert reads the largest lifetime any entry permits and no API response
 says which credential a run carries.
