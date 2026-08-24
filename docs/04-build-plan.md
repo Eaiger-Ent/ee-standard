@@ -710,6 +710,29 @@ unreachable — and only a remote check catches it.
       until it has both ([`11-phase-3-review.md`](11-phase-3-review.md)
       § The tenth slice)
 
+### What moved to Phase 5, and why
+
+Two criteria stood here until 2026-08-24 and now stand in Phase 5. They tested
+`register-variance` — the skill that classifies a delta's direction — and that
+skill does not exist. Nor does the classifier behind it: there is nothing in
+`src/` that reads a delta and reports *narrowing* or *loosening*, and
+`02-skill-family.md` has always listed that skill as **Phase 5's**.
+
+So this phase was written to test, in a consumer repository, machinery a later
+phase builds. Leaving it would have made Phase 4 unclosable by its own terms —
+the error this plan has already made twice, most recently by putting the
+devcontainer in Phase 2.
+
+| Criterion | Where it is now |
+| --- | --- |
+| Weakening is **caught** | Stays here. The checker does it today |
+| Weakening is **classified** by direction | Phase 5, beside the skill that classifies |
+| The three known `UNCLASSIFIED` cases report as `UNCLASSIFIED` | Phase 5, same reason: they are the cases where *classification* declines to guess |
+
+The split is recorded rather than performed silently for the reason this file
+gives everywhere else: a criterion that quietly gets easier is indistinguishable
+from one that was met.
+
 ### The one place this repository does not do what it asks of everyone else
 
 [ADR 0022](adr/0022-a-platform-token-ci-carries.md) requirement 6 says this
@@ -760,8 +783,26 @@ Sequence, per [`03-devcontainer.md`](03-devcontainer.md):
 2. Run `/project-init` — it configures the devcontainer for the stack
 3. Run `/standard-adopt` — it deploys the gates
 4. Run `standard-check` — it passes
-5. Deliberately weaken something. Confirm the checker catches it, and that
-   `standard-variance` classifies the direction correctly.
+5. Deliberately weaken something, and confirm the checker catches it. Whether
+   the **direction** of the weakening is classified is Phase 5's, with the skill
+   that does it — see § What moved to Phase 5, and why.
+
+### Before this phase can start
+
+None of this is an exit criterion. These are the things Phase 4 cannot begin
+without, listed because the phase is the first that runs outside this
+repository and every one of them was found by asking rather than by building.
+Each was decided on 2026-08-24.
+
+| What | Decision | How you know it is met |
+| --- | --- | --- |
+| A machine that can build a devcontainer | A **macOS host with Docker** and the devcontainer CLI. This container has no Docker, which is why Phase 2's template-build criterion was deferred here | `devcontainer build --workspace-folder .` completes on the host. The template's `fetch-secrets.sh` reads the macOS Keychain, so a non-macOS host needs that script adapted first, and the adaptation is then part of what this phase measures the guide on |
+| The consumer repository's stack | **Python + uv**, so `uv run register-check` resolves as the register's `invocation` says | It exercises LNT-001, TYP-001, TST-001, SUP-001/003, BLD-001, DEV-001, SEC-001/003 and CI-001. It proves nothing about a repository that is not a Python project, and [ADR 0032](adr/0032-the-checker-is-installed-from-a-tagged-ref.md) records that as unsolved rather than covered |
+| Where it lives | **Eaiger-Ent**, where `gh` is already authenticated and every platform act in § 1 is grantable without waiting on anyone | Note what it does not test: the same accounts hold admin here, which is the fact that lets this repository take a posture it does not publish. The adopter's environment gate is exercised by configuration, not by a different threat model |
+| How the plugin reaches the consumer | **Submitted to the ee-skills marketplace**, so the consumer installs it the way any Equal Experts repository will | There is no marketplace entry today, and no `.claude-plugin/marketplace.json` in this repository. Until one exists, `/register-adopt` does not exist in the consumer repo |
+| How the checker reaches the consumer | A dependency pinned to a **tagged git ref**, placed by `register-install` ([ADR 0032](adr/0032-the-checker-is-installed-from-a-tagged-ref.md)) | The tag has to exist: this repository has **no tags**, and the tag is what an adopter pins |
+| The names | `control-register`, `register-check`, `register-adopt` ([ADR 0031](adr/0031-the-plugin-is-named-for-the-register.md)) | The rename lands **before** this phase, in three moves — a consumer repository that adopts a name already known to be wrong writes it into its own register, workflow and ruleset, and the rename is then in two repositories |
+| `project-init` installed | It is in the ee-skills marketplace and is **not installed here** | One `claude plugin install`. Without it the composition criterion below cannot be judged at all |
 
 ### Exit criteria — phase 4
 
@@ -785,9 +826,12 @@ Sequence, per [`03-devcontainer.md`](03-devcontainer.md):
 - [ ] No step required knowledge held only by the author
 - [ ] `project-init` and `standard-adopt` compose without fighting over
       `devcontainer.json`
-- [ ] Weakening a `narrowing-only` control is caught and classified
-- [ ] The three known `UNCLASSIFIED` cases report as `UNCLASSIFIED`, not as a
-      guess in either direction
+- [ ] Weakening a `narrowing-only` control is **caught** — the checker fails it,
+      naming the control and what was weakened. This is the half that exists
+      today: the asserts read exclusions, thresholds and rule sets and fail a
+      loosening. Whether the *direction* is classified is Phase 5's, and § What
+      moved to Phase 5, and why records the split rather than leaving the
+      shortened sentence to be read as a quiet retreat
 - [ ] **The devcontainer template is obtainable without access to a private
       repo.** `ee-skills-incubator` is private and not a GitHub template; if that
       is the only source, the plan has an access-shaped single point of failure.
@@ -826,6 +870,21 @@ Wire the mechanism that keeps deployments current.
       one behind because the release would revert a narrowing this register
       holds. The first is a chore; the second is a decision, and reporting them
       the same way trains everyone to ignore both
+
+- [ ] A weakening of a `narrowing-only` control is **classified by direction**,
+      not merely caught. Moved here from Phase 4 on 2026-08-24 with the skill
+      that performs it — `register-variance`, named by
+      [ADR 0031](adr/0031-the-plugin-is-named-for-the-register.md) — because
+      neither it nor the classifier behind it exists, and a phase cannot test
+      machinery a later phase builds (Phase 4 § What moved to Phase 5, and why)
+- [ ] The three known `UNCLASSIFIED` cases report as `UNCLASSIFIED`, not as a
+      guess in either direction — a rule replaced by a differently named rule
+      covering overlapping ground, a threshold whose direction depends on the
+      metric's polarity, and a config expressed as executable code rather than
+      declarative data ([`01-register-schema.md`](01-register-schema.md)
+      § `variance`). Moved from Phase 4 with the criterion above: these are the
+      cases where classification declines to guess, so they cannot be judged
+      before something classifies
 
 The first two criteria are the whole noise argument, expressed as a test. If a
 documentation-only release triggers a recommendation, the mechanism will be
