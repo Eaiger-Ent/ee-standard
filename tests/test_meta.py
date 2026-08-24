@@ -12,9 +12,10 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from conftest import make_repo, minimal_register, write_register
+from conftest import FakeGitHub, make_repo, minimal_register, write_register
 from standard_check.meta import gov_001, gov_002, gov_003
 from standard_check.register import Register, load_register
+from standard_check.remote import NoCredentials, Unreadable, Unresolvable
 from standard_check.repo import Repo
 from standard_check.runner import Verdict
 
@@ -37,6 +38,8 @@ _WORKFLOW_FULL_RUN = (
     _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
     "      - run: uv run standard-check\n"
 )
+
+_WORKFLOW_SUPPRESSED = _WORKFLOW_FULL_RUN + "        continue-on-error: true\n"
 
 
 def test_gov_001_passes_when_checker_runs_in_ci(tmp_path: Path) -> None:
@@ -330,13 +333,96 @@ def _with_required_checks(checks: list[str]) -> dict[str, Any]:
     return document
 
 
-def test_gov_001_passes_when_the_reaching_job_is_a_required_check(tmp_path: Path) -> None:
-    """The half GOV-001's partial used to say it could not answer."""
+def _enforcing(*contexts: str, slug: str = "acme/widget") -> FakeGitHub:
+    """A platform enforcing exactly these status checks on the default branch."""
+    return FakeGitHub(
+        {
+            f"/repos/{slug}": {"default_branch": "main"},
+            f"/repos/{slug}/rules/branches/main": [
+                {
+                    "type": "required_status_checks",
+                    "parameters": {
+                        "required_status_checks": [{"context": c} for c in contexts]
+                    },
+                }
+            ],
+        },
+        slug=slug,
+    )
+
+
+def test_gov_001_passes_when_the_platform_enforces_the_reaching_job(tmp_path: Path) -> None:
+    """The whole chain, from contract 26: control → step → job → enforced check."""
     register, repo = _load(tmp_path, _with_required_checks(["check"]))
     make_repo(tmp_path, {".github/workflows/check.yml": _WORKFLOW_FULL_RUN})
-    verdict, message = gov_001(register, repo)
+    verdict, message = gov_001(register, repo, _enforcing("check"))
     assert verdict is Verdict.PASS
-    assert "the recorded ruleset requires" in message
+    assert "GitHub enforces those checks" in message
+
+
+def test_gov_001_fails_a_required_check_the_platform_does_not_enforce(tmp_path: Path) -> None:
+    """The workflow exists, the register requires it, and GitHub does not.
+
+    Phase 3's criterion in one sentence, and the case a file could never
+    answer: a ruleset recorded in the repository and never applied at the
+    platform protects nothing, so a control credited to that job is reached
+    from a step nothing waits for.
+    """
+    register, repo = _load(tmp_path, _with_required_checks(["check"]))
+    make_repo(tmp_path, {".github/workflows/check.yml": _WORKFLOW_FULL_RUN})
+    verdict, message = gov_001(register, repo, _enforcing("some-other-job"))
+    assert verdict is Verdict.FAIL
+    assert "the register requires check and GitHub does not" in message
+
+
+def test_gov_001_fails_when_the_platform_enforces_nothing_at_all(tmp_path: Path) -> None:
+    register, repo = _load(tmp_path, _with_required_checks(["check"]))
+    make_repo(tmp_path, {".github/workflows/check.yml": _WORKFLOW_FULL_RUN})
+    verdict, message = gov_001(register, repo, _enforcing())
+    assert verdict is Verdict.FAIL
+    assert "no check at all" in message
+
+
+def test_gov_001_without_credentials_keeps_what_it_did_verify(tmp_path: Path) -> None:
+    """A bare skip would throw away the half that was answered.
+
+    The file-level chain is read whether or not a token exists, so the verdict
+    says so — and still denies the run a `0`, because the half that decides
+    whether any of it blocks a merge was not read (ADR 0016).
+    """
+    register, repo = _load(tmp_path, _with_required_checks(["check"]))
+    make_repo(tmp_path, {".github/workflows/check.yml": _WORKFLOW_FULL_RUN})
+    verdict, message = gov_001(register, repo, NoCredentials("no token"))
+    assert verdict is Verdict.SKIPPED_NO_CREDENTIALS
+    assert "in a job the register requires" in message
+    assert "no token was offered" in message
+
+
+def test_gov_001_is_unclassified_when_the_platform_declines_to_answer(tmp_path: Path) -> None:
+    """Somebody asked and got nothing back — a different fact from nobody asking."""
+    register, repo = _load(tmp_path, _with_required_checks(["check"]))
+    make_repo(tmp_path, {".github/workflows/check.yml": _WORKFLOW_FULL_RUN})
+    refusing = FakeGitHub({"/repos/acme/widget": Unreadable("the token was rejected (401)")})
+    verdict, message = gov_001(register, repo, refusing)
+    assert verdict is Verdict.UNCLASSIFIED
+    assert "could not be read" in message
+
+    verdict, message = gov_001(register, repo, Unresolvable("no repository to ask about"))
+    assert verdict is Verdict.UNCLASSIFIED
+    assert "no repository to ask about" in message
+
+
+def test_gov_001_does_not_ask_the_platform_when_the_files_already_fail(tmp_path: Path) -> None:
+    """A local repair is a local repair, and the network says nothing about it.
+
+    The exploding target would raise if it were touched; the verdict is FAIL
+    from what the files say, which is also the cheaper answer.
+    """
+    register, repo = _load(tmp_path, _with_required_checks(["check"]))
+    make_repo(tmp_path, {".github/workflows/check.yml": _WORKFLOW_SUPPRESSED})
+    exploding = FakeGitHub({"/repos/acme/widget": Unreadable("must not be asked")})
+    verdict, _message = gov_001(register, repo, exploding)
+    assert verdict is Verdict.FAIL
 
 
 def test_gov_001_fails_when_nothing_waits_for_the_reaching_job(tmp_path: Path) -> None:

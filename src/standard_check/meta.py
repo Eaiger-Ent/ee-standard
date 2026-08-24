@@ -11,7 +11,9 @@ import re
 
 from standard_check.asserts_command import WorkflowStep, _suppression_match, _workflow_steps
 from standard_check.register import Control, MetaControl, Register
+from standard_check.remote import GitHub, NoCredentials, Unreadable, Unresolvable
 from standard_check.repo import Repo, git
+from standard_check.rulesets import by_rule_type, enforced_contexts
 from standard_check.runner import Verdict, applies
 
 # A step runs the whole register if it *invokes* the checker without a
@@ -74,7 +76,11 @@ def _reaches(control: Control, run: str, register: Register) -> bool:
     return False
 
 
-def gov_001(register: Register, repo: Repo) -> tuple[Verdict, str]:
+def gov_001(
+    register: Register,
+    repo: Repo,
+    remote: GitHub | NoCredentials | Unresolvable | None = None,
+) -> tuple[Verdict, str]:
     """Every blocking control is reachable from a CI step that can fail.
 
     "Can fail" has two halves, and this control was ticked on one of them. A step
@@ -166,10 +172,80 @@ def gov_001(register: Register, repo: Repo) -> tuple[Verdict, str]:
             "merge; no ruleset in this register names a required check, so whether anything "
             "waits for that step is not answered here",
         )
+    # The half no file can answer, from register contract 26. Everything above
+    # reads what the repository *records*: the step, the job, and the register's
+    # own list of required checks. A recorded ruleset GitHub was never told
+    # about protects nothing, so a control credited to a job on that list is
+    # credited to a job that may block no merge at all — theme T-3 one level out
+    # from the step, and the reason this control carried a `partial:` until the
+    # remote locus existed to close it.
+    return _platform_requires(remote, required_jobs)
+
+
+def _platform_requires(
+    remote: GitHub | NoCredentials | Unresolvable | None,
+    required_jobs: frozenset[str],
+) -> tuple[Verdict, str]:
+    """Whether GitHub makes a merge wait for the jobs GOV-001 credited.
+
+    The refusals are ADR 0021's, unchanged in meaning because they mean the same
+    thing here: nobody asked, somebody asked and got no answer, or an answer.
+    What differs is that a meta-control carries the verdict itself rather than a
+    block carrying it, so the file half's result has to survive into the
+    message — a bare "SKIPPED (no credentials)" would throw away the part that
+    *was* verified.
+    """
+    reached = (
+        "reached from a step that can fail, in a job the register requires "
+        f"({', '.join(sorted(required_jobs))})"
+    )
+    if remote is None or isinstance(remote, NoCredentials):
+        return (
+            Verdict.SKIPPED_NO_CREDENTIALS,
+            f"every applicable blocking control is {reached} — but whether GitHub enforces "
+            "that is unread: no token was offered, and a recorded ruleset the platform was "
+            "never told about protects nothing",
+        )
+    if isinstance(remote, Unresolvable):
+        return (
+            Verdict.UNCLASSIFIED,
+            f"every applicable blocking control is {reached}; {remote.message}",
+        )
+    try:
+        repository = remote.get(f"/repos/{remote.slug}")
+        if not isinstance(repository, dict):
+            raise Unreadable(f"/repos/{remote.slug} did not return a repository object")
+        branch = repository.get("default_branch")
+        if not isinstance(branch, str) or not branch:
+            raise Unreadable(
+                f"{remote.slug} reports no default branch, so there is none to ask about"
+            )
+        rules = remote.get(f"/repos/{remote.slug}/rules/branches/{branch}")
+        if not isinstance(rules, list):
+            raise Unreadable(
+                f"the effective rules for {remote.slug}@{branch} did not come back as a list"
+            )
+    except Unreadable as exc:
+        return (
+            Verdict.UNCLASSIFIED,
+            f"every applicable blocking control is {reached}; whether GitHub enforces that "
+            f"could not be read: {exc}",
+        )
+    enforced = enforced_contexts(by_rule_type(rules))
+    unenforced = sorted(job for job in required_jobs if job not in enforced)
+    if unenforced:
+        return (
+            Verdict.FAIL,
+            f"the register requires {', '.join(unenforced)} and GitHub does not: a merge to "
+            f"{remote.slug}@{branch} waits for "
+            + (", ".join(sorted(enforced)) if enforced else "no check at all")
+            + " — every blocking control credited to those jobs is reached from a step "
+            "nothing waits for",
+        )
     return (
         Verdict.PASS,
-        "every applicable blocking control is reachable from a CI step that can fail a merge, "
-        f"in a job the recorded ruleset requires ({', '.join(sorted(required_jobs))})",
+        f"every applicable blocking control is {reached}, and GitHub enforces those checks on "
+        f"{remote.slug}@{branch} — the whole chain from control to blocked merge is read",
     )
 
 
@@ -247,7 +323,11 @@ def _entries_now(repo: Repo, rel: str) -> int:
     return _entries(path.read_text(encoding="utf-8"))
 
 
-def gov_002(register: Register, repo: Repo) -> tuple[Verdict, str]:
+def gov_002(
+    register: Register,
+    repo: Repo,
+    _remote: GitHub | NoCredentials | Unresolvable | None = None,
+) -> tuple[Verdict, str]:
     """No baseline grew. A baseline that may grow is an exemption list."""
     baselines = [c for c in register.controls if c.baseline is not None]
     if not baselines:
@@ -274,7 +354,11 @@ def gov_002(register: Register, repo: Repo) -> tuple[Verdict, str]:
     )
 
 
-def gov_003(register: Register, _repo: Repo) -> tuple[Verdict, str]:
+def gov_003(
+    register: Register,
+    _repo: Repo,
+    _remote: GitHub | NoCredentials | Unresolvable | None = None,
+) -> tuple[Verdict, str]:
     """No control is past its review_by date, and no partial declaration expired.
 
     Both are the same mechanism: an expiry that turns silence into a build

@@ -20,6 +20,7 @@ import re
 
 from standard_check.meta import META_CHECKS
 from standard_check.register import MetaControl, Register
+from standard_check.remote import GitHub, NoCredentials, Unresolvable
 from standard_check.repo import NotAGitRepository, Repo
 from standard_check.runner import Verdict, run_block, worst
 
@@ -27,7 +28,10 @@ _SELF_META = re.compile(r"^standard-check meta (\S+)$")
 
 
 def run_meta_control(
-    meta: MetaControl, register: Register, repo: Repo
+    meta: MetaControl,
+    register: Register,
+    repo: Repo,
+    remote: GitHub | NoCredentials | Unresolvable | None = None,
 ) -> tuple[str, str, Verdict, str]:
     """Returns (id, title, verdict, message).
 
@@ -35,6 +39,11 @@ def run_meta_control(
     verify" is a third answer (ADR 0016) — GOV-002 with no comparison point has
     no evidence in either direction, and flattening that to False would report a
     violation the run never observed.
+
+    `remote` is the resolved platform target, handed in rather than resolved
+    here for the reason the control runner is handed one: two verdicts in a
+    report that described different repositories would be evidence about
+    neither. GOV-001 reads it from contract 26; the other two ignore it.
     """
     verdicts: list[Verdict] = []
     messages: list[str] = []
@@ -42,7 +51,7 @@ def run_meta_control(
         match = _SELF_META.match(block.run or "")
         if match and match.group(1) in META_CHECKS:
             try:
-                verdict, message = META_CHECKS[match.group(1)](register, repo)
+                verdict, message = META_CHECKS[match.group(1)](register, repo, remote)
             except NotAGitRepository:
                 raise
             except Exception as exc:

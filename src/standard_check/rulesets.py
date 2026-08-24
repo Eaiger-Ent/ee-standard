@@ -54,6 +54,26 @@ def by_rule_type(rules: object) -> dict[str, Mapping[str, object]]:
     }
 
 
+def enforced_contexts(by_type: Mapping[str, Mapping[str, object]]) -> set[str]:
+    """The status-check contexts a set of rules actually makes a merge wait for.
+
+    Two readers, one reading — the reason this module exists. CI-001's blocks
+    ask whether the branch is protected as the register requires; GOV-001 asks
+    whether the job it credited a blocking control to is one of the checks a
+    merge waits for. Those are different questions about the same list, and a
+    second extraction of it could drift from this one with nothing comparing
+    them.
+    """
+    rule = by_type.get(RULE_TYPES["require_status_checks"])
+    parameters = rule.get("parameters") if rule is not None else None
+    entries = parameters.get("required_status_checks") if isinstance(parameters, dict) else None
+    return {
+        str(entry.get("context"))
+        for entry in (entries if isinstance(entries, list) else [])
+        if isinstance(entry, dict)
+    }
+
+
 def requirement_problems(
     by_type: Mapping[str, Mapping[str, object]],
     args: Mapping[str, object],
@@ -106,12 +126,7 @@ def _status_check_problems(
     parameters = rule.get("parameters")
     if not isinstance(parameters, dict):
         return []  # already reported as a payload the API rejects
-    entries = parameters.get("required_status_checks")
-    present = {
-        str(entry.get("context"))
-        for entry in (entries if isinstance(entries, list) else [])
-        if isinstance(entry, dict)
-    }
+    present = enforced_contexts(by_type)
     problems: list[str] = []
     missing = [check for check in required if check not in present]
     if missing:

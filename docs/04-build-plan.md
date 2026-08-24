@@ -634,21 +634,33 @@ unreachable — and only a remote check catches it.
       tolerance defers to this phase: the tolerance exists only because remote
       verification does not, so implementing it here is what ends it. Leaving
       the tolerance in place after remote verification works would be the
-      silence ADR 0016 was written to stop. **Blocked on a token, not on
-      the flip:** the default Actions `GITHUB_TOKEN` cannot read
-      `security_and_analysis`, so SEC-001's remote block reports `UNCLASSIFIED`
-      in CI while passing locally. Flipping first would turn every run red for a
-      control that holds
-      ([`11-phase-3-review.md`](11-phase-3-review.md) § What this slice left
-      open). What a stronger token would cost, and the controls the register
+      silence ADR 0016 was written to stop. **No longer blocked, as
+      of 2026-08-24.** It was recorded here as *blocked on a token, not on the
+      flip*, and the token was the smaller half: `PLATFORM_READ_TOKEN`
+      (contract 25) made SEC-001 and SEC-003 answer in CI, and GOV-001 dropping
+      its `partial:` (contract 26) removed the thing that denied the run a `0`
+      **by design** whatever the credentials. What is left is a decision rather
+      than a blocker: a pull request **from a fork** receives no repository
+      secret, so SEC-001's remote block is `UNCLASSIFIED` there and
+      `--require-complete` would fail it. Decide what a fork run should do
+      before flipping
+      ([`11-phase-3-review.md`](11-phase-3-review.md) § The eighth slice). What a stronger token would cost, and the controls the register
       would need **before** one is introduced, are in
       [ADR 0022](adr/0022-a-platform-token-ci-carries.md), **Accepted** 2026-08-23.
       It also records a finding independent of that decision: SEC-002 cannot
       see a platform token at all, because `cloud_credentials:` names only
       cloud provider keys
 
-- [ ] GOV-001 correctly fails a repo whose lint workflow exists but is not a
-      required status check
+- [x] GOV-001 correctly fails a repo whose lint workflow exists but is not a
+      required status check — closed 2026-08-24 at register contract 26. The
+      meta-control now reads which status checks GitHub enforces on the default
+      branch and fails a check the register requires and the platform does not:
+      a ruleset recorded in the repository and never applied protects nothing,
+      so a control credited to that job is reached from a step nothing waits
+      for. Its `partial:` is gone because the property is **verified**, not
+      waived — without a token it reports `SKIPPED (no credentials)` and says
+      which half it did verify
+      ([`11-phase-3-review.md`](11-phase-3-review.md) § The eighth slice)
 - [x] GOV-002 fails when a baseline file grows by one line — **already
       satisfied** by Phase 1.5's first criterion, which made GOV-002 compare
       against the default branch's merge-base. GOV-002 reads the register, not

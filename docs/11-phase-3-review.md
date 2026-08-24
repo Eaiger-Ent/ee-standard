@@ -4,7 +4,7 @@ The evidence for Phase 3's criteria, so that
 [`04-build-plan.md`](04-build-plan.md) can stay a list of outstanding work.
 A criterion there is one checkable sentence; the reasoning for a tick is here.
 
-**Scope of this record.** Seven slices so far.
+**Scope of this record.** Eight slices so far.
 
 The first implements `kind: remote` itself — the transport, the two asserts the
 register declares, and the taxonomy that decides what a non-answer is worth. It
@@ -694,3 +694,113 @@ GOV-001 criterion. Those are one piece of work, not two.
 None, and the flip's criterion is now better understood rather than closer: its
 blocker was recorded as "blocked on a token, not on the flip", and the token
 turns out to have been the smaller half.
+
+## The eighth slice — GOV-001 reads the whole chain
+
+### What this slice built
+
+GOV-001's remote half, at register contract 26, and with it the removal of the
+`partial:` this control has carried since contract 3.
+
+The chain GOV-001 claims runs: **control → step that can fail → job → a check
+GitHub makes a merge wait for → merge blocked.** Everything except the last link
+is in files, and the meta-control has read those since Phase 1. Contract 19 read
+one more link from a file — whether the *register* names that job as required —
+and narrowed the partial to what was left: whether GitHub enforces the ruleset
+the repository recorded. A recorded ruleset the platform was never told about
+protects nothing, so a control credited to a job on that list may be credited to
+a job that blocks no merge at all.
+
+That link is now read. GOV-001 asks the effective-rules endpoint which contexts
+a merge to the default branch waits for, and fails a check the register requires
+and the platform does not.
+
+### Removing a partial is not the same act as satisfying one
+
+Worth naming, because the two look identical in a report and mean opposite
+things. A partial that is **waived** leaves the property unverified and the
+claim intact — the loophole ADR 0017's expiry exists to close. This one was
+**satisfied**: the property is read on every run that has credentials, and on a
+run that has none the verdict says so rather than passing.
+
+That is why the no-credentials case is `SKIPPED (no credentials)` **with the
+file half in the message** rather than a bare skip:
+
+```console
+$ env -u GITHUB_TOKEN -u GH_TOKEN uv run standard-check meta GOV-001
+GOV-001: SKIPPED (no credentials) — every applicable blocking control is reached
+from a step that can fail, in a job the register requires (lint-md,
+standard-check) — but whether GitHub enforces that is unread: no token was
+offered, and a recorded ruleset the platform was never told about protects
+nothing
+exit 3
+```
+
+A meta-control carries one verdict for the whole control, so a bare skip would
+have thrown away the half that *was* read. The exit code is unchanged from the
+partial's — `3`, denying the run a `0` — which is the point: what changed is
+that the reason is now a fact about this run rather than a standing declaration.
+
+### What it took: a meta-control gained a third input
+
+`META_CHECKS[id](register, repo)` became `(register, repo, remote)`, where
+`remote` is the resolved platform target the control runner already receives.
+Handed in rather than resolved inside, for the reason `cli.py` gives about
+blocks: two verdicts in one report that described different repositories would
+be evidence about neither. GOV-002 and GOV-003 ignore it.
+
+One extraction moved to `rulesets.py` beside the two readings already there:
+`enforced_contexts`, which reads the status-check contexts out of a rule set.
+CI-001's blocks ask whether the branch is protected as the register requires;
+GOV-001 asks whether the job it credited is one of the checks a merge waits for.
+Different questions, one list, and a second copy of the extraction could have
+drifted with nothing comparing them — the module's whole premise.
+
+### Evidence
+
+```console
+$ uv run standard-check meta GOV-001
+GOV-001: PASS — every applicable blocking control is reached from a step that
+can fail, in a job the register requires (lint-md, standard-check), and GitHub
+enforces those checks on Eaiger-Ent/ee-standard@main — the whole chain from
+control to blocked merge is read
+exit 0
+```
+
+Six cases in `tests/test_meta.py`, all against fixtures rather than the network:
+
+| Case | Verdict |
+| --- | --- |
+| The platform enforces the reaching job | PASS |
+| The register requires `check`, GitHub enforces `some-other-job` | **FAIL** |
+| The platform enforces no check at all | **FAIL** |
+| No token | `SKIPPED (no credentials)`, file half kept in the message |
+| A rejected token, and an unresolvable target | `UNCLASSIFIED` |
+| The files already fail | FAIL, and the platform is never asked — the fixture would raise if it were |
+
+The second is Phase 3's criterion in one sentence: *a workflow that exists but
+is not a required status check*. The last is not politeness about network calls;
+a local repair is a local repair, and asking the platform about it would put a
+credential requirement in front of a verdict that does not need one.
+
+### What this unblocks, and the one decision left
+
+**The `--require-complete` flip.** It was recorded in the build plan as *blocked
+on a token, not on the flip*, and the token turned out to be the smaller half:
+`PLATFORM_READ_TOKEN` made SEC-001 and SEC-003 answer in CI, and this slice
+removed the partial that denied the run a `0` **by design** whatever the
+credentials.
+
+What is left is a decision, not a blocker: **a pull request from a fork receives
+no repository secret**, so SEC-001's remote block is `UNCLASSIFIED` on a fork run
+and `--require-complete` would fail it. This repository is public, so fork pull
+requests are a shape it must survive. The options are to tolerate `3` on fork
+runs specifically, to run the conformance job differently there, or to accept
+that a fork pull request cannot complete a conformance run — and choosing among
+them is the flip's slice rather than this one.
+
+### Criteria this slice closes
+
+| Criterion | State | Evidence |
+| --- | --- | --- |
+| GOV-001 correctly fails a repo whose lint workflow exists but is not a required status check | **Closed** | § Evidence above — the FAIL row, and the register-side FAIL that preceded it |

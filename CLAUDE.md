@@ -243,10 +243,21 @@ in hours, not slack granted to make a report green — and it raises the ceiling
 that assert reads the largest lifetime any entry permits and no API response
 says which credential a run carries.
 
-**The flip is still not available, and credentials were never the whole of it:**
-GOV-001 carries a `partial:`, and a partial denies a `0` exit **by design**
-(ADR 0017), so no token affects it. `--require-complete` waits on GOV-001's
-remote half — which is also Phase 3's open GOV-001 criterion.
+**GOV-001's remote half landed at contract 26 and its `partial:` is gone** —
+verified rather than waived. The meta-control reads which status checks GitHub
+enforces on the default branch and fails one the register requires and the
+platform does not, so the chain from a control to a blocked merge is read end to
+end rather than in two pieces nothing joins. To do it, a meta-control gained a
+third input, the resolved platform target, handed in by the runner exactly as it
+is handed to a control's blocks — never resolved inside, or two verdicts in one
+report could describe different repositories. Without a token GOV-001 reports
+`SKIPPED (no credentials)` **and says which half it did verify**, because a bare
+skip would throw away the file-level chain that was read.
+
+**The `--require-complete` flip is no longer blocked, and has not been taken.**
+What is left is a decision rather than a blocker: a pull request from a fork
+receives no repository secret, so SEC-001's remote block is `UNCLASSIFIED` there
+and the flip would fail it. Decide what a fork run should do before flipping.
 
 This repository takes **Option 1** — a fine-grained token scoped to this
 repository, `Administration: read`, held as an ordinary repository secret —
