@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -91,6 +92,22 @@ def make_repo(root: Path, files: dict[str, str], commit: bool = True) -> Repo:
 @pytest.fixture
 def real_repo() -> Repo:
     return Repo(REPO_ROOT)
+
+
+def editor_settings(
+    extension: str,
+    language: str = "python",
+    setting: str = "editor.defaultFormatter",
+) -> str:
+    """`.vscode/settings.json` binding a language to the extension that holds it.
+
+    From contract 21 a conformant repository states this, so a fixture standing
+    for one has to (ADR 0029 points 3 and 4). The defaults mirror the register's
+    `stacks.python.gates.lint.editor_binding`; a fixture that varies the gate
+    varies these with it, which is what keeps "only the register moved" true of
+    the tests that mandate a different linter.
+    """
+    return json.dumps({f"[{language}]": {setting: extension}}) + "\n"
 
 
 def a_register() -> Register:

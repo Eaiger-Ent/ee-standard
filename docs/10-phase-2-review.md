@@ -1501,6 +1501,65 @@ adopter's job is called, read by both the deployment and the audit. That is
 and it is the first place in this repository where the adopter's register had to
 differ from ours in something other than `tools:`.
 
+## The editor locus stops asking about presence — register contract 21
+
+The last Phase 2 criterion this container could close, and the one that closed a
+live false negative rather than a paper one.
+
+**What was wrong.** `linter-wired-at-all-loci` read `editor_extension` from
+`stacks:` and asked whether that extension was installed. Presence does not
+exclude. `charliermarsh.ruff` was installed for the whole time
+`ghcr.io/devcontainers/features/python:1` had Python files bound to
+`ms-python.autopep8`, and LNT-001 reported PASS throughout — a control whose
+`enforces` says *one pinned configuration at every locus*, passing over a
+repository formatting Python with a tool its register does not name. DEV-001's
+digest pin governs what a feature installs and says nothing about what it
+configures, so no control in the register was looking.
+
+**What the register gained.** `editor_binding`, per gate: a `language` and the
+`setting` that must hold it. Both are register facts under ADR 0018's test — a
+stack may mandate a formatter for one file type and not another, and not every
+linter is its language's formatter. The typescript lint gate declares none for
+exactly that reason, and its absence is a statement rather than an oversight,
+the shape `coverage_key` already had.
+
+**What the assert now fails**, each observed failing in
+`tests/test_gate_quality_deploy.py`:
+
+| State | Note |
+| --- | --- |
+| Another extension holds the language | The state that existed |
+| Nobody holds it | The state it existed *in* |
+| `devcontainer.json` binds it too | Fails on agreement as well as disagreement |
+
+The middle row is the whole point, and it is the row that makes this more than
+a tidier message. The autopep8 binding was written by a feature, so no tracked
+file said anything at all; an assert that only objected to a wrong value in a
+file the repository had written would have passed the case it was written for.
+An absent binding is therefore a violation and not a default. The third row is
+ADR 0029 point 1 made enforceable: a duplicate in `devcontainer.json` lands in
+the same machine-scoped file a feature's does, and the containers.dev merge
+table says of `customizations` only that *"merging is left to the tools"*, so
+today's agreement is luck rather than a rule.
+
+**What it cost.** `gate-quality` gained `templates/editor-settings.json` and a
+Step 3b, and its `contractVersion` went to 3 — the second gate to move
+independently of the others, which is what per-gate contracts were for. Four
+fixture repositories that stood for conformant repositories had to start
+stating the binding, which is the change reaching the tests rather than the
+tests being loosened to accept it; `conftest.editor_settings` derives the file
+from the same values, so the "only the register moved" tests still move only
+the register. This repository's `.vscode/settings.json` gained an LNT-001 stamp
+and became the twelfth stamped artefact — adopted first, stamped when the gate
+that owns it learned to write it, the same order `.devcontainer/devcontainer.json`
+went in.
+
+**What it did not close**, unchanged from ADR 0029 § Consequences: an extension
+may fall back to its bundled binary, and on a fresh container create the project
+environment does not exist when the extension host starts. Closing that needs
+the environment built into the image, which needs a Dockerfile this repository
+does not have.
+
 ## Decisions the next slice needs
 
 Recorded here rather than settled silently, in the shape § H used.

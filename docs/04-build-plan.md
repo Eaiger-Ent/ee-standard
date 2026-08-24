@@ -466,7 +466,7 @@ fixed in both.
       `standard_check.asserts`, a gate reaches it only through
       `standard-check run --control <ID>`, and a gate that deploys a control it
       does not name there fails a test
-- [ ] The editor locus is verified by exclusion, not by presence — **added
+- [x] The editor locus is verified by exclusion, not by presence — **added
       2026-08-24** by
       [ADR 0029](adr/0029-the-editor-locus-is-configured-by-the-repository.md),
       points 3 and 4. Not re-opened: nothing ticked above became false.
@@ -475,9 +475,25 @@ fixed in both.
       holds a gated file type. Today it asks only whether the pinned extension
       is installed, and `ghcr.io/devcontainers/features/python:1` bound Python
       files to autopep8 with `charliermarsh.ruff` installed alongside it the
-      whole time — a state the assert reported as passing. Point 1 is done:
-      `.vscode/settings.json` is tracked and holds the bindings. Both remaining
-      points bump `meta.register_contract`
+      whole time — a state the assert reported as passing. Point 1 was already
+      done: `.vscode/settings.json` is tracked and holds the bindings.
+      **Closed 2026-08-24 at register contract 21.** `editor_binding` — a
+      `language` and the `setting` that holds it — sits on the python lint gate
+      and not on the typescript one, because eslint is not TypeScript's
+      formatter and mandating that binding would mandate something no
+      reasonable repository writes; omitting it asserts the gate holds no file
+      type, the shape `coverage_key`'s absence already had.
+      `linter-wired-at-all-loci` fails three states, each **observed failing**
+      in `tests/test_gate_quality_deploy.py` rather than reasoned about: another
+      extension holding the language, nobody holding it, and the binding
+      restated in `devcontainer.json`. The second is the one that mattered —
+      the autopep8 binding came from a feature, so no tracked file said
+      anything, and an assert objecting only to a wrong value would have passed
+      the state it exists to catch. `gate-quality` gained
+      `templates/editor-settings.json` and a Step 3b, its `contractVersion`
+      went to 3, and this repository's `.vscode/settings.json` gained the
+      LNT-001 stamp that makes it the twelfth stamped artefact. Both points
+      landed together, so the contract moved once rather than twice
 - [ ] The devcontainer template builds, and DEV-001 passes against it — the
       template ships at `plugins/ee-standard/templates/devcontainer/` and
       DEV-001's and BLD-001's property blocks pass against a copy of it

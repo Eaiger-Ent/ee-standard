@@ -25,6 +25,7 @@ import yaml
 from conftest import (
     MINIMAL_REGISTER,
     a_register,
+    editor_settings,
     make_repo,
     register_with,
     write_register,
@@ -52,6 +53,11 @@ def _python_repo(root: Path, tool: str = "ruff", extension: str = "charliermarsh
             ".devcontainer/devcontainer.json": (
                 '{"customizations": {"vscode": {"extensions": ["' + extension + '"]}}}\n'
             ),
+            # The binding, not only the install. From contract 21 an extension
+            # being present is not the extension holding the file type, so a
+            # fixture standing for a wired repository states both — and states
+            # them for whichever linter it is wired for.
+            ".vscode/settings.json": editor_settings(extension),
             ".pre-commit-config.yaml": (
                 f"repos:\n  - repo: local\n    hooks:\n      - id: {tool}\n"
                 f"        entry: uv run {tool}\n"
@@ -85,6 +91,10 @@ def test_mandating_a_different_linter_changes_the_verdict(tmp_path: Path) -> Non
         gate["invocation"] = "uv run flake8 check"
         gate["pre_commit"] = "flake8"
         gate["editor_extension"] = "ms-python.flake8"
+        # `editor_binding` needs no edit: it names the language and the setting,
+        # and the extension that must hold them is `editor_extension` above. The
+        # repository binds Python files to `ms-python.flake8`, so the same
+        # register field that fails it against ruff passes it against flake8.
         gate["config"] = [{"file": "pyproject.toml", "section": "tool.flake8"}]
 
     against_flake8 = linter_wired_at_all_loci(
@@ -102,6 +112,7 @@ def test_a_config_location_added_to_the_register_is_honoured(tmp_path: Path) -> 
             ".devcontainer/devcontainer.json": (
                 '{"customizations": {"vscode": {"extensions": ["charliermarsh.ruff"]}}}\n'
             ),
+            ".vscode/settings.json": editor_settings("charliermarsh.ruff"),
             ".pre-commit-config.yaml": (
                 "repos:\n  - repo: local\n    hooks:\n      - id: ruff\n        entry: ruff\n"
             ),

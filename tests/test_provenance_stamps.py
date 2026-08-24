@@ -88,6 +88,11 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
     stopped taking a comment's word for it. Every other artefact on this list
     is something that runs, installs or declares; this one only prevents, and
     it was the last part of a Tier-1 control still resting on prose.
+
+    The twelfth is `.vscode/settings.json`, added at register contract 21. It is
+    `gate-quality`'s second editor-locus artefact, and the split is the point:
+    installing an extension and that extension holding a file type were one
+    claim, and the gap between them was a formatter nobody chose.
     """
     assert set(_stamped_files()) == {
         ".markdownlint.yaml",
@@ -99,10 +104,14 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
         # adopted by `gate-secrets` rather than deployed from nothing — the
         # stamps say so, which is what keeps them from claiming otherwise.
         ".github/workflows/standard-check.yml",
-        # `gate-quality`'s editor locus. The workflow and the pre-commit config
-        # above hold its other five stamps; this is the seventh file, and the
-        # only artefact any gate writes that is neither a hook nor a CI step.
+        # `gate-quality`'s editor locus, which is two files rather than one.
+        # `devcontainer.json` installs the extension; `.vscode/settings.json`
+        # says that extension holds the file type, which from register contract
+        # 21 is a separate claim the same control makes (ADR 0029 points 3 and
+        # 4). Both carry an LNT-001 stamp because both are artefacts that gate
+        # writes, and neither is a hook or a CI step.
         ".devcontainer/devcontainer.json",
+        ".vscode/settings.json",
         # SUP-002's, from `gate-supply-chain`. The only artefact any gate writes
         # that belongs to exactly one control end to end, which is why its stamp
         # sits at the top of the file rather than at a section of it.

@@ -1,4 +1,10 @@
 {
+  // ee-control: LNT-001  ee-skill: gate-quality@0.1.0  register: v0.19.0  register-contract: 21
+  //
+  // Adopted, not deployed: hand-written when ADR 0029 point 1 landed, and
+  // stamped at contract 21 when points 3 and 4 made it an artefact the gate
+  // writes. The same order `.devcontainer/devcontainer.json` went in.
+  //
   // The editor locus, per ADR 0029. Workspace scope, because it is the only
   // scope that wins by documented rule: the containers.dev merge table says of
   // `customizations` only that "merging is left to the tools", so the same

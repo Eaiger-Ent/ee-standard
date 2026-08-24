@@ -466,6 +466,9 @@ stacks:
         invocation: ruff check  # matched as an invocation in a gating CI step
         pre_commit: ruff        # hook id or entry substring
         editor_extension: charliermarsh.ruff
+        editor_binding:         # the file type that extension must hold
+          language: python
+          setting: editor.defaultFormatter
         config:
           - {file: pyproject.toml, section: tool.ruff}
           - {file: ruff.toml}
@@ -489,6 +492,7 @@ stacks:
 | `config` | yes | Where its configuration may live, most specific first. |
 | `pre_commit` | no | Hook id or entry substring at the pre-commit locus. |
 | `editor_extension` | no | Extension id, found in `devcontainer.json` **or** `.vscode/extensions.json`. |
+| `editor_binding` | no | `{language, setting}` — the file type `editor_extension` must hold. Requires `editor_extension`. |
 | `strict_key` | no | A boolean inside the matched section that must be true. |
 | `coverage_key` | no | Dotted path, **from the config file's root**, to the tool's allow-list. |
 
@@ -533,6 +537,38 @@ Import-reachable files are not credited as covered. mypy follows imports out of
 its allow-list, so a module something imports is checked today — by accident of
 that import, and unchecked again the day it goes. Coverage that can be withdrawn
 without editing the coverage list is not declared coverage.
+
+**`editor_binding` is presence turned into exclusivity** (register contract 21,
+[ADR 0029](adr/0029-the-editor-locus-is-configured-by-the-repository.md) points
+3 and 4). An extension being installed is not that extension being the tool that
+runs, and the difference is where a control was passing over a live violation:
+`ghcr.io/devcontainers/features/python:1` published
+
+```json
+"[python]": { "editor.defaultFormatter": "ms-python.autopep8" }
+```
+
+in a repository whose register pinned ruff, with `charliermarsh.ruff` installed
+alongside it the whole time. DEV-001's digest pin governs what a feature
+*installs* and says nothing about what it *configures*, so nothing saw it.
+
+The binding is read from **`.vscode/settings.json`**, at workspace scope, which
+is the only scope that wins by documented rule: the containers.dev merge table
+says of `customizations` only that "merging is left to the tools". Three states
+fail — another extension holding the language, *nobody* holding it, and the same
+binding restated in `devcontainer.json`. The second is the one that matters,
+because in the case above no tracked file said anything at all and an assert
+objecting only to a wrong value would have passed it. The third fails even when
+the two agree: agreement under an undefined merge rule is luck.
+
+`language` and `setting` are both register facts rather than checker ones. A
+stack may mandate a formatter for one file type and not another, and not every
+linter is its language's formatter — the `typescript` lint gate declares no
+binding, because eslint is not TypeScript's formatter and demanding it hold
+`editor.defaultFormatter` would mandate something no reasonable repository
+writes. Omitting the field asserts the gate's tool holds no file type, the same
+shape `coverage_key`'s absence has. Declaring it without `editor_extension` is a
+schema error: a file type must be held by something.
 
 **`pre_commit` and `editor_extension` are optional to the schema and required in
 fact.** The validator demands whichever locus the controls using that role

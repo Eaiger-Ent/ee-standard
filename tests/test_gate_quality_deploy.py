@@ -25,6 +25,7 @@ allow-list that leaves tracked files out.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -102,6 +103,10 @@ def _render(template: str, register: Register) -> str:
         "{{LINT_INVOCATION}}": lint.invocation,
         "{{LINT_HOOK_ID}}": lint.pre_commit or "",
         "{{EDITOR_EXTENSION}}": lint.editor_extension or "",
+        "{{EDITOR_LANGUAGE}}": lint.editor_binding.language if lint.editor_binding else "",
+        "{{EDITOR_BINDING_SETTING}}": (
+            lint.editor_binding.setting if lint.editor_binding else ""
+        ),
         "{{TYPECHECK_TOOL}}": typecheck.tool,
         "{{TYPECHECK_INVOCATION}}": typecheck.invocation,
         "{{TYPECHECK_HOOK_ID}}": typecheck.pre_commit or "",
@@ -187,6 +192,22 @@ def _deploy(root: Path, register: Register) -> None:
     inner = fragment.strip().removeprefix("{").removesuffix("}").strip("\n")
     existing = devcontainer.read_text(encoding="utf-8").rstrip().removesuffix("}").rstrip()
     devcontainer.write_text(existing + ",\n" + inner + "\n}\n", encoding="utf-8")
+
+    # Step 3b — the binding, at workspace scope and nowhere else. Installing the
+    # extension above is a different claim from it being the tool that runs, and
+    # the gap between them is what ADR 0029 point 4 closes. Written from the
+    # template so the artefact under test is the one the skill ships, and only
+    # where the register declares a binding for this gate.
+    if lint.editor_binding is not None:
+        settings = _render(
+            _body(
+                (SKILL / "templates/editor-settings.json").read_text(encoding="utf-8"),
+                marker="// --- .vscode/settings.json",
+            ),
+            register,
+        )
+        (root / ".vscode").mkdir(exist_ok=True)
+        (root / ".vscode/settings.json").write_text(settings, encoding="utf-8")
 
     # Step 4 — the pre-commit locus.
     hooks = _render(
@@ -325,6 +346,17 @@ def test_the_deployed_hooks_cover_the_files_the_register_names(deployed: Path) -
         assert not re.match(hook["files"], "README.md")
 
 
+def _also_bind_in_devcontainer(root: Path) -> None:
+    """Repeat the workspace binding inside `devcontainer.json`, verbatim."""
+    path = root / ".devcontainer/devcontainer.json"
+    document = json.loads(re.sub(r"^\s*//.*$", "", path.read_text(encoding="utf-8"), flags=re.M))
+    vscode = document.setdefault("customizations", {}).setdefault("vscode", {})
+    vscode.setdefault("settings", {})["[python]"] = {
+        "editor.defaultFormatter": "charliermarsh.ruff"
+    }
+    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+
+
 @pytest.mark.parametrize(
     "control,locus,break_it",
     [
@@ -339,6 +371,32 @@ def test_the_deployed_hooks_cover_the_files_the_register_names(deployed: Path) -
             "LNT-001",
             "pre-commit locus",
             lambda root: (root / ".pre-commit-config.yaml").unlink(),
+        ),
+        # The state that passed for as long as it existed: the pinned extension
+        # installed, and another one holding the file type. Presence never
+        # excluded, which is why the assert stopped asking about presence alone.
+        (
+            "LNT-001",
+            "are bound to ms-python.autopep8",
+            lambda root: (root / ".vscode/settings.json").write_text(
+                '{"[python]": {"editor.defaultFormatter": "ms-python.autopep8"}}\n',
+                encoding="utf-8",
+            ),
+        ),
+        # And the state it actually occurred in: nothing tracked says anything,
+        # so whatever a feature contributes decides. An assert that only
+        # objected to a wrong value would pass this.
+        (
+            "LNT-001",
+            "does not set",
+            lambda root: (root / ".vscode/settings.json").unlink(),
+        ),
+        # The binding restated where the merge rule is undefined. Wrong even
+        # though it agrees — agreement here is luck, not a rule (ADR 0029).
+        (
+            "LNT-001",
+            "belongs at workspace scope alone",
+            lambda root: _also_bind_in_devcontainer(root),
         ),
         (
             "TST-001",
@@ -445,7 +503,11 @@ def test_stamping_one_locus_and_forgetting_the_others_is_caught(
     only stamp names TST-001. Matching stamps by skill credited LNT-001 and
     TYP-001 for it. Matching by control does not.
     """
-    for path in (".pre-commit-config.yaml", ".devcontainer/devcontainer.json"):
+    for path in (
+        ".pre-commit-config.yaml",
+        ".devcontainer/devcontainer.json",
+        ".vscode/settings.json",
+    ):
         target = deployed / path
         target.write_text(
             re.sub(r"^.*ee-control:.*\n", "", target.read_text(encoding="utf-8"), flags=re.M),
@@ -483,6 +545,7 @@ def test_removing_the_stamps_is_caught(
         ".pre-commit-config.yaml",
         ".github/workflows/ci.yml",
         ".devcontainer/devcontainer.json",
+        ".vscode/settings.json",
     ):
         target = deployed / path
         target.write_text(

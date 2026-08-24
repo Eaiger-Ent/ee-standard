@@ -250,9 +250,30 @@ The two you will meet:
 | `node:2` | `dbaeumer.vscode-eslint` | — |
 
 So a repository whose LNT-001 pins ruff formats Python with autopep8 until it
-says otherwise, and `linter-wired-at-all-loci` does not catch it: that assert
-reads `editor_extension` from `stacks:` and asks whether the pinned extension is
-*present*. Presence does not exclude. Both extensions are installed.
+says otherwise. Until register contract 21 `linter-wired-at-all-loci` did not
+catch it: the assert read `editor_extension` from `stacks:` and asked whether
+the pinned extension was *present*, and presence does not exclude — both
+extensions were installed.
+
+**From contract 21 it does catch it, and it will fail you for saying nothing.**
+`stacks.<stack>.gates.<role>` now carries an `editor_binding`, and the assert
+reads the binding rather than the install:
+
+| What it finds in `.vscode/settings.json` | Verdict |
+| --- | --- |
+| The language bound to the pinned extension | pass |
+| The language bound to another extension | fail — names what holds it |
+| No binding at all | **fail** — whatever a feature contributes decides |
+| A binding here *and* in `devcontainer.json` | fail, agreement included |
+
+The third row is the one to plan for. An absent binding is not a neutral
+default: it is the exact state the autopep8 case occurred in, where no tracked
+file said anything and the feature decided. Stating it is the requirement, not
+a way of correcting something. The fourth is unintuitive and deliberate —
+a duplicate in `devcontainer.json` agrees today by luck, under a merge rule the
+specification declines to state.
+
+`/gate-quality` writes this file for you. Doing it by hand is the same content.
 
 **Put the binding in `.vscode/settings.json`, not in `devcontainer.json`.** The
 containers.dev merge table gives one instruction for the `customizations`
@@ -276,8 +297,16 @@ diagnostics from its own rules, which is a second type checker beside the mypy
 your register pins. Turning its verdicts off keeps it as a language server —
 completion, navigation, hover — and stops it being an opinion.
 
-**How you know it worked.** Open a Python file, run *Format Document*, and check
-the status bar names ruff. Then:
+**How you know it worked.** Ask the checker, which is the same question your
+CI will ask:
+
+```bash
+uv run standard-check run --control LNT-001
+```
+
+Then confirm it in the editor, because the checker reads a file and the editor
+is what a developer meets: open a Python file, run *Format Document*, and check
+the status bar names ruff.
 
 ```bash
 code --status | grep -i autopep8   # installed is fine; formatting is not

@@ -3,7 +3,10 @@
   "gates": {
     "gate-secrets": {
       "contractVersion": 2,
-      "controls": ["SEC-001", "SEC-002"],
+      "controls": [
+        "SEC-001",
+        "SEC-002"
+      ],
       "artifacts": [
         ".pre-commit-config.yaml#gitleaks",
         ".github/workflows/standard-check.yml#secret-scan",
@@ -12,7 +15,11 @@
     },
     "gate-supply-chain": {
       "contractVersion": 2,
-      "controls": ["SUP-001", "SUP-002", "SUP-003"],
+      "controls": [
+        "SUP-001",
+        "SUP-002",
+        "SUP-003"
+      ],
       "artifacts": [
         ".github/workflows/standard-check.yml#frozen-install",
         ".github/dependabot.yml",
@@ -23,7 +30,10 @@
     },
     "gate-build": {
       "contractVersion": 1,
-      "controls": ["BLD-001", "DEV-001"],
+      "controls": [
+        "BLD-001",
+        "DEV-001"
+      ],
       "artifacts": [
         ".devcontainer/devcontainer.json#remoteUser",
         ".devcontainer/devcontainer.json#image",
@@ -33,24 +43,33 @@
     },
     "gate-repo": {
       "contractVersion": 2,
-      "controls": ["CI-001"],
+      "controls": [
+        "CI-001"
+      ],
       "artifacts": [
         ".github/rulesets/default-branch.json"
       ]
     },
     "gate-iac": {
       "contractVersion": 1,
-      "controls": ["IAC-001"],
+      "controls": [
+        "IAC-001"
+      ],
       "artifacts": [
         ".pre-commit-config.yaml#iac",
         ".github/workflows/standard-check.yml#iac"
       ]
     },
     "gate-quality": {
-      "contractVersion": 2,
-      "controls": ["LNT-001", "TYP-001", "TST-001"],
+      "contractVersion": 3,
+      "controls": [
+        "LNT-001",
+        "TYP-001",
+        "TST-001"
+      ],
       "artifacts": [
         ".devcontainer/devcontainer.json#customizations.vscode.extensions",
+        ".vscode/settings.json#editor-binding",
         ".pre-commit-config.yaml#lint",
         ".pre-commit-config.yaml#typecheck",
         ".github/workflows/standard-check.yml#lint",

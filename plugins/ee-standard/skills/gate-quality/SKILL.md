@@ -98,6 +98,8 @@ never self-declared — store:
 | `LINT_INVOCATION` | `…gates.lint.invocation` |
 | `LINT_HOOK_ID` | `…gates.lint.pre_commit` |
 | `EDITOR_EXTENSION` | `…gates.lint.editor_extension` |
+| `EDITOR_LANGUAGE` | `…gates.lint.editor_binding.language` — absent means this gate binds no file type |
+| `EDITOR_BINDING_SETTING` | `…gates.lint.editor_binding.setting` |
 | `LINT_CONFIG` | `…gates.lint.config` — the ordered list of places it may live |
 | `TYPECHECK_TOOL` | `…gates.typecheck.tool` |
 | `TYPECHECK_INVOCATION` | `…gates.typecheck.invocation` |
@@ -141,6 +143,7 @@ pins. This is the failure ADR 0020 measured for DOC-001. Offer via
 | `STRICT_STATE` | whether `STRICT_KEY` is true in whichever location configures the type checker |
 | `COVERAGE_STATE` | the value at `COVERAGE_KEY`, and which tracked files matching `SOURCE_PATTERN` it leaves out |
 | `EDITOR_STATE` | `EDITOR_EXTENSION` present in `.devcontainer/devcontainer.json` or `.vscode/extensions.json` |
+| `BINDING_STATE` | what holds `"[EDITOR_LANGUAGE]".EDITOR_BINDING_SETTING` in `.vscode/settings.json`, and whether `.devcontainer/devcontainer.json` sets it too |
 | `PRECOMMIT_STATE` | `test -f .pre-commit-config.yaml && echo EXISTS \|\| echo ABSENT` |
 | `HOOK_STATE` | whether a hook's `id` or `entry` mentions `LINT_HOOK_ID`, and the same for `TYPECHECK_HOOK_ID` |
 | `WORKFLOWS` | `ls .github/workflows/ 2>/dev/null \|\| echo NONE` |
@@ -261,6 +264,37 @@ Read `${CLAUDE_SKILL_DIR}/templates/editor-extensions.json` and substitute
   `recommendations` entry instead. Do not create a devcontainer for this —
   demanding one would invent a dependency of LNT-001 on DEV-001's artefact, and
   a repository whose editor locus is `.vscode/` satisfies the control (§ D).
+
+### Step 3b — Bind the file type, where the register says one
+
+Installing the extension is not the extension being the tool that runs, and the
+difference is the failure this step exists for: `charliermarsh.ruff` was
+installed for the whole time a devcontainer feature had Python files bound to
+`ms-python.autopep8`, and LNT-001 passed throughout (ADR 0029 point 4).
+
+**Skip this sub-step where `EDITOR_LANGUAGE` is absent.** A gate whose register
+entry declares no `editor_binding` holds no file type, and writing one would
+mandate a binding the register does not — eslint is a linter, not TypeScript's
+formatter.
+
+Otherwise read `${CLAUDE_SKILL_DIR}/templates/editor-settings.json`, substitute
+`{{EDITOR_LANGUAGE}}`, `{{EDITOR_BINDING_SETTING}}`, `{{EDITOR_EXTENSION}}`,
+`{{STACK}}`, `{{SKILL_VERSION}}`, `{{REGISTER_VERSION}}` and
+`{{REGISTER_CONTRACT}}`, and merge it into **`.vscode/settings.json`**,
+preserving every other setting. Create the file where it does not exist.
+
+- **`BINDING_STATE` shows another extension holding the language:** replace that
+  value and say in the stamp comment which extension was displaced. A repository
+  that deliberately mandates a different one changes the register, not this
+  file.
+- **`BINDING_STATE` shows `devcontainer.json` also setting it:** remove it from
+  there. The binding belongs at workspace scope alone — a copy in
+  `devcontainer.json` lands in the same machine-scoped file a feature's does and
+  merges on terms the specification declines to state. The checker fails the
+  duplicate even when the two agree.
+
+Never write the binding into `devcontainer.json`, whichever file the extension
+list went into in Step 3.
 
 The editor reads the same configuration pre-commit and CI read. Write nothing
 that configures rules here: an editor with rules of its own is the second copy
@@ -416,5 +450,6 @@ decides whether it lands (`docs/00-concepts.md` § Notify, never redeploy).
   `${CLAUDE_SKILL_DIR}/README.md`
 - The artefacts it writes:
   `${CLAUDE_SKILL_DIR}/templates/editor-extensions.json`,
+  `${CLAUDE_SKILL_DIR}/templates/editor-settings.json`,
   `${CLAUDE_SKILL_DIR}/templates/precommit-hooks.yaml` and
   `${CLAUDE_SKILL_DIR}/templates/ci-steps.yaml`
