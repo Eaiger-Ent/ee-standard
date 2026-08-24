@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-24
-**Revision:** 1
+**Revision:** 2
 
 ## Background
 
@@ -126,15 +126,78 @@ need should not decide what the project develops on.
   `support-floor.yml` starts running again on its own. Nothing about this
   decision is hard to reverse, which is the main reason it is safe to take on
   the evidence available.
-- The devcontainer's bootstrap interpreter (3.13) is now below the floor. It
-  installs uv and answers `#!/usr/bin/env python3` for `.claude/hooks/md-lint.py`
-  — neither is the package, and `requires-python` makes no claim about either.
-  It is noted because the numbers now look inconsistent at a glance, and the
-  reason they are not is worth being able to look up.
+- The devcontainer's bootstrap interpreter was left at 3.13, below the floor,
+  on the grounds that it installs uv and runs no gate. **That was measured and
+  found incomplete** — see § Amended below.
 - The gap between floor and pin is where a 3.14-only construct could reach code
   an adopter compiles on 3.13. Closing the gap removes that risk rather than
   managing it, which is a benefit — but it removes it by narrowing who can
   install, not by making the code more portable.
+
+## The bootstrap interpreter is not only bootstrap
+
+**Amended 2026-08-24: the reason given for leaving the devcontainer's python
+feature below the floor was measured and found false. The decision — the floor
+is 3.14 — is unchanged.**
+
+This ADR, and [ADR 0027](0027-the-interpreter-is-a-pinned-tool.md) before it,
+justified leaving the devcontainer's python feature behind the floor with *it
+runs `pip install uv` and no gate*. The first half is true. The second is true
+of gates and false of everything else, and the difference was never measured.
+
+A shebang is resolved by the kernel against `PATH`, and `.python-version` binds
+only what goes through uv. In a login shell in this container, `python3` is the
+feature's interpreter:
+
+```text
+env -i … bash -lc 'command -v python3; python3 -V'
+    /usr/local/python/current/bin/python3
+    Python 3.13.15
+```
+
+`scripts/plan_progress.py` is tracked mode `100755` with `#!/usr/bin/env python3`,
+so `./scripts/plan_progress.py` ran on **3.13.15** — below the floor this ADR had
+just raised to 3.14 — while `mypy` type-checked it at 3.14 and `ruff` linted it
+at 3.14, because both derive from `requires-python`.
+
+The failure that combination admits, measured with PEP 758's unparenthesised
+`except A, B:`, the smallest 3.14-only syntax:
+
+```text
+.venv/bin/python3 pep758.py                 parsed OK
+/usr/local/python/current/bin/python3 …     SyntaxError: multiple exception
+                                            types must be parenthesized
+```
+
+Every gate in this repository passes on that file. Nothing runs it, so nothing
+catches it, and the person who finds out is whoever types
+`./scripts/plan_progress.py`. That is the diagnosis cost this repository
+normally refuses to hand to a reader.
+
+**The decision is unchanged** — the floor is 3.14 and the register still does not
+assert the feature equals the pin. What was wrong is a claim in the record: that
+nothing but bootstrap runs on that interpreter. Two things change:
+
+1. **Shebangs name the resolver, not the search path.**
+   `#!/usr/bin/env -S uv run python` in `scripts/plan_progress.py` and
+   `.claude/hooks/md-lint.py`. Measured from a bare environment, the same file
+   now runs on 3.14.7. This is the by-construction half, and it holds outside
+   this container as well as in it.
+2. **The feature moves to 3.14.** Not asserting an equality and not wanting one
+   are different things, and ADR 0027 only ruled out the first. Lagging bought
+   nothing and cost the gap above.
+
+Both, rather than either. The shebang holds anywhere and does not depend on a
+rebuild; the feature version stops a bare `python3` in this container being an
+interpreter the project does not support. `tests/test_toolchain_pin.py` fails
+any tracked script whose shebang resolves from `PATH`, so the first half cannot
+regress quietly.
+
+**Not verified here:** this container has no Docker, so nothing in this session
+has rebuilt it. The feature version is a claim about the next rebuild until an
+operator runs one — `devcontainer build --workspace-folder .`, or *Dev
+Containers: Rebuild Container* — and `python3 -V` reporting 3.14 is the
+evidence. The shebang change needs no rebuild and is verified.
 
 ## Related ADRs
 
@@ -156,3 +219,10 @@ need should not decide what the project develops on.
 - [ruff — `target-version`](https://docs.astral.sh/ruff/settings/#target-version)
   — inference from `requires-python`, which is why the linter's target moved
   without an edit.
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-24 | Original decision: raise `requires-python` to `>=3.14`, matching the interpreter `.python-version` pins. | Nathan Carney |
+| 2 | 2026-08-24 | § Amended — the claim that only bootstrap runs on the devcontainer's interpreter was measured and found false. Shebangs now resolve through uv, and the feature moves to 3.14. The decision is unchanged. | Nathan Carney |

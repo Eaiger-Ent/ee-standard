@@ -442,7 +442,11 @@ fixed in both.
       (`tests/test_devcontainer_template.py`). **Open on the other half**: this
       devcontainer has no Docker, so nothing here has built it, and a tick on a
       build nobody ran is the over-tick this plan exists to catch. The commands
-      are in [`08-adopting.md`](08-adopting.md) § 2.0
+      are in [`08-adopting.md`](08-adopting.md) § 2.0.
+      **Also unverified for the same reason**, from
+      [ADR 0028](adr/0028-the-support-floor-is-what-we-run.md) revision 2: the
+      python feature reads `3.14`, and no rebuild has confirmed it. `python3 -V`
+      reporting 3.14 inside a freshly built container is the evidence
 - [x] The template pins no tool version by hand. Every tool it installs is
       either sourced from a lockfile the consumer repo already commits, or from
       a single toolchain file ([§ G](09-phase-1.5-review.md#g--tool-version-reconciliation)'s

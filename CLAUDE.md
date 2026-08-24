@@ -55,10 +55,17 @@ because nobody had ever decided it; `>=3.13` was the number the container
 happened to have. **An adopter on 3.13 can no longer install `standard-check`**,
 and that is the accepted cost, cheap to reverse.
 
-The devcontainer's python feature stays **3.13** and is now below the floor,
-deliberately: it bootstraps `pip install uv` and answers
-`#!/usr/bin/env python3`, it runs no gate, and `requires-python` claims nothing
-about it — the decoupling ADR 0027 § Consequences predicted.
+The devcontainer's python feature is **3.14** too, from ADR 0028 revision 2.
+It was left at 3.13 on the grounds that it runs no gate, which is true of gates
+and false of everything else: a shebang resolves against `PATH`, and in a login
+shell here `python3` is that feature's interpreter — so
+`./scripts/plan_progress.py` ran on 3.13.15 while mypy and ruff checked it at
+3.14. **`.python-version` binds only what goes through uv.** Every tracked
+script therefore reads `#!/usr/bin/env -S uv run python`, and
+`tests/test_toolchain_pin.py` fails any that resolves from `PATH`. The register
+still does not assert the feature equals the pin — not asserting an equality and
+not wanting one are different things. The feature value is unverified until
+someone rebuilds: this container has no Docker.
 
 `.github/workflows/support-floor.yml` verifies the floor when it differs from
 the pin, and today it does not, so the job reads both files and **skips itself**
