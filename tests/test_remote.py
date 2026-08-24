@@ -470,13 +470,23 @@ def _expiring_in(hours: float) -> FakeGitHub:
     return FakeGitHub({}, headers={TOKEN_EXPIRY_HEADER: when.strftime("%Y-%m-%d %H:%M:%S UTC")})
 
 
+def _registers_maximum() -> int:
+    """The ceiling the register permits, read rather than repeated.
+
+    A test asserting `24h` was a second copy of a register value, and it broke
+    the day this repository named a standing credential — which is the register
+    moving, exactly as it is supposed to.
+    """
+    return max(c.max_lifetime_hours for c in a_register().platform_credentials)
+
+
 def test_a_token_expiring_inside_the_registers_maximum_passes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _in_actions(monkeypatch)
-    result = platform_token_expires_within(_expiring_in(1), a_register(), {})
+    result = platform_token_expires_within(_expiring_in(_registers_maximum() / 2), a_register(), {})
     assert result.passed
-    assert "24h" in result.message
+    assert f"{_registers_maximum()}h" in result.message
 
 
 def test_a_token_outliving_the_registers_maximum_fails(
@@ -484,9 +494,9 @@ def test_a_token_outliving_the_registers_maximum_fails(
 ) -> None:
     """The case the requirement exists for: a standing credential in CI."""
     _in_actions(monkeypatch)
-    result = platform_token_expires_within(_expiring_in(24 * 90), a_register(), {})
+    result = platform_token_expires_within(_expiring_in(_registers_maximum() * 2), a_register(), {})
     assert not result.passed
-    assert "24h" in result.message
+    assert f"{_registers_maximum()}h" in result.message
 
 
 def test_the_maximum_moves_with_the_register(
@@ -494,15 +504,20 @@ def test_the_maximum_moves_with_the_register(
 ) -> None:
     """Widen the register and the same token passes — the assert holds no number."""
     _in_actions(monkeypatch)
-    token = _expiring_in(24 * 20)
+    beyond = _registers_maximum() * 2
+    token = _expiring_in(beyond)
     assert not platform_token_expires_within(token, a_register(), {}).passed
 
-    def permit_a_month(document: dict[str, Any]) -> None:
+    def permit_longer(document: dict[str, Any]) -> None:
         document["platform_credentials"].append(
-            {"name": "PLATFORM_READ_TOKEN", "triggers": ["push"], "max_lifetime_hours": 720}
+            {
+                "name": "ANOTHER_STANDING_TOKEN",
+                "triggers": ["push"],
+                "max_lifetime_hours": beyond * 2,
+            }
         )
 
-    assert platform_token_expires_within(token, register_with(tmp_path, permit_a_month), {}).passed
+    assert platform_token_expires_within(token, register_with(tmp_path, permit_longer), {}).passed
 
 
 def test_a_classic_token_with_no_expiry_set_fails(monkeypatch: pytest.MonkeyPatch) -> None:

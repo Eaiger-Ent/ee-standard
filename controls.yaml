@@ -252,7 +252,21 @@ meta:
   #     Administration: read only" stays a human act recorded at issue time —
   #     stated here because over-reading this as "the register verifies the
   #     token is minimal" would be the substitution ADR 0022 warned about.
-  register_contract: 24
+  # 25: `platform_credentials:` names a standing credential for the first time.
+  #     Every requirement ADR 0022 § The precondition puts before a token is
+  #     closed — the control that can see one (22), the register fact naming
+  #     what may be carried (22), a verified expiry (23), a refused classic
+  #     instrument (24), and the test keeping this repository's own arrangement
+  #     out of what an adopter installs (no contract).
+  #
+  #     The entry raises the ceiling `platform_token_expires_within` compares
+  #     against, because that assert reads the largest lifetime any entry
+  #     permits: the run carries one of the credentials the register names and
+  #     nothing in an API response says which. Stated here rather than left to
+  #     be discovered — narrowing it means matching a credential to its entry,
+  #     which needs a way to identify the running token that GitHub does not
+  #     offer.
+  register_contract: 25
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -745,6 +759,24 @@ cloud_credentials:
 # before this block and SEC-003 exist.
 # ---------------------------------------------------------------------------
 platform_credentials:
+  # The standing credential this repository carries, from contract 25. It is
+  # fine-grained, scoped to this repository alone, and holds
+  # `Administration: read` — the one permission SEC-001's remote block needs and
+  # the default job token does not have.
+  #
+  # `max_lifetime_hours` is a **permission rather than a measurement**: it is
+  # the longest life this register allows a standing platform credential, not a
+  # description of the token that happens to exist. 2160 hours is 90 days.
+  # SEC-003's remote block reads what GitHub reports for the credential a run
+  # actually carries and fails one that outlives this — so a token issued for
+  # longer is caught by the check rather than by whoever remembers to look.
+  #
+  # Both events are named because both need the answer: a push run and a pull
+  # request run each verify the same controls, and the flip that ends ADR 0016's
+  # tolerance has to hold on the runs that gate a merge.
+  - name: PLATFORM_READ_TOKEN
+    triggers: [push, pull_request]
+    max_lifetime_hours: 2160
   - name: GITHUB_TOKEN
     # Created by GitHub at the start of each job and expired when that job
     # finishes; 24 hours is the documented ceiling, reached only where a

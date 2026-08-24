@@ -556,6 +556,43 @@ governs what this repository may ship, not what a conformant repository
 contains. A control would deploy the prohibition to adopters, which is the
 category error the requirement exists to prevent.
 
+## Applied — pass 5: the token exists
+
+`PLATFORM_READ_TOKEN` was set as a repository secret on 2026-08-24, after every
+requirement this ADR § The precondition puts before a token was closed — the
+control that can see one and the register fact naming what may be carried
+(contract 22), a verified expiry (23), a refused classic instrument (24), and
+the test keeping this arrangement out of what an adopter installs. The register
+names it at contract 25 and the conformance workflow hands it to
+`standard-check`.
+
+**`max_lifetime_hours` is a permission, not a measurement.** The register says
+2160 hours — 90 days — which is the longest life it allows a standing platform
+credential, not a description of the token that happens to exist. Whoever issues
+the credential does not get to define what is permitted by choosing an expiry;
+SEC-003's remote block reads what GitHub reports for the running credential and
+fails one that outlives the register.
+
+**And it raises the ceiling for every credential**, because
+`platform_token_expires_within` compares against the largest lifetime any entry
+permits. That is stated in the register beside the entry rather than left to be
+discovered: the run carries one of the credentials the register names, and no
+API response says which, so narrowing the comparison means identifying the
+running token — which GitHub offers no way to do.
+
+**The fork case is why the workflow keeps a fallback.** A pull request from a
+fork receives no repository secret, so the expression resolves empty and the job
+token answers what it can. A run that reported `SKIPPED (no credentials)`
+because one secret was absent would decline to answer CI-001 as well, which the
+job token can answer perfectly well.
+
+**What this does not unblock.** The `--require-complete` flip is still not
+available, and the reason was never credentials alone: GOV-001 carries a
+`partial:` declaration, and ADR 0017 gives a partial the property of denying a
+`0` exit **by design**, so no token affects it. The flip waits on GOV-001's
+remote half. That is a better-understood position than the one this ADR opened
+with, where the token was believed to be the whole of it.
+
 ## Related ADRs
 
 - [ADR 0002: Federate CI Cloud Identity via OIDC](0002-federated-ci-identity.md)
