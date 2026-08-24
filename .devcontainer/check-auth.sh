@@ -69,7 +69,10 @@ check_tool() {
 }
 
 check_tool claude claude
-check_tool python3 python3
+# Not a bare `python3`: there is no system interpreter any more (ADR 0030), and
+# probing for one reported "missing" on a container where every locus works.
+# `uv run python` is the question the loci actually ask.
+check_tool python uv run python
 check_tool node node
 check_tool markdownlint-cli2 npx --no-install markdownlint-cli2
 

@@ -177,17 +177,19 @@ sketch rather than a deviation from it:
 | `"remoteUser": "vscode"` stated explicitly | BLD-001 is a Tier-1 control of this register. Relying on the image's default is exactly the "declared but unreachable" shape (T-3) the repo exists to catch. |
 | Claude Code as a pinned **feature** | `03-devcontainer.md` ranks a version-pinned feature above `curl … \| sh`. `ghcr.io/anthropics/devcontainer-features/claude-code` is official and lock-file-covered, which removes one of the three pipes-to-shell and shortens `setup.sh` to wiring only. |
 
-One setting in `devcontainer.json` is a genuinely open choice:
-`installTools: false`, which stops the Python feature installing an unpinned
-grab-bag of linters. That would reintroduce the unversioned-global-install
-problem the spec calls out.
+**There is no python feature**, from
+[ADR 0030](adr/0030-uv-is-bootstrapped-from-a-pinned-release.md). There used to
+be, carrying `installTools: false` to stop it installing an unpinned grab-bag of
+linters, and it existed to supply the `python3` that ran one line of `setup.sh`
+— `pip install uv`. `setup.sh` now installs uv from its pinned release against a
+published checksum, the way it already installed gitleaks, and `uv sync` fetches
+the interpreter `.python-version` names. **Nothing else in the container
+installs an interpreter**, so `python3` on `PATH` is uv's or it is absent.
 
-**The python feature's `version` is not the interpreter your gates run on**, and
-until [ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md) this page said it
-was — *"change it in that one place"*, where there were three places and the one
-that decided the answer in CI was none of them. The feature installs the
-`python3` that runs `pip install uv` in `setup.sh` and answers
-`#!/usr/bin/env python3`. It runs no gate.
+Until [ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md) this page said
+the feature's `version` was the interpreter your gates run on — *"change it in
+that one place"*, where there were three places and the one that decided the
+answer in CI was none of them.
 
 The interpreter the gates run on is `.python-version`, at the repository root,
 and uv reads it at every locus. That is the one place, and now it really is one:
@@ -196,19 +198,21 @@ and uv reads it at every locus. That is the one place, and now it really is one:
 | --- | --- |
 | `.python-version` | The interpreter every locus runs the gates on. **Change this one.** |
 | `pyproject.toml` `requires-python` | Which interpreters `standard-check` claims to support. A floor, published in package metadata — not this container's choice |
-| `devcontainer.json` python feature | Which `python3` bootstraps uv, and what a bare `python3` in a login shell resolves to. Set to the same version as the first, though nothing *asserts* they are equal — see below |
 
-**The feature's value and the register's silence are different things.** The
-register does not compare the feature to `.python-version` ([ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md)),
-and it should not — they answer different questions and may legitimately
-diverge. But leaving the feature *behind* bought nothing and cost a real gap:
-`.python-version` binds only what goes through uv, so `./scripts/plan_progress.py`
-ran on the feature's 3.13 while mypy and ruff checked it at 3.14
-([ADR 0028](adr/0028-the-support-floor-is-what-we-run.md) revision 2). Tracked
-scripts now read `#!/usr/bin/env -S uv run python` so a shebang cannot resolve
-from `PATH`, and the feature was raised as well. Either alone would have closed
-it; both are here because the shebang holds outside this container and the
-feature version holds for anything that ignores a shebang.
+**Why the shebangs still say `uv run`.** `.python-version` binds only what goes
+through uv, and while the feature existed a bare `python3` in a login shell was
+*its* interpreter — so `./scripts/plan_progress.py` ran on 3.13 while mypy and
+ruff checked it at 3.14 ([ADR 0028](adr/0028-the-support-floor-is-what-we-run.md)
+revision 2). Two repairs were made: every tracked script reads
+`#!/usr/bin/env -S uv run python`, and the feature was raised to match. ADR 0030
+has since removed the feature, so the second repair is gone and the hazard has
+no source left inside this container.
+
+The first repair stays, and `tests/test_toolchain_pin.py` still fails any script
+that resolves from `PATH`. It defends the shape rather than that one feature: a
+shebang resolving against `PATH` is wrong wherever it happens, including on a
+host where a script is run outside the container entirely. Removing a hazard's
+current source is not a reason to stop checking for it.
 
 `setup.sh` does **not** pin `markdownlint-cli2`. It runs `npm ci`, so
 `package-lock.json` is the authority and there is no version here to keep in
@@ -272,8 +276,10 @@ For reference, the digests resolved on 2026-08-16:
 | `mcr.microsoft.com/devcontainers/base:trixie` | — | `sha256:025b74bb5f7ac53edd77e01aa7188c359aab100e23a2f6220bde50bbb9fd31dd` |
 | `devcontainers/features/github-cli` | 1.1.0 | `sha256:d22f50b70ed75339b4eed1ba9ecde3a1791f90e88d37936517e3bace0bbad671` |
 | `devcontainers/features/node` | 2.1.0 | `sha256:8c0de46939b61958041700ee89e3493f3b2e4131a06dc46b4d9423427d06e5f6` |
-| `devcontainers/features/python` | 1.8.0 | `sha256:fbcad6955caeecc5ad3f7886baf652e25cba5225a6c4c2287c536de2e5607511` |
 | `anthropics/devcontainer-features/claude-code` | 1.0.5 | `sha256:cfc2e7d3e9fd3b9b01f8d5cb158508a884c8c0ede2e23ed10f32dea5d4ffe69a` |
+
+`devcontainers/features/python` was resolved here too, at 1.8.0. It is no
+longer declared (ADR 0030), so its digest is not listed.
 
 The `github-cli` digest matches the one already quoted in
 [`03-devcontainer.md`](03-devcontainer.md), which is a useful independent

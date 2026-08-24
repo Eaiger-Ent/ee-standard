@@ -162,8 +162,14 @@ Phase 1 unclosable by its own terms.
       and a downloaded artefact for a checksum. ADR 0030 moves uv from the first
       category to the second, which is the stronger one, and takes the feature's
       three extensions, its autopep8 formatter binding and its second
-      interpreter on `PATH` with it. Closing this needs `devcontainer build` and
-      `devcontainer upgrade --workspace-folder .`; this container has no Docker
+      interpreter on `PATH` with it. **Written 2026-08-24 and unverified**:
+      `setup.sh` installs uv from the release against its published checksum,
+      `python:1` is gone from `devcontainer.json` and `devcontainer-lock.json`,
+      `check-auth.sh` probes `uv run python`, and `tools.uv` carries
+      `release_repo` and `sha256`. The download, checksum, archive layout and
+      binary were verified by hand here. The **container** was not: closing this
+      needs `devcontainer build`, and this container has no Docker. A tick on a
+      build nobody ran is the over-tick this plan exists to catch
 
 The last one was register debt, not container work: as `controls.yaml`
 originally stood, a repo with a complete lock file and a floating image tag

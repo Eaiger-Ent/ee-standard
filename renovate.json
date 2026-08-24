@@ -31,7 +31,8 @@
       ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>pypi) depName=(?<depName>\\S+)\\s+[^\\n]*?==(?<currentValue>\\d+\\.\\d+\\.\\d+)",
-        "# renovate: datasource=(?<datasource>pypi) depName=(?<depName>\\S+)\\s+version:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+        "# renovate: datasource=(?<datasource>pypi) depName=(?<depName>\\S+)\\s+version:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\"",
+        "# renovate: datasource=(?<datasource>pypi) depName=(?<depName>\\S+)\\s+[A-Z_]+=(?<currentValue>\\d+\\.\\d+\\.\\d+)"
       ]
     },
     {
