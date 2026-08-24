@@ -9,7 +9,7 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 (`standard-check`, in `src/standard_check/`) audits them.
 
 Current status: Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
-with no re-opened criteria outstanding. **Phase 2 is 11/12** and **Phase 3 is in
+with no re-opened criteria outstanding. **Phase 2 is 11/13** and **Phase 3 is in
 progress**; the register is at contract 20. `docs/04-build-plan.md` is the only
 list of outstanding work and `uv run python scripts/plan_progress.py` is its
 derived view — never keep a second copy of that status here. The slice-by-slice
@@ -19,9 +19,12 @@ audit run over the register rather than over the ledger, and § What the second
 review found — and in `docs/11-phase-3-review.md`, including what each slice
 deliberately left open.
 
-The one Phase 2 criterion still open is that the devcontainer template *builds*:
-this container has no Docker, so nothing here has run `devcontainer build`, and
-the commands for an operator are in `docs/08-adopting.md` § 2.0.
+Two Phase 2 criteria are still open. The **devcontainer template** has not been
+built: the 2026-08-24 rebuild was of this repository's own container, and the
+template at `plugins/ee-standard/templates/devcontainer/` is a different
+artefact — this container has no Docker, so nothing here has run
+`devcontainer build`, and the commands for an operator are in
+`docs/08-adopting.md` § 2.0. The other is points 3 and 4 of ADR 0029, below.
 
 Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
@@ -88,18 +91,35 @@ of which bound Python files to **autopep8** while LNT-001 pins ruff. uv is a
 static binary that needs no Python and can fetch the interpreter itself, so
 `setup.sh` installs it from its pinned release tarball against the published
 sha256 — the shape it already uses for gitleaks a few lines below — and
-`uv sync` fetches the interpreter `.python-version` names. One interpreter
-exists in the container instead of two. `tools.uv` gained `release_repo` and
-`sha256`, the pair `tools.gitleaks` already carried; no control's `rung`,
-`verify`, `variance` or `applies_to` changed, so the contract stayed at 20.
+`uv sync` fetches the interpreter `.python-version` names. `tools.uv` gained
+`release_repo` and `sha256`, the pair `tools.gitleaks` already carried; no
+control's `rung`, `verify`, `variance` or `applies_to` changed, so the contract
+stayed at 20.
 **The base image is not the problem and must not be swapped**: `base:trixie`
 declares no `customizations` and contributes zero extensions and zero bindings,
-and it is where BLD-001's non-root `vscode` user comes from. `node:2` stays —
+and it is where BLD-001's non-root `vscode` user comes from. It does contribute
+an interpreter, which the rebuild uncovered and ADR 0030 revision 2 records:
+`base:trixie` installs `python3-minimal`, so `/usr/bin/python3` is Python
+**3.13.5** and a bare `python3` still answers. Do not try to fix that — trixie
+has no 3.14 to upgrade to, a matching number would be a second copy of the pin,
+and the package has no `venv`, `ctypes`, `sqlite3` or `http`, so nothing here
+could run on it at any version. Removing it is a leaf `apt-get remove`, and was
+considered and rejected in the same revision. `node:2` stays —
 DOC-001 needs it, and it binds nothing. Pylance goes with the feature, which is
-the accepted cost. **None of it is verified until someone rebuilds**: this
-container has no Docker, so the Phase 2 criterion stays open and
-`.devcontainer/devcontainer-lock.json` was edited by hand rather than by
-`devcontainer upgrade`.
+the accepted cost. **The rebuild was run on 2026-08-24** and everything above
+held — uv from the tarball, `uv run python -V` at 3.14.7, no `python:1` in the
+lock, DEV-001 passing, no `ms-python.*` extension installed — so the Phase 0.5
+criterion it opened is closed, with the evidence recorded in that ADR's
+§ Consequences beside the prediction it settles. It closed the lock file too:
+the CLI writes `devcontainer-lock.json` on every `build` and `up`, so the
+rebuild regenerated it, and it wrote back exactly what the hand edit said —
+whose three `resolved` digests were then checked against what `ghcr.io` serves
+for the declared tags. **`devcontainer upgrade` is not needed** and never was
+the only route; it moves pins forward without building. The one thing the
+rebuild did **not** close is the shipped template at
+`plugins/ee-standard/templates/devcontainer/`, a different artefact — different
+features, `{{PROJECT_NAME}}` placeholders to substitute — that nobody has
+built.
 
 **The shebang repair stays, and is not about that feature.** While the feature
 existed it was left at 3.13 on the grounds that it ran no gate, which was true
@@ -109,8 +129,10 @@ a login shell `python3` was that feature's interpreter — so
 3.14 (ADR 0028 revision 2). Two repairs were made, and either alone would have
 closed it: every tracked script reads `#!/usr/bin/env -S uv run python`, with
 `tests/test_toolchain_pin.py` failing any that resolves from `PATH`, and the
-feature was raised to match. ADR 0030 has since removed the second, so nothing
-in the container answers a bare `python3` but uv's interpreter. Keep the first.
+feature was raised to match. ADR 0030 has since removed the second — which
+uncovered a third, the base image's `python3-minimal`, so a bare `python3` still
+answers and still answers below the floor. Keep the first: it is now the whole
+defence rather than one of two.
 **`.python-version` binds only what goes through uv**, and a shebang resolving
 from `PATH` is wrong wherever it happens — including on a host where a tracked
 script is run outside this container entirely.

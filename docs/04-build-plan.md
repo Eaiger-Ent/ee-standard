@@ -151,7 +151,7 @@ Phase 1 unclosable by its own terms.
 - [x] DEV-001's `enforces` text in `controls.yaml` covers the image digest as
       well as the lock file, matching what
       [`03-devcontainer.md`](03-devcontainer.md) already claims it verifies
-- [ ] `setup.sh` installs uv from a checksum-verified release artefact, and
+- [x] `setup.sh` installs uv from a checksum-verified release artefact, and
       `ghcr.io/devcontainers/features/python:1` is gone from `devcontainer.json`
       and `devcontainer-lock.json` — **added 2026-08-24** by
       [ADR 0030](adr/0030-uv-is-bootstrapped-from-a-pinned-release.md), not
@@ -162,14 +162,25 @@ Phase 1 unclosable by its own terms.
       and a downloaded artefact for a checksum. ADR 0030 moves uv from the first
       category to the second, which is the stronger one, and takes the feature's
       three extensions, its autopep8 formatter binding and its second
-      interpreter on `PATH` with it. **Written 2026-08-24 and unverified**:
-      `setup.sh` installs uv from the release against its published checksum,
-      `python:1` is gone from `devcontainer.json` and `devcontainer-lock.json`,
-      `check-auth.sh` probes `uv run python`, and `tools.uv` carries
-      `release_repo` and `sha256`. The download, checksum, archive layout and
-      binary were verified by hand here. The **container** was not: closing this
-      needs `devcontainer build`, and this container has no Docker. A tick on a
-      build nobody ran is the over-tick this plan exists to catch
+      interpreter on `PATH` with it. **Closed 2026-08-24 by the rebuild**, not
+      by a reading: uv 0.12.5 is at `/usr/local/bin/uv` from the release tarball
+      and `/usr/local/python` no longer exists, `uv run python -V` reports
+      3.14.7, the lock carries three features and none is `python:1`, DEV-001
+      passes, no `ms-python.*` extension is installed, `check-auth.sh` reports
+      `python — Python 3.14.7`, and gitleaks and the pre-commit hook still
+      arrive — so the rest of `setup.sh` survived losing the interpreter it used
+      to start with. The evidence is recorded in
+      [ADR 0030](adr/0030-uv-is-bootstrapped-from-a-pinned-release.md)
+      § Consequences, beside the prediction it settles. What the rebuild also
+      showed is that removing the feature does not leave one interpreter: the
+      base image ships `python3-minimal`, so `/usr/bin/python3` is 3.13.5. That
+      falsified a claim rather than the decision, and is recorded as ADR 0030
+      revision 2. The lock file is **not** an outstanding hand edit: the CLI
+      writes `devcontainer-lock.json` on every `build` and `up`, so the rebuild
+      regenerated it, and it wrote back what the hand edit already said — whose
+      three `resolved` digests were then checked against what `ghcr.io` serves
+      for the declared tags. What this does **not** close, tracked below, is the
+      shipped template, a different artefact nobody has built
 
 The last one was register debt, not container work: as `controls.yaml`
 originally stood, a repo with a complete lock file and a floating image tag
@@ -474,10 +485,26 @@ fixed in both.
       devcontainer has no Docker, so nothing here has built it, and a tick on a
       build nobody ran is the over-tick this plan exists to catch. The commands
       are in [`08-adopting.md`](08-adopting.md) § 2.0.
-      **Also unverified for the same reason**, from
-      [ADR 0028](adr/0028-the-support-floor-is-what-we-run.md) revision 2: the
-      python feature reads `3.14`, and no rebuild has confirmed it. `python3 -V`
-      reporting 3.14 inside a freshly built container is the evidence
+      **The [ADR 0028](adr/0028-the-support-floor-is-what-we-run.md) revision 2
+      half of this criterion has been rewritten, not met.** It named the
+      evidence as "`python3 -V` reporting 3.14 inside a freshly built
+      container", which was a property of a feature ADR 0030 has since deleted.
+      The 2026-08-24 rebuild reports `python3 -V` as **3.13.5**, and should:
+      that is the base image's `python3-minimal`, which nothing here runs on.
+      The property that replaced it — `uv run python -V` at the pin, and every
+      tracked script reaching the interpreter through uv rather than `PATH` —
+      is verified, by that rebuild and by `tests/test_toolchain_pin.py`. So this
+      row is open on **one** thing only: nobody has built the template.
+      **Deferred to Phase 4 on 2026-08-24**, deliberately and not for want of a
+      machine — the consumer repo has to build the template from placeholders
+      to exist at all, so Phase 4 produces this evidence as a by-product where
+      doing it here would be a rehearsal of the same build. The 2026-08-24
+      rebuild of *this* repository's container is not that evidence: the
+      template is a different artefact, with `{{PROJECT_NAME}}` placeholders to
+      substitute, one feature rather than three, no `containerEnv`, empty
+      `extensions`, and a `setup.sh` that branches on which lockfiles the
+      consumer repo commits. What it does share is the base image digest, which
+      that rebuild did pull and run
 - [x] The template pins no tool version by hand. Every tool it installs is
       either sourced from a lockfile the consumer repo already commits, or from
       a single toolchain file ([§ G](09-phase-1.5-review.md#g--tool-version-reconciliation)'s

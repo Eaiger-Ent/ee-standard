@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-24
-**Revision:** 1
+**Revision:** 2
 
 ## Background
 
@@ -109,11 +109,13 @@ checksum, install the binary, and let uv fetch the interpreter. Delete
 from `devcontainer-lock.json`.
 
 **Chosen.** It removes the cause rather than correcting the effect. The
-extensions are not installed, the settings are never written, there is no second
-interpreter on `PATH`, and the installer is verified. It also makes the
-container match what ADR 0027 already decided: the interpreter that runs the
-gates is a pinned tool that uv resolves, and after this there is no other
-interpreter for anything to resolve to by accident.
+extensions are not installed, the settings are never written, the interpreter we
+put on `PATH` is gone, and the installer is verified. It also makes the container
+match what ADR 0027 already decided: the interpreter that runs the gates is a
+pinned tool that uv resolves, and after this nothing we install resolves to
+another one by accident. It does not leave the container with a single
+interpreter — the base image ships one of its own, which
+§ A third interpreter, uncovered by the rebuild records.
 
 ## Decision
 
@@ -128,7 +130,7 @@ Concretely:
 | How uv is installed | `pip install uv==0.12.5`, using the feature's Python | pinned release tarball, checksum verified, in `setup.sh` |
 | How the interpreter arrives | the feature installs 3.14; uv separately resolves `.python-version` | uv fetches the interpreter `.python-version` names; nothing else installs one |
 | `python:1` in `devcontainer.json` | present | **removed**, with its `devcontainer-lock.json` entry |
-| Interpreters on `PATH` | two | one |
+| Interpreters on `PATH` | two, neither the one the gates run on | one, still not the one the gates run on: the base image's `python3-minimal` (§ A third interpreter, uncovered by the rebuild) |
 | `tools.uv` in `controls.yaml` | `source: literal`, `version`, `pinned_at` | gains `release_repo` and `sha256`, matching the `gitleaks` entry |
 
 Three points that this decision does **not** change, stated so they are not read
@@ -153,13 +155,20 @@ into it:
 ## Consequences
 
 **`.devcontainer/check-auth.sh` must change.** It probes `check_tool python3
-python3`, which will find nothing once no system Python exists. The question it
-should ask is the one the loci ask: `uv run python --version`.
+python3`, which asks the wrong question either way: it reports whatever `python3`
+resolves to, which is the feature's interpreter before this change and the base
+image's `python3-minimal` after it, and neither is the interpreter the gates run
+on. The question it should ask is the one the loci ask:
+`uv run python --version`.
 
 **`devcontainer-lock.json` loses an entry.** DEV-001's
 `devcontainer_lock_covers_all_features` compares the lock against the features
-declared, so removing both together keeps it passing. Regenerating the lock
-needs `devcontainer upgrade --workspace-folder .`, which needs Docker.
+declared, so removing both together keeps it passing. The entry is removed by
+hand here, because regenerating the lock needs Docker and this container has
+none — but a rebuild regenerates it, so the hand edit is a stand-in until then
+rather than the state it stays in. `build` and `up` write the lockfile by
+default (`--no-lockfile` opts out, `--frozen-lockfile` enforces the existing
+one); `devcontainer upgrade` is for moving the pins forward without building.
 
 **The register gains two fields on an existing tool.** `tools.uv` takes
 `release_repo` and `sha256`, the same pair `tools.gitleaks` already carries. No
@@ -189,15 +198,108 @@ choosing it and inheriting it.
 Docker. The commands an operator runs are in `docs/08-adopting.md` § 2.0. Until
 then this ADR records a decision and not an outcome.
 
+*The rebuild was run on 2026-08-24, and this ADR now records an outcome.* uv
+0.12.5 is installed at `/usr/local/bin/uv` from the release tarball and
+`/usr/local/python` no longer exists; `uv run python -V` reports 3.14.7 from a
+managed CPython; `devcontainer-lock.json` carries three features and none of
+them is `python:1`, and DEV-001 passes; the installed extensions are
+`charliermarsh.ruff`, `DavidAnson.vscode-markdownlint`, `anthropic.claude-code`,
+`dbaeumer.vscode-eslint` and `github.vscode-pull-request-github`, with no
+`ms-python.*` among them; `check-auth.sh` reports `python — Python 3.14.7`;
+gitleaks 8.30.1 installed and the pre-commit hook was written, so the rest of
+`setup.sh` survived losing the interpreter it used to start with. What it also
+showed is in § A third interpreter, uncovered by the rebuild. What the rebuild
+does **not** close is the shipped template at
+`plugins/ee-standard/templates/devcontainer/`, which is a different artefact and
+still unbuilt.
+
+*`devcontainer-lock.json` is no longer the hand edit either.* The rebuild wrote
+it, as the CLI does on every `build` and `up`, and it wrote back what the hand
+edit already said — the file's content is unchanged, which is the hand edit
+being confirmed rather than left standing. Its mtime is 10:03 UTC, seven
+minutes before the container was created at 10:10 and fifteen after the only
+git operation of the morning, so nothing else was in a position to write it.
+The content was then checked against the registry independently of the file:
+all three `resolved` digests are what `ghcr.io` serves for the tags
+`devcontainer.json` declares.
+
+## A third interpreter, uncovered by the rebuild
+
+**Amended 2026-08-24: the rebuild this ADR ended by asking for was run, and it
+falsified one claim — that removing the feature leaves the container with a
+single interpreter. Everything else the decision predicted held. The decision —
+install uv from a pinned release, remove the feature — is unchanged.**
+
+`mcr.microsoft.com/devcontainers/base:trixie` installs `python3-minimal`, so
+`/usr/bin/python3` exists in this container and always did. The feature's
+interpreter sat ahead of it on `PATH` and answered first, which is why
+[ADR 0028](0028-the-support-floor-is-what-we-run.md) revision 2 measured
+`/usr/local/python/current/bin/python3` and had no reason to look past it.
+Removing the feature uncovered what was behind it:
+
+```text
+bash -lc 'command -v python3; python3 -V'
+    /usr/bin/python3
+    Python 3.13.5
+```
+
+A bare `python3` still answers, and still answers below the floor. Three things
+follow, and none of them is a reason to reopen the decision.
+
+**What is struck is "one interpreter", not the choice.** What removing the
+feature bought is that no interpreter *we install* is unaccounted for: uv
+resolves `.python-version`, `uv sync` builds the environment, and nothing else
+in `setup.sh` or `devcontainer.json` puts one there. What remains is a
+distribution component of an image pinned by digest. It is Option 2's premise in
+reverse — the base image contributes no extensions and no bindings, which is
+what that option was weighed on, but it does contribute an interpreter.
+
+**Upgrading it is not available, and would not be worth taking.** Trixie's only
+Python is 3.13: `apt-cache policy python3` gives candidate `3.13.5-1`, and
+`python3.13` is the only versioned package in the suite. Nor would a matching
+version help, because the package is `python3-minimal` rather than `python3`:
+
+```text
+python3 -c 'import venv'            ModuleNotFoundError: No module named 'venv'
+python3 -c 'import ctypes'          ModuleNotFoundError: No module named 'ctypes'
+python3 -c 'import sqlite3'         ModuleNotFoundError: No module named 'sqlite3'
+python3 -c 'import urllib.request'  ModuleNotFoundError: No module named 'http'
+```
+
+Nothing this repository ships could run on it at any version. Making its number
+agree with `.python-version` would put the pin in a second place kept in step by
+hand — what ADR 0027 deleted `[tool.ruff] target-version` to avoid — and two
+numbers agreeing is the state that hid the original gap for as long as it did.
+
+**Removing it was considered and rejected.** It is a leaf:
+`apt-get -s remove python3-minimal` removes that package alone and leaves
+`libpython3.13-minimal` and `python3.13-minimal` autoremovable, and no installed
+package depends on it. It is rejected because it mutates apt state inside an
+image pinned by digest, so the digest stops describing the container; because
+the shipped template would have to repeat it or an adopter's container would
+behave differently from ours; and because it cannot be the general defence in
+any case — an adopter's base image may ship a full `python3`, and a host running
+a tracked script outside a container has whatever it has.
+
+**So point 3 of § Decision is the whole defence, not a second one beside it.**
+`#!/usr/bin/env -S uv run python` on every tracked script, enforced by
+`tests/test_toolchain_pin.py`, is what makes a `python3` on `PATH` harmless —
+here, in an adopter's container, and on a host with no container at all. This
+ADR removed a hazard we had installed. It did not remove the class, and saying
+it had was the error.
+
 ## Related ADRs
 
 - [ADR 0007](0007-pinned-devcontainer-features.md) — features are pinned by
   digest. This removes one feature; the rest stay pinned.
 - [ADR 0027](0027-the-interpreter-is-a-pinned-tool.md) — the interpreter is a
-  pinned tool that uv resolves. This makes the container agree with that by
-  leaving no other interpreter present.
+  pinned tool that uv resolves. This makes the container agree with that for
+  every interpreter we install. The base image's `python3-minimal` stays, and
+  § A third interpreter, uncovered by the rebuild records why it is left alone.
 - [ADR 0028](0028-the-support-floor-is-what-we-run.md) — revision 2 managed the
-  second-interpreter hazard. This removes its source.
+  second-interpreter hazard. This removes the source that ADR measured, and the
+  rebuild found another behind it; revision 2 of this ADR records why the
+  management, not the removal, is what the hazard actually rests on.
 - [ADR 0029](0029-the-editor-locus-is-configured-by-the-repository.md) — the
   editor locus is configured by the repository. That is the general defence;
   this is the specific source.
@@ -208,3 +310,10 @@ then this ADR records a decision and not an outcome.
 - [uv — installation](https://docs.astral.sh/uv/getting-started/installation/)
 - [uv — Python versions](https://docs.astral.sh/uv/concepts/python-versions/)
 - [`astral-sh/uv` releases](https://github.com/astral-sh/uv/releases)
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-24 | Original decision: install uv from a pinned, checksum-verified release and remove `ghcr.io/devcontainers/features/python:1`. | Nathan Carney |
+| 2 | 2026-08-24 | § A third interpreter, uncovered by the rebuild — the rebuild showed the base image ships `python3-minimal`, so the claim that removal leaves one interpreter was false. Upgrading and removing it are both rejected; the shebang rule is the defence. The decision is unchanged. | Nathan Carney |

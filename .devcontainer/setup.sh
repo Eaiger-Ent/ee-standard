@@ -39,13 +39,17 @@ npm ci --no-audit --no-fund
 #
 # From the pinned release rather than `pip install`, per
 # [ADR 0030](../docs/adr/0030-uv-is-bootstrapped-from-a-pinned-release.md):
-# there is no system Python here to pip with. `devcontainers/features/python`
-# used to supply one for this single line, and charged three VS Code extensions
-# and an autopep8 formatter binding for it — a binding that beat the ruff
-# LNT-001 pins, because a feature pin governs what a feature installs and says
-# nothing about what it configures. uv is a static binary that needs no Python,
-# and `uv sync` fetches the interpreter `.python-version` names, so after this
-# the container holds exactly one interpreter.
+# nothing here can pip — the only Python left is the base image's
+# `python3-minimal`, which carries neither `pip` nor `ensurepip`. The feature
+# `devcontainers/features/python` used to supply one for this single line, and
+# charged three VS Code extensions and an autopep8 formatter binding for it — a
+# binding that beat the ruff LNT-001 pins, because a feature pin governs what a
+# feature installs and says nothing about what it configures. uv is a static
+# binary that needs no Python, and `uv sync` fetches the interpreter
+# `.python-version` names, so after this the only interpreter anything here runs
+# on is the one `.python-version` names.
+# The base image's stays where it is; ADR 0030 revision 2 records why it is
+# neither upgraded nor removed, and why the shebang rule is what makes it safe.
 #
 # Same shape as the gitleaks install below: pinned release, checksum verified.
 # Unlike gitleaks, the checksum is published beside the artefact

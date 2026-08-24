@@ -303,11 +303,17 @@ vendor publishes beside it — then delete
 `ghcr.io/devcontainers/features/python:1` from `devcontainer.json` and its entry
 from `devcontainer-lock.json`.
 
-Three extensions stop arriving, both settings stop being written, and only one
-interpreter exists in the container. The cost is Pylance: Python completion,
-navigation and hover go with it. Add `ms-python.python` back to
-`devcontainer.json` if you want it — as a line someone reviewed, which is the
-difference between choosing it and inheriting it.
+Three extensions stop arriving and both settings stop being written. **Do not
+expect one interpreter to be left.** Doing this here uncovered
+`python3-minimal` in `mcr.microsoft.com/devcontainers/base:trixie`, which the
+feature had been sitting in front of on `PATH`: a bare `python3` still answered,
+one minor version below the pin (ADR 0030 revision 2). Check yours with
+`bash -lc 'command -v python3; python3 -V'` after the rebuild, and expect an
+answer. What makes it harmless is not its absence but § 2.2's rule. The cost is
+Pylance: Python completion, navigation and hover go with it. Add
+`ms-python.python` back to `devcontainer.json` if you want it — as a line
+someone reviewed, which is the difference between choosing it and inheriting
+it.
 
 **Do not reach for a leaner base image.** It is the obvious suspicion and it is
 wrong. `mcr.microsoft.com/devcontainers/base:trixie` is Debian plus
@@ -315,6 +321,30 @@ wrong. `mcr.microsoft.com/devcontainers/base:trixie` is Debian plus
 extensions and no bindings. Every extension in the container comes from a
 feature the repository listed itself. A leaner base removes none of them, and
 costs you the non-root `vscode` user BLD-001 stands on.
+
+### 2.2 — Scripts reach the interpreter through uv, not through `PATH`
+
+Give every tracked script this shebang, whatever language it is a script for:
+
+```python
+#!/usr/bin/env -S uv run python
+```
+
+`.python-version` binds what goes through uv, and a shebang does not: the kernel
+resolves it against `PATH`, so `./scripts/whatever.py` runs on whichever
+interpreter is first there. Here that was a devcontainer feature's, one minor
+version below the pin, while mypy and ruff checked the same file at the pinned
+version — for six days, silently, because the two numbers were close enough to
+agree on everything anyone happened to run
+([ADR 0028](adr/0028-the-support-floor-is-what-we-run.md) revision 2).
+
+This is the rule to copy, not the container fix that accompanied it. It holds
+where you control no image at all — a developer running a tracked script on
+their host, a CI job whose runner brings its own Python — and it keeps holding
+after you remove a feature, which as § 2.1 says does not leave you with one
+interpreter. `tests/test_toolchain_pin.py` here fails any tracked script whose
+shebang resolves from `PATH`; copy it, or write the equivalent, because the
+failure it catches is invisible until a version difference finally matters.
 
 ## 3 — The gates
 
