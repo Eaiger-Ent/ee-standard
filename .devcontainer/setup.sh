@@ -36,8 +36,46 @@ npm ci --no-audit --no-fund
 # uv bootstraps the Python environment, so it cannot come from it — its
 # version is a literal at each locus, kept in step by Renovate rather than by
 # a human remembering. See controls.yaml `tools:`.
+#
+# From the pinned release rather than `pip install`, per
+# [ADR 0030](../docs/adr/0030-uv-is-bootstrapped-from-a-pinned-release.md):
+# there is no system Python here to pip with. `devcontainers/features/python`
+# used to supply one for this single line, and charged three VS Code extensions
+# and an autopep8 formatter binding for it — a binding that beat the ruff
+# LNT-001 pins, because a feature pin governs what a feature installs and says
+# nothing about what it configures. uv is a static binary that needs no Python,
+# and `uv sync` fetches the interpreter `.python-version` names, so after this
+# the container holds exactly one interpreter.
+#
+# Same shape as the gitleaks install below: pinned release, checksum verified.
+# Unlike gitleaks, the checksum is published beside the artefact
+# (`<asset>.sha256`), so a bump can fetch and compare it rather than needing a
+# human to derive one. It still needs one — an unrevised digest fails the
+# install rather than passing it.
+#
+# `datasource=pypi` even though the artefact comes from a GitHub release: a
+# datasource is where Renovate *discovers* versions, and uv publishes the same
+# numbers to both. Using `github-releases` here would split uv into two
+# dependencies bumped by two proposals — and would silently find none, because
+# that manager strips a leading `v` for gitleaks' tags and uv's carry none.
+# Where the artefact is fetched from is recorded in `controls.yaml` as
+# `tools.uv.release_repo`.
 # renovate: datasource=pypi depName=uv
-pip install --quiet uv==0.12.5
+UV_VERSION=0.12.5
+case "$(uname -m)" in
+  aarch64|arm64) UV_ARCH=aarch64 UV_SHA=9bf43b4d1a07665bf64d4c4e710930b382321a785e0eb10aac07f46471f86a31 ;;
+  *)             UV_ARCH=x86_64  UV_SHA=68a509da24b06b4223a1c0175fb5eb5bc79342b76cbeff0cfe51ac3f5b17b6b2 ;;
+esac
+UV_DIR="uv-${UV_ARCH}-unknown-linux-gnu"
+curl -sSfL -o /tmp/uv.tgz \
+  "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${UV_DIR}.tar.gz"
+echo "${UV_SHA}  /tmp/uv.tgz" | sha256sum -c --quiet -
+tar -xzf /tmp/uv.tgz -C /tmp --strip-components=1 "${UV_DIR}/uv" "${UV_DIR}/uvx"
+sudo install /tmp/uv /tmp/uvx /usr/local/bin/
+rm /tmp/uv.tgz /tmp/uv /tmp/uvx
+
+# Downloads the interpreter `.python-version` names on a fresh container, since
+# nothing else installs one now. `--frozen` still refuses to re-resolve.
 uv sync --frozen
 uv run pre-commit install
 

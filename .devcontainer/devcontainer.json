@@ -18,21 +18,20 @@
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/node:2": {},
-    // Bootstrap, not the project interpreter: this installs the `python3` that
-    // runs `pip install uv` in setup.sh. The interpreter the gates run on is
-    // `.python-version`, and uv resolves it (ADR 0027) — the register pins the
-    // toolchain file and deliberately not this line, so nothing here is
-    // *asserted* equal to it.
+    // No python feature, per ADR 0030. It existed to supply the `python3` that
+    // ran one line of setup.sh — `pip install uv` — after which uv owned
+    // everything and its interpreter was never used again. It charged three VS
+    // Code extensions and two settings for that, one of which bound Python
+    // files to autopep8 while LNT-001 pins ruff: DEV-001's digest governs what
+    // a feature installs and says nothing about what it configures.
     //
-    // Held at the same value all the same, from ADR 0028 revision 2. Not
-    // asserting an equality and not wanting one are different things, and
-    // lagging bought nothing: a bare `python3` in a login shell is this
-    // interpreter, and a first-party script reached that way ran below the
-    // support floor while every gate passed.
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.14",
-      "installTools": false
-    },
+    // setup.sh now installs uv from its pinned release against a published
+    // checksum, and `uv sync` fetches the interpreter `.python-version` names.
+    // One interpreter in the container instead of two, so the hazard ADR 0028
+    // revision 2 manages — a bare `python3` in a login shell resolving to
+    // something no gate runs on — has no source left. Its repair stays:
+    // `#!/usr/bin/env -S uv run python` on every tracked script, and
+    // tests/test_toolchain_pin.py, defend the shape rather than this feature.
     "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
   },
 

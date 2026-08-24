@@ -278,8 +278,26 @@ tools:
     invocation: uv run standard-check
   uv:
     source: literal
+    # Where the release artefact is fetched from, as for gitleaks. The
+    # devcontainer installs uv from a checksum-verified release rather than with
+    # `pip install`, because after ADR 0030 there is no system Python in the
+    # container to pip with. CI keeps `pip install uv==`: a GitHub runner brings
+    # its own interpreter, and that locus is not what the ADR decided.
+    release_repo: astral-sh/uv
+    # `datasource=pypi` while `release_repo` names GitHub, and the two are not
+    # in conflict: a datasource is where Renovate discovers versions, and uv
+    # publishes the same numbers to both. One dependency, one proposal, all four
+    # sites bumped together — which is what `tool_versions_match_register` then
+    # holds. `github-releases` would split it in two and find nothing, since
+    # that manager strips a leading `v` for gitleaks' tags and uv's carry none.
     # renovate: datasource=pypi depName=uv
     version: "0.12.5"
+    # The x86_64 asset's checksum, matching the `gitleaks` entry's convention;
+    # `.devcontainer/setup.sh` carries both architectures. Unlike gitleaks, uv
+    # publishes this beside the artefact as `<asset>.sha256` — so a bump can
+    # fetch and compare it rather than deriving it, but still needs a human to
+    # do so, and an unrevised digest fails the install rather than passing it.
+    sha256: 68a509da24b06b4223a1c0175fb5eb5bc79342b76cbeff0cfe51ac3f5b17b6b2
     pinned_at:
       - .devcontainer/setup.sh
       - .github/workflows/standard-check.yml

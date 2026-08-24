@@ -80,32 +80,40 @@ ADR — the `stacks:` binding field, and changing the assert from presence to
 exclusivity — are **not implemented**, and are a Phase 2 criterion.
 
 Per [ADR 0030](docs/adr/0030-uv-is-bootstrapped-from-a-pinned-release.md)
-(**Accepted** 2026-08-24, **not implemented**) that feature is being removed
-altogether. It exists to provide a `python3` that runs one line —
-`pip install uv==0.12.5` — after which uv owns everything and the feature's
-interpreter is never used again. What it charges for that line is three VS Code
-extensions and two settings, one of which bound Python files to **autopep8**
-while LNT-001 pins ruff. uv is a static binary that needs no Python and can
-fetch the interpreter itself, so `setup.sh` will install it from its pinned
-release tarball against the published sha256 — the shape it already uses for
-gitleaks a few lines below. Then one interpreter exists in the container instead
-of two. **The base image is not the problem and must not be swapped**:
-`base:trixie` declares no `customizations` and contributes zero extensions and
-zero bindings, and it is where BLD-001's non-root `vscode` user comes from.
-`node:2` stays — DOC-001 needs it, and it binds nothing. Pylance goes with the
-feature, which is the accepted cost.
+(**Accepted** and implemented 2026-08-24) that feature is **gone**. It existed
+to provide a `python3` that ran one line — `pip install uv==0.12.5` — after
+which uv owned everything and the feature's interpreter was never used again.
+What it charged for that line was three VS Code extensions and two settings, one
+of which bound Python files to **autopep8** while LNT-001 pins ruff. uv is a
+static binary that needs no Python and can fetch the interpreter itself, so
+`setup.sh` installs it from its pinned release tarball against the published
+sha256 — the shape it already uses for gitleaks a few lines below — and
+`uv sync` fetches the interpreter `.python-version` names. One interpreter
+exists in the container instead of two. `tools.uv` gained `release_repo` and
+`sha256`, the pair `tools.gitleaks` already carried; no control's `rung`,
+`verify`, `variance` or `applies_to` changed, so the contract stayed at 20.
+**The base image is not the problem and must not be swapped**: `base:trixie`
+declares no `customizations` and contributes zero extensions and zero bindings,
+and it is where BLD-001's non-root `vscode` user comes from. `node:2` stays —
+DOC-001 needs it, and it binds nothing. Pylance goes with the feature, which is
+the accepted cost. **None of it is verified until someone rebuilds**: this
+container has no Docker, so the Phase 2 criterion stays open and
+`.devcontainer/devcontainer-lock.json` was edited by hand rather than by
+`devcontainer upgrade`.
 
-The devcontainer's python feature is **3.14** too, from ADR 0028 revision 2.
-It was left at 3.13 on the grounds that it runs no gate, which is true of gates
-and false of everything else: a shebang resolves against `PATH`, and in a login
-shell here `python3` is that feature's interpreter — so
+**The shebang repair stays, and is not about that feature.** While the feature
+existed it was left at 3.13 on the grounds that it ran no gate, which was true
+of gates and false of everything else: a shebang resolves against `PATH`, and in
+a login shell `python3` was that feature's interpreter — so
 `./scripts/plan_progress.py` ran on 3.13.15 while mypy and ruff checked it at
-3.14. **`.python-version` binds only what goes through uv.** Every tracked
-script therefore reads `#!/usr/bin/env -S uv run python`, and
-`tests/test_toolchain_pin.py` fails any that resolves from `PATH`. The register
-still does not assert the feature equals the pin — not asserting an equality and
-not wanting one are different things. The feature value is unverified until
-someone rebuilds: this container has no Docker.
+3.14 (ADR 0028 revision 2). Two repairs were made, and either alone would have
+closed it: every tracked script reads `#!/usr/bin/env -S uv run python`, with
+`tests/test_toolchain_pin.py` failing any that resolves from `PATH`, and the
+feature was raised to match. ADR 0030 has since removed the second, so nothing
+in the container answers a bare `python3` but uv's interpreter. Keep the first.
+**`.python-version` binds only what goes through uv**, and a shebang resolving
+from `PATH` is wrong wherever it happens — including on a host where a tracked
+script is run outside this container entirely.
 
 `.github/workflows/support-floor.yml` verifies the floor when it differs from
 the pin, and today it does not, so the job reads both files and **skips itself**
