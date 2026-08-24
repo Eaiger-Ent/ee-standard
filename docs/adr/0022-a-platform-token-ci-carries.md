@@ -426,6 +426,37 @@ must close before its adopter criterion can be ticked.
   It was written to end at Phase 3, and it is now ending later for a reason
   rather than by drift — but only this ADR records that reason.
 
+## Applied — pass 1: requirements 1 and 2, before any token
+
+Landed 2026-08-24 at register contract 22, in the order this ADR's
+§ The precondition requires: the register can see a platform credential before
+one exists.
+
+| Requirement | State | Where |
+| --- | --- | --- |
+| 1. A control that can see a platform token at all | **Implemented** | SEC-003, Tier 1, `rung: blocking`, `variance: forbidden`, `baseline: null`, `locus: [ci]`, verified by the `no_unregistered_workflow_secrets` file assert |
+| 2. A register fact naming what may be carried, and where | **Implemented** | `platform_credentials:`, beside `cloud_credentials:` — `name`, `triggers`, `max_lifetime_hours` |
+| 3. Expiry must be verified, not promised | Open | `max_lifetime_hours` is recorded and nothing reads it yet |
+| 4. A classic token must be refused | Open | |
+| 5. The environment gate is itself unverified platform state | Not applicable here | Option 1 is this repository's posture, so there is no environment |
+| 6. The posture difference must not reach an adopter | Open | |
+| 7. The adopter-facing consequence | **Partly** | `08-adopting.md` § 3.1 states SEC-003, the allow-list direction, and that an adopter's posture is Option 3 rather than Option 1. The token-scope half waits on requirements 3 and 4 |
+
+**One thing this pass settled that the requirement did not name.** SEC-003 is an
+allow-list and SEC-002 is a deny-list, and the two behave oppositely when the
+register is silent: a deny-list that has not heard of a credential passes it,
+which is why `cloud_credentials:` falls back to a built-in set; an allow-list
+that has not heard of one fails it, so an absent `platform_credentials:` permits
+nothing. That asymmetry is the reason the block could be introduced before any
+credential exists — the failing direction is the safe one — and it is what makes
+requirement 1's ordering cheap rather than merely correct.
+
+The register carries exactly one entry, `GITHUB_TOKEN`, whose `triggers: any` is
+a statement rather than a default: GitHub creates it at the start of each job
+and expires it when the job finishes, so the event that started the job cannot
+change what the token reaches. A standing credential names its events, and that
+is what makes Option 3 checkable rather than a convention.
+
 ## Related ADRs
 
 - [ADR 0002: Federate CI Cloud Identity via OIDC](0002-federated-ci-identity.md)

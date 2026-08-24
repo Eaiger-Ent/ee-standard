@@ -69,8 +69,11 @@ every standard URL verified to resolve.
 - [x] Every control cites an external standard with a resolving URL
 - [x] Every control has an owner, a `review_by`, and a variance policy
 - [x] Tier-1 controls carry `baseline: null`
-- [x] An ADR exists per control in `docs/adr/` — thirteen records,
-      `0001`–`0013`, one per `rationale_adr` reference in `controls.yaml`.
+- [x] An ADR exists per control in `docs/adr/` — `0001`–`0013`, one per control
+      Phase 0 wrote, and `0022` for SEC-003, added at register contract 22.
+      Every `rationale_adr` reference in `controls.yaml` resolves to a live
+      record; a control whose decision is a cross-cutting one cites that one
+      rather than being given a `00NN` of its own.
 
 ## Phase 0.5 — This repo's own devcontainer
 

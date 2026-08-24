@@ -1,7 +1,8 @@
 ---
 name: gate-secrets
 description: >
-  Deploy SEC-001 and SEC-002: wire the register's secret scanner at
+  Deploy SEC-001 and check SEC-002 and SEC-003: wire the register's
+  secret scanner at
   pre-commit and CI, stamp what it writes, verify through standard-check.
   Triggers: 'deploy gate-secrets', 'wire secret scanning', '/gate-secrets'.
 argument-hint: "[--repo <path>] [--register <path>]"
@@ -13,7 +14,8 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 
 You are running the **gate-secrets** skill. It deploys SEC-001 (*a commit
 containing a secret cannot reach the remote*) and checks SEC-002 (*CI
-authenticates without a long-lived cloud credential*) in a target repository,
+authenticates without a long-lived cloud credential*) and SEC-003 (*CI carries
+no platform credential the register does not name*) in a target repository,
 then verifies its own work with the same checker that audits it.
 
 **Two rules govern everything below.**
@@ -55,7 +57,8 @@ never be pointed at different things by accident.
    them is itself tracked.
 4. Each artefact written carries a provenance stamp naming SEC-001, this skill
    and version, and the register's version and contract.
-5. `standard-check run --control SEC-001 --control SEC-002` was run afterwards,
+5. `standard-check run --control SEC-001 --control SEC-002 --control SEC-003`
+   was run afterwards,
    its output shown, and its verdict reported as given — including a failure.
 6. Nothing was written outside the target repository.
 
@@ -285,7 +288,7 @@ staying, and why each.
 
 ```bash
 standard-check --repo "$REPO" --register "$REGISTER" \
-  run --control SEC-001 --control SEC-002
+  run --control SEC-001 --control SEC-002 --control SEC-003
 ```
 
 This is the only verification step. It runs the control's own verify blocks
@@ -324,7 +327,8 @@ gate-secrets deployed SEC-001 in <repo>.
   pre-commit  .pre-commit-config.yaml — hook '<tool>' (stamped)
   ci          .github/workflows/<file> — install + secret scan (stamped)
   remote      not deployed — push protection is a platform act (§ 1)
-Verified: standard-check run --control SEC-001 --control SEC-002 → exit 3
+Verified: standard-check run --control SEC-001 --control SEC-002 \
+  --control SEC-003 → exit 3
   local loci PASS; remote SKIPPED (no credentials), Phase 3.
 ```
 

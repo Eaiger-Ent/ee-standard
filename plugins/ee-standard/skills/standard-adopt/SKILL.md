@@ -135,6 +135,10 @@ the plan reads as a control that does not apply.
 without a long-lived cloud credential* — is satisfied by a workflow **not**
 referencing a static credential. There is no artefact to write and so no
 `deployed_by` to name; `gate-secrets` verifies it and writes nothing for it.
+SEC-003 is the same shape one step further out: it is satisfied by a workflow
+referencing no secret the register does not name, and what it reads —
+`platform_credentials:` — is a register fact rather than an artefact a gate
+writes.
 
 A control satisfied by an absence still has to appear in the plan, and has to be
 distinguishable from one nobody has got to yet. Planning it as **manual** would
@@ -150,6 +154,7 @@ Show one table. One row per control, in register order:
 Control  Applies  Now                Gate               Action
 SEC-001  yes      FAIL               gate-secrets       deploy
 SEC-002  yes      PASS               gate-secrets       verify only
+SEC-003  yes      PASS               gate-secrets       verify only
 SUP-001  yes      FAIL               gate-supply-chain  deploy
 …
 IAC-001  no       SKIPPED (terraform) —                 not applicable
@@ -279,7 +284,7 @@ reviewable change and a human decides where it goes.
 standard-adopt deployed <n> controls in <repo>.
   gate-build         BLD-001, DEV-001
   gate-supply-chain  SUP-001, SUP-002, SUP-003
-  gate-secrets       SEC-001, SEC-002
+  gate-secrets       SEC-001, SEC-002, SEC-003
   gate-quality       LNT-001, TYP-001, TST-001
   gate-repo          CI-001
   not applicable     IAC-001 (no *.tf)

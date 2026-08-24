@@ -429,7 +429,8 @@ def test_the_plan_can_name_every_control_in_the_register() -> None:
     would take its absence for *not applicable*.
 
     The third row is the interesting one. SEC-002 is satisfied by a workflow
-    **not** referencing a static credential — there is no artefact and so no
+    **not** referencing a static credential, and SEC-003 by one referencing no
+    secret the register does not name — there is no artefact and so no
     `deployed_by`, and `02-skill-family.md` records that as correct rather than
     as a gap. It is still planned, as *checked, not deployed*, because a control
     satisfied by an absence has to be distinguishable from one nobody has got to.
@@ -452,7 +453,7 @@ def test_the_plan_can_name_every_control_in_the_register() -> None:
             manual.add(control.id)
     assert deploy == set(_DEPLOYED) - {"SEC-002"} | {"IAC-001"}, deploy
     assert elsewhere == {"DOC-001"}, elsewhere
-    assert checked == {"SEC-002"}, checked
+    assert checked == {"SEC-002", "SEC-003"}, checked
     assert not manual, f"controls in no plan row at all: {sorted(manual)}"
     # And the skill names all four rows, so none of this is a category the
     # implementation invented.

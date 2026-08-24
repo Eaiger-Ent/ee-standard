@@ -68,13 +68,14 @@ twice. Every step carries the evidence that shows it worked.
 
 ## The register at a glance
 
-Thirteen Tier-1 controls — birth conditions, true from the first commit, never
+Fourteen Tier-1 controls — birth conditions, true from the first commit, never
 baselined:
 
 | ID | Property |
 | --- | --- |
 | SEC-001 | A commit containing a secret cannot reach the remote |
 | SEC-002 | No long-lived cloud credential exists in CI |
+| SEC-003 | CI carries no platform credential the register does not name |
 | SUP-001 | Dependencies resolve from a frozen lockfile |
 | SUP-002 | Dependency updates arrive as reviewable proposals |
 | SUP-003 | CI actions are pinned to an immutable SHA |

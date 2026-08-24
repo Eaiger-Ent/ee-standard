@@ -1,7 +1,7 @@
 # gate-secrets
 
 Deploys SEC-001 — *a commit containing a secret cannot reach the remote* — and
-checks SEC-002, in whichever repository you point it at.
+checks SEC-002 and SEC-003, in whichever repository you point it at.
 
 ## What it writes
 
@@ -28,7 +28,8 @@ default is a decision nobody recorded.
 
 ## Why it verifies through `standard-check`
 
-The last step runs `standard-check run --control SEC-001 --control SEC-002`,
+The last step runs
+`standard-check run --control SEC-001 --control SEC-002 --control SEC-003`,
 which evaluates the control's own verify blocks through the same code the
 auditor uses. The gate does not read its own files back to decide whether it
 worked. A gate that verified itself some other way would eventually disagree

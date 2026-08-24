@@ -13,7 +13,7 @@ def test_real_register_passes_schema() -> None:
     register, errors = load_register(REPO_ROOT / "controls.yaml")
     assert errors == []
     assert register is not None
-    assert len(register.controls) == 13
+    assert len(register.controls) == 14
     assert len(register.meta_controls) == 3
 
 
@@ -457,3 +457,75 @@ def test_a_block_predicate_must_be_a_known_predicate(tmp_path: Path) -> None:
     register, errors = load_register(write_register(tmp_path, document))
     assert register is None
     assert any("names no predicate" in e.message for e in errors), errors
+
+
+def test_platform_credentials_rejects_an_empty_list(tmp_path: Path) -> None:
+    """Two spellings of one fact. Omitting the key already permits nothing."""
+    document = minimal_register()
+    document["platform_credentials"] = []
+    errors = _errors_for(tmp_path, document)
+    assert any("platform_credentials" in e for e in errors)
+
+
+def test_platform_credentials_requires_every_field(tmp_path: Path) -> None:
+    document = minimal_register()
+    document["platform_credentials"] = [{"name": "PLATFORM_READ_TOKEN"}]
+    errors = _errors_for(tmp_path, document)
+    assert any("missing required key(s): max_lifetime_hours, triggers" in e for e in errors)
+
+
+def test_platform_credentials_rejects_an_unknown_key(tmp_path: Path) -> None:
+    document = minimal_register()
+    document["platform_credentials"] = [
+        {
+            "name": "PLATFORM_READ_TOKEN",
+            "triggers": ["push"],
+            "max_lifetime_hours": 720,
+            "scopes": "Administration: read",
+        }
+    ]
+    errors = _errors_for(tmp_path, document)
+    assert any("unknown key(s): scopes" in e for e in errors)
+
+
+def test_platform_credentials_rejects_a_lifetime_that_is_not_a_positive_number(
+    tmp_path: Path,
+) -> None:
+    document = minimal_register()
+    document["platform_credentials"] = [
+        {"name": "PLATFORM_READ_TOKEN", "triggers": ["push"], "max_lifetime_hours": 0}
+    ]
+    errors = _errors_for(tmp_path, document)
+    assert any("max_lifetime_hours" in e for e in errors)
+
+
+def test_platform_credentials_accepts_any_or_a_list_of_events(tmp_path: Path) -> None:
+    document = minimal_register()
+    document["platform_credentials"] = [
+        {"name": "GITHUB_TOKEN", "triggers": "any", "max_lifetime_hours": 24},
+        {"name": "PLATFORM_READ_TOKEN", "triggers": ["push"], "max_lifetime_hours": 720},
+    ]
+    register, errors = load_register(write_register(tmp_path, document))
+    assert errors == []
+    assert register is not None
+    assert register.platform_credentials[0].triggers is None
+    assert register.platform_credentials[1].triggers == ("push",)
+
+
+def test_platform_credentials_rejects_triggers_that_are_neither(tmp_path: Path) -> None:
+    document = minimal_register()
+    document["platform_credentials"] = [
+        {"name": "PLATFORM_READ_TOKEN", "triggers": "push", "max_lifetime_hours": 720}
+    ]
+    errors = _errors_for(tmp_path, document)
+    assert any("triggers" in e for e in errors)
+
+
+def test_platform_credentials_rejects_a_duplicate_name(tmp_path: Path) -> None:
+    document = minimal_register()
+    document["platform_credentials"] = [
+        {"name": "GITHUB_TOKEN", "triggers": "any", "max_lifetime_hours": 24},
+        {"name": "GITHUB_TOKEN", "triggers": ["push"], "max_lifetime_hours": 24},
+    ]
+    errors = _errors_for(tmp_path, document)
+    assert any("duplicate credential name 'GITHUB_TOKEN'" in e for e in errors)

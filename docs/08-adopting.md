@@ -23,7 +23,7 @@ prevent, so the gaps are stated rather than glossed.
 | `standard-check` — the checker | **Exists** | `src/standard_check/`, run with `uv run standard-check` |
 | Platform prerequisites (this document, § 1) | **Exists**, manual | Below |
 | A devcontainer you can copy | **Exists** for this repo; the generalised template is Phase 2 | `.devcontainer/` |
-| `gate-secrets` — deploys SEC-001, checks SEC-002 | **Exists** | `plugins/ee-standard/skills/gate-secrets/` |
+| `gate-secrets` — deploys SEC-001, checks SEC-002 and SEC-003 | **Exists** | `plugins/ee-standard/skills/gate-secrets/` |
 | `gate-quality` — deploys LNT-001, TYP-001, TST-001 | **Exists** | `plugins/ee-standard/skills/gate-quality/` |
 | The other four `gate-*` skills | **Exists** | `plugins/ee-standard/skills/` |
 | `standard-adopt` — one command to deploy everything | **Exists** | `plugins/ee-standard/skills/standard-adopt/` |
@@ -66,8 +66,8 @@ access.
 
 **A control is never silently absent from the plan.** Four rows cover every
 control in the register — *deploy*, *dispatch elsewhere* (DOC-001 is `lint-md`'s,
-in another plugin), *checked, not deployed* (SEC-002 is satisfied by a workflow
-**not** referencing a static credential, so there is nothing to write), and
+in another plugin), *checked, not deployed* (SEC-002 and SEC-003 are satisfied
+by what a workflow does **not** reference, so there is nothing to write), and
 *manual*. A control missing from the plan would read as one that does not apply.
 
 If you would rather deploy one gate at a time, each works standalone — § 3.1 to
@@ -405,7 +405,8 @@ the honest answer, rather than a pass earned by a binary nobody pinned.
 
 ### 3.1 — `gate-secrets`, and what it needs from you first
 
-`/gate-secrets` wires SEC-001 at both its local loci and checks SEC-002. It
+`/gate-secrets` wires SEC-001 at both its local loci and checks SEC-002 and
+SEC-003. It
 takes `--repo` and `--register`, the same two flags as `standard-check`, so a
 deployment and its audit cannot be pointed at different things by accident.
 
@@ -462,6 +463,41 @@ because they were written in Phase 0.5 before there was a gate to write them,
 and a stamp claiming otherwise would be a record of something that did not
 happen. The `.gitignore` region is the newest of them, stamped at contract 18
 rather than rewritten, for the same reason.
+
+**SEC-003: every secret your workflows reach must be named in your register.**
+Register contract 22 added the control and the `platform_credentials:` block it
+reads ([ADR 0022](adr/0022-a-platform-token-ci-carries.md)). It is an
+allow-list, and that is the opposite direction from SEC-002's `cloud_credentials:`
+deny-list: a name SEC-002 has not heard of passes, and a name SEC-003 has not
+heard of fails. So a register with no `platform_credentials:` block permits no
+secret at all, and a repository whose workflows use `${{ github.token }}` — as
+most do — fails until it names `GITHUB_TOKEN`:
+
+```yaml
+platform_credentials:
+  - name: GITHUB_TOKEN
+    triggers: any               # `any`, or a list of workflow events
+    max_lifetime_hours: 24
+```
+
+Three things fail it, and the remedy differs for each. A secret **nothing
+names** — write the entry, which is the point: a credential nobody wrote down is
+a credential nobody decided. A named secret under an **event its entry does not
+permit** — either widen `triggers` deliberately or stop reaching the secret from
+that event; a workflow that added `pull_request:` in order to reach a standing
+credential is the case this exists to catch, and it cannot be caught by a guard
+written in the file the pull request is editing. And `secrets: inherit`, which
+hands a called workflow every secret you hold — no allow-list can enumerate
+that, so name what the called workflow actually needs and pass those.
+
+**If you are about to give CI a platform token, read ADR 0022 first.** It sets
+out four options and recommends a different one for you than this repository
+takes: an adopter's contributors are not organisation owners, so the credential
+belongs behind a deployment environment whose branch policy a pull request
+cannot edit, rather than in a plain repository secret. It also states the
+ordering that is not negotiable — the register must be able to see the
+credential *before* the credential exists, which is what SEC-003 and
+`platform_credentials:` now make possible.
 
 ### 3.2 — `gate-quality`, and the three controls it deploys together
 

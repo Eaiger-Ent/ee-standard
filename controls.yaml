@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.19.0
+version: 0.20.0
 
 meta:
   owner: platform-engineering
@@ -212,7 +212,21 @@ meta:
   #     facts: a stack may mandate a formatter for one file type and not
   #     another, and not every linter is its language's formatter — eslint
   #     declares no binding here for that reason.
-  register_contract: 21
+  # 22: SEC-003 and `platform_credentials:`, the two things ADR 0022 requires
+  #     before any platform token reaches CI. Nothing in this register could
+  #     see one: `no-static-cloud-keys` reads `cloud_credentials:`, every name
+  #     in which is a cloud provider key, so a `GH_ADMIN_TOKEN` repository
+  #     secret would have left SEC-002 reporting PASS over a standing
+  #     administrative credential.
+  #
+  #     The block is an allow-list rather than a deny-list, which is the
+  #     asymmetry with `cloud_credentials:` and the reason omitting it is safe:
+  #     a deny-list that has not heard of a credential passes it, an allow-list
+  #     that has not heard of one fails it. `triggers` is what makes ADR 0022's
+  #     Option 3 checkable — a standing credential names the events it may
+  #     appear under, so a branch adding `pull_request:` to reach the secret
+  #     fails rather than self-triggering quietly.
+  register_contract: 22
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -671,6 +685,44 @@ cloud_credentials:
   - AZURE_CREDENTIALS
 
 # ---------------------------------------------------------------------------
+# What CI may carry, and under which events. ADR 0022: a platform token in CI
+# is governed rather than forbidden, and nothing here could see one — SEC-002
+# reads `cloud_credentials:` above, every name in which is a cloud provider
+# key, so a `GH_ADMIN_TOKEN` secret would leave it green over a standing
+# administrative credential. SEC-003 reads this block instead.
+#
+# An entry is a permission rather than a description: a secret named here may
+# be referenced by a workflow, and one that is not may not. Omitting the block
+# permits none, which is the strict direction — unlike `cloud_credentials:`,
+# whose absence would leave a control looking for nothing.
+#
+# `triggers` is what makes ADR 0022's Option 3 checkable rather than a
+# convention. A standing credential names the events it may appear under, so a
+# branch that adds `pull_request:` to a workflow in order to reach the secret
+# fails here instead of succeeding quietly — the exfiltration path that ADR
+# recorded, and the reason the guard cannot live in the workflow file the pull
+# request is editing. `any` is legitimate only for a credential the platform
+# mints per job: the trigger cannot change what such a token reaches, because
+# it does not outlive the job that ran under it.
+#
+# This repository carries no standing platform credential yet. ADR 0022 chose
+# Option 1 — a fine-grained, repository-scoped, `Administration: read` token —
+# and its § precondition forbids introducing it before this block and SEC-003
+# exist, which is what they now do. Requirements 3 and 4 (a verified expiry, a
+# refused classic token) land before the secret itself.
+# ---------------------------------------------------------------------------
+platform_credentials:
+  - name: GITHUB_TOKEN
+    # Created by GitHub at the start of each job and expired when that job
+    # finishes; 24 hours is the documented ceiling, reached only where a
+    # self-hosted runner refreshes it. Every workflow here reaches it as
+    # `${{ github.token }}`, which is the same credential under another
+    # spelling — that equivalence is detection implementation and stays in the
+    # checker, as `cloud_credentials:` spelling equivalence does.
+    triggers: any
+    max_lifetime_hours: 24
+
+# ---------------------------------------------------------------------------
 # What counts as swallowing a failure. ADR 0018: a house idiom this list does
 # not know is a suppression that goes undetected, and adding one strengthens
 # detection — so the set belongs where it can be reviewed rather than inside
@@ -790,6 +842,43 @@ controls:
     baseline: null
     review_by: 2027-08-16
     rationale_adr: docs/adr/0002-federated-ci-identity.md
+
+  # ADR 0022. SEC-002 above stays cloud-scoped: its title, its `enforces`, its
+  # NIST citation and ADR 0002 are all about cloud identity, and broadening it
+  # would make one control mean two things. A platform token needs its own
+  # entry, and this is it — the control that can see one at all.
+  #
+  # The allow-list is the point. This repository intends to carry exactly one
+  # standing platform credential and carries none yet, so an enumerated
+  # exception is the "explicit, recorded exception rather than a quiet one"
+  # that ADR 0002 § Trade-offs calls the intended friction. A secret nobody
+  # wrote into `platform_credentials:` is a credential nobody decided.
+  - id: SEC-003
+    title: CI carries no platform credential the register does not name
+    enforces: >
+      No workflow references a secret that `platform_credentials:` does not
+      name, or references a named one under an event that entry does not
+      permit.
+    standard:
+      name: OWASP Top 10 CI/CD Security Risks — CICD-SEC-6
+      url: https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-06-Insufficient-Credential-Hygiene
+    also_see:
+      - name: Automatic token authentication
+        url: https://docs.github.com/en/actions/concepts/security/github_token
+      - name: Using secrets in GitHub Actions
+        url: https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets
+    tier: 1
+    rung: blocking
+    locus: [ci]
+    applies_to: [github-actions]
+    verify:
+      - kind: file
+        assert: no_unregistered_workflow_secrets
+    owner: platform-engineering
+    variance: forbidden
+    baseline: null
+    review_by: 2027-08-24
+    rationale_adr: docs/adr/0022-a-platform-token-ci-carries.md
 
   # --- Supply chain --------------------------------------------------------
 

@@ -179,10 +179,23 @@ its absence is what still blocks the `--require-complete` flip: the Actions
 `UNCLASSIFIED` in CI while passing locally.
 
 **Requirements 1 and 2 of that ADR § What the register must gain land before any
-token** — this is the one ordering it rules out absolutely. SEC-002 cannot see a
-platform token today, because `no-static-cloud-keys` reads `cloud_credentials:`
-and every name in it is a cloud provider key, so a `GH_ADMIN_TOKEN` secret would
-leave SEC-002 green over a standing administrative credential.
+token** — the one ordering it rules out absolutely — and they **landed on
+2026-08-24 at register contract 22**. SEC-002 could not see a platform token:
+`no-static-cloud-keys` reads `cloud_credentials:` and every name in it is a
+cloud provider key, so a `GH_ADMIN_TOKEN` secret would have left SEC-002 green
+over a standing administrative credential. **SEC-003** asks the register's
+question instead, reading the new `platform_credentials:` block, and it is an
+**allow-list where `cloud_credentials:` is a deny-list**: a name a deny-list has
+not heard of passes, a name an allow-list has not heard of fails, so omitting
+the block permits no secret at all rather than checking none. That asymmetry is
+why the control could be added before any credential exists. An entry's
+`triggers` — `any`, or a list of events — is what makes Option 3 checkable: a
+branch that adds `pull_request:` to reach a standing secret fails in the
+register, which is not the file the pull request is editing. `GITHUB_TOKEN` is
+the only entry, at `triggers: any`, because GitHub expires it with the job.
+`max_lifetime_hours` is recorded and read by nothing until requirement 3 lands.
+**Requirements 3, 4 and 6 are still open, and all three come before the token**,
+not after it (ADR 0022 § Applied — pass 1).
 
 This repository takes **Option 1** — a fine-grained token scoped to this
 repository, `Administration: read`, held as an ordinary repository secret —
@@ -398,7 +411,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **29** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0030 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
-`README.md` § "The register at a glance" lists the thirteen Tier-1 controls, with
+`README.md` § "The register at a glance" lists the fourteen Tier-1 controls, with
 the three meta-controls described below the table.
 
 **An ADR is written once and stands on its own** ([ADR 0026](docs/adr/0026-an-adr-stands-on-its-own.md)).

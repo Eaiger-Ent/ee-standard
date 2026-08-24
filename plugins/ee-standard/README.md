@@ -13,7 +13,7 @@ them carries a pinned version, a tool name or a rule of its own.
 
 | Skill | Controls | State |
 | --- | --- | --- |
-| `gate-secrets` | SEC-001, SEC-002 | **Built** — the reference gate |
+| `gate-secrets` | SEC-001, SEC-002, SEC-003 | **Built** — the reference gate |
 | `gate-quality` | LNT-001, TYP-001, TST-001 | **Built** — three controls, two shared files |
 | `gate-supply-chain` | SUP-001, SUP-002, SUP-003 | **Built** — found the locus nothing had ever read |
 | `gate-build` | BLD-001, DEV-001 | **Built** — owns `.devcontainer/`, which other gates write into |
