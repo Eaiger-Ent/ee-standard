@@ -616,10 +616,23 @@ unreachable — and only a remote check catches it.
 
 ### Exit criteria — phase 3
 
-- [ ] Every adopter-facing step this phase introduces is in
+- [x] Every adopter-facing step this phase introduces is in
       [`08-adopting.md`](08-adopting.md) with its evidence — the credentials
       `kind: remote` needs, the token scopes that create a ruleset, and how an
-      adopter confirms their conformance run is a *required* status check
+      adopter confirms their conformance run is a *required* status check —
+      closed 2026-08-24 by Phase 3's eleventh slice. The first two were written
+      as they were found; the third had a checklist row and nothing behind it,
+      and so did the two steps the seventh and ninth slices introduced. **§ 4.2**
+      is the chain from a control to a blocked merge — four links in four
+      places, three of whose breaks leave a repository looking conformant — and
+      ends where no report can: open a pull request whose required check fails
+      and watch the merge button refuse. **§ 4.3** is the credential and
+      `--require-complete` together, in that order, with the environment gate an
+      adopter takes rather than the arrangement this repository takes.
+      `tests/test_adopter_guide.py` derives the list from the register, so a
+      control gaining a remote block fails the build until § 4.1 says what token
+      answers it ([`11-phase-3-review.md`](11-phase-3-review.md)
+      § The eleventh slice)
 
 - [x] Remote verification passes against a real repository — closed 2026-08-22
       by Phase 3's first slice. `SEC-001` and `CI-001` both report `PASS`

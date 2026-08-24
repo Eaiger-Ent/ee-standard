@@ -9,9 +9,9 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 (`standard-check`, in `src/standard_check/`) audits them.
 
 Current status: Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
-with no re-opened criteria outstanding. **Phase 2 is 12/13** and **Phase 3 is in
-progress**; the register is at contract 21. `docs/04-build-plan.md` is the only
-list of outstanding work and `uv run python scripts/plan_progress.py` is its
+with no re-opened criteria outstanding. **Phase 2 is 12/13** and **Phase 3 is
+complete** as of 2026-08-24; the register is at contract 26.
+`docs/04-build-plan.md` is the only list of outstanding work and `uv run python scripts/plan_progress.py` is its
 derived view — never keep a second copy of that status here. The slice-by-slice
 record, and the evidence behind every criterion either phase ticks, lives in
 `docs/10-phase-2-review.md` — including § Where Phase 2 finished, the closing

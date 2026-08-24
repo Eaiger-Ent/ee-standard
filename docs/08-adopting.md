@@ -22,16 +22,23 @@ prevent, so the gaps are stated rather than glossed.
 | The register — what "conformant" means | **Exists** | `controls.yaml` |
 | `standard-check` — the checker | **Exists** | `src/standard_check/`, run with `uv run standard-check` |
 | Platform prerequisites (this document, § 1) | **Exists**, manual | Below |
-| A devcontainer you can copy | **Exists** for this repo; the generalised template is Phase 2 | `.devcontainer/` |
+| A devcontainer you can copy | **Exists** for this repo; the generalised template ships with placeholders and has not been built yet | `.devcontainer/`, and § 2.0 |
 | `gate-secrets` — deploys SEC-001, checks SEC-002 and SEC-003 | **Exists** | `plugins/ee-standard/skills/gate-secrets/` |
 | `gate-quality` — deploys LNT-001, TYP-001, TST-001 | **Exists** | `plugins/ee-standard/skills/gate-quality/` |
 | The other four `gate-*` skills | **Exists** | `plugins/ee-standard/skills/` |
 | `standard-adopt` — one command to deploy everything | **Exists** | `plugins/ee-standard/skills/standard-adopt/` |
 | `kind: remote` verification of platform state | **Exists**, needs a token | § 4.1 below |
+| Reading the chain from a control to a blocked merge | **Exists**, needs a token | § 4.2 below |
+| A CI run that **fails** when a control cannot be verified | **Exists**; give CI a credential first | § 4.3 below |
 
 So today, adoption is: do § 1 by hand, copy the devcontainer, run
 `/standard-adopt`, and run the checker with a token in the environment so the
-two remote controls can be answered rather than skipped (§ 4.1).
+remote blocks can be answered rather than skipped (§ 4.1). Then, in this order:
+confirm your conformance run is a check a merge actually waits for (§ 4.2), give
+CI a credential of its own, and only then make the run fail when it cannot
+verify something (§ 4.3). That order is not a preference — turning on
+`--require-complete` before CI has a credential fails every run on controls that
+hold, and a check that fails for reasons nobody can act on gets ignored.
 
 ## 0 — The front door
 
@@ -52,9 +59,10 @@ take, and a plan that reaches them is a plan waiting on you.
 is written by the gate that owns the control, which is what keeps one control's
 config in one place. It will not commit on a failed verify. And it will not
 report exit `3` as a pass. Whether `3` is the expected result now depends on
-your environment: with a token that can read your platform state, SEC-001's and
-CI-001's remote blocks are verified and a conformant repository exits `0`;
-without one they report `SKIPPED (no credentials)` and the run exits `3`. The
+your environment: with a token that can read your platform state, the remote
+blocks of SEC-001, CI-001 and GOV-001 are verified and a conformant repository
+exits `0`; without one they report `SKIPPED (no credentials)` and the run exits
+`3`. The
 skill names which blocks were skipped rather than rounding up. Read § 4.1
 before deciding which of the two you are looking at.
 
@@ -737,6 +745,15 @@ what will be written to files; this call is not a file. A re-run that would
 change nothing still asks, because a call whose effect is invisible until it is
 wrong is not one to make silently.
 
+**Three calls, three questions.** Creating a ruleset, replacing one that already
+exists, and removing classic branch protection are asked separately and in their
+own words, because two of them can *reduce* what protects your branch: a `PUT`
+replaces a ruleset entire, so anything the live one carries that your record
+does not — a bypass list, an extra rule — is dropped by the call, and a `DELETE`
+takes the classic rule away. An answer to one is not an answer to another. If
+you are re-running the gate over an existing ruleset, the question you are asked
+names the difference the call will apply, **including when there is none**.
+
 **Two prerequisites, and how you know each is met.**
 
 | Prerequisite | Why | How you know it worked |
@@ -901,8 +918,9 @@ surprises people:
 | CI-001 | `GET /repos/{owner}/{repo}/rules/branches/{branch}` | Read access to the repository. The default Actions `GITHUB_TOKEN` is enough on a public repository |
 | SEC-001 | `security_and_analysis` on `GET /repos/{owner}/{repo}` | **Repository administration read.** GitHub omits the whole object for a caller without it |
 | `gate-repo`, to *create* the ruleset | `POST /repos/{owner}/{repo}/rulesets` | `administration: write`, granted by a human with admin (§ 3.6) |
-| SEC-003 | The `github-authentication-token-expiration` header on `GET /rate_limit` | Nothing beyond a valid token — the question is about the credential, not about the repository |
+| SEC-003 | The `github-authentication-token-expiration` header on `GET /rate_limit` | Nothing beyond a valid token — the question is about the credential, not about the repository. **Answers only inside a GitHub Actions job**: the token in your shell is a different credential, so anywhere else it is `UNCLASSIFIED` |
 | SEC-003 | The `X-OAuth-Scopes` header on the same call | Nothing beyond a valid token. Its presence means a **classic** token, which fails: a classic token grants its readers every repository its owner can reach |
+| GOV-001 | `GET /repos/{owner}/{repo}/rules/branches/{branch}` | Read access to the repository. From register contract 26 the meta-control reads which checks GitHub enforces, so the chain from a control to a blocked merge is read end to end (§ 4.2) |
 
 The middle row is the one to plan for. A token that cannot see
 `security_and_analysis` gets an answer with the setting simply absent — not
@@ -963,6 +981,179 @@ Verdicts to read carefully:
   failure, and not a pass. It is deliberately distinct from the row above,
   because one needs a token supplied and the other needs one fixed.
 
+### 4.2 — Is your conformance run a *required* check?
+
+A control is only enforced if a merge waits for it, and that is a **chain of
+four links** — none of which is in the same place as the others:
+
+1. Your register names a control `blocking`, with a `ci` locus.
+2. A job in a workflow that runs on `push` or `pull_request` runs the tool, and
+   does not suppress its own failure.
+3. That job's **id** is in your ruleset's `required_status_checks`.
+4. The ruleset is applied on the platform, targeting the default branch, with
+   `enforcement: active`.
+
+Break any one and the control is *declared and unreachable* — the failure this
+standard calls theme **T-3**. The uncomfortable part is that three of the four
+breaks leave a repository looking conformant: the workflow exists, the job runs,
+the file is committed, and the report is green.
+
+**GOV-001 reads the whole chain** from register contract 26. It has two halves,
+and they need different things from you:
+
+| Half | Reads | Needs |
+| --- | --- | --- |
+| The file half | Your register, your workflows | Nothing. Links 1 and 2 |
+| The platform half | `GET /repos/{owner}/{repo}/rules/branches/{branch}` | A token. Links 3 and 4 |
+
+Without a token it reports `SKIPPED (no credentials)` **and says which half it
+did verify** — a bare skip would throw away the file-level chain it read. That
+is not a pass, and `--require-complete` (§ 4.3) turns it into a failed check.
+
+**Three ways the chain breaks, and how each reads:**
+
+| What is wrong | What the report says | What to do |
+| --- | --- | --- |
+| The job runs, but no ruleset requires it | GOV-001 `FAIL`, naming the check your register requires and the platform does not enforce | Add the job id to `required_checks:` in your register and re-run `/gate-repo` |
+| The ruleset requires it, but nothing produces that check | CI-001 `FAIL` — *produced by no job in a gating workflow* | The register and the workflows disagree. Only you know which of the two is right; GitHub waits forever for a check nothing reports, so this blocks **every** merge rather than gating one |
+| The ruleset exists in your repository and was never applied | The file block passes — *intent only* — and the remote block fails or is skipped | A recorded ruleset protects nothing. Apply it (§ 3.6) |
+
+```bash
+# The whole chain, in one verdict.
+uv run standard-check meta GOV-001
+
+# What GitHub actually enforces on your default branch, in its own words.
+gh api "repos/OWNER/REPO/rules/branches/BRANCH" \
+  --jq '[.[] | select(.type == "required_status_checks")
+        | .parameters.required_status_checks[].context]'
+```
+
+**And the observation no report replaces.** Open a pull request whose required
+check fails, and watch the merge button refuse. This is § 1's rule again, one
+level up: *a ruleset nobody has seen refuse anything is not known to work.* Four
+green links and a merge that goes through anyway is the one outcome none of the
+checks above can rule out, because every one of them is reading a description of
+the platform rather than trying it.
+
+### 4.3 — Giving CI a credential, and failing the run when it cannot verify
+
+Two things go together, and doing either alone makes the other worse.
+
+**`--require-complete` turns "could not verify" into a failed check.** Without
+it, a run that answered nothing prints that it answered nothing and passes —
+which is the state most repositories are in without noticing, because exit `3`
+is reported and nothing reads it.
+
+```yaml
+      - name: Conformance
+        run: uv run standard-check --require-complete
+```
+
+**So the token has to come first.** Turn on `--require-complete` while CI has no
+credential and every run fails on a control that holds — and a check that fails
+for reasons nobody can act on gets ignored, which is worse than the tolerance it
+replaced. Order: token, confirm the remote blocks answer, then the flag.
+
+#### The credential, and where it lives
+
+A fine-grained token, scoped to the **one repository**, with
+`Administration: read` and nothing else. That one permission is what the Actions
+`GITHUB_TOKEN` does not carry and what SEC-001's remote block needs — without
+it, GitHub omits `security_and_analysis` entirely and the block reports
+`UNCLASSIFIED` over a repository where push protection is on.
+
+**Put it behind a deployment environment**, not in a plain repository secret.
+[ADR 0022](adr/0022-a-platform-token-ci-carries.md) sets out why, and the short
+form is that a repository secret is readable by any workflow run that reaches
+it, including one a pull request added a trigger for. An environment carries a
+**branch policy** — limit it to your default branch — and that policy lives in
+repository settings rather than in the workflow file, so it is a guard the pull
+request cannot edit. A guard written in the file being changed is not a guard.
+
+```yaml
+  standard-check:
+    runs-on: ubuntu-latest
+    environment: conformance          # its branch policy is the guard
+    steps:
+      - name: Conformance
+        env:
+          # Actions does not put a token in a step's environment; a workflow has
+          # to hand one over. The fallback is for a pull request from a fork,
+          # which receives no secret at all — the job token still answers CI-001.
+          GITHUB_TOKEN: ${{ secrets.PLATFORM_READ_TOKEN || github.token }}
+        run: uv run standard-check --require-complete
+```
+
+#### Name it in your register before you create it
+
+SEC-003 is an allow-list (§ 3.1), so a secret your workflow reaches and your
+register does not name **fails** — which is the intended order. The register has
+to be able to see the credential before the credential exists.
+
+```yaml
+platform_credentials:
+  - name: PLATFORM_READ_TOKEN
+    triggers: [push, pull_request]    # not `any` — a standing credential
+    max_lifetime_hours: 2184
+```
+
+**`max_lifetime_hours` is a permission, not a measurement.** It is the longest
+life your register allows *any* standing credential, and the remote block
+compares the expiry GitHub reports against the largest number any entry permits
+— no API response says which credential a run is carrying, so it cannot be
+per-token.
+
+Add a day to your policy when you write it in hours. This repository's ninety-day
+policy is recorded as **2184**, not 2160, because the block failed on its first
+live run by forty-four minutes: an expiry is a timestamp, and a token issued for
+"90 days" still had 2160.73 hours left when the run read it. That extra day is
+what a policy costs to state in hours — not slack granted to make a report
+green.
+
+#### If your repository takes pull requests from forks
+
+A fork pull request receives no repository secret and no environment secret.
+SEC-001's remote block cannot answer, and with `--require-complete` the run
+fails a contributor for a credential you deliberately did not give them. Tolerate
+exit `3` on that path, **and only `3`**:
+
+```yaml
+  standard-check:
+    runs-on: ubuntu-latest
+    environment: conformance
+    steps:
+      - name: Conformance
+        env:
+          GITHUB_TOKEN: ${{ secrets.PLATFORM_READ_TOKEN || github.token }}
+          # Read into the environment rather than interpolated into the script:
+          # an expression expanded into shell is a shape worth not having.
+          FROM_A_FORK: ${{ github.event.pull_request.head.repo.fork }}
+        run: |
+          if [ "$FROM_A_FORK" = "true" ]; then
+            uv run standard-check && status=0 || status=$?
+            if [ "$status" -ne 0 ] && [ "$status" -ne 3 ]; then
+              exit "$status"
+            fi
+          else
+            uv run standard-check --require-complete
+          fi
+```
+
+A verified violation still fails a fork run, and the incompleteness is still
+printed. **Test both branches**, in a test that runs the step's own script
+rather than a copy of it: a carve-out nobody exercises is one that quietly
+becomes general, which is exactly what happened to the tolerance it replaces.
+If your repository takes no fork pull requests, do not write this — an unused
+branch is a tolerance waiting to be widened.
+
+#### What none of this checks
+
+No API lets a fine-grained token enumerate its own permissions. *Scoped to this
+repository, `Administration: read` only* stays a human act you record when you
+issue it. SEC-003 reads the **instrument** — `X-OAuth-Scopes` present means a
+classic token, and that fails — and the **expiry**, and neither is a check that
+your token is minimal. Do not read a green SEC-003 as one.
+
 ## 5 — Checklist
 
 Each row is done when its evidence exists, not when the step has been performed.
@@ -981,6 +1172,11 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 7a | Secrets gate wired at pre-commit **and** CI, and stamped | `standard-check run --control SEC-001` shows both local blocks ✓; with an admin-scoped token the remote block is ✓ too and it exits `0` |
 | 7c | The branch protection you recorded is the one GitHub enforces | `standard-check run --control CI-001` with a token — the remote block reports the rules in effect, not the file |
 | 8 | The conformance run is a required status check | `uv run standard-check` with a token reports GOV-001 `PASS` — from register contract 26 it reads which checks GitHub actually enforces on your default branch, and fails one your register requires and the platform does not. Without a token it reports `SKIPPED (no credentials)` and says which half it did verify |
+| 8a | A merge has actually been refused | A pull request whose required check fails cannot be merged. Four green links and a merge that goes through anyway is what no report can rule out (§ 4.2) |
+| 9 | CI carries a credential the remote blocks can answer from | The `Standard` run's report shows SEC-001's and SEC-003's remote blocks ✓ rather than `SKIPPED` or `UNCLASSIFIED` — and the token is an environment secret behind a branch policy, not a repository secret (§ 4.3) |
+| 9a | That credential is named in your register before it exists | `standard-check run --control SEC-003` passes rather than failing on a secret nothing names |
+| 10 | The conformance step passes `--require-complete` | A run that cannot verify a control fails the check rather than printing that it could not. Turn it on **after** row 9, not before |
+| 10a | The fork path, if you take fork pull requests | A test running the step's own script asserts it tolerates `3` and only `3` (§ 4.3). Do not write the branch if you do not need it |
 
 ## When something is wrong with the standard itself
 

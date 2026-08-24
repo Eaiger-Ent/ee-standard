@@ -4,7 +4,7 @@ The evidence for Phase 3's criteria, so that
 [`04-build-plan.md`](04-build-plan.md) can stay a list of outstanding work.
 A criterion there is one checkable sentence; the reasoning for a tick is here.
 
-**Scope of this record.** Nine slices so far.
+**Scope of this record.** Eleven slices, and the phase is **8/8**.
 
 The first implements `kind: remote` itself — the transport, the two asserts the
 register declares, and the taxonomy that decides what a non-answer is worth. It
@@ -998,3 +998,129 @@ the ninth slice used for the fork branch.
 
 Phase 3 goes to **7/8**. What is left is the adopter criterion that covers the
 whole phase.
+
+## The eleventh slice — the phase's steps reach the adopter
+
+### What the criterion asked, and what was already there
+
+*Every adopter-facing step this phase introduces is in
+[`08-adopting.md`](08-adopting.md) with its evidence — the credentials
+`kind: remote` needs, the token scopes that create a ruleset, and how an adopter
+confirms their conformance run is a required status check.*
+
+The first two were written as they were found, which is what the standing
+requirement is for. § 4.1 had the credential rules from the first slice — the
+environment variables read, the per-control scopes, the four refusals and what
+each asks of you — and the third and fourth slices added SEC-003's rows as they
+landed. § 1 and § 3.6 had `administration: write` from Phase 2.
+
+The third had a checklist row and nothing behind it.
+
+### The gap was the chain, not the check
+
+Row 8 said *the conformance run is a required status check — GOV-001 `PASS`*.
+That is how you confirm it **once you already know what it means**, and the
+thing an adopter does not know is that being a required check is a chain of four
+links in four different places: the register marks a control blocking, a job
+runs the tool on a gating trigger, the job's **id** is in the ruleset's
+`required_status_checks`, and the ruleset is applied and active on the platform.
+
+Three of the four breaks leave a repository looking conformant. The workflow
+exists, the job runs, the file is committed, and the report is green. That is
+theme **T-3** in its most expensive form, and a one-line checklist row is not
+where somebody learns it.
+
+**§ 4.2** is that section: the four links, GOV-001's two halves and what each
+needs, the three breaks with what each reads like and what to do about it, the
+command that asks GitHub what it actually enforces, and — the part no report
+replaces — open a pull request whose required check fails and watch the merge
+button refuse. That is § 1's rule one level up: *a ruleset nobody has seen
+refuse anything is not known to work.* Every check above it is reading a
+description of the platform rather than trying it.
+
+### Two more steps this phase introduced and nobody had written down
+
+The seventh and ninth slices changed what an adopter has to do, and neither had
+reached the guide.
+
+- **The credential CI carries.** § 3.1 covered SEC-003 thoroughly — the
+  allow-list, the classic-token refusal, the expiry block that answers only
+  inside an Actions job — and then said *read ADR 0022 first*. For the one
+  credential the whole phase turns on, "read the ADR" is where a step goes to
+  not get taken.
+- **`--require-complete`.** It appeared twice in passing — once in a list of
+  flags that precede the subcommand, once in a table of exit codes — and never
+  as something an adopter should turn on.
+
+**§ 4.3** takes both together, because doing either alone makes the other worse.
+It gives the order plainly — token, confirm the remote blocks answer, then the
+flag — and says why it is not a preference: turn the flag on while CI has no
+credential and every run fails on controls that hold, and *a check that fails
+for reasons nobody can act on gets ignored*, which is worse than the tolerance
+it replaced. Then the arrangement (a fine-grained token, one repository,
+`Administration: read`, behind a deployment environment whose branch policy the
+pull request cannot edit), the register entry that must exist **before** the
+token does, the fork carve-out with its script, and the sentence that the extra
+day in `max_lifetime_hours` is what a policy costs to state in hours.
+
+### The posture stayed where it belongs
+
+ADR 0022 requirement 6 is why § 4.3 shows an `environment:` gate and never the
+arrangement this repository takes. `tests/test_posture.py` already held
+`plugins/` to that; the guide is the likelier route for the shape to travel,
+because a reader copies an example rather than a plugin. So
+`tests/test_adopter_guide.py` fails any fenced YAML in the guide that reaches a
+stored secret without an `environment:` line in the same fragment — which caught
+the fork example on its first run, written as a bare step with no job around it.
+
+### The rest of that test, and why it derives rather than lists
+
+The standing requirement's own test is *"could someone who has never seen this
+repository do it, and know that they had?"*, and nothing can assert that. What
+can be asserted is the narrower thing that makes the requirement necessary: **a
+step goes missing because nobody noticed it had been introduced.**
+
+So the test reads the register and requires that every control carrying a
+`kind: remote` block be named in § 4.1's scopes table. A new remote control
+fails the build until an adopter is told what token can answer it — which is the
+one fact they cannot derive from their own repository, cannot learn by running
+the checker, and will not guess, since the scopes differ per control and the
+surprising one is that reading a *setting* needs administration access.
+GOV-001 is named rather than derived, and the file says why: its remote half is
+not a verify block, because the runner hands a meta-control the resolved
+platform target.
+
+### Evidence
+
+Every command the two new sections give was run here before it was written down.
+
+| Command | Result |
+| --- | --- |
+| `standard-check meta GOV-001` | `PASS — … and GitHub enforces those checks on Eaiger-Ent/ee-standard@main — the whole chain from control to blocked merge is read` |
+| the same, with no token in the environment | `SKIPPED (no credentials) — … but whether GitHub enforces that is unread` — the half it did verify is named, which is the claim § 4.2 makes about it |
+| `gh api repos/…/rules/branches/main --jq …` | `["standard-check","lint-md"]` |
+
+**What is not evidence.** Nobody has followed § 4.2 or § 4.3 as an adopter,
+because the adopter does not exist until Phase 4 — whose criterion is *no step
+required knowledge held only by the author*, and which is the real test of this
+one. What these two sections have is the same standing as the rest of the guide:
+written as the work was done, with the commands run in this repository, by
+somebody who knew the answer. That is what the standing requirement asks for and
+it is deliberately not the same thing as being followed.
+
+Also corrected in passing: the status table said the generalised devcontainer
+template was Phase 2's, which it is not — it ships as placeholders and nobody
+has built it (deferred to Phase 4).
+
+### Criteria this slice closes
+
+| Criterion | State | Evidence |
+| --- | --- | --- |
+| Every adopter-facing step this phase introduces is in `08-adopting.md` with its evidence | **Closed** | § 4.2 and § 4.3 above, `tests/test_adopter_guide.py`, and the three commands run in § Evidence |
+
+**Phase 3 is 8/8.** Nothing in it is re-opened, and what each slice deliberately
+left open is recorded in its own section rather than here — the fork branch
+unobserved on a real fork (ninth), the 2b question unobserved against an
+existing ruleset (tenth), and these two sections unfollowed by an adopter
+(eleventh). All three are the same kind of thing: a claim about somebody else's
+run that this repository cannot make on its own.
