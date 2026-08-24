@@ -21,9 +21,17 @@ returns** — for everyone with access, not only for whoever ran the skill.
 
 So it confirms explicitly before acting, regardless of any plan already
 approved, including one approved in `standard-adopt`. That plan covers what will
-be written to files; this call is not a file. The confirmation is asked on every
-run, including a re-run that would change nothing: a call whose effect is
+be written to files; none of these calls is a file. The confirmation is asked on
+every run, including a re-run that would change nothing: a call whose effect is
 invisible until it is wrong is not one to make silently.
+
+**Three calls, three confirmations.** Creating a ruleset, replacing an existing
+one, and removing classic branch protection are separate questions with separate
+words, because they have different blast radii and two of them can *reduce* what
+protects the branch — a `PUT` replaces a ruleset entire, and a `DELETE` takes the
+classic rule away. An answer to one is never an answer to another. `SKILL.md`
+§ Every call that changes platform state lists them, and a call not in that list
+is one this gate does not make.
 
 ## A recorded ruleset is not a protected branch
 
@@ -33,18 +41,20 @@ only the API call does that.
 
 This distinction is the whole reason the file exists, and the whole reason it is
 not enough. CI-001's only locus is `remote`, which made this the one gate with
-no file to write, no stamp to leave, and nothing observable until Phase 3
-implements `kind: remote`. A gate that cannot be watched working is the shape
-this project's review record keeps re-opening criteria over.
+no file to write, no stamp to leave, and nothing observable until `kind: remote`
+existed. A gate that cannot be watched working is the shape this project's
+review record keeps re-opening criteria over.
 
 So the ruleset is recorded before it is applied, and
 `ruleset_recorded_matches_register` reads it back. That assert verifies
 **intent** and says so in its own message. Whether GitHub enforces it stays with
-the `remote` block, which reports `SKIPPED (no credentials)` until Phase 3 — and
-that is never reported as a pass.
+the `remote` block, which answers when the run carries a token that can read the
+ruleset and reports `SKIPPED (no credentials)` when it does not — and that skip
+is never reported as a pass.
 
-Expect exit `3`. Both halves get said: the repository records the ruleset the
-register requires, and nothing yet verifies that the platform is enforcing it.
+So the exit code says which halves were verified. With credentials, exit `0`:
+the repository records the ruleset the register requires and the platform is
+enforcing it. Without, exit `3`, and only the first half is claimed.
 
 ## Why it takes no opinions
 

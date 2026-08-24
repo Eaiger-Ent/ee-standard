@@ -897,3 +897,104 @@ request; it is recorded here as unobserved rather than counted as evidence.
 
 Phase 3 goes to **6/8**. What is left is `gate-repo`'s per-mutation
 confirmation, and the adopter criterion that covers the whole phase.
+
+## The tenth slice — the second and third calls get asked about
+
+### What this slice found
+
+The criterion reads *`gate-repo` confirms before every remote mutation,
+independently of the plan-level confirmation*, and the skill answered two thirds
+of it. The confirmation before `POST /rulesets` was written out in full, named
+its blast radius, and said in terms that an earlier plan approval does not cover
+it — `tests/test_gate_repo_deploy.py::test_the_skill_confirms_before_it_calls`
+held all three properties, and `standard-adopt` said the same from its side.
+
+The other two calls did not have that.
+
+- **`PUT /rulesets/{id}`** existed as one line of prose *inside* the create
+  question's own step: *"if a ruleset with this name already exists, use `PUT`
+  … rather than creating a second"*. A reader following the step in order
+  reaches the confirmation, is asked about **creating** an active ruleset, then
+  makes a different call. And it is the call that can *weaken* protection: a
+  `PUT` replaces a ruleset entire, so a bypass list, an extra rule or a wider
+  `include` that the live one carries and the record does not is dropped by it.
+- **`DELETE /branches/{branch}/protection`** was not written down at all. Step 3
+  said to ask whether to remove classic branch protection and left the call to
+  the reader — so the one mutation whose whole effect is a *reduction* was the
+  one with no command and no wording for its question.
+
+Neither is an oversight anyone would spot in a diff. Both are what "before every
+remote mutation" was distinguishing itself from.
+
+### What it built
+
+The skill now opens with a table of every call it makes that is not a `GET`,
+what each changes, and which question asks about it. Step 2 splits in two —
+**2a create**, **2b update** — each with its own wording, and 2b's names the
+diff the `PUT` will apply, *including when the diff is empty*: "nothing changes"
+is an answer the person is entitled to hear rather than one to act on for them.
+Step 3 gets the `DELETE` written out, its own question naming what stops being
+required, and the sentence that it is a third confirmation rather than a
+continuation of Step 2's — an approval to apply a ruleset is not an approval to
+delete what stood beside it.
+
+### The test enumerates rather than names
+
+`tests/test_gate_repo_confirmation.py` does not assert "there are three
+questions". It parses the skill's fenced blocks, collects every `gh api` call
+carrying a method other than `GET`, and requires of each one that it appear in
+the table **and** that a question stand between it and the call before it. A
+fourth mutation added later fails both until it has both.
+
+Two properties are worth stating separately:
+
+- **"Before it" is not the test.** One question at the top of a file is before
+  every call in it. The span checked is from the previous mutation, which is
+  what makes an approval unable to carry forward.
+- **A `gh api` with `--input` or `-f` and no `--method` is a POST.** `gh`
+  supplies the method from the presence of a body, so the enumeration above
+  would not see such a call while GitHub would act on it. That is checked on its
+  own rather than left to the same regex.
+
+Both failure modes were watched failing before the slice was called done: a
+`PATCH` smuggled into an existing step fails two tests, and a read call given
+`--input` fails the third.
+
+### What this slice also corrected
+
+The skill and its README told an adopter that exit `3` was *"the expected
+result"* and that exit `0` was *"not reachable today"*, because CI-001's remote
+block reported `SKIPPED (no credentials)` "until Phase 3 implements
+`kind: remote`". Phase 3's first slice implemented it on 2026-08-22, and this
+repository's own `standard-check run --control CI-001` has exited `0` since.
+A shipped gate telling an adopter to expect the wrong exit code is the kind of
+staleness this phase is otherwise about, so both files now say that which of
+`0` and `3` you get turns on credentials, and that saying which one happened
+matters more than which one it was.
+
+No register field changed and no control's `rung`, `verify`, `variance` or
+`applies_to` moved, so the contract stays at **26**. `gate-repo`'s
+`contractVersion` in `deploys.json` stays at **2** as well, and deliberately:
+that number moves when the *deployed output* changes, and nothing here changes a
+byte of `.github/rulesets/default-branch.json`. Bumping it would recommend a
+redeployment that would rewrite the same file — the noise `02-skill-family.md`
+§ The noise control exists to prevent.
+
+### What this slice leaves open
+
+**Nothing here proves a model asks.** What is machine-checkable is the shape of
+the instruction, and this test checks that shape thoroughly enough that a
+missing question fails the build. Whether a run of `/gate-repo` against a
+repository with an existing ruleset actually asks the 2b question is an
+observation nobody has made — no such deployment has been run since the split.
+It is recorded as unobserved rather than counted as evidence, in the same terms
+the ninth slice used for the fork branch.
+
+### Criteria this slice closes
+
+| Criterion | State | Evidence |
+| --- | --- | --- |
+| `gate-repo` confirms before every remote mutation, independently of the plan-level confirmation | **Closed** | `tests/test_gate_repo_confirmation.py`, 11 tests, both failure modes watched failing |
+
+Phase 3 goes to **7/8**. What is left is the adopter criterion that covers the
+whole phase.

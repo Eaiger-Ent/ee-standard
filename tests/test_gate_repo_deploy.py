@@ -3,7 +3,7 @@
 The sixth and last gate, and the only one that changes something outside the
 repository. Its control's only locus is `remote`, which made it the one gate
 with no file to write, no stamp to leave, and nothing observable until Phase 3
-implements `kind: remote`. A gate that cannot be watched working is what this
+implemented `kind: remote`. A gate that cannot be watched working is what this
 project's review record keeps re-opening criteria over.
 
 So the ruleset is **recorded** before it is applied, and this file is about the
@@ -364,10 +364,16 @@ def test_the_skill_confirms_before_it_calls() -> None:
     the moment the call returns. No test can prove a model asks first — what can
     be held is that the skill says to, in terms that name the blast radius, and
     that it does not treat an earlier plan approval as covering it.
+
+    This is the *apply* call. That every other call changing platform state has
+    a question of its own — the `PUT` that replaces a ruleset, the `DELETE` that
+    removes classic protection — is `tests/test_gate_repo_confirmation.py`,
+    which enumerates them rather than naming them, so a fourth one cannot be
+    added without one.
     """
     text = " ".join((SKILL / "SKILL.md").read_text(encoding="utf-8").split())
     assert "Ask via AskUserQuestion before the API call, every time" in text
-    assert "This confirmation is not waivable by an earlier approval" in text
+    assert "No confirmation here is waivable by an earlier approval" in text
     assert "It affects every collaborator, not only you" in text
     # And the failure path: a weaker ruleset is never the retry.
     assert "do not retry with a weaker ruleset" in text
