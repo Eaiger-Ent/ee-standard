@@ -165,6 +165,90 @@ def no_static_cloud_keys(
     )
 
 
+# How a workflow reaches a secret. `secrets.NAME` covers the expression context
+# and `secrets: inherit` covers handing the whole store to a called workflow —
+# a reference to every secret at once, which no allow-list can enumerate and so
+# fails whatever the register names. `github.token` is the same credential as
+# `secrets.GITHUB_TOKEN` under another spelling, and every workflow in this
+# repository uses that one; that equivalence is detection implementation and
+# stays here, as `cloud_credentials:` spelling equivalence does (ADR 0018).
+_SECRET_REFERENCE = re.compile(r"secrets\.([A-Za-z_][A-Za-z0-9_-]*)")
+_SECRETS_INHERIT = re.compile(r"^\s*secrets:\s*inherit\s*$", re.MULTILINE)
+_PLATFORM_TOKEN_CONTEXT = re.compile(r"github\.token\b")
+
+
+def _workflow_triggers(doc: object) -> tuple[str, ...]:
+    """The events a workflow runs on, however `on:` is spelled.
+
+    `on:` parses as the YAML 1.1 boolean True, the same trap `_is_gating`
+    documents; a workflow whose triggers could not be read reports none, which
+    makes the trigger half of SEC-003 silent rather than wrong — the unnamed
+    secret half still fails.
+    """
+    if not isinstance(doc, dict):
+        return ()
+    triggers: object = doc["on"] if "on" in doc else doc.get(True)
+    if isinstance(triggers, str):
+        return (triggers,)
+    if isinstance(triggers, list):
+        return tuple(str(t) for t in triggers)
+    if isinstance(triggers, dict):
+        return tuple(str(t) for t in triggers)
+    return ()
+
+
+def no_unregistered_workflow_secrets(
+    repo: Repo,
+    register: Register,
+    _args: Mapping[str, object],
+) -> AssertResult:
+    """SEC-003 — every secret a workflow reaches is one the register names.
+
+    This is an allow-list, and the direction is the opposite of
+    `no_static_cloud_keys`: there, a credential the register has not heard of
+    passes, because the list enumerates what is forbidden. Here a credential
+    the register has not heard of fails, because the list enumerates what is
+    permitted — so a register with no `platform_credentials:` block permits no
+    secret at all rather than checking none (ADR 0022 requirement 1).
+    """
+    permitted = {credential.name: credential for credential in register.platform_credentials}
+    findings: list[str] = []
+    for path in repo.workflow_files():
+        text = repo.read(path)
+        if _SECRETS_INHERIT.search(text):
+            findings.append(
+                f"{path}: passes `secrets: inherit`, which hands a called workflow every "
+                "secret this repository holds — a reference no allow-list can enumerate"
+            )
+        names = set(_SECRET_REFERENCE.findall(text))
+        if _PLATFORM_TOKEN_CONTEXT.search(text):
+            names.add("GITHUB_TOKEN")
+        triggers = _workflow_triggers(yaml.safe_load(text))
+        for name in sorted(names):
+            credential = permitted.get(name)
+            if credential is None:
+                findings.append(
+                    f"{path}: references {name}, which `platform_credentials:` does not name "
+                    "— a credential nobody decided"
+                )
+                continue
+            if credential.triggers is None:
+                continue
+            forbidden = [event for event in triggers if event not in credential.triggers]
+            if forbidden:
+                findings.append(
+                    f"{path}: references {name} in a workflow that runs on "
+                    f"{', '.join(forbidden)}, which `platform_credentials:` does not permit "
+                    f"for it (permitted: {', '.join(credential.triggers)})"
+                )
+    if findings:
+        return _fail("; ".join(findings))
+    return _ok(
+        f"every secret referenced by a workflow is one of the {len(permitted)} the register "
+        "names, under an event it permits"
+    )
+
+
 _EXACT_PIN_NPM = re.compile(r"@\d[\w.\-]*$")
 _EXACT_PIN_PIP = re.compile(r"==\d[\w.\-]*$")
 
@@ -1496,4 +1580,5 @@ COMMAND_ASSERTS: dict[str, AssertFn] = {
     "secrets_gate_wired_at_all_loci": secrets_gate_wired_at_all_loci,
     "gate_wired_at_declared_loci": gate_wired_at_declared_loci,
     "ruleset_recorded_matches_register": ruleset_recorded_matches_register,
+    "no_unregistered_workflow_secrets": no_unregistered_workflow_secrets,
 }

@@ -4,7 +4,7 @@ The evidence for Phase 3's criteria, so that
 [`04-build-plan.md`](04-build-plan.md) can stay a list of outstanding work.
 A criterion there is one checkable sentence; the reasoning for a tick is here.
 
-**Scope of this record.** Two slices so far.
+**Scope of this record.** Three slices so far.
 
 The first implements `kind: remote` itself — the transport, the two asserts the
 register declares, and the taxonomy that decides what a non-answer is worth. It
@@ -274,3 +274,98 @@ than a gap to close.
 | Criterion | State | Evidence |
 | --- | --- | --- |
 | GOV-003 fails on a control past `review_by` | **Closed** | § Evidence above — both halves, end to end and in the suite |
+
+## The third slice — the register can see a platform token
+
+### What this slice built
+
+SEC-003 and `platform_credentials:`, at register contract 22 — requirements 1
+and 2 of [ADR 0022](adr/0022-a-platform-token-ci-carries.md), which that ADR's
+§ The precondition puts before any token rather than beside one. It closes no
+criterion. It removes the reason the `--require-complete` flip cannot be worked
+on: the flip is blocked on a token CI does not have, and the token is blocked on
+these two, so this is the only end of the chain that could move.
+
+### Why the control could be added before the credential
+
+The finding ADR 0022 recorded independently of its decision is that **SEC-002
+cannot see a platform token**: `no-static-cloud-keys` reads `cloud_credentials:`
+and every name in it is a cloud provider key, so a `GH_ADMIN_TOKEN` repository
+secret would have left SEC-002 reporting PASS over a standing administrative
+credential. SEC-002 was not wrong; it was asked a different question.
+
+SEC-003 asks the register's, and the direction is the opposite of SEC-002's:
+
+| | `cloud_credentials:` | `platform_credentials:` |
+| --- | --- | --- |
+| What the list holds | what is forbidden | what is permitted |
+| A name the list has not heard of | passes | **fails** |
+| The section omitted | falls back to a built-in set | permits nothing |
+| An empty list | a control looking for nothing | rejected — omitting the key says it already |
+
+That asymmetry is what made this slice possible before any credential exists.
+An allow-list introduced into a repository with no standing secret costs
+nothing and fails closed; a deny-list introduced the same way would have had to
+guess the name of the thing it was looking for, which is the failure § H4
+recorded against SEC-002 itself.
+
+### The trigger half, and what it is for
+
+An entry names `triggers` — the events a workflow may reference that credential
+under. This is the field that makes ADR 0022's Option 3 checkable rather than a
+convention: the exfiltration path that ADR corrected its own first draft over is
+a branch **adding** `pull_request:` to a workflow in order to self-trigger a job
+with the secret attached, and a guard written in YAML is a guard the pull
+request is editing. The register is not.
+
+`GITHUB_TOKEN` carries `triggers: any`, which is a statement and not a default —
+GitHub creates it at the start of each job and expires it with the job, so the
+event cannot change what it reaches. A standing credential will name its events
+explicitly, and that is the whole point of the field.
+
+### Evidence
+
+```console
+$ uv run standard-check schema
+schema: OK — register v0.20.0 (contract 22), 14 controls, 3 meta-controls
+
+$ uv run standard-check run --control SEC-003
+  SEC-003  PASS   CI carries no platform credential the register does not name
+exit 0
+```
+
+The full run is 13 passed, 1 skipped (predicate: IAC-001), 3/3 meta-controls —
+GOV-001 included, which matters because SEC-003 is `rung: blocking` at the `ci`
+locus and so has to be reachable from a step that can fail. It is, by the same
+full-register step every other blocking control is reached from; nothing new was
+wired.
+
+Four ways to fail it are covered in `tests/test_asserts_command.py`: a secret
+the register does not name, `secrets: inherit` (a reference to every secret at
+once, which no allow-list can enumerate), a named credential under an event its
+entry does not permit, and — the test that proves the assert holds no list of
+its own — the register's `platform_credentials:` block deleted, after which this
+repository's own workflows fail on `${{ github.token }}`.
+
+That last spelling is why the assert reads more than `secrets.`: every workflow
+here reaches the platform token as `${{ github.token }}`, so an assert matching
+only the `secrets.` context would have reported PASS without looking at the one
+reference there is.
+
+### What this slice deliberately left open
+
+Requirements 3 and 4 — a verified expiry read from the
+`github-authentication-token-expiration` response header, and a classic token
+refused by the presence of `X-OAuth-Scopes`. Both are `kind: remote` work, and
+both land before a standing credential does, not after. `max_lifetime_hours` is
+recorded in the register now and read by nothing, which is the honest state: it
+is a promise until requirement 3 makes it a verdict.
+
+Requirement 6 — a test that this repository's Option 1 posture cannot appear
+under `plugins/` — is also open. Nothing breaks when it is skipped, which ADR
+0022 says is exactly what makes it worth writing down.
+
+### Criteria this slice closes
+
+None. It is recorded because the flip's criterion names ADR 0022 as its blocker,
+and two of that ADR's seven requirements are now closed rather than pending.

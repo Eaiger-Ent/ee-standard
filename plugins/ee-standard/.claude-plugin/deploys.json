@@ -2,10 +2,11 @@
   "schemaVersion": 2,
   "gates": {
     "gate-secrets": {
-      "contractVersion": 2,
+      "contractVersion": 3,
       "controls": [
         "SEC-001",
-        "SEC-002"
+        "SEC-002",
+        "SEC-003"
       ],
       "artifacts": [
         ".pre-commit-config.yaml#gitleaks",

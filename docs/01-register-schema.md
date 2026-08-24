@@ -20,6 +20,7 @@ it, so an unparseable register means no control is enforced.
 | `stacks` | no | map | Per-stack gate tools — see [`stacks`](#stacks). |
 | `suppression` | no | list | Regular expressions that count as swallowing a failure. |
 | `cloud_credentials` | no | list | Static cloud credential names SEC-002 forbids — see [`cloud_credentials`](#cloud_credentials). |
+| `platform_credentials` | no | list | Secrets SEC-003 permits a workflow to reference — see [`platform_credentials`](#platform_credentials). |
 | `controls` | yes | list | The controls. |
 | `meta_controls` | yes | list | Controls that check the register itself. |
 
@@ -447,6 +448,43 @@ which names to look for is a register fact, because a repository on a different
 cloud needs different ones and no checker change
 ([ADR 0018](adr/0018-register-checker-boundary.md), fourth pass). Omit the
 section and the checker falls back to a built-in set, as with `suppression`.
+
+### `platform_credentials`
+
+The secrets SEC-003 permits a workflow to reference, and the events each may
+appear under ([ADR 0022](adr/0022-a-platform-token-ci-carries.md),
+requirement 2).
+
+```yaml
+platform_credentials:
+  - name: GITHUB_TOKEN
+    triggers: any               # `any`, or a list of workflow events
+    max_lifetime_hours: 24
+```
+
+**This is an allow-list, and `cloud_credentials:` above is a deny-list.** The
+direction is the whole difference: a deny-list that has not heard of a
+credential passes it, so omitting it makes the checker fall back to a built-in
+set; an allow-list that has not heard of one fails it, so omitting this section
+permits no secret at all. An empty list is rejected rather than read that way,
+because omitting the key says it already.
+
+`triggers` is what makes the deployment-environment posture checkable rather
+than a convention. A standing credential names the events it may appear under,
+so a branch that adds `pull_request:` to a workflow in order to reach the
+secret fails here — the guard cannot live in the workflow file the pull request
+is editing. `any` is legitimate only for a credential the platform mints per
+job and revokes with it: the event cannot change what such a token reaches,
+because it does not outlive the job that ran under it.
+
+`max_lifetime_hours` is a positive whole number of hours. Nothing reads it yet;
+requirement 3 of that ADR — a `kind: remote` assert reading the
+`github-authentication-token-expiration` response header — is what turns it
+from a promise into a verdict, and it lands before any standing credential does.
+
+That a workflow spells the platform token `${{ github.token }}` as often as
+`${{ secrets.GITHUB_TOKEN }}` is detection and stays in the checker, as
+`cloud_credentials:` spelling equivalence does.
 
 ### `stacks`
 

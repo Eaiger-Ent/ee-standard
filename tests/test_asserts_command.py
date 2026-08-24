@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from conftest import a_register, make_repo
+from conftest import a_register, make_repo, register_with
 from standard_check.asserts_command import (
     actions_pinned_to_sha,
     ci_installs_frozen,
     markdown_gate_wired_at_all_loci,
     no_failure_suppression,
     no_static_cloud_keys,
+    no_unregistered_workflow_secrets,
     typecheck_strict_and_blocking,
 )
 from standard_check.asserts_command import (
@@ -276,3 +277,108 @@ def test_markdown_gate_reads_the_cli2_config_shape(tmp_path: Path) -> None:
     result = markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS)
     assert result.passed, result.message
     assert "120" in result.message
+
+
+def _secret_workflow(reference: str, on: str = "[push, pull_request]") -> str:
+    return (
+        f"on: {on}\njobs:\n  job:\n    runs-on: ubuntu-latest\n    steps:\n"
+        f"      - run: standard-check\n        env:\n          TOKEN: {reference}\n"
+    )
+
+
+def test_the_platform_token_passes_under_either_spelling(tmp_path: Path) -> None:
+    """`github.token` and `secrets.GITHUB_TOKEN` are one credential.
+
+    Every workflow in this repository reaches it as `${{ github.token }}`, so an
+    assert that read only `secrets.` would have reported PASS without looking at
+    the one reference there is.
+    """
+    for i, reference in enumerate(("${{ github.token }}", "${{ secrets.GITHUB_TOKEN }}")):
+        repo = make_repo(
+            tmp_path / f"ok{i}", {".github/workflows/ci.yml": _secret_workflow(reference)}
+        )
+        assert no_unregistered_workflow_secrets(repo, a_register(), {}).passed
+
+
+def test_a_secret_the_register_does_not_name_fails(tmp_path: Path) -> None:
+    repo = make_repo(
+        tmp_path / "unnamed",
+        {".github/workflows/ci.yml": _secret_workflow("${{ secrets.GH_ADMIN_TOKEN }}")},
+    )
+    result = no_unregistered_workflow_secrets(repo, a_register(), {})
+    assert not result.passed
+    assert "GH_ADMIN_TOKEN" in result.message
+
+
+def test_secrets_inherit_fails_because_no_allow_list_can_enumerate_it(tmp_path: Path) -> None:
+    repo = make_repo(
+        tmp_path / "inherit",
+        {
+            ".github/workflows/ci.yml": (
+                "on: [push]\njobs:\n  call:\n    uses: ./.github/workflows/other.yml\n"
+                "    secrets: inherit\n"
+            )
+        },
+    )
+    result = no_unregistered_workflow_secrets(repo, a_register(), {})
+    assert not result.passed
+    assert "inherit" in result.message
+
+
+def test_a_named_credential_under_a_forbidden_trigger_fails(tmp_path: Path) -> None:
+    """The half that makes ADR 0022's Option 3 checkable rather than a convention.
+
+    A branch that adds `pull_request:` to a workflow in order to reach a
+    standing credential is the exfiltration path that ADR recorded; the guard
+    cannot live in the workflow file the pull request is editing, so it lives in
+    the register.
+    """
+
+    def name_a_standing_token(document: dict[str, object]) -> None:
+        credentials = document["platform_credentials"]
+        assert isinstance(credentials, list)
+        credentials.append(
+            {"name": "PLATFORM_READ_TOKEN", "triggers": ["push"], "max_lifetime_hours": 720}
+        )
+
+    register = register_with(tmp_path, name_a_standing_token)
+    permitted = make_repo(
+        tmp_path / "push",
+        {
+            ".github/workflows/ci.yml": _secret_workflow(
+                "${{ secrets.PLATFORM_READ_TOKEN }}", "[push]"
+            )
+        },
+    )
+    assert no_unregistered_workflow_secrets(permitted, register, {}).passed
+    forbidden = make_repo(
+        tmp_path / "pr",
+        {
+            ".github/workflows/ci.yml": _secret_workflow(
+                "${{ secrets.PLATFORM_READ_TOKEN }}", "[push, pull_request]"
+            )
+        },
+    )
+    result = no_unregistered_workflow_secrets(forbidden, register, {})
+    assert not result.passed
+    assert "pull_request" in result.message
+
+
+def test_the_rule_moves_with_the_register(tmp_path: Path) -> None:
+    """Remove the entry and the same workflow fails — the assert holds no list.
+
+    An allow-list the checker kept privately would pass this repository's own
+    workflows whatever `platform_credentials:` said.
+    """
+
+    def forget_the_platform_token(document: dict[str, object]) -> None:
+        del document["platform_credentials"]
+
+    register = register_with(tmp_path, forget_the_platform_token)
+    repo = make_repo(
+        tmp_path / "forgotten",
+        {".github/workflows/ci.yml": _secret_workflow("${{ github.token }}")},
+    )
+    result = no_unregistered_workflow_secrets(repo, register, {})
+    assert not result.passed
+    assert "GITHUB_TOKEN" in result.message

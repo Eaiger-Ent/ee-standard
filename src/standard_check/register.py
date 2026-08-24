@@ -64,6 +64,7 @@ _DOCUMENT_ALLOWED = (
     "stacks",
     "suppression",
     "cloud_credentials",
+    "platform_credentials",
     "predicates",
     "controls",
     "meta_controls",
@@ -123,6 +124,7 @@ _CONFIG_ALLOWED = ("file", "section")
 _GATE_ROLES = ("lint", "typecheck")
 _METADATA_ALLOWED = ("owner", "register_contract")
 _STANDARD_ALLOWED = ("name", "url")
+_PLATFORM_CREDENTIAL_ALLOWED = ("name", "triggers", "max_lifetime_hours")
 _BLOCK_ALLOWED = ("kind", "run", "assert", "args", "partial", "applies_to")
 _PARTIAL_ALLOWED = ("unverified", "expires")
 
@@ -405,6 +407,23 @@ class Control:
 
 
 @dataclass(frozen=True)
+class PlatformCredential:
+    """A secret a workflow may reference, and the events it may appear under.
+
+    ADR 0022 requirement 2. `triggers` is `None` where the register wrote
+    `any`, which is legitimate only for a credential the platform mints per
+    job: the event cannot change what such a token reaches, because it does not
+    outlive the job that ran under it. A standing credential names its events,
+    and that is what makes the deployment-environment gate checkable rather
+    than a convention.
+    """
+
+    name: str
+    triggers: tuple[str, ...] | None
+    max_lifetime_hours: int
+
+
+@dataclass(frozen=True)
 class MetaControl:
     id: str
     title: str
@@ -430,6 +449,12 @@ class Register:
     # (ADR 0018's fourth pass): the ratified decision classified these as a
     # register fact in the first place, and the move was never made (§ H4).
     cloud_credentials: tuple[str, ...] = ()
+    # Secrets SEC-003 permits a workflow to reference, from contract 22
+    # (ADR 0022 requirement 2). The asymmetry with `cloud_credentials:` is
+    # deliberate: that one is a deny-list, so a name it has not heard of
+    # passes; this is an allow-list, so a name it has not heard of fails. An
+    # empty tuple therefore permits nothing rather than checking nothing.
+    platform_credentials: tuple[PlatformCredential, ...] = ()
 
     def gates(self, role: str) -> dict[str, Gate]:
         """Every stack's gate for `role`, keyed by stack name."""
@@ -1063,6 +1088,11 @@ class _Validator:
             if "cloud_credentials" in raw
             else ()
         )
+        platform_credentials = (
+            self._platform_credentials(raw["platform_credentials"])
+            if "platform_credentials" in raw
+            else ()
+        )
         controls_raw = raw.get("controls")
         controls: list[Control] = []
         if not isinstance(controls_raw, list) or not controls_raw:
@@ -1103,6 +1133,7 @@ class _Validator:
             stacks=stacks,
             suppression=suppression,
             cloud_credentials=cloud_credentials,
+            platform_credentials=platform_credentials,
         )
 
     def _config_locations(self, raw: object, at: str) -> tuple[ConfigLocation, ...]:
@@ -1472,6 +1503,81 @@ class _Validator:
                 continue
             names.append(entry.strip())
         return tuple(names)
+
+    def _platform_credentials(self, raw: object) -> tuple[PlatformCredential, ...]:
+        """Secrets SEC-003 permits a workflow to reference (ADR 0022 requirement 2).
+
+        An empty list is rejected rather than read as "permit nothing": omitting
+        the key says that already, and two spellings of one fact is the
+        duplication this register exists to prevent.
+        """
+        if not isinstance(raw, list) or not raw:
+            self.error(
+                "platform_credentials",
+                "must be a non-empty list of {name, triggers, max_lifetime_hours} mappings "
+                "— omit the key entirely to permit no platform credential",
+            )
+            return ()
+        found: list[PlatformCredential] = []
+        seen: set[str] = set()
+        for i, entry in enumerate(raw):
+            here = f"platform_credentials[{i}]"
+            if not isinstance(entry, dict):
+                self.error(here, "must be a mapping")
+                continue
+            unknown = sorted(set(entry) - set(_PLATFORM_CREDENTIAL_ALLOWED))
+            if unknown:
+                self.error(here, f"unknown key(s): {', '.join(unknown)}")
+                continue
+            missing = sorted(set(_PLATFORM_CREDENTIAL_ALLOWED) - set(entry))
+            if missing:
+                self.error(here, f"missing required key(s): {', '.join(missing)}")
+                continue
+            name = entry["name"]
+            if not isinstance(name, str) or not name.strip():
+                self.error(f"{here}.name", "must be a non-empty string")
+                continue
+            name = name.strip()
+            if name in seen:
+                self.error(f"{here}.name", f"duplicate credential name '{name}'")
+                continue
+            seen.add(name)
+            triggers = self._credential_triggers(entry["triggers"], here)
+            hours = entry["max_lifetime_hours"]
+            if not isinstance(hours, int) or isinstance(hours, bool) or hours <= 0:
+                self.error(
+                    f"{here}.max_lifetime_hours",
+                    f"must be a positive whole number of hours, got {hours!r}",
+                )
+                continue
+            found.append(
+                PlatformCredential(name=name, triggers=triggers, max_lifetime_hours=hours)
+            )
+        return tuple(found)
+
+    def _credential_triggers(self, raw: object, here: str) -> tuple[str, ...] | None:
+        """`any`, or the events this credential may appear under.
+
+        `any` is a statement rather than a default, and the register comment
+        beside `platform_credentials:` says when it is true: a credential the
+        platform mints per job does not outlive the job, so the event that
+        started it cannot change what it reaches.
+        """
+        if raw == "any":
+            return None
+        if not isinstance(raw, list) or not raw:
+            self.error(
+                f"{here}.triggers",
+                "must be `any` or a non-empty list of workflow event names",
+            )
+            return None
+        events: list[str] = []
+        for i, event in enumerate(raw):
+            if not isinstance(event, str) or not event.strip():
+                self.error(f"{here}.triggers[{i}]", "must be a non-empty string")
+                continue
+            events.append(event.strip())
+        return tuple(events)
 
     def _suppression(self, raw: object) -> tuple[str, ...]:
         """Patterns that count as swallowing a failure.
