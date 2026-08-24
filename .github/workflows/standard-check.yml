@@ -98,21 +98,39 @@ jobs:
         # SKIPPED (no credentials) on a runner that had a usable token sitting
         # right there — the checker declining to answer a question it could
         # have answered (ADR 0021).
+        #
+        # From register contract 25 the credential handed over is
+        # PLATFORM_READ_TOKEN, the standing fine-grained token ADR 0022 governs
+        # and `platform_credentials:` names. It exists for one permission the
+        # job token does not carry — `Administration: read` — without which
+        # SEC-001's remote block cannot see `security_and_analysis` and reports
+        # UNCLASSIFIED over a repository where push protection is on.
+        #
+        # The fallback is not belt-and-braces. A pull request **from a fork**
+        # receives no repository secret, so the expression is empty there and
+        # the job token answers what it can: this repository is public, fork
+        # pull requests are a shape it must survive, and a run that reported
+        # SKIPPED (no credentials) because one secret was absent would decline
+        # to answer CI-001 as well, which the job token can answer perfectly
+        # well.
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.PLATFORM_READ_TOKEN || github.token }}
         # Exit codes per ADR 0016: 0 fully verified and clean, 1 a verified
         # violation, 3 no violation but something could not be verified.
         #
-        # 3 is still tolerated here, and only here. Phase 3's first slice made
-        # `kind: remote` real, so CI-001 is now verified rather than skipped —
-        # but two things still deny this run a 0, and neither is a violation:
-        # GOV-001 declares a partial (its remote half is the next slice), and
-        # SEC-001's remote block reports UNCLASSIFIED because this token cannot
-        # read `security_and_analysis`, which needs repository administration
-        # read. Passing --require-complete before both are settled would turn
-        # every run red for controls that hold. The build plan's Phase 3
-        # criteria hold that flip, and ADR 0016 § Ratified tolerance is what it
-        # ends.
+        # 3 is still tolerated here, and only here. The token above settled the
+        # half of that tolerance ADR 0022 was written about: SEC-001's remote
+        # block and SEC-003's expiry block can both be answered now, on a run
+        # that is not from a fork.
+        #
+        # What still denies this run a 0 is GOV-001's `partial:` declaration,
+        # which does so **by design** — ADR 0017 gives a partial that property
+        # precisely so a control cannot be part-verified quietly, and no token
+        # affects it. Flipping --require-complete while it stands would turn
+        # every run red for a control that holds and has said what it does not
+        # cover. That flip therefore waits on GOV-001's remote half, not on
+        # credentials. The build plan's Phase 3 criteria hold it, and ADR 0016
+        # § Ratified tolerance is what it ends.
         run: |
           uv run standard-check && status=0 || status=$?
           if [ "$status" -ne 0 ] && [ "$status" -ne 3 ]; then

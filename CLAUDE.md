@@ -227,8 +227,26 @@ reaches a secret without an `environment:` gate, or **if the record in
 `docs/04-build-plan.md` § The one place this repository does not do what it asks
 of everyone else is deleted** — an undocumented divergence is indistinguishable
 from an oversight. **Every requirement that precedes the token is now closed**
-(ADR 0022 § Applied — pass 4); what remains before the `--require-complete` flip
-is the token itself.
+(ADR 0022 § Applied — pass 4), and **the token exists**: `PLATFORM_READ_TOKEN`,
+a repository secret set 2026-08-24, named in the register at contract 25 and
+handed to `standard-check` by the conformance workflow with a
+`|| github.token` fallback for pull requests from forks, which receive no
+repository secret. Its `max_lifetime_hours: 2184` is a **permission rather than
+a measurement** — the longest life the register allows a standing credential,
+not a description of the token. The policy is ninety days; the number is
+ninety-one, because the block failed on its first live run by forty-four minutes
+against a ceiling of 2160: a token issued for "90 days" had 2160.73 hours left
+when the run read it, since an expiry is a timestamp and not a count of hours
+from the moment anything looks. That extra day is what the policy costs to state
+in hours, not slack granted to make a report green — and it raises the ceiling
+`platform_token_expires_within` compares against for every credential, because
+that assert reads the largest lifetime any entry permits and no API response
+says which credential a run carries.
+
+**The flip is still not available, and credentials were never the whole of it:**
+GOV-001 carries a `partial:`, and a partial denies a `0` exit **by design**
+(ADR 0017), so no token affects it. `--require-complete` waits on GOV-001's
+remote half — which is also Phase 3's open GOV-001 criterion.
 
 This repository takes **Option 1** — a fine-grained token scoped to this
 repository, `Administration: read`, held as an ordinary repository secret —

@@ -665,9 +665,11 @@ unreachable — and only a remote check catches it.
 ### The one place this repository does not do what it asks of everyone else
 
 [ADR 0022](adr/0022-a-platform-token-ci-carries.md) requirement 6 says this
-belongs here, and here is why: **when this repository carries a platform token,
-it will hold it as an ordinary repository secret — that ADR's Option 1 — while
-the standard asks an adopter for the deployment-environment gate, its Option 3.**
+belongs here, and here is why: **this repository holds its platform token as an
+ordinary repository secret — that ADR's Option 1 — while the standard asks an
+adopter for the deployment-environment gate, its Option 3.** The secret is
+`PLATFORM_READ_TOKEN`, set on 2026-08-24, and the register names it from
+contract 25.
 
 It is a posture difference rather than an exception, and it rests on a fact
 about this organisation rather than about the arrangement. The six accounts that

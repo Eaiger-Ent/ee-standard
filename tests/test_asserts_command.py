@@ -338,7 +338,7 @@ def test_a_named_credential_under_a_forbidden_trigger_fails(tmp_path: Path) -> N
         credentials = document["platform_credentials"]
         assert isinstance(credentials, list)
         credentials.append(
-            {"name": "PLATFORM_READ_TOKEN", "triggers": ["push"], "max_lifetime_hours": 720}
+            {"name": "ANOTHER_STANDING_TOKEN", "triggers": ["push"], "max_lifetime_hours": 720}
         )
 
     register = register_with(tmp_path, name_a_standing_token)
@@ -346,7 +346,7 @@ def test_a_named_credential_under_a_forbidden_trigger_fails(tmp_path: Path) -> N
         tmp_path / "push",
         {
             ".github/workflows/ci.yml": _secret_workflow(
-                "${{ secrets.PLATFORM_READ_TOKEN }}", "[push]"
+                "${{ secrets.ANOTHER_STANDING_TOKEN }}", "[push]"
             )
         },
     )
@@ -355,7 +355,7 @@ def test_a_named_credential_under_a_forbidden_trigger_fails(tmp_path: Path) -> N
         tmp_path / "pr",
         {
             ".github/workflows/ci.yml": _secret_workflow(
-                "${{ secrets.PLATFORM_READ_TOKEN }}", "[push, pull_request]"
+                "${{ secrets.ANOTHER_STANDING_TOKEN }}", "[push, pull_request]"
             )
         },
     )
