@@ -183,8 +183,14 @@ be, carrying `installTools: false` to stop it installing an unpinned grab-bag of
 linters, and it existed to supply the `python3` that ran one line of `setup.sh`
 — `pip install uv`. `setup.sh` now installs uv from its pinned release against a
 published checksum, the way it already installed gitleaks, and `uv sync` fetches
-the interpreter `.python-version` names. **Nothing else in the container
-installs an interpreter**, so `python3` on `PATH` is uv's or it is absent.
+the interpreter `.python-version` names. **Nothing we install puts a second
+interpreter in the container** — but the base image ships one. `base:trixie`
+installs `python3-minimal`, so `/usr/bin/python3` is Python 3.13.5, and the
+feature used to sit ahead of it on `PATH` and hide it. It is left alone, for
+the reasons in ADR 0030 revision 2: trixie has no 3.14 to raise it to, a
+matching version number would be a second copy of the pin, and the package has
+no `venv`, `ctypes`, `sqlite3` or `http`, so nothing here runs on it in any
+case. Reach the interpreter through `uv run`, never through `python3`.
 
 Until [ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md) this page said
 the feature's `version` was the interpreter your gates run on — *"change it in
@@ -205,8 +211,9 @@ through uv, and while the feature existed a bare `python3` in a login shell was
 ruff checked it at 3.14 ([ADR 0028](adr/0028-the-support-floor-is-what-we-run.md)
 revision 2). Two repairs were made: every tracked script reads
 `#!/usr/bin/env -S uv run python`, and the feature was raised to match. ADR 0030
-has since removed the feature, so the second repair is gone and the hazard has
-no source left inside this container.
+has since removed the feature, which took the second repair with it and
+uncovered the base image's `python3-minimal` underneath — so a bare `python3`
+still answers, and still answers below the floor.
 
 The first repair stays, and `tests/test_toolchain_pin.py` still fails any script
 that resolves from `PATH`. It defends the shape rather than that one feature: a
@@ -234,17 +241,23 @@ code .
 # → "Reopen in Container"
 ```
 
-First build takes several minutes. Then generate the lock file that DEV-001
-requires — it is written by the CLI, never by hand:
+First build takes several minutes. It also writes the lock file DEV-001
+requires: the CLI generates `devcontainer-lock.json` on every `build` and `up`,
+so there is no separate step and nothing to remember. `--no-lockfile` opts out
+and `--frozen-lockfile` fails rather than rewriting; use neither.
+
+`devcontainer upgrade` is a different job — moving the pins forward to the
+current tags without building:
 
 ```bash
-devcontainer upgrade --workspace-folder .   # writes devcontainer-lock.json
+devcontainer upgrade --workspace-folder .   # rewrites devcontainer-lock.json
 git add .devcontainer/devcontainer-lock.json
 ```
 
-Confirm it pins **every** feature named in `devcontainer.json` — four entries,
-each with a `resolved` digest. A lock file that covers three of four features
-reads as solved and is not.
+Either way the lock is written by the CLI, never by hand. Confirm it pins
+**every** feature named in `devcontainer.json` — three entries today, each with
+a `resolved` digest. A lock file that covers two of three reads as solved and is
+not.
 
 ## 5 — Verify the pins are real
 
@@ -263,7 +276,7 @@ curl -sI \
 grep -q '@sha256:' .devcontainer/devcontainer.json && echo "image pinned"
 
 # The lock file exists and names every feature
-grep -c '"resolved"' .devcontainer/devcontainer-lock.json   # expect 4
+grep -c '"resolved"' .devcontainer/devcontainer-lock.json   # expect 3
 
 # Neither secrets file has ever been committed
 git log --all --oneline -- .devcontainer/.env .devcontainer/.env.docker  # expect empty
@@ -280,6 +293,15 @@ For reference, the digests resolved on 2026-08-16:
 
 `devcontainers/features/python` was resolved here too, at 1.8.0. It is no
 longer declared (ADR 0030), so its digest is not listed.
+
+**The `node` row is wrong, and is left as it was recorded.** `devcontainer.json`
+declares `node:2`, which resolves to
+`sha256:586c9a6f7dd40bd3ba2cd41e7f2f88dcc31fbe5d1442afcbf07ffbc66b686857` — what
+`devcontainer-lock.json` holds. The digest in the table is what `node:1` serves,
+so the snapshot resolved the wrong tag. The lock is the authority DEV-001 reads
+and it is right; this table is a dated note beside it, kept as written so the
+error stays visible rather than being quietly repaired. Resolve a tag you are
+checking, not a tag next to it.
 
 The `github-cli` digest matches the one already quoted in
 [`03-devcontainer.md`](03-devcontainer.md), which is a useful independent

@@ -13,7 +13,8 @@
   // mcr.microsoft.com/devcontainers/base:trixie, resolved 2026-08-16.
   "image": "mcr.microsoft.com/devcontainers/base:trixie@sha256:025b74bb5f7ac53edd77e01aa7188c359aab100e23a2f6220bde50bbb9fd31dd",
 
-  // Features are pinned by devcontainer-lock.json, generated on first build:
+  // Features are pinned by devcontainer-lock.json, which the CLI writes on
+  // every build. To move the pins forward without building:
   //   devcontainer upgrade --workspace-folder .
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},
@@ -27,9 +28,12 @@
     //
     // setup.sh now installs uv from its pinned release against a published
     // checksum, and `uv sync` fetches the interpreter `.python-version` names.
-    // One interpreter in the container instead of two, so the hazard ADR 0028
-    // revision 2 manages — a bare `python3` in a login shell resolving to
-    // something no gate runs on — has no source left. Its repair stays:
+    // Removing this feature removed the interpreter we installed; it did not
+    // leave one behind it. The 2026-08-24 rebuild showed the base image's
+    // `python3-minimal` underneath, so a bare `python3` in a login shell is
+    // still 3.13.5 — the hazard ADR 0028 revision 2 manages, with one fewer
+    // source and no fewer answers (ADR 0030 revision 2, which records why it is
+    // neither upgraded nor removed). Its repair is therefore the whole defence:
     // `#!/usr/bin/env -S uv run python` on every tracked script, and
     // tests/test_toolchain_pin.py, defend the shape rather than this feature.
     "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}

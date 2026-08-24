@@ -280,9 +280,11 @@ tools:
     source: literal
     # Where the release artefact is fetched from, as for gitleaks. The
     # devcontainer installs uv from a checksum-verified release rather than with
-    # `pip install`, because after ADR 0030 there is no system Python in the
-    # container to pip with. CI keeps `pip install uv==`: a GitHub runner brings
-    # its own interpreter, and that locus is not what the ADR decided.
+    # `pip install`, because after ADR 0030 nothing in the container can pip:
+    # the only Python left is the base image's `python3-minimal`, which carries
+    # neither `pip` nor `ensurepip` (ADR 0030 revision 2). CI keeps
+    # `pip install uv==`: a GitHub runner brings its own interpreter, and that
+    # locus is not what the ADR decided.
     release_repo: astral-sh/uv
     # `datasource=pypi` while `release_repo` names GitHub, and the two are not
     # in conflict: a datasource is where Renovate discovers versions, and uv
