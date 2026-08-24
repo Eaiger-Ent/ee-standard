@@ -1,6 +1,6 @@
 # ADR 0029: The Editor Locus Is Configured by the Repository, Not by a Feature
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-08-24
 **Revision:** 1
 

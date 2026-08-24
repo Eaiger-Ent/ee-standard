@@ -449,6 +449,18 @@ fixed in both.
       `standard_check.asserts`, a gate reaches it only through
       `standard-check run --control <ID>`, and a gate that deploys a control it
       does not name there fails a test
+- [ ] The editor locus is verified by exclusion, not by presence — **added
+      2026-08-24** by
+      [ADR 0029](adr/0029-the-editor-locus-is-configured-by-the-repository.md),
+      points 3 and 4. Not re-opened: nothing ticked above became false.
+      `stacks:` gains, per gate, the file-type binding its `editor_extension`
+      must hold, and `linter-wired-at-all-loci` fails when another extension
+      holds a gated file type. Today it asks only whether the pinned extension
+      is installed, and `ghcr.io/devcontainers/features/python:1` bound Python
+      files to autopep8 with `charliermarsh.ruff` installed alongside it the
+      whole time — a state the assert reported as passing. Point 1 is done:
+      `.vscode/settings.json` is tracked and holds the bindings. Both remaining
+      points bump `meta.register_contract`
 - [ ] The devcontainer template builds, and DEV-001 passes against it — the
       template ships at `plugins/ee-standard/templates/devcontainer/` and
       DEV-001's and BLD-001's property blocks pass against a copy of it
