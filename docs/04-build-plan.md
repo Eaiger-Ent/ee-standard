@@ -625,31 +625,43 @@ unreachable — and only a remote check catches it.
       by Phase 3's first slice. `SEC-001` and `CI-001` both report `PASS`
       against `Eaiger-Ent/ee-standard`, the first `0` exit either has produced
       ([`11-phase-3-review.md`](11-phase-3-review.md) § Evidence)
-- [ ] With no credentials, remote checks report `SKIPPED (no credentials)` and
-      the run does **not** exit 0 on that basis alone — satisfied for the exit
-      code since 2026-08-17 (it is `3`); the reporting half is closed and tested
-      as of 2026-08-22, and the workflow half waits on the flip below
-- [ ] The `Standard` workflow's Conformance step passes `--require-complete` and
-      no longer tolerates exit `3`. This is the flip ADR 0016 § Ratified
-      tolerance defers to this phase: the tolerance exists only because remote
-      verification does not, so implementing it here is what ends it. Leaving
-      the tolerance in place after remote verification works would be the
-      silence ADR 0016 was written to stop. **No longer blocked, as
-      of 2026-08-24.** It was recorded here as *blocked on a token, not on the
-      flip*, and the token was the smaller half: `PLATFORM_READ_TOKEN`
-      (contract 25) made SEC-001 and SEC-003 answer in CI, and GOV-001 dropping
-      its `partial:` (contract 26) removed the thing that denied the run a `0`
-      **by design** whatever the credentials. What is left is a decision rather
-      than a blocker: a pull request **from a fork** receives no repository
-      secret, so SEC-001's remote block is `UNCLASSIFIED` there and
-      `--require-complete` would fail it. Decide what a fork run should do
-      before flipping
-      ([`11-phase-3-review.md`](11-phase-3-review.md) § The eighth slice). What a stronger token would cost, and the controls the register
-      would need **before** one is introduced, are in
-      [ADR 0022](adr/0022-a-platform-token-ci-carries.md), **Accepted** 2026-08-23.
-      It also records a finding independent of that decision: SEC-002 cannot
-      see a platform token at all, because `cloud_credentials:` names only
-      cloud provider keys
+- [x] With no credentials, remote checks report `SKIPPED (no credentials)` and
+      the run does **not** exit 0 on that basis alone — **closed 2026-08-24**.
+      The exit code has been `3` since 2026-08-17 and the reporting half was
+      closed and tested on 2026-08-22; the workflow half is closed by the flip
+      below, which turns that `3` into a failed check rather than a printed
+      note. The one run that still tolerates `3` is a pull request from a fork,
+      which cannot have the credential at all
+- [x] The `Standard` workflow's Conformance step passes `--require-complete` and
+      no longer tolerates exit `3` — **closed 2026-08-24**. This is the flip
+      [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md)
+      § Ratified tolerance deferred to this phase, and leaving the tolerance in
+      place after remote verification worked would have been the silence that
+      ADR was written to stop.
+
+      It was recorded here for months as *blocked on a token, not on the flip*,
+      and the token was the smaller half. Two things had to land and neither
+      alone was enough: `PLATFORM_READ_TOKEN` (contract 25) let SEC-001 and
+      SEC-003 answer in CI, and GOV-001 dropping its `partial:` (contract 26)
+      removed the thing that denied the run a `0` **by design** whatever the
+      credentials. ADR 0016's 2026-08-23 amendment had named only the first, so
+      the bound it moved to was itself short by one thing — recorded in that
+      ADR's revision 5 rather than smoothed over.
+
+      **One case is named rather than left.** A pull request from a fork
+      receives no repository secret, so SEC-001's remote block cannot answer and
+      that run tolerates `3`, and only `3` — a verified violation still fails
+      it. The bound is a fact about the platform rather than a phase:
+      a fork does not get the secret. `tests/test_conformance_step.py` runs the
+      step's own script with the checker stubbed and asserts both branches,
+      because a carve-out nobody exercises is one that quietly becomes general,
+      which is what happened to the tolerance it replaces
+      ([`11-phase-3-review.md`](11-phase-3-review.md) § The ninth slice).
+
+      What ADR 0022 records about the cost of a stronger token, and the controls
+      the register needed **before** one was introduced, stands as written; so
+      does its finding that SEC-002 could not see a platform token at all,
+      because `cloud_credentials:` names only cloud provider keys
 
 - [x] GOV-001 correctly fails a repo whose lint workflow exists but is not a
       required status check — closed 2026-08-24 at register contract 26. The

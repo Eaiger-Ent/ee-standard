@@ -4,7 +4,7 @@ The evidence for Phase 3's criteria, so that
 [`04-build-plan.md`](04-build-plan.md) can stay a list of outstanding work.
 A criterion there is one checkable sentence; the reasoning for a tick is here.
 
-**Scope of this record.** Eight slices so far.
+**Scope of this record.** Nine slices so far.
 
 The first implements `kind: remote` itself — the transport, the two asserts the
 register declares, and the taxonomy that decides what a non-answer is worth. It
@@ -804,3 +804,96 @@ them is the flip's slice rather than this one.
 | Criterion | State | Evidence |
 | --- | --- | --- |
 | GOV-001 correctly fails a repo whose lint workflow exists but is not a required status check | **Closed** | § Evidence above — the FAIL row, and the register-side FAIL that preceded it |
+
+## The ninth slice — the tolerance ends
+
+### What this slice built
+
+One line of YAML, and the reasoning for it. The `Standard` workflow's
+Conformance step passes `--require-complete`, so a run that cannot verify a
+control fails rather than printing that it could not and passing anyway.
+
+That ends the tolerance
+[ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) § Ratified
+tolerance ratified on 2026-08-17, re-bounded on 2026-08-23, and has now amended
+a third time to record its end.
+
+### Two things had to land, and the ADR had named one
+
+The 2026-08-23 amendment moved the bound to ADR 0022: the tolerance would end
+when CI carried a platform token the register could see. That was true and
+incomplete. GOV-001's `partial:` denied the run a `0` **by design** — ADR 0017
+gives a partial that property precisely so a control cannot be part-verified
+quietly — and no token affects it.
+
+So the bound that was moved because *"expires by construction" was a claim about
+a mechanism with a second precondition nobody had looked for* had itself a
+second precondition nobody had looked for. That is recorded in ADR 0016
+revision 5 rather than smoothed over, because it is the same mistake twice and
+the second instance is only visible if the first is written down.
+
+### The carve-out, and why it is a different kind of thing
+
+A pull request **from a fork** receives no repository secret. The step's token
+expression resolves to the job token, SEC-001's remote block cannot read
+`security_and_analysis`, and the run reports `UNCLASSIFIED` for a control that
+holds. Failing there would fail a contributor for a credential this repository
+deliberately does not give them.
+
+A fork run therefore tolerates `3`, and only `3`. It is worth being precise
+about how this differs from the tolerance it replaces:
+
+| | The old tolerance | The fork carve-out |
+| --- | --- | --- |
+| Scope | every run | a pull request from a fork |
+| Bound | a phase, then an ADR — both of which moved | a fact about the platform: a fork does not get the secret |
+| What it hid | that CI could not answer two controls | nothing new; the report still prints it |
+| Exercised by | nothing | `tests/test_conformance_step.py`, both branches |
+
+The last row is the one that matters. The old tolerance was a shell fragment
+inside a YAML string that nothing checked, rewritten three times, and its
+justification decayed twice without anything failing. **A carve-out nobody
+exercises is a carve-out that quietly becomes general.**
+
+### Evidence
+
+The step's own script, extracted from the workflow and run with `uv` stubbed so
+that what is measured is the branch taken and the code returned:
+
+| `FROM_A_FORK` | checker exits | job exits |
+| --- | --- | --- |
+| unset | `0` | `0` |
+| unset | `1` | **`1`** |
+| unset | `3` | **`3`** |
+| `true` | `0` | `0` |
+| `true` | `1` | **`1`** |
+| `true` | `3` | `0` — tolerated |
+
+The third row is the belt this script no longer needs: with
+`--require-complete` the checker returns `1` rather than `3`, so that case
+cannot arise on an ordinary run. It is asserted anyway, because the way this
+regresses is somebody restoring the old `if` around the new invocation.
+
+And the run itself, on this branch, with the flag live:
+
+```text
+Summary: 13 passed, 0 failed, 1 skipped (predicate), 0 skipped (no credentials),
+0 unclassified; meta-controls: 3/3 passed
+```
+
+**What is not verified is the fork branch on a real fork.** No fork pull request
+has been opened against this repository, so what has been exercised is the
+script's branching and not GitHub's behaviour — that a fork run receives no
+repository secret is documented platform behaviour this repository has not
+observed. The commands to observe it are one throwaway fork and one pull
+request; it is recorded here as unobserved rather than counted as evidence.
+
+### Criteria this slice closes
+
+| Criterion | State | Evidence |
+| --- | --- | --- |
+| The Conformance step passes `--require-complete` and no longer tolerates exit `3` | **Closed** | § Evidence above, with the fork case named |
+| With no credentials the run does not exit 0 on that basis alone | **Closed** | The exit code has been `3` since 2026-08-17 and the reporting half since 2026-08-22; the workflow half is this flip, which turns that `3` into a failed check |
+
+Phase 3 goes to **6/8**. What is left is `gate-repo`'s per-mutation
+confirmation, and the adopter criterion that covers the whole phase.
