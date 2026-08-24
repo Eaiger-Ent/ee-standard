@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-17
-**Revision:** 7
+**Revision:** 8
 
 Ratified decision from
 [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
@@ -250,6 +250,7 @@ and three rules beside it are not.
 | The `github-authentication-token-expiration` header, and its `YYYY-MM-DD HH:MM:SS UTC` shape | GitHub's spelling of GitHub's answer. A repository needing a different header name is not exercising a variance; it is talking to a different platform |
 | `GITHUB_ACTIONS=true` as how a run knows it is a CI job | The platform's own variable, set by the platform. SEC-003's locus is `ci`, so the block has to know whether this run *is* CI — and no repository could reasonably need that announced differently while still running on Actions |
 | `/rate_limit` as the endpoint asked when the question is about the credential rather than the repository | Detection implementation, chosen because it answers for any valid token and needs no permission on the repository. Which endpoint carries a header is not a rule a repository sets |
+| That the presence of `X-OAuth-Scopes` identifies a **classic** personal access token | GitHub's own signalling, added at contract 24. What the two instruments *are* is the platform's; that a classic one is refused is the standard's, and is [ADR 0022](0022-a-platform-token-ci-carries.md)'s decision rather than a number in the register |
 
 The boundary holds in the direction that matters: **widen the register's
 maximum and the same token changes verdict**, with no checker change, which is
@@ -350,5 +351,6 @@ deployment was recorded. No control proves the deployment was complete.
 | 5 | 2026-08-18 | § Applied — fourth pass, register contract 8. SEC-002's credential names, `tools.<tool>.pinned_at` and `ecosystems.<name>.frozen_install` moved; SUP-001's `applies_to` widened to `[always]`. | Nathan Carney |
 | 6 | 2026-08-20 | § Applied — fifth pass, register contract 12. | Nathan Carney |
 | 7 | 2026-08-24 | § Still staying in the checker — the platform-credential additions. Records why the token-expiry header, the Actions variable and the credential-probe endpoint are the checker's, while the maximum they are compared against is the register's. | Nathan Carney |
+| 8 | 2026-08-24 | Same section, one row: the presence of `X-OAuth-Scopes` identifying a classic personal access token, added with register contract 24. | Nathan Carney |
 
 Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.

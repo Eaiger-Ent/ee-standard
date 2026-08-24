@@ -134,6 +134,51 @@ def platform_token_expires_within(
     )
 
 
+def platform_token_is_not_classic(
+    github: GitHub,
+    _register: Register,
+    _args: Mapping[str, object],
+) -> AssertResult:
+    """The credential CI carries is not a classic personal access token.
+
+    ADR 0022 requirement 4, and the check that makes the `pull_request` exposure
+    tolerable rather than merely bounded. A classic token grants its readers
+    access to **every repository its owner can reach**; a fine-grained one
+    grants what it was scoped to and nothing else. The difference is the whole
+    argument for carrying a platform token at all, and "we use fine-grained
+    tokens only" is a convention until something reads the instrument.
+
+    `X-OAuth-Scopes` is returned for a classic token and for no other kind, so
+    its **presence** identifies the instrument — including for a classic token
+    with no scopes at all, where the header comes back empty. Reading the value
+    rather than the presence would pass exactly that token.
+
+    Note the limit honestly, as the requirement does: this identifies the *kind*
+    of credential, not its scope. No API lets a fine-grained token enumerate its
+    own permissions, so "scoped to this repository, `Administration: read` only"
+    stays a human act recorded at issue time.
+    """
+    if not runs_in_github_actions():
+        raise Unreadable(
+            "this run is not a GitHub Actions job, so the token in the environment is not "
+            "the credential CI carries — SEC-003's ci locus is answered by the run that "
+            "carries it, and a developer's own token settles nothing about it"
+        )
+    headers = github.headers(CREDENTIAL_PROBE_PATH)
+    if OAUTH_SCOPES_HEADER in headers:
+        scopes = headers[OAUTH_SCOPES_HEADER].strip() or "none"
+        return _fail(
+            "the token CI carries is a classic personal access token (it returned "
+            f"{OAUTH_SCOPES_HEADER}, scopes: {scopes}) — a classic token grants its readers "
+            "access to every repository its owner can reach, which is what a fine-grained "
+            "token is carried instead of"
+        )
+    return _ok(
+        f"the token CI carries returned no {OAUTH_SCOPES_HEADER}, so it is not a classic "
+        "personal access token — it is fine-grained or platform-minted"
+    )
+
+
 def github_push_protection_enabled(
     github: GitHub,
     register: Register,
@@ -231,4 +276,5 @@ REMOTE_ASSERTS = {
     "github_push_protection_enabled": github_push_protection_enabled,
     "default_branch_ruleset_satisfies": default_branch_ruleset_satisfies,
     "platform_token_expires_within": platform_token_expires_within,
+    "platform_token_is_not_classic": platform_token_is_not_classic,
 }

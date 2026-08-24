@@ -28,6 +28,7 @@ from standard_check.asserts_remote import (
     default_branch_ruleset_satisfies,
     github_push_protection_enabled,
     platform_token_expires_within,
+    platform_token_is_not_classic,
 )
 from standard_check.remote import (
     CI_VARIABLE,
@@ -557,3 +558,41 @@ def test_a_register_naming_no_platform_credential_has_no_maximum(
     with pytest.raises(Unreadable) as raised:
         platform_token_expires_within(_expiring_in(1), register_with(tmp_path, forget_them), {})
     assert "no maximum lifetime" in str(raised.value)
+
+
+# --- SEC-003's second remote block: what the credential *is* -----------------
+
+
+def test_a_classic_token_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    _in_actions(monkeypatch)
+    classic = FakeGitHub({}, headers={OAUTH_SCOPES_HEADER: "repo, workflow"})
+    result = platform_token_is_not_classic(classic, a_register(), {})
+    assert not result.passed
+    assert "repo, workflow" in result.message
+
+
+def test_a_scopeless_classic_token_is_refused_too(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Presence identifies the instrument; the value does not.
+
+    A classic token with no scopes returns the header empty, and a check reading
+    the value rather than the presence would pass the one credential that
+    reaches everything its owner can.
+    """
+    _in_actions(monkeypatch)
+    scopeless = FakeGitHub({}, headers={OAUTH_SCOPES_HEADER: ""})
+    result = platform_token_is_not_classic(scopeless, a_register(), {})
+    assert not result.passed
+    assert "none" in result.message
+
+
+def test_a_token_that_is_not_classic_passes(monkeypatch: pytest.MonkeyPatch) -> None:
+    _in_actions(monkeypatch)
+    fine_grained = FakeGitHub({}, headers={TOKEN_EXPIRY_HEADER: "2026-11-14 15:37:26 UTC"})
+    assert platform_token_is_not_classic(fine_grained, a_register(), {}).passed
+
+
+def test_the_instrument_is_not_read_outside_actions() -> None:
+    """Same reason as the expiry block: a developer's token is a different credential."""
+    with pytest.raises(Unreadable) as raised:
+        platform_token_is_not_classic(FakeGitHub({}, headers={}), a_register(), {})
+    assert "not a GitHub Actions job" in str(raised.value)

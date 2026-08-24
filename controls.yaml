@@ -240,7 +240,19 @@ meta:
   #     and the block is UNCLASSIFIED. Reading the second as the first would
   #     report a violation produced by not having looked, which is the
   #     substitution SEC-001's remote block already refuses.
-  register_contract: 23
+  # 24: SEC-003 gains a second `kind: remote` block — ADR 0022 requirement 4.
+  #     `platform_token_is_not_classic` reads the presence of `X-OAuth-Scopes`,
+  #     which GitHub returns for a classic personal access token and for no
+  #     other kind. Presence rather than value: a classic token with no scopes
+  #     returns the header empty, and a check reading the value would pass the
+  #     one token that grants everything its owner can reach.
+  #
+  #     It identifies the instrument, not the scope. No API lets a fine-grained
+  #     token enumerate its own permissions, so "scoped to this repository,
+  #     Administration: read only" stays a human act recorded at issue time —
+  #     stated here because over-reading this as "the register verifies the
+  #     token is minimal" would be the substitution ADR 0022 warned about.
+  register_contract: 24
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -903,6 +915,20 @@ controls:
       # claiming a pass (ADR 0016).
       - kind: remote
         assert: platform_token_expires_within
+      # ADR 0022 requirement 4, at contract 24. The block above asks how long
+      # the credential lasts; this one asks what it *is*. A classic personal
+      # access token grants its readers access to every repository its owner can
+      # reach, so carrying one in CI is a different act from carrying a
+      # fine-grained token however short its life — and `X-OAuth-Scopes` comes
+      # back for a classic token and for no other kind, which makes the
+      # instrument readable rather than promised.
+      #
+      # Two blocks rather than one, where the ADR wrote "the same remote assert
+      # can". One property per verdict is why: in CI the expiry question has no
+      # answer and this one does, and a single assert would have thrown that
+      # answer away with it.
+      - kind: remote
+        assert: platform_token_is_not_classic
     owner: platform-engineering
     variance: forbidden
     baseline: null
