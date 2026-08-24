@@ -439,7 +439,7 @@ one exists.
 | 3. Expiry must be verified, not promised | **Implemented** at contract 23 | SEC-003's `kind: remote` block, `platform_token_expires_within` — reads the `github-authentication-token-expiration` header against the register's maximum, and answers only inside an Actions job |
 | 4. A classic token must be refused | **Implemented** at contract 24 | SEC-003's second `kind: remote` block, `platform_token_is_not_classic` — fails on the presence of `X-OAuth-Scopes`, which identifies the instrument |
 | 5. The environment gate is itself unverified platform state | Not applicable here | Option 1 is this repository's posture, so there is no environment |
-| 6. The posture difference must not reach an adopter | Open | |
+| 6. The posture difference must not reach an adopter | **Implemented** | `tests/test_posture.py` — and the posture is now recorded in [`04-build-plan.md`](../04-build-plan.md) and removed from `controls.yaml`, where contract 22 had put it |
 | 7. The adopter-facing consequence | **Partly** | `08-adopting.md` § 3.1 states SEC-003, the allow-list direction, and that an adopter's posture is Option 3 rather than Option 1. The token-scope half waits on requirements 3 and 4 |
 
 **One thing this pass settled that the requirement did not name.** SEC-003 is an
@@ -519,6 +519,42 @@ misread.
 With this, **every requirement that precedes the token is closed except 6** —
 the test that keeps this repository's Option 1 posture out of what an adopter
 installs.
+
+## Applied — pass 4: requirement 6, and the leak it found
+
+Landed 2026-08-24. This requirement predicted its own fate — *"the one most
+likely to be skipped, because nothing breaks when it is"* — and implementing it
+turned up a breach that had been in the register for two contracts.
+
+**The register was carrying this repository's posture.** The comment introducing
+`platform_credentials:` at contract 22 said that *ADR 0022 chose Option 1 — a
+fine-grained, repository-scoped, `Administration: read` token*. True of this
+repository, and read by every repository the register reaches. It went in while
+implementing requirement 1, in the same change that quoted requirement 6's
+prohibition, which is as good a demonstration as the requirement could ask for
+that remembering is not a mechanism. The comment now states the rule —
+credentials are named, their events are named, their maximum life is named —
+and points at this ADR for the arrangement.
+
+**What enforces it.** `tests/test_posture.py`, in four parts, because a phrase
+test alone would catch only the posture written in this repository's own
+vocabulary:
+
+| Check | What it reads |
+| --- | --- |
+| The difference is recorded in this ADR **and** in the build plan | Deleting the record is as much a breach as shipping the posture: an undocumented divergence is indistinguishable from an oversight |
+| It appears in neither `controls.yaml` nor any file under `plugins/` | The prohibition itself, as a grep — the shape `test_no_skill_repeats_a_version_the_register_pins` already uses |
+| No **standing** credential the register names appears under `plugins/` | Derived: an entry whose `triggers` names events rather than `any` is a standing credential by the register's own distinction. Vacuous today, live the moment the token exists |
+| A shipped workflow fragment reaching `${{ secrets.X }}` gates it with `environment:` | The structural half, and what the requirement is actually about: a gate may deploy Option 3 and may not deploy Option 1 |
+
+Both derived checks were run against a deliberately broken tree — a standing
+credential added to the register and referenced from a shipped template — and
+both failed as intended before the tree was restored.
+
+**A test rather than a control**, on ADR 0022 requirement 6's own logic: it
+governs what this repository may ship, not what a conformant repository
+contains. A control would deploy the prohibition to adopters, which is the
+category error the requirement exists to prevent.
 
 ## Related ADRs
 

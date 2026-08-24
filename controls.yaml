@@ -731,11 +731,18 @@ cloud_credentials:
 # mints per job: the trigger cannot change what such a token reaches, because
 # it does not outlive the job that ran under it.
 #
-# This repository carries no standing platform credential yet. ADR 0022 chose
-# Option 1 — a fine-grained, repository-scoped, `Administration: read` token —
-# and its § precondition forbids introducing it before this block and SEC-003
-# exist, which is what they now do. Requirements 3 and 4 (a verified expiry, a
-# refused classic token) land before the secret itself.
+# This register names no standing platform credential. Which arrangement a
+# repository chooses for one — a repository secret, an app installation token,
+# a deployment environment a pull request cannot edit — is that repository's
+# posture and is argued in ADR 0022, not here. A register that recommended one
+# would hand the authoring repository's own convenience to every repository
+# that reads it, which is ADR 0022 requirement 6 (and `tests/test_posture.py`
+# is what makes it a build failure rather than something to remember).
+#
+# What this block holds is the rule, which is the same for everyone: a
+# credential CI may reference is named, its events are named, and its maximum
+# life is named. ADR 0022's § precondition forbids introducing any such secret
+# before this block and SEC-003 exist.
 # ---------------------------------------------------------------------------
 platform_credentials:
   - name: GITHUB_TOKEN

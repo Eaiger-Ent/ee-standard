@@ -646,6 +646,7 @@ unreachable — and only a remote check catches it.
       It also records a finding independent of that decision: SEC-002 cannot
       see a platform token at all, because `cloud_credentials:` names only
       cloud provider keys
+
 - [ ] GOV-001 correctly fails a repo whose lint workflow exists but is not a
       required status check
 - [x] GOV-002 fails when a baseline file grows by one line — **already
@@ -660,6 +661,43 @@ unreachable — and only a remote check catches it.
       ([`11-phase-3-review.md`](11-phase-3-review.md) § The second slice)
 - [ ] `gate-repo` confirms before every remote mutation, independently of the
       plan-level confirmation
+
+### The one place this repository does not do what it asks of everyone else
+
+[ADR 0022](adr/0022-a-platform-token-ci-carries.md) requirement 6 says this
+belongs here, and here is why: **when this repository carries a platform token,
+it will hold it as an ordinary repository secret — that ADR's Option 1 — while
+the standard asks an adopter for the deployment-environment gate, its Option 3.**
+
+It is a posture difference rather than an exception, and it rests on a fact
+about this organisation rather than about the arrangement. The six accounts that
+could read a repository secret here are organisation owners who already hold
+admin on this repository, so the credential grants its readers nothing they did
+not have. An adopter's contributors are not organisation owners, so the same
+secret in the same place is a real exfiltration path for them — reachable, as
+that ADR corrected itself to say, by a pull request that edits the workflow's
+own trigger list.
+
+Three things follow, and none of them is optional.
+
+1. **It may not appear in `controls.yaml`.** It did, from contract 22 until
+   contract 24's follow-on: the comment introducing `platform_credentials:`
+   said that *ADR 0022 chose Option 1*, which is true of this repository and was
+   read by every repository the register reaches. Removing it is what closed the
+   requirement.
+2. **It may not appear under `plugins/`**, which is what an adopter installs. A
+   gate that deployed this arrangement would hand an authoring environment's
+   convenience to a build project whose contributors are strangers.
+3. **`tests/test_posture.py` fails the build if either happens**, and fails it
+   equally if this section is deleted — an undocumented divergence between what
+   this repository does and what it asks of everyone else is indistinguishable
+   from an oversight. The requirement says of itself that it is the one most
+   likely to be skipped, because nothing breaks when it is. That test is what
+   breaks.
+
+Adopter-facing guidance for the arrangement they *should* take is in
+[`08-adopting.md`](08-adopting.md) § 3.1, which names the deployment environment
+and says why a branch policy is a guard a pull request cannot edit.
 
 ## Phase 4 — The consumer repo
 

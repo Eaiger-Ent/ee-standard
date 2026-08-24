@@ -4,7 +4,7 @@ The evidence for Phase 3's criteria, so that
 [`04-build-plan.md`](04-build-plan.md) can stay a list of outstanding work.
 A criterion there is one checkable sentence; the reasoning for a tick is here.
 
-**Scope of this record.** Five slices so far.
+**Scope of this record.** Six slices so far.
 
 The first implements `kind: remote` itself — the transport, the two asserts the
 register declares, and the taxonomy that decides what a non-answer is worth. It
@@ -543,3 +543,76 @@ the one most likely to be skipped because nothing breaks when it is.
 None. Phase 3's open criteria are unchanged: the `--require-complete` flip and
 its no-credentials half, GOV-001 against a non-required check, `gate-repo`'s
 per-mutation confirmation, and the adopter criterion covering the whole phase.
+
+## The sixth slice — the posture had already leaked
+
+### What this slice built
+
+`tests/test_posture.py`, and the record in
+[`04-build-plan.md`](04-build-plan.md) § The one place this repository does not
+do what it asks of everyone else — ADR 0022 requirement 6. No register field
+changed and no control changed, so the contract stays at 24.
+
+### The finding
+
+**The register was carrying this repository's posture, and had been for two
+contracts.** The comment introducing `platform_credentials:` at contract 22
+read:
+
+> This repository carries no standing platform credential yet. ADR 0022 chose
+> Option 1 — a fine-grained, repository-scoped, `Administration: read` token …
+
+That is true of this repository and false as guidance for any other, and
+`controls.yaml` is read by every repository the register reaches. It went in
+**in the same change that implemented requirement 1** — the change whose commit
+message quoted the precondition and whose review section quoted the
+prohibition. Requirement 6 says of itself that it is the one most likely to be
+skipped because nothing breaks when it is; nothing broke, and it was skipped, by
+the person who had just read it.
+
+That is the argument for the test in one line, and it is worth more than the
+test: the failure mode is not disagreement with the rule, it is writing a true
+sentence in the wrong file while thinking about something else.
+
+### What enforces it now
+
+Four checks, because a phrase grep alone would catch only the posture written in
+this repository's own vocabulary — a limit the test module states about itself
+rather than leaving to be discovered.
+
+| Check | Reads | Live today? |
+| --- | --- | --- |
+| The difference is recorded in ADR 0022 **and** the build plan | Both files | Yes — deleting either fails the build |
+| The posture appears in neither `controls.yaml` nor `plugins/` | Every shipped file, as a grep | Yes — this is what caught the leak |
+| No **standing** credential the register names appears under `plugins/` | The register's `platform_credentials:`, where `triggers` naming events rather than `any` marks a standing credential | Vacuous today; live the moment the token exists |
+| A shipped workflow fragment reaching `${{ secrets.X }}` gates it with `environment:` | Every `.yml`/`.yaml` under `plugins/` | Vacuous today; it is the structural half the requirement is actually about |
+
+The two derived checks were run against a deliberately broken tree — a standing
+`PLATFORM_READ_TOKEN` added to the register and referenced from `gate-secrets`'
+CI template — and both failed as intended before the tree was restored. A test
+that has never been seen to fail is a test nobody has reason to believe.
+
+### Why a test and not a control
+
+ADR 0022 requirement 6's own logic, and the same line
+`tests/test_adr_revisions.py` sits on: this governs what **this repository may
+ship**, not what a conformant repository contains. A control would deploy the
+prohibition to adopters, which is the category error the requirement exists to
+prevent.
+
+### Where ADR 0022 now stands
+
+Every requirement that precedes the token is closed — 1 and 2 at contract 22,
+3 at 23, 4 at 24, 6 here; 5 does not apply to this repository's posture, and 7
+is partly done, with the adopter guide carrying SEC-003, the allow-list
+direction, the expiry block and the instrument check.
+
+**What remains is the token itself**, and then the `--require-complete` flip it
+unblocks — the two `UNCLASSIFIED` blocks in CI (SEC-001's `security_and_analysis`
+and SEC-003's expiry) close with the same credential.
+
+### Criteria this slice closes
+
+None. Phase 3 stays at 3/8: the flip and its no-credentials half, GOV-001
+against a non-required check, `gate-repo`'s per-mutation confirmation, and the
+adopter criterion covering the whole phase.

@@ -216,9 +216,19 @@ fine-grained token enumerate its own permissions, so "scoped to this repository,
 `Administration: read` only" stays a human act recorded at issue time, and
 reading it as *the register verifies the token is minimal* is the substitution
 ADR 0022 warned about. Two blocks rather than one because in CI the expiry
-question has no answer and the instrument question does. **Only requirement 6 is
-still open before the token** — the test keeping this repository's Option 1
-posture out of what an adopter installs (ADR 0022 § Applied — pass 3).
+question has no answer and the instrument question does. **Requirement 6 landed on 2026-08-24**, and
+implementing it found that the register had been carrying this repository's
+posture since contract 22: the comment introducing `platform_credentials:` said
+which option this repository chose, which is a fact about this repository read
+by every repository the register reaches. It now states the rule and points at
+the ADR. `tests/test_posture.py` fails the build if the posture reaches
+`controls.yaml` or anything under `plugins/`, if a shipped workflow fragment
+reaches a secret without an `environment:` gate, or **if the record in
+`docs/04-build-plan.md` § The one place this repository does not do what it asks
+of everyone else is deleted** — an undocumented divergence is indistinguishable
+from an oversight. **Every requirement that precedes the token is now closed**
+(ADR 0022 § Applied — pass 4); what remains before the `--require-complete` flip
+is the token itself.
 
 This repository takes **Option 1** — a fine-grained token scoped to this
 repository, `Administration: read`, held as an ordinary repository secret —
