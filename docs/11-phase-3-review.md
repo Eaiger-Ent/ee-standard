@@ -4,7 +4,7 @@ The evidence for Phase 3's criteria, so that
 [`04-build-plan.md`](04-build-plan.md) can stay a list of outstanding work.
 A criterion there is one checkable sentence; the reasoning for a tick is here.
 
-**Scope of this record.** Four slices so far.
+**Scope of this record.** Five slices so far.
 
 The first implements `kind: remote` itself — the transport, the two asserts the
 register declares, and the taxonomy that decides what a non-answer is worth. It
@@ -474,3 +474,72 @@ wearing a different name.
 
 None. It closes ADR 0022 requirement 3, and adds one observation the flip's
 criterion has to account for.
+
+## The fifth slice — the instrument is read, and answers
+
+### What this slice built
+
+SEC-003's second `kind: remote` block, at register contract 24 — ADR 0022
+requirement 4. `platform_token_is_not_classic` fails on the **presence** of
+`X-OAuth-Scopes`, the header GitHub returns for a classic personal access token
+and for no other kind.
+
+Presence rather than value, and the distinction is the whole check: a classic
+token with **no scopes** returns the header empty, so a condition written
+against the value would pass the one credential that reaches everything its
+owner can reach. `tests/test_remote.py::test_a_scopeless_classic_token_is_refused_too`
+is that case.
+
+### Why two blocks where the ADR permitted one
+
+ADR 0022 wrote that *"the same remote assert can fail a classic token
+outright"*. That was a permission rather than a requirement, and the fourth
+slice produced the reason not to take it: in CI the expiry question has **no**
+answer, because the Actions token reports no expiry at all, while the instrument
+question does. One assert holding both would have thrown the answer away with
+the non-answer.
+
+The split earns its keep immediately. This is the first `PASS` SEC-003's remote
+half has produced anywhere:
+
+```text
+SEC-003  UNCLASSIFIED   CI carries no platform credential the register does not name
+  ✓ remote: platform_token_is_not_classic — the token CI carries returned no
+    x-oauth-scopes, so it is not a classic personal access token — it is
+    fine-grained or platform-minted
+```
+
+The control is still `UNCLASSIFIED` overall, because the expiry block beside it
+cannot answer — which is the honest report of a control that is half answered,
+and precisely what a single merged assert would have hidden.
+
+### What it reads, and what it does not
+
+The **kind** of credential, never its scope. No API lets a fine-grained token
+enumerate its own permissions, so *scoped to this repository,
+`Administration: read` only* stays a human act recorded when the token is
+issued. ADR 0022 § What the register must gain stated that limit before there
+was any code to misread, and it is repeated here because the substitution —
+reading requirement 4 as *the register verifies the token is minimal* — is the
+one this repository keeps catching in other forms.
+
+### Where ADR 0022 now stands
+
+| Requirement | State |
+| --- | --- |
+| 1. A control that can see a platform token | Closed, contract 22 |
+| 2. A register fact naming what may be carried | Closed, contract 22 |
+| 3. Expiry verified rather than promised | Closed, contract 23 |
+| 4. A classic token refused | **Closed, contract 24** |
+| 5. The environment gate is itself platform state | Not applicable — Option 1 here |
+| 6. The posture difference must not reach an adopter | **Open** |
+| 7. The adopter-facing consequence | Partly — `08-adopting.md` § 3.1 carries SEC-003, the allow-list direction, the expiry block and the instrument check |
+
+Requirement 6 is the last one that precedes the token, and ADR 0022 says it is
+the one most likely to be skipped because nothing breaks when it is.
+
+### Criteria this slice closes
+
+None. Phase 3's open criteria are unchanged: the `--require-complete` flip and
+its no-credentials half, GOV-001 against a non-required check, `gate-repo`'s
+per-mutation confirmation, and the adopter criterion covering the whole phase.

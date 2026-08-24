@@ -437,7 +437,7 @@ one exists.
 | 1. A control that can see a platform token at all | **Implemented** | SEC-003, Tier 1, `rung: blocking`, `variance: forbidden`, `baseline: null`, `locus: [ci]`, verified by the `no_unregistered_workflow_secrets` file assert |
 | 2. A register fact naming what may be carried, and where | **Implemented** | `platform_credentials:`, beside `cloud_credentials:` — `name`, `triggers`, `max_lifetime_hours` |
 | 3. Expiry must be verified, not promised | **Implemented** at contract 23 | SEC-003's `kind: remote` block, `platform_token_expires_within` — reads the `github-authentication-token-expiration` header against the register's maximum, and answers only inside an Actions job |
-| 4. A classic token must be refused | Open | |
+| 4. A classic token must be refused | **Implemented** at contract 24 | SEC-003's second `kind: remote` block, `platform_token_is_not_classic` — fails on the presence of `X-OAuth-Scopes`, which identifies the instrument |
 | 5. The environment gate is itself unverified platform state | Not applicable here | Option 1 is this repository's posture, so there is no environment |
 | 6. The posture difference must not reach an adopter | Open | |
 | 7. The adopter-facing consequence | **Partly** | `08-adopting.md` § 3.1 states SEC-003, the allow-list direction, and that an adopter's posture is Option 3 rather than Option 1. The token-scope half waits on requirements 3 and 4 |
@@ -491,6 +491,34 @@ from it would settle a question about the wrong thing — this repository's own
 unremarkable for a laptop and would be a violation in CI. The cost is stated
 rather than hidden: a local `standard-check` run now exits `3` rather than `0`,
 because a control it cannot answer is one it must not claim.
+
+## Applied — pass 3: requirement 4, the instrument is read rather than promised
+
+Landed 2026-08-24 at register contract 24. `X-OAuth-Scopes` comes back for a
+classic personal access token and for no other kind, so its **presence**
+identifies the instrument. Presence and not value: a classic token with no
+scopes returns the header empty, and a check reading the value would pass the
+one credential that reaches everything its owner can.
+
+**Two blocks rather than one, where this ADR wrote "the same remote assert
+can".** That was a permission, not a requirement, and pass 2 produced the reason
+to split: in CI the expiry question has **no** answer, because the Actions token
+returns no expiry header, while the instrument question does. A single assert
+would have thrown the answer away with the non-answer. One property per verdict
+also means SEC-003's report names which half failed, which matters when the two
+call for different acts — reissue the token, or reissue it as a different kind.
+
+**The limit stays stated rather than implied.** This identifies the *kind* of
+credential, not its scope. No API lets a fine-grained token enumerate its own
+permissions, so "scoped to this repository, `Administration: read` only" remains
+a human act recorded at issue time. Over-reading requirement 4 as *the register
+verifies the token is minimal* would be the substitution this repository keeps
+catching, and § What the register must gain said so before there was any code to
+misread.
+
+With this, **every requirement that precedes the token is closed except 6** —
+the test that keeps this repository's Option 1 posture out of what an adopter
+installs.
 
 ## Related ADRs
 

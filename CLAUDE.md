@@ -207,9 +207,18 @@ all, so its absence is GitHub declining to answer and the block is
 `UNCLASSIFIED`. **The block answers only inside a GitHub Actions job**, because
 SEC-003's locus is `ci` and a developer's own token is a different credential;
 the accepted cost is that a **local `standard-check` run now exits `3` rather
-than `0`**, which is the honest report rather than a regression. **Requirements
-4 and 6 are still open, and both come before the token**, not after it
-(ADR 0022 § Applied — pass 2).
+than `0`**, which is the honest report rather than a regression. **Requirement 4 landed at contract 24**: a second remote block,
+`platform_token_is_not_classic`, fails on the **presence** of `X-OAuth-Scopes`
+— the header GitHub returns for a classic personal access token and for no
+other kind. Presence rather than value, because a scopeless classic token
+returns it empty. It reads the instrument, never the scope: no API lets a
+fine-grained token enumerate its own permissions, so "scoped to this repository,
+`Administration: read` only" stays a human act recorded at issue time, and
+reading it as *the register verifies the token is minimal* is the substitution
+ADR 0022 warned about. Two blocks rather than one because in CI the expiry
+question has no answer and the instrument question does. **Only requirement 6 is
+still open before the token** — the test keeping this repository's Option 1
+posture out of what an adopter installs (ADR 0022 § Applied — pass 3).
 
 This repository takes **Option 1** — a fine-grained token scoped to this
 repository, `Administration: read`, held as an ordinary repository secret —

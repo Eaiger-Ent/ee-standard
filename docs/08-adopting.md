@@ -490,6 +490,15 @@ written in the file the pull request is editing. And `secrets: inherit`, which
 hands a called workflow every secret you hold — no allow-list can enumerate
 that, so name what the called workflow actually needs and pass those.
 
+**And SEC-003 refuses a classic personal access token outright** (contract 24).
+`X-OAuth-Scopes` comes back for a classic token and for no other kind, so its
+presence identifies the instrument — including a classic token with no scopes,
+where the header arrives empty. Issue a fine-grained token instead; that is the
+difference the whole arrangement rests on, since a classic one reaches every
+repository its owner can. Note what this does **not** check: no API lets a
+fine-grained token enumerate its own permissions, so *scoped to this repository,
+`Administration: read` only* stays a human act you record when you issue it.
+
 **SEC-003 also asks GitHub when your CI credential expires.** From register
 contract 23 it carries a `kind: remote` block reading the
 `github-authentication-token-expiration` header against the largest
@@ -893,6 +902,7 @@ surprises people:
 | SEC-001 | `security_and_analysis` on `GET /repos/{owner}/{repo}` | **Repository administration read.** GitHub omits the whole object for a caller without it |
 | `gate-repo`, to *create* the ruleset | `POST /repos/{owner}/{repo}/rulesets` | `administration: write`, granted by a human with admin (§ 3.6) |
 | SEC-003 | The `github-authentication-token-expiration` header on `GET /rate_limit` | Nothing beyond a valid token — the question is about the credential, not about the repository |
+| SEC-003 | The `X-OAuth-Scopes` header on the same call | Nothing beyond a valid token. Its presence means a **classic** token, which fails: a classic token grants its readers every repository its owner can reach |
 
 The middle row is the one to plan for. A token that cannot see
 `security_and_analysis` gets an answer with the setting simply absent — not
