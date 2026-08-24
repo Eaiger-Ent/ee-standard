@@ -151,6 +151,19 @@ Phase 1 unclosable by its own terms.
 - [x] DEV-001's `enforces` text in `controls.yaml` covers the image digest as
       well as the lock file, matching what
       [`03-devcontainer.md`](03-devcontainer.md) already claims it verifies
+- [ ] `setup.sh` installs uv from a checksum-verified release artefact, and
+      `ghcr.io/devcontainers/features/python:1` is gone from `devcontainer.json`
+      and `devcontainer-lock.json` — **added 2026-08-24** by
+      [ADR 0030](adr/0030-uv-is-bootstrapped-from-a-pinned-release.md), not
+      re-opened: nothing ticked above became false. The criterion two rows up
+      reasoned about `uv` and `gitleaks` and concluded that no community feature
+      verifies its download; `pip install uv==0.12.5` is pinned and passes
+      `tests/test_devcontainer_setup.py`, which asks a package install for a pin
+      and a downloaded artefact for a checksum. ADR 0030 moves uv from the first
+      category to the second, which is the stronger one, and takes the feature's
+      three extensions, its autopep8 formatter binding and its second
+      interpreter on `PATH` with it. Closing this needs `devcontainer build` and
+      `devcontainer upgrade --workspace-folder .`; this container has no Docker
 
 The last one was register debt, not container work: as `controls.yaml`
 originally stood, a repo with a complete lock file and a floating image tag
@@ -436,6 +449,18 @@ fixed in both.
       `standard_check.asserts`, a gate reaches it only through
       `standard-check run --control <ID>`, and a gate that deploys a control it
       does not name there fails a test
+- [ ] The editor locus is verified by exclusion, not by presence — **added
+      2026-08-24** by
+      [ADR 0029](adr/0029-the-editor-locus-is-configured-by-the-repository.md),
+      points 3 and 4. Not re-opened: nothing ticked above became false.
+      `stacks:` gains, per gate, the file-type binding its `editor_extension`
+      must hold, and `linter-wired-at-all-loci` fails when another extension
+      holds a gated file type. Today it asks only whether the pinned extension
+      is installed, and `ghcr.io/devcontainers/features/python:1` bound Python
+      files to autopep8 with `charliermarsh.ruff` installed alongside it the
+      whole time — a state the assert reported as passing. Point 1 is done:
+      `.vscode/settings.json` is tracked and holds the bindings. Both remaining
+      points bump `meta.register_contract`
 - [ ] The devcontainer template builds, and DEV-001 passes against it — the
       template ships at `plugins/ee-standard/templates/devcontainer/` and
       DEV-001's and BLD-001's property blocks pass against a copy of it

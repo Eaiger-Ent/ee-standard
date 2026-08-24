@@ -1,0 +1,43 @@
+{
+  // The editor locus, per ADR 0029. Workspace scope, because it is the only
+  // scope that wins by documented rule: the containers.dev merge table says of
+  // `customizations` only that "merging is left to the tools", so the same
+  // settings written into devcontainer.json would land in the machine-scoped
+  // file alongside the feature's and depend on an unspecified merge.
+  //
+  // Everything here binds a gated file type to the tool its control pins. A
+  // devcontainer feature may install what it likes; it does not get to decide
+  // which tool runs.
+
+  // LNT-001 — ruff formats Python, from [tool.ruff] in pyproject.toml.
+  //
+  // `ghcr.io/devcontainers/features/python:1` publishes
+  //   "[python]": { "editor.defaultFormatter": "ms-python.autopep8" }
+  // and contributes the extension to match, so until this line existed the
+  // formatter in a repository pinning ruff was autopep8. Presence of
+  // charliermarsh.ruff never excluded it — both were installed the whole time.
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+
+  // LNT-001 — and the linter is the one uv.lock owns, never the copy the
+  // extension bundles. `fromEnvironment` is the extension default; it is
+  // written out because the interpreter path below is what makes it reachable,
+  // and the pair is the statement. See ADR 0029 § Consequences for what this
+  // does not close.
+  "ruff.importStrategy": "fromEnvironment",
+
+  // Names the environment `containerEnv` creates in devcontainer.json, read
+  // back rather than repeated so the path has one authority. Without it the
+  // editor takes the feature's value — the bootstrap interpreter that
+  // devcontainer.json's own comment disclaims.
+  "python.defaultInterpreterPath": "${env:UV_PROJECT_ENVIRONMENT}/bin/python",
+
+  // TYP-001 — mypy in strict mode is the type checker, from [tool.mypy] in
+  // pyproject.toml. Pylance arrives with the same feature and reports its own
+  // diagnostics from its own rules; two type checkers at one locus is the
+  // second definition ADR 0009 forbids for lint and ADR 0029 generalises.
+  // Pylance stays as the language server — completion, navigation, hover — and
+  // stops being a verdict.
+  "python.analysis.typeCheckingMode": "off"
+}

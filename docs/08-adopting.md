@@ -234,6 +234,88 @@ What matters when you adapt the copy:
   checks. One line per path, never a glob: a glob that later misses a file
   gives no signal, and the per-path form makes the omission visible.
 
+### 2.1 — Take back the editor locus from the features
+
+A devcontainer feature contributes VS Code extensions **and settings**, and
+`features:` is the part of `devcontainer.json` a reviewer reads as already
+governed because DEV-001 pins it. The pin covers what a feature installs. It
+says nothing about what a feature configures, which is unreviewed and arrives
+anyway.
+
+The two you will meet:
+
+| Feature | Extensions | Settings |
+| --- | --- | --- |
+| `python:1` | `ms-python.python`, `ms-python.vscode-pylance`, `ms-python.autopep8` | `python.defaultInterpreterPath`, and `[python].editor.defaultFormatter` = **autopep8** |
+| `node:2` | `dbaeumer.vscode-eslint` | — |
+
+So a repository whose LNT-001 pins ruff formats Python with autopep8 until it
+says otherwise, and `linter-wired-at-all-loci` does not catch it: that assert
+reads `editor_extension` from `stacks:` and asks whether the pinned extension is
+*present*. Presence does not exclude. Both extensions are installed.
+
+**Put the binding in `.vscode/settings.json`, not in `devcontainer.json`.** The
+containers.dev merge table gives one instruction for the `customizations`
+property — *"Merging is left to the tools"* — where every other property states
+a rule. A setting written into `devcontainer.json` lands in the same
+machine-scoped file as the feature's and competes with it on undefined terms.
+Workspace settings outrank machine settings by documented rule, and the file is
+tracked, so it reaches a diff and a review. The reasoning is
+[ADR 0029](adr/0029-the-editor-locus-is-configured-by-the-repository.md).
+
+```jsonc
+{
+  "[python]": { "editor.defaultFormatter": "charliermarsh.ruff" },
+  "ruff.importStrategy": "fromEnvironment",
+  "python.analysis.typeCheckingMode": "off"
+}
+```
+
+The last line is TYP-001's: Pylance ships with the feature and reports
+diagnostics from its own rules, which is a second type checker beside the mypy
+your register pins. Turning its verdicts off keeps it as a language server —
+completion, navigation, hover — and stops it being an opinion.
+
+**How you know it worked.** Open a Python file, run *Format Document*, and check
+the status bar names ruff. Then:
+
+```bash
+code --status | grep -i autopep8   # installed is fine; formatting is not
+```
+
+The extension staying installed is expected — `devcontainer.json` offers no way
+to remove what a feature contributes, and this is a configuration fix rather
+than an installation one.
+
+**If your project environment is not at `.venv/`**, name it here too:
+`"python.defaultInterpreterPath": "${env:UV_PROJECT_ENVIRONMENT}/bin/python"`
+reads back a path set once in `containerEnv`, rather than repeating it.
+
+**Better, if your stack allows it: do not install the feature.** Everything
+above is a correction applied after the fact, and
+[ADR 0030](adr/0030-uv-is-bootstrapped-from-a-pinned-release.md) removes the
+cause instead. Ask what the feature is for. If it is there so that something can
+run `pip install uv`, it is not needed: uv is a single static binary that
+requires no Python, and `uv sync` fetches the interpreter your `.python-version`
+names. Install uv the way you install any other pinned tool — the release
+tarball for the container's architecture, verified against the `.sha256` the
+vendor publishes beside it — then delete
+`ghcr.io/devcontainers/features/python:1` from `devcontainer.json` and its entry
+from `devcontainer-lock.json`.
+
+Three extensions stop arriving, both settings stop being written, and only one
+interpreter exists in the container. The cost is Pylance: Python completion,
+navigation and hover go with it. Add `ms-python.python` back to
+`devcontainer.json` if you want it — as a line someone reviewed, which is the
+difference between choosing it and inheriting it.
+
+**Do not reach for a leaner base image.** It is the obvious suspicion and it is
+wrong. `mcr.microsoft.com/devcontainers/base:trixie` is Debian plus
+`common-utils:2` and `git:1`; it declares no `customizations` and contributes no
+extensions and no bindings. Every extension in the container comes from a
+feature the repository listed itself. A leaner base removes none of them, and
+costs you the non-root `vscode` user BLD-001 stands on.
+
 ## 3 — The gates
 
 All six gates are built — see § 3.1 to § 3.6, and § 0 for the front door that

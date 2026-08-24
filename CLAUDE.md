@@ -55,6 +55,46 @@ because nobody had ever decided it; `>=3.13` was the number the container
 happened to have. **An adopter on 3.13 can no longer install `standard-check`**,
 and that is the accepted cost, cheap to reverse.
 
+Per [ADR 0029](docs/adr/0029-the-editor-locus-is-configured-by-the-repository.md)
+(**Accepted** 2026-08-24, **partly implemented**), the editor locus is
+configured by **`.vscode/settings.json`**, a tracked file, and not by
+`devcontainer.json`. The reason is the specification's: the containers.dev merge
+table gives one instruction for `customizations` — *"Merging is left to the
+tools"* — where every other property states a rule, so a binding written in
+`devcontainer.json` lands in the same machine-scoped file as a feature's and
+competes on undefined terms. Workspace scope wins by documented rule instead.
+`devcontainer.json` installs the extension and keeps container concerns;
+`.vscode/settings.json` decides which tool holds a gated file type; neither
+restates the other. The file is hand-written and carries no provenance stamp —
+adopted, not deployed, like the DEV-001 and LNT-001 regions of
+`devcontainer.json`.
+
+**A feature's VS Code customizations are an untrusted default**, and DEV-001's
+digest pin does not reach them: it governs what a feature installs, never what
+it configures. That is how `python:1` came to bind Python files to autopep8 in a
+repository whose LNT-001 pins ruff. **`linter-wired-at-all-loci` cannot catch
+it today** — it reads `editor_extension` from `stacks:` and asks whether the
+pinned extension is *present*, and presence does not exclude: `charliermarsh.ruff`
+was installed the whole time autopep8 held the file type. Points 3 and 4 of that
+ADR — the `stacks:` binding field, and changing the assert from presence to
+exclusivity — are **not implemented**, and are a Phase 2 criterion.
+
+Per [ADR 0030](docs/adr/0030-uv-is-bootstrapped-from-a-pinned-release.md)
+(**Accepted** 2026-08-24, **not implemented**) that feature is being removed
+altogether. It exists to provide a `python3` that runs one line —
+`pip install uv==0.12.5` — after which uv owns everything and the feature's
+interpreter is never used again. What it charges for that line is three VS Code
+extensions and two settings, one of which bound Python files to **autopep8**
+while LNT-001 pins ruff. uv is a static binary that needs no Python and can
+fetch the interpreter itself, so `setup.sh` will install it from its pinned
+release tarball against the published sha256 — the shape it already uses for
+gitleaks a few lines below. Then one interpreter exists in the container instead
+of two. **The base image is not the problem and must not be swapped**:
+`base:trixie` declares no `customizations` and contributes zero extensions and
+zero bindings, and it is where BLD-001's non-root `vscode` user comes from.
+`node:2` stays — DOC-001 needs it, and it binds nothing. Pylance goes with the
+feature, which is the accepted cost.
+
 The devcontainer's python feature is **3.14** too, from ADR 0028 revision 2.
 It was left at 3.13 on the grounds that it runs no gate, which is true of gates
 and false of everything else: a shebang resolves against `PATH`, and in a login
@@ -308,7 +348,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **27** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0028 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **29** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0030 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the thirteen Tier-1 controls, with
