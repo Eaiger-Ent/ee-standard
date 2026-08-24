@@ -2,11 +2,21 @@
 # `requires-python` in pyproject.toml is true.
 #
 # `.python-version` names the interpreter every locus runs the gates on
-# (ADR 0027), and it now names 3.14. `requires-python = ">=3.13"` says
-# standard-check also works on 3.13 — and adopters install it as a dependency,
-# so somebody is on that floor. Without this job the claim would be published in
-# package metadata and tested nowhere, which is the shape this repository exists
-# to catch: a property declared and never verified.
+# (ADR 0027). `requires-python` names the oldest interpreter standard-check
+# claims to work on, and adopters install it as a dependency, so somebody is on
+# that floor. When the two differ, nothing runs on the floor unless this job
+# does — a property published in package metadata and tested nowhere, which is
+# the shape this repository exists to catch.
+#
+# **When they are the same, this job has nothing to add**, and says so rather
+# than running the suite a second time on the same interpreter. That is the
+# state from ADR 0028, which raised the floor to meet the pin. The comparison
+# lives here rather than in a human's memory because the two move independently
+# and will diverge again — pinning ahead of the floor is the ordinary case, and
+# the job returns by itself when it happens.
+#
+# Both values are read, never repeated. There is no third copy here to drift
+# from either file.
 #
 # No provenance stamp: no gate deploys this, and a stamp naming one would claim
 # a deployment that never happened. It is deliberately not in CI-001's
@@ -30,26 +40,38 @@ jobs:
       # SUP-003 — pinned to a commit SHA.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Is there a gap between the floor and the pin?
+        id: gap
+        run: |
+          floor="$(sed -n 's/^requires-python *= *"[^0-9]*\([0-9]*\.[0-9]*\)".*/\1/p' pyproject.toml)"
+          pin="$(grep -m1 -E '^[0-9]+\.[0-9]+' .python-version)"
+          test -n "${floor}" || { echo "no requires-python in pyproject.toml" >&2; exit 1; }
+          test -n "${pin}" || { echo "no version in .python-version" >&2; exit 1; }
+          echo "floor (requires-python): ${floor}"
+          echo "pin   (.python-version): ${pin}"
+          echo "floor=${floor}" >> "${GITHUB_OUTPUT}"
+          if [ "${floor}" = "${pin}" ]; then
+            echo "gap=false" >> "${GITHUB_OUTPUT}"
+            echo "No gap: the gates already run on the floor. Nothing for this job to add."
+          else
+            echo "gap=true" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Install uv
+        if: steps.gap.outputs.gap == 'true'
         run: |
           # renovate: datasource=pypi depName=uv
           pip install uv==0.12.5
 
       - name: Tests, on the oldest interpreter this package claims to support
+        if: steps.gap.outputs.gap == 'true'
         # `UV_PYTHON` is the one thing that outranks `.python-version` — recorded
         # in ADR 0027 as the residual risk of choosing a toolchain file. It is
         # used here on purpose, and this is the only place it appears: the floor
-        # is a different interpreter from the pinned one by definition, so the
-        # job that tests it has to override the pin rather than read it.
-        #
-        # The floor itself is not repeated here. It comes from `requires-python`,
-        # so widening or raising the support claim moves this job with it and
-        # there is no second copy to drift.
+        # is a different interpreter from the pinned one whenever this step runs
+        # at all, so the job testing it has to override the pin.
         run: |
-          floor="$(sed -n 's/^requires-python *= *"[^0-9]*\([0-9]*\.[0-9]*\)".*/\1/p' pyproject.toml)"
-          test -n "${floor}" || { echo "no requires-python in pyproject.toml" >&2; exit 1; }
-          echo "support floor from requires-python: ${floor}"
-          export UV_PYTHON="${floor}"
+          export UV_PYTHON="${{ steps.gap.outputs.floor }}"
           uv sync --frozen
           uv run python -V
           uv run pytest -q

@@ -46,12 +46,25 @@ derives it from `requires-python`, and writing it out was a third copy that had
 already drifted. The gap was invisible because there was no second copy to spot:
 the devcontainer ran 3.13.15 and CI ran 3.14.7 from the same three files.
 
-The pin now reads **3.14**, and three things deliberately do not follow it:
-`requires-python` stays `>=3.13`, ruff still targets 3.13 because that is the
-floor, and the devcontainer's python feature stays 3.13 because it bootstraps
-`pip install uv` and runs no gate — the case ADR 0027 § Consequences predicted.
-`.github/workflows/support-floor.yml` runs the test suite on the floor so that
-claim stays verified; it is **not** a gate and must never enter CI-001's
+Per [ADR 0028](docs/adr/0028-the-support-floor-is-what-we-run.md) (**Accepted**
+and implemented 2026-08-24) the pin and the support floor are both **3.14**:
+`.python-version` reads 3.14 and `requires-python` reads `>=3.14`, so ruff's
+derived target is 3.14 too — it moved with the floor and nobody edited it, which
+is what deleting the written-out `target-version` bought. The floor was raised
+because nobody had ever decided it; `>=3.13` was the number the container
+happened to have. **An adopter on 3.13 can no longer install `standard-check`**,
+and that is the accepted cost, cheap to reverse.
+
+The devcontainer's python feature stays **3.13** and is now below the floor,
+deliberately: it bootstraps `pip install uv` and answers
+`#!/usr/bin/env python3`, it runs no gate, and `requires-python` claims nothing
+about it — the decoupling ADR 0027 § Consequences predicted.
+
+`.github/workflows/support-floor.yml` verifies the floor when it differs from
+the pin, and today it does not, so the job reads both files and **skips itself**
+rather than running the suite twice on one interpreter. It is kept because the
+two diverge again the moment either moves — pinning ahead of the floor is the
+ordinary case. It is **not** a gate and must never enter CI-001's
 `required_checks:`. It is also the only place `UV_PYTHON` is set, which is the
 one thing that outranks `.python-version`.
 
@@ -288,7 +301,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All 27 are `Accepted`; there are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **27** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0028 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the thirteen Tier-1 controls, with
