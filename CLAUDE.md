@@ -479,7 +479,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **29** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0030 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **31** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0032 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fourteen Tier-1 controls, with
@@ -519,6 +519,29 @@ cites an archived ADR, because a control's stated reasoning may not be a
 decision the corpus has retired. Archiving breaks inbound links: rewrite them in
 the same change. Note the cost — `adr-toolkit` globs `docs/adr/*.md`, so an
 archived ADR leaves the corpus `/adr-consistency` scans.
+
+Two decisions taken on 2026-08-24 are **Accepted and not yet implemented**, and
+everything below still uses the old names. Per
+[ADR 0031](docs/adr/0031-the-plugin-is-named-for-the-register.md) the plugin,
+the checker and the non-gate skills are named for the **register**:
+`ee-standard` becomes `control-register`, `standard-check` becomes
+`register-check`, `standard-adopt` becomes `register-adopt`, and Phase 5's
+classifier is `register-variance`. The gates keep their names and no provenance
+stamp changes — a stamp names a control and a gate, never the checker. The
+rename lands in **three moves** because the default branch requires a status
+check named `standard-check`: rename while a job still reports the old name,
+re-run `/gate-repo` so the ruleset requires the new one, then drop the
+transitional job. A single pull request cannot do it — it would remove the check
+its own merge is waiting for.
+
+Per [ADR 0032](docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md) the
+checker reaches an adopting repository as a dependency pinned to a **tagged git
+ref** of this public repository, placed by a new skill, `register-install`,
+which owns nothing else and which `register-adopt` dispatches first. Not
+`gate-supply-chain` — no control names *the checker is installed* — and not the
+dispatcher's pre-flight, which verifies through the instrument it would be
+installing. This repository has **no tags today**, and the tag is what an
+adopter pins, so cutting `v0.1.0` is work that ADR creates.
 
 Gate skills live in `plugins/ee-standard/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,
