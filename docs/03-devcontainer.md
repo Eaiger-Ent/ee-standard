@@ -169,7 +169,8 @@ Minimal, and honest about what it does not yet know:
     "vscode": {
       "extensions": [],
       "settings": {
-        "terminal.integrated.defaultProfile.linux": "zsh"
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "remote.autoForwardPorts": false
       }
     }
   }
@@ -189,6 +190,29 @@ project's resolver picks, and a support constraint like `requires-python`
 selects nothing. The template's job is the first; a toolchain file at the
 repository root — `.python-version`, `.nvmrc`, `.go-version` — is the second,
 and nothing in `.devcontainer/` can stand in for it.
+
+**The project environment belongs in the container layer**, not at the
+repository root. A workspace folder is a bind mount, so a `.venv/` — or
+`node_modules/`, or any other resolver-built tree — outlives the container that
+built it and is stale the moment a feature version moves. The resolver's own
+recovery is to delete and rebuild it, and that happens inside
+`postCreateCommand`, which runs concurrently with the editor's extension host:
+an extension that resolves the environment during that window finds nothing and
+falls back to whatever it bundles, for the rest of the session. That is how the
+editor locus comes to run an unpinned tool while pre-commit and CI run the
+pinned one, with nothing reporting the divergence. Point the resolver
+elsewhere — `UV_PROJECT_ENVIRONMENT` for uv — and name that path in the
+editor's interpreter setting so the two cannot disagree. It does not close the
+race on a fresh create, which nothing without a Dockerfile can; it removes the
+stale half, which is the half that recurs on every rebuild.
+
+**The template forwards no ports.** A repository that serves nothing still
+accumulates forwarded ports, because the editor's own loopback services — the
+server, the extension host, the agent host, each language server — bind
+ephemeral ports and the default `remote.autoForwardPorts` picks them up. The
+numbers differ on every container start, so the list reads as though it were
+growing. A repository that does serve something declares it in `forwardPorts`,
+where it is reviewable.
 
 The `.devcontainer/` directory carries `fetch-secrets.sh`, `setup.sh`,
 `check-auth.sh`, `devcontainer.json`, `devcontainer-lock.json`, and

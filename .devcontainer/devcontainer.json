@@ -36,6 +36,34 @@
     "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
   },
 
+  // The project environment lives in the container layer, not in the workspace
+  // bind mount. `.venv/` at the repository root is on the host filesystem, so it
+  // outlives the container that built it: the 2026-08-24 rebuild moved the
+  // python feature 3.13 -> 3.14, `/usr/local/python/current/bin/python3.13`
+  // stopped existing, and uv found `.venv/bin/python` dangling —
+  //   warning: Ignoring existing virtual environment linked to non-existent
+  //   Python interpreter: .venv/bin/python3 -> python
+  // — then deleted and rebuilt it. That recovery is correct, and its timing is
+  // the problem: the delete/rebuild happens inside `postCreateCommand`, which
+  // runs concurrently with the editor's extension host. The ruff extension
+  // resolved `.venv/bin/python`, got ENOENT, and fell back to its own bundled
+  // ruff for the rest of the session — so the editor locus LNT-001 declares ran
+  // an unpinned binary while pre-commit and CI ran the one uv.lock owns. It
+  // happened to be the same version; nothing made it so.
+  //
+  // Relocating the environment does not close the race — nothing here can, with
+  // no Dockerfile to build the environment into the image — but it removes the
+  // stale half. A container-layer path is absent on a rebuild and present on
+  // every restart thereafter, where a bind-mounted one is stale on a rebuild and
+  // deleted mid-boot, which is the window the extension activates in.
+  //
+  // Set as containerEnv rather than remoteEnv so lifecycle scripts, terminals,
+  // pre-commit hooks and the editor all resolve the same environment. CI never
+  // reads this file, so `uv run` there is unaffected.
+  "containerEnv": {
+    "UV_PROJECT_ENVIRONMENT": "/home/vscode/.venv-ee-standard"
+  },
+
   "initializeCommand": "bash .devcontainer/fetch-secrets.sh",
 
   // The .docker copy, not the .env itself: --env-file does no shell parsing,
@@ -71,7 +99,32 @@
       //   DOC-001 — markdownlint, from .markdownlint.yaml
       "extensions": ["charliermarsh.ruff", "DavidAnson.vscode-markdownlint"],
       "settings": {
-        "terminal.integrated.defaultProfile.linux": "zsh"
+        "terminal.integrated.defaultProfile.linux": "zsh",
+
+        // Names the environment containerEnv above creates. Without it the
+        // editor selected `/usr/local/python/current/bin/python` — the feature
+        // this file's own comment calls "Bootstrap, not the project
+        // interpreter" — and reached the project environment only by guessing
+        // at a `.venv` beside the workspace, which is no longer where it is.
+        //
+        // Read from the environment rather than repeated, so the path has one
+        // authority in this file.
+        "python.defaultInterpreterPath": "${containerEnv:UV_PROJECT_ENVIRONMENT}/bin/python",
+
+        // The editor's ruff must be the one uv.lock pins, never the extension's
+        // bundled copy. `fromEnvironment` is already the extension default and
+        // still falls back when it cannot find one — the fallback is what ran on
+        // 2026-08-24 — so this states the intent that the interpreter path above
+        // is what actually enforces. If the two disagree, the editor lints
+        // against a ruff no locus pinned.
+        "ruff.importStrategy": "fromEnvironment",
+
+        // Nothing in this repository serves anything. Every port the rebuild
+        // forwarded was one of the editor's own loopback services — code-server,
+        // the extension host, the agent host, the Pylance server — each bound
+        // with `--port 0`, so the numbers differ on every container start and the
+        // forwarded list reads as though it were accumulating.
+        "remote.autoForwardPorts": false
       }
     }
   }
