@@ -473,6 +473,17 @@ substitution SEC-001's remote block already refuses
 fails the first and is UNCLASSIFIED on the second, using the same
 `X-OAuth-Scopes` presence that requirement 4 turns into a refusal of its own.
 
+**What the Actions token turned out to answer.** This ADR confirmed the expiry
+header live for a fine-grained PAT. The **Actions** `GITHUB_TOKEN` returns no
+such header at all — observed on the CI run that landed this pass, not
+predicted — so SEC-003's remote block is `UNCLASSIFIED` in CI beside SEC-001's,
+and the block is live only for a credential that reports its expiry. That is
+the standing token this requirement was written to police, and the one this
+repository has not yet introduced: the block is silent for the credential that
+needs no policing and answers for the one that does. Had the requirement's
+letter been implemented — *a token with no expiry fails* — that CI run would
+have been red for a credential that expires within the hour.
+
 **And the block answers only inside a GitHub Actions job.** SEC-003's locus is
 `ci`. The token in a developer's shell is a different credential, so a verdict
 from it would settle a question about the wrong thing — this repository's own

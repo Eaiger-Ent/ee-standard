@@ -176,7 +176,11 @@ Per [ADR 0022](docs/adr/0022-a-platform-token-ci-carries.md) (**Accepted**
 2026-08-23), **a platform token in CI is governed rather than forbidden**, and
 its absence is what still blocks the `--require-complete` flip: the Actions
 `GITHUB_TOKEN` cannot read `security_and_analysis`, so SEC-001's remote block is
-`UNCLASSIFIED` in CI while passing locally.
+`UNCLASSIFIED` in CI while passing locally. **From contract 23 SEC-003's remote
+block is a second one**, and for a different reason — the Actions token reports
+no expiry header at all (observed 2026-08-24, `docs/11-phase-3-review.md` § The
+fourth slice). Both close together the moment ADR 0022's Option 1 token exists,
+which is why they are one problem rather than two.
 
 **Requirements 1 and 2 of that ADR § What the register must gain land before any
 token** — the one ordering it rules out absolutely — and they **landed on
