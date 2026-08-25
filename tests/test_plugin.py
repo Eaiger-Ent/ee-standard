@@ -113,9 +113,17 @@ def test_the_skill_name_matches_its_directory(skill: Path) -> None:
 
 @pytest.mark.parametrize("skill", SKILLS, ids=lambda p: p.name)
 def test_every_control_the_skill_claims_is_in_the_register(skill: Path) -> None:
-    """A gate for SEC-999 would deploy artefacts for a control nobody defined."""
+    """A gate for SEC-999 would deploy artefacts for a control nobody defined.
+
+    Meta-control ids count as known. A skill does not deploy one — GOV-001
+    checks the register rather than the repository — but it may name one to say
+    what a reader's report will show, and `known` is "every id this register
+    defines" rather than "every id a gate could deploy".
+    """
     text = (skill / "SKILL.md").read_text(encoding="utf-8")
-    known = {control.id for control in a_register().controls}
+    register = a_register()
+    known = {control.id for control in register.controls}
+    known |= {meta.id for meta in register.meta_controls}
     claimed = set(re.findall(r"\b[A-Z]{3}-\d{3}\b", text))
     assert claimed <= known, claimed - known
 
@@ -136,11 +144,14 @@ def test_the_templates_stamp_what_they_write(skill: Path) -> None:
     }
     templates = sorted((skill / "templates").glob("*"))
     if not templates:
-        # A skill that ships no templates must be one that writes no artefacts.
-        # `register-adopt` is the only such skill and it is so by design: every
-        # artefact is written by the gate that owns the control, which is what
-        # keeps one control's config in one place. A *gate* with no templates
-        # would be a gate whose deployment has no reviewable source.
+        # A skill that ships no templates must be one that writes no artefacts
+        # a control owns. Two skills qualify and both are so by design.
+        # `register-adopt` writes nothing at all: every artefact belongs to the
+        # gate that owns the control, which is what keeps one control's config
+        # in one place. `register-install` writes a dependency pin, and no
+        # control names *the checker is installed* — so there is no stamp to
+        # write and nothing for a template to carry (ADR 0032). A *gate* with no
+        # templates would be a gate whose deployment has no reviewable source.
         assert skill.name not in _sidecar()["gates"], (
             f"{skill.name} deploys controls and ships no template to write them from"
         )

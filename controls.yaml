@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.22.0
+version: 0.23.0
 
 meta:
   owner: platform-engineering
@@ -292,7 +292,20 @@ meta:
   #     change: this one, plus the confirmed API call that accompanied it.
   #     GOV-001 reads the platform's enforced checks against this list, so a
   #     rename that arrived here first would fail the run checking it.
-  register_contract: 28
+  # 29: The register says where an adopting repository gets the checker.
+  #     `tools.register-check.install` names the repository and the tag, and
+  #     `ecosystems.python.git_dependency` the spelling that joins them to a
+  #     package name (ADR 0032). Before this the register carried a comment
+  #     describing the shape of an answer — "an adopter installs the checker as
+  #     a dependency" — and named no artefact, so an adopter following
+  #     `docs/08-adopting.md` reached "run the checker" with nothing to run.
+  #
+  #     A skill reading the register must understand both, because
+  #     `register-install` is the skill that reads them and it is the first
+  #     thing `register-adopt` dispatches. Split across two sections
+  #     deliberately: the address is a fact about this project, and the
+  #     spelling is a fact about the ecosystem.
+  register_contract: 29
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -379,6 +392,27 @@ tools:
     source: lockfile
     lockfile: uv.lock
     invocation: uv run register-check
+    # Where an adopting repository obtains the checker (ADR 0032). Until
+    # contract 29 the comment above described the shape of an answer and named
+    # no artefact, so an adopter following `docs/08-adopting.md` reached "run
+    # the checker" with nothing to run — the gap being invisible from inside
+    # this repository, where `uv run register-check` resolves because the
+    # project being run is the project being checked.
+    #
+    # A fork or an internal mirror is a reasonable thing for a repository to
+    # differ on without the checker changing, so this answers *yes* to ADR
+    # 0018's test — the same argument that put `release_repo` here at contract
+    # 11. `register-install` reads it and writes what it finds; nothing about
+    # this address is spelled inside that skill.
+    #
+    # `ref` is a tag and the schema refuses anything else. An unpinned git
+    # dependency resolves to whatever the default branch says today, which is
+    # the defect DEV-001 refuses in an image tag and SUP-003 in an action ref;
+    # a checker that changed under an adopter between two runs would be the
+    # one tool in the repository that is not pinned.
+    install:
+      repository: https://github.com/Eaiger-Ent/ee-standard
+      ref: v0.1.0
   uv:
     source: literal
     # Where the release artefact is fetched from, as for gitleaks. The
@@ -484,6 +518,16 @@ ecosystems:
       uv.lock: "uv add --dev {package}"
       poetry.lock: "poetry add --group dev {package}"
       pdm.lock: "pdm add --dev {package}"
+    # How this ecosystem spells a dependency on a git ref, as the `{package}`
+    # that goes into `add_dev_dependency` above. PEP 440 calls it a direct
+    # reference; it is ecosystem grammar rather than repository policy, which
+    # is why it sits here and not in `tools.register-check.install` beside the
+    # address it consumes. Optional, and its absence is a verdict:
+    # `register-install` stops and says this ecosystem has no spelling for a
+    # git dependency rather than inventing one, which is the same rule
+    # `add_dev_dependency` follows one field up. Only python declares one
+    # today, and ADR 0032 § The non-Python adopter is not solved says so.
+    git_dependency: "{package} @ git+{repository}@{ref}"
     # What a gate *writes* where `frozen_install` above records what the checker
     # *accepts*. The two are a pair and the schema holds them together: every
     # command here must match one of the patterns above, so a gate cannot write
