@@ -53,10 +53,10 @@ sudo chown -R vscode:vscode /home/vscode/.claude
 # `.devcontainer/setup.sh` is named in that tool's `pinned_at`.
 #
 # The assignments below are unquoted on purpose. That assert matches a tool name
-# followed by a version across `@`, `=`, `:` or whitespace, so
-# `uv_version="0.12.5"` puts a quote where it looks for the separator and the
-# pin is reported missing — a substituted file that reconciles against nothing,
-# which is the silent-pass shape this standard keeps finding.
+# followed by a version across `@`, `=`, `:` or whitespace, so quoting the
+# substituted value puts a quote where it looks for the separator and the pin is
+# reported missing — a substituted file that reconciles against nothing, which
+# is the silent-pass shape this standard keeps finding.
 #
 # The register pins **one** checksum, for x86_64. The other architecture's comes
 # from the same release's checksum file on GitHub and is compared by nothing —

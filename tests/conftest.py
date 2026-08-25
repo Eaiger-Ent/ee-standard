@@ -214,9 +214,12 @@ def register_with(tmp_path: Path, mutate: Any) -> Register:
     root.mkdir(parents=True, exist_ok=True)
     (root / "controls.yaml").write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
     # `rationale_adr` paths are checked relative to the register, so bring them.
+    # A citation is a URL from register contract 30 and resolves to no file at
+    # all; creating one would write a directory named `https:` beside the
+    # register and prove nothing.
     for control in document["controls"] + document.get("meta_controls", []):
         adr = control.get("rationale_adr")
-        if adr:
+        if adr and not str(adr).startswith(("http://", "https://")):
             target = root / adr
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text("# ADR\n", encoding="utf-8")
