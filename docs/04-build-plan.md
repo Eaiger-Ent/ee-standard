@@ -497,33 +497,29 @@ fixed in both.
       went to 3, and this repository's `.vscode/settings.json` gained the
       LNT-001 stamp that makes it the twelfth stamped artefact. Both points
       landed together, so the contract moved once rather than twice
-- [ ] The devcontainer template builds, and DEV-001 passes against it — the
+- [x] The devcontainer template builds, and DEV-001 passes against it — the
       template ships at `plugins/control-register/templates/devcontainer/` and
       DEV-001's and BLD-001's property blocks pass against a copy of it
-      (`tests/test_devcontainer_template.py`). **Open on the other half**: this
-      devcontainer has no Docker, so nothing here has built it, and a tick on a
-      build nobody ran is the over-tick this plan exists to catch. The commands
-      are in [`08-adopting.md`](08-adopting.md) § 2.0.
-      **The [ADR 0028](adr/0028-the-support-floor-is-what-we-run.md) revision 2
-      half of this criterion has been rewritten, not met.** It named the
-      evidence as "`python3 -V` reporting 3.14 inside a freshly built
-      container", which was a property of a feature ADR 0030 has since deleted.
-      The 2026-08-24 rebuild reports `python3 -V` as **3.13.5**, and should:
-      that is the base image's `python3-minimal`, which nothing here runs on.
-      The property that replaced it — `uv run python -V` at the pin, and every
-      tracked script reaching the interpreter through uv rather than `PATH` —
-      is verified, by that rebuild and by `tests/test_toolchain_pin.py`. So this
-      row is open on **one** thing only: nobody has built the template.
-      **Deferred to Phase 4 on 2026-08-24**, deliberately and not for want of a
-      machine — the consumer repo has to build the template from placeholders
-      to exist at all, so Phase 4 produces this evidence as a by-product where
-      doing it here would be a rehearsal of the same build. The 2026-08-24
-      rebuild of *this* repository's container is not that evidence: the
-      template is a different artefact, with `{{PROJECT_NAME}}` placeholders to
-      substitute, one feature rather than three, no `containerEnv`, empty
-      `extensions`, and a `setup.sh` that branches on which lockfiles the
-      consumer repo commits. What it does share is the base image digest, which
-      that rebuild did pull and run
+      (`tests/test_devcontainer_template.py`). **Closed 2026-08-25 by Phase 4**,
+      which is where it was deferred to on 2026-08-24 and for the reason given
+      then: the consumer repository has to build the template from placeholders
+      to exist at all, so doing it here would have been a rehearsal of the same
+      build. Built on a macOS host with Docker 29.7.2 — `--no-cache` and then
+      from clean — and run, ending in a container reporting `remoteUser: vscode`
+      and every probe green.
+      **It did not build first time, and that is what the criterion was for.**
+      Three defects had to be fixed before it came up, none of which a file test
+      could have caught: no Claude Code and no node, so the container could not
+      run the skill that is the published route into the standard; no uv, while
+      its own `setup.sh` called `uv sync --frozen`
+      ([ADR 0034](adr/0034-the-template-bootstraps-uv.md)); and a lock file left
+      covering one feature of two because `devcontainer up` reuses an existing
+      container. The evidence, and the seven other things Phase 4 found, is in
+      [`12-phase-4-review.md`](12-phase-4-review.md). The
+      [ADR 0028](adr/0028-the-support-floor-is-what-we-run.md) revision 2 half
+      stands as it was rewritten: `uv run python -V` at the pin, verified again
+      here — with `.python-version` committed the consumer's container answers
+      3.14.7, and without it 3.13.5
 - [x] The template pins no tool version by hand. Every tool it installs is
       either sourced from a lockfile the consumer repo already commits, or from
       a single toolchain file ([§ G](09-phase-1.5-review.md#g--tool-version-reconciliation)'s
@@ -556,11 +552,24 @@ fixed in both.
       for no loci: every gate now writes and verifies each locus its controls
       declare
 
-- [x] Every SKILL.md passes preflight P1–P11 — all six gates and
-      `register-adopt` pass with zero failures, each recorded in
+- [ ] Every SKILL.md passes preflight P1–P11 — all six gates and
+      `register-adopt` passed with zero failures, each recorded in
       `10-phase-2-review.md` under its own § Preflight P1–P11 heading. The
       `register-check` and `register-variance` skills are Phase 3's and Phase
-      5's respectively, and are not this phase's to ship
+      5's respectively, and are not this phase's to ship.
+      **Re-opened 2026-08-25 by Phase 4** — the eighth criterion in this project
+      ticked and later found false, and the first found from outside it. P9 is
+      *"a called skill has `disable-model-invocation: true` and cannot be
+      invoked via the Skill tool"*, which was true of all seven skills
+      `register-adopt` dispatches, and it reported
+      `{"skill": "register-adopt", "overall": "PASS", "fails": 0}`: the dispatch
+      targets are named in prose, not in a field a checker resolves. So the
+      front door had never been able to take its first step. The state is fixed
+      — [ADR 0035](adr/0035-a-dispatched-skill-is-reachable.md), with the
+      `README.md` note P9 itself prescribes — and the box stays open until the
+      preflight is **re-run** over the changed skills, because a criterion
+      closed on the reading that failed it once is closed on nothing
+      ([`12-phase-4-review.md`](12-phase-4-review.md) § 10)
 - [x] Every control's declared `locus:` is read by something. Found open in
       Phase 2: SUP-003, BLD-001, DEV-001 and IAC-001 each declared
       `[pre-commit, ci]` and verified only their property, so a repository with
@@ -796,47 +805,88 @@ Each was decided on 2026-08-24.
 
 | What | Decision | How you know it is met |
 | --- | --- | --- |
-| A machine that can build a devcontainer | A **macOS host with Docker** and the devcontainer CLI. This container has no Docker, which is why Phase 2's template-build criterion was deferred here | `devcontainer build --workspace-folder .` completes on the host. The template's `fetch-secrets.sh` reads the macOS Keychain, so a non-macOS host needs that script adapted first, and the adaptation is then part of what this phase measures the guide on |
+| A machine that can build a devcontainer | A **macOS host with Docker** and the devcontainer CLI. This container has no Docker, which is why Phase 2's template-build criterion was deferred here | **Met** 2026-08-25: Docker 29.7.2, `devcontainer` 0.88.0. `devcontainer build --workspace-folder .` completes on the host. The template's `fetch-secrets.sh` reads the macOS Keychain, so a non-macOS host needs that script adapted first, and the adaptation is then part of what this phase measures the guide on |
 | The consumer repository's stack | **Python + uv**, so `uv run register-check` resolves as the register's `invocation` says | It exercises LNT-001, TYP-001, TST-001, SUP-001/003, BLD-001, DEV-001, SEC-001/003 and CI-001. It proves nothing about a repository that is not a Python project, and [ADR 0032](adr/0032-the-checker-is-installed-from-a-tagged-ref.md) records that as unsolved rather than covered |
 | Where it lives | **Eaiger-Ent**, where `gh` is already authenticated and every platform act in § 1 is grantable without waiting on anyone | Note what it does not test: the same accounts hold admin here, which is the fact that lets this repository take a posture it does not publish. The adopter's environment gate is exercised by configuration, not by a different threat model |
-| How the plugin reaches the consumer | **Submitted to the ee-skills marketplace**, so the consumer installs it the way any Equal Experts repository will | There is no marketplace entry today, and no `.claude-plugin/marketplace.json` in this repository. Until one exists, `/register-adopt` does not exist in the consumer repo |
+| How the plugin reaches the consumer | **Submitted to the ee-skills marketplace**, so the consumer installs it the way any Equal Experts repository will | **Taken a different way on 2026-08-25**, because Phase 6 forbids submitting anything before Phase 4 has run and this row made that circular. `.claude-plugin/marketplace.json` now exists — Phase 6's *"installable as one plugin"* criterion needs it regardless — and the consumer installed `control-register` from this directory as a marketplace, exactly as `ee-skills` is registered on this host. The deviation is real and bounded: Phase 6's last criterion re-adopts from the marketplace copy, which is where installing-as-published gets tested |
 | How the checker reaches the consumer | A dependency pinned to a **tagged git ref**, placed by `register-install` ([ADR 0032](adr/0032-the-checker-is-installed-from-a-tagged-ref.md)) | **Met** 2026-08-25, register contract 29: the skill exists, `tools.register-check.install` names the address and `ecosystems.python.git_dependency` the spelling, and `v0.1.0` is cut. `tests/test_register_install.py` fails the build if the register pins a tag nobody cut, or one whose commit declares a different version |
-| The names | `control-register`, `register-check`, `register-adopt` ([ADR 0031](adr/0031-the-plugin-is-named-for-the-register.md)) | The rename lands **before** this phase, in two moves — a consumer repository that adopts a name already known to be wrong writes it into its own register, workflow and ruleset, and the rename is then in two repositories. Move 1 landed 2026-08-25 at register contract 27; move 2 is the status-check context, which only a confirmed API call can change |
-| `project-init` installed | It is in the ee-skills marketplace and is **not installed here** | One `claude plugin install`. Without it the composition criterion below cannot be judged at all |
+| The names | `control-register`, `register-check`, `register-adopt` ([ADR 0031](adr/0031-the-plugin-is-named-for-the-register.md)) | **Met** — both moves landed before the consumer repository existed. Move 1 at register contract 27, move 2 at contract 28, so nothing wrong was written into a second repository |
+| `project-init` installed | It is in the ee-skills marketplace and is **not installed here** | **Met** 2026-08-25 — installed from the `ee-skills` marketplace and run in the consumer repository. The composition criterion is answered, and the answer is that they fight ([`12-phase-4-review.md`](12-phase-4-review.md)) |
 
 ### Exit criteria — phase 4
 
-- [ ] Every step the consumer repo needed is in
+The evidence for every row below is in
+[`12-phase-4-review.md`](12-phase-4-review.md), which also records the nine
+things the phase found that no criterion asked about — three of which made the
+published route impossible to follow rather than awkward.
+
+- [x] Every step the consumer repo needed is in
       [`08-adopting.md`](08-adopting.md) **before** the criterion below is
       judged. This phase is the one that measures the guide: anything the
       operator had to ask about, work out, or already know is a gap in it, and
-      the fix belongs in the guide rather than in a reply to the question
+      the fix belongs in the guide rather than in a reply to the question.
+      **Closed 2026-08-25** with five gaps found and written: § 0.1, where the
+      register comes from at all — the guide named a file nothing shipped and
+      nothing told you how to obtain; § 2.0's install-cache path, since the path
+      it gave is one only this repository has; the host Keychain values, without
+      which `initializeCommand` exits 1 and the container never starts; the
+      three uv placeholders and the rule that they are substituted unquoted; and
+      § 0's warning that `gate-build` writes a file Claude Code treats as
+      sensitive, which cost this phase two runs before it was recognised
 
-- [ ] **The adopter ends up with a pinned interpreter, not a floor.** No gate
-      writes `.python-version` today: contract 20 made the interpreter a
-      register-pinned tool and [`08-adopting.md`](08-adopting.md) § 3.7 tells an
-      adopter to commit one, but telling is what this repository keeps finding
-      insufficient ([ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md)).
-      Decide in this phase whether `gate-build` writes it or the guide is
-      enough, and judge it by what the consumer repo actually has — a
-      `requires-python` and no toolchain file is the exact state that had this
-      repository's own gates on two interpreters
+- [x] **The adopter ends up with a pinned interpreter, not a floor.**
+      **Closed 2026-08-25, and the decision is neither of the two the criterion
+      offered.** No gate writes `.python-version` and the guide is not what
+      carries it: `tool_versions_match_register` already fails a
+      `source: toolchain` tool whose file is absent or untracked, so the
+      register insists there is a pin without choosing anyone's interpreter —
+      which it could not do anyway, since
+      [ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md) makes the file
+      the authority and the register holds no version. Judged the way the
+      criterion asks, by what the consumer repo has: with the file committed its
+      container answers **3.14.7**, without it **3.13.5**, and removing it adds
+      `python is sourced from .python-version, which is not tracked` to SUP-001's
+      verdict. A gate writing the file from whatever the container resolved
+      would have written 3.13.5 here, which is the accident
+      [ADR 0028](adr/0028-the-support-floor-is-what-we-run.md) raised the floor
+      to stop
 
-- [ ] The consumer repo reaches full Tier-1 conformance
-- [ ] No step required knowledge held only by the author
+- [ ] The consumer repo reaches full Tier-1 conformance — **open, and not known
+      to fail.** `register-adopt` computed the plan and the starting-state audit
+      against register contract 30 with remote blocks answering, then stopped at
+      `gate-build`, which writes `.devcontainer/devcontainer.json` — a file
+      Claude Code guards as sensitive, whose permission prompt a headless run has
+      nobody to answer and which a `permissions.allow` entry does not lift. That
+      is a property of the harness, not of the standard: run interactively, the
+      operator answers the prompt. The starting-state table is in the review, and
+      every FAIL in it names something absent rather than something the checker
+      got wrong
+- [ ] No step required knowledge held only by the author — judged after the row
+      above, since the steps it would judge have not all been taken
 - [ ] `project-init` and `register-adopt` compose without fighting over
-      `devcontainer.json`
+      `devcontainer.json` — **answered, and the answer is that they do not.**
+      `project-init` Step 4 replaces the digest-pinned image with the floating
+      tag `mcr.microsoft.com/devcontainers/python:3.12`, failing DEV-001's image
+      pin and naming a version below the register's floor, and adds `node:1`
+      beside the template's `node:2` because its skip-check tests for the wrong
+      one — leaving a lock file covering neither. The order is forced:
+      `project-init` requires `devcontainer.json` to exist, so the template is
+      copied first and Step 4 overwrites the two things it exists to pin. The
+      box stays open because a finding is not a fix, and the fix is upstream —
+      a Phase 6 submission with a measurement behind it
 - [ ] Weakening a `narrowing-only` control is **caught** — the checker fails it,
       naming the control and what was weakened. This is the half that exists
       today: the asserts read exclusions, thresholds and rule sets and fail a
       loosening. Whether the *direction* is classified is Phase 5's, and § What
       moved to Phase 5, and why records the split rather than leaving the
-      shortened sentence to be read as a quiet retreat
-- [ ] **The devcontainer template is obtainable without access to a private
+      shortened sentence to be read as a quiet retreat. Open because it is
+      judged against a deployed gate, and no gate is deployed yet
+- [x] **The devcontainer template is obtainable without access to a private
       repo.** `ee-skills-incubator` is private and not a GitHub template; if that
       is the only source, the plan has an access-shaped single point of failure.
-      Resolve by a public template repo or a `templates/devcontainer/` directory
-      in the plugin.
+      Resolved by a `templates/devcontainer/` directory in the plugin, and
+      **exercised 2026-08-25**: the consumer copied it out of a plugin install
+      cache with access to no private repository at all
 
 ## Phase 5 — Staleness and the sweep
 
