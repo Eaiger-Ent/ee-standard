@@ -43,7 +43,7 @@ plugins/control-register/
   LICENSE                required by CI on every plugin
   skills/
     register-adopt/      dispatcher — the front door
-    register-check/      installs + wraps the conformance checker
+    register-install/    puts the checker in the repository, pinned to a tag
     register-variance/   classifies and reports local deltas
     gate-secrets/        SEC-001, SEC-002
     gate-supply-chain/   SUP-001, SUP-002, SUP-003
@@ -63,6 +63,16 @@ incubator's, which stores skills flat and groups them in a config file, and it
 is not what `/skill-submit-new` reads. Both differences are Phase 6's and are
 recorded in [`05-promotion.md`](05-promotion.md) § What the incubator actually
 holds rather than restated here.
+
+`register-install` replaced a planned `register-check/` skill that would have
+"installed and wrapped" the checker. The wrapping half was wrong: the checker is
+an ordinary executable that CI runs with no Claude present, and a skill that
+wrapped it would be a second way to invoke it, free to disagree with the first.
+What was left was the install, which is real work nothing else owned — three
+Tier-1 controls run a command that, outside this repository, did not exist
+([ADR 0032](adr/0032-the-checker-is-installed-from-a-tagged-ref.md)). It writes
+no stamp, because no control names *the checker is installed*, and it is the one
+skill here whose output belongs to no control.
 
 ## The dispatcher: `register-adopt`
 

@@ -69,6 +69,30 @@ so a plan, a deployment and its audit can never be pointed at different things.
 
 ---
 
+## Step 0 — The checker
+
+Everything below runs `register-check`, including the pre-flight immediately
+after this. So before anything else:
+
+```bash
+cd "$REPO" && <the ecosystem's runner> register-check --version
+```
+
+If that fails, dispatch **`/register-install`** with the same `--repo` and
+`--register`, and let it ask its own question. Do not install the checker here:
+the address, the tag and the ecosystem's spelling are its business, and this
+skill would be a second place any of them could be written
+([ADR 0032](../../../../docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md)).
+
+**This is dispatched first and it is not a gate.** No control names *the checker
+is installed*, so it deploys nothing, appears in no plan row and writes no
+stamp. It is a precondition of the plan being computable at all — a pre-flight
+that verifies through an instrument it does not have verifies nothing.
+
+If it is already installed, this costs one command and says so.
+
+---
+
 ## Step 1 — Pre-flight
 
 Nothing is written in this phase.
@@ -173,10 +197,13 @@ protection, and `administration: write` for the branch ruleset. These are
 platform acts (`docs/08-adopting.md` § 1), and a plan that omits them promises
 an outcome it cannot reach.
 
-**What will not be verified today.** `kind: remote` blocks report
-`SKIPPED (no credentials)` until Phase 3, so SEC-001's push protection and
-CI-001's ruleset are deployed and unverified. Say it here, before deployment,
-rather than explaining an exit `3` afterwards.
+**What will not be verified without a credential.** `kind: remote` blocks read
+platform API state, and with no token they report `SKIPPED (no credentials)` —
+which is never a pass. SEC-001's push protection, SEC-003's token and CI-001's
+ruleset are then deployed and unverified, and GOV-001 can read only the
+file-level half of the chain. Say which, here, before deployment, rather than
+explaining an exit `3` afterwards. What a token needs, and why the scopes differ
+per control, is `docs/08-adopting.md` § 4.1.
 
 ---
 
@@ -202,7 +229,10 @@ them here on the user's behalf.
 
 ## Step 4 — Dispatch
 
-Invoke each selected gate in this order, and the order is not alphabetical:
+Invoke each selected gate in this order, and the order is not alphabetical.
+`register-install` is not in this table: it ran at Step 0, it is not a gate, and
+it is not selectable — a plan that offered to skip it would offer to compute
+itself without the instrument it is computed with.
 
 | # | Gate | Why here |
 | --- | --- | --- |
@@ -244,9 +274,11 @@ Report the verdict as given:
 | `2` | Usage error, or the target is not a repository | Fix the invocation; nothing was verified |
 | `3` | No violation, but something could not be verified | Adoption succeeded **at the local loci** — name every block that was skipped and why |
 
-**Exit `3` is the expected result today** and is not a pass. SEC-001's and
-CI-001's remote blocks report `SKIPPED (no credentials)` until Phase 3. Say which
-blocks, and say that the platform acts from Step 2 are still owed.
+**Whether `3` is the expected result depends on the credential.** Without a
+token every `kind: remote` block reports `SKIPPED (no credentials)`, and `3` is
+what a fully deployed repository returns; with one they answer, and `0` is
+reachable. Either way `3` is not a pass. Say which blocks were skipped, and say
+that the platform acts from Step 2 are still owed.
 
 Then show the difference from the starting run recorded in Step 1: which
 controls changed verdict, and which did not. A control that was failing and still
@@ -266,7 +298,7 @@ One commit, conventional format, listing the control IDs deployed:
 chore(standard): adopt SEC-001, SUP-001, SUP-002, SUP-003, LNT-001, …
 
 Deployed by register-adopt against register v<version> (contract <n>).
-Verified: register-check → exit 3 (remote blocks skipped, Phase 3).
+Verified: register-check → exit <code> (<what was skipped, or "nothing">).
 Still owed, and not this commit's: <the platform acts from Step 2>.
 ```
 
@@ -291,8 +323,8 @@ register-adopt deployed <n> controls in <repo>.
   gate-repo          CI-001
   not applicable     IAC-001 (no *.tf)
   dispatch elsewhere DOC-001 (lint-md)
-Verified: register-check → exit 3
-  local loci PASS; SEC-001 and CI-001 remote SKIPPED (no credentials), Phase 3.
+Verified: register-check → exit <code>
+  local loci PASS; <remote blocks that could not answer, and why>.
 Still owed by a human: <platform acts>.
 Committed: <sha> — not pushed.
 ```
@@ -315,6 +347,8 @@ register-adopt showed the plan and wrote nothing.
 
 | Condition | Action |
 | ----------- | -------- |
+| `register-check` is not installed | Dispatch `/register-install` at Step 0. Never install it here |
+| `register-install` stops without installing | Stop. Every step below verifies through the checker, so a plan computed without it is a plan nobody checked |
 | No register found or it fails to load | Stop. There is nothing to plan from |
 | Not a git repository | Stop. Every assert reads what git tracks |
 | A control's `deployed_by` names a gate this plugin does not have | Plan it as **dispatch elsewhere** or **manual**. Never drop it from the plan |

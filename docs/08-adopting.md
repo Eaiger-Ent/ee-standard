@@ -26,13 +26,15 @@ prevent, so the gaps are stated rather than glossed.
 | `gate-secrets` — deploys SEC-001, checks SEC-002 and SEC-003 | **Exists** | `plugins/control-register/skills/gate-secrets/` |
 | `gate-quality` — deploys LNT-001, TYP-001, TST-001 | **Exists** | `plugins/control-register/skills/gate-quality/` |
 | The other four `gate-*` skills | **Exists** | `plugins/control-register/skills/` |
+| `register-install` — puts the checker in your repository | **Exists** | `plugins/control-register/skills/register-install/`, and § 2.3 |
 | `register-adopt` — one command to deploy everything | **Exists** | `plugins/control-register/skills/register-adopt/` |
 | `kind: remote` verification of platform state | **Exists**, needs a token | § 4.1 below |
 | Reading the chain from a control to a blocked merge | **Exists**, needs a token | § 4.2 below |
 | A CI run that **fails** when a control cannot be verified | **Exists**; give CI a credential first | § 4.3 below |
 
-So today, adoption is: do § 1 by hand, copy the devcontainer, run
-`/register-adopt`, and run the checker with a token in the environment so the
+So today, adoption is: do § 1 by hand, copy the devcontainer, install the
+checker (§ 2.3 — `/register-adopt` does it for you), run `/register-adopt`, and
+run the checker with a token in the environment so the
 remote blocks can be answered rather than skipped (§ 4.1). Then, in this order:
 confirm your conformance run is a check a merge actually waits for (§ 4.2), give
 CI a credential of its own, and only then make the run fail when it cannot
@@ -78,8 +80,15 @@ in another plugin), *checked, not deployed* (SEC-002 and SEC-003 are satisfied
 by what a workflow does **not** reference, so there is nothing to write), and
 *manual*. A control missing from the plan would read as one that does not apply.
 
+**It installs the checker first, and that is not a gate.** Everything it does
+runs `register-check`, including the pre-flight that computes the plan, so Step 0
+dispatches `/register-install` if the checker is not there. It deploys no
+control, appears in no plan row and is not selectable — see § 2.3.
+
 If you would rather deploy one gate at a time, each works standalone — § 3.1 to
-§ 3.6. `register-adopt` exists to save you knowing which.
+§ 3.6. `register-adopt` exists to save you knowing which. Each of them needs the
+checker as much as the whole family does, which is the other reason the install
+is a skill of its own.
 
 ## 1 — Platform state: what only a human with admin can do
 
@@ -382,6 +391,64 @@ after you remove a feature, which as § 2.1 says does not leave you with one
 interpreter. `tests/test_toolchain_pin.py` here fails any tracked script whose
 shebang resolves from `PATH`; copy it, or write the equivalent, because the
 failure it catches is invisible until a version difference finally matters.
+
+### 2.3 — The checker itself, and where it comes from
+
+Everything below this line runs `register-check`: the pre-commit hooks for
+SUP-003, BLD-001 and DEV-001, the CI job CI-001 requires, every gate's own
+verify step, and your audit in § 4. None of them installs it.
+
+```bash
+/register-install --repo . --register ./controls.yaml
+```
+
+It adds one dependency, pinned to a tagged ref of the repository that defines
+the standard:
+
+```text
+register-check @ git+https://github.com/<owner>/<repo>@v<x.y.z>
+```
+
+**Where every part of that comes from.** The repository and the tag are the
+register's `tools.register-check.install`; the grammar that joins them to a
+package name is `ecosystems.<name>.git_dependency`, because PEP 440's direct
+reference is a fact about Python rather than about this standard. Point the
+first at a fork or an internal mirror and nothing else changes. If your
+ecosystem has no `git_dependency`, the skill stops and says so rather than
+guessing a spelling — today only `python` has one, and
+[ADR 0032](adr/0032-the-checker-is-installed-from-a-tagged-ref.md) § The
+non-Python adopter is not solved records that as known rather than pending.
+
+**A tag, never a branch.** An unpinned git dependency resolves to whatever the
+default branch says today — the same defect DEV-001 refuses in an image tag and
+SUP-003 in an action ref. Without the pin the checker would be the one tool in
+your repository that could change under you between two runs of one commit.
+
+**Reach it through your package manager, not off `PATH`.** `uv run
+register-check`, not `register-check`. A bare name resolves against `PATH` and
+would report success against some other copy entirely
+([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)), which is the same
+failure this guide describes for `npx --no-install` in § 3.
+
+**Two things about this are not settled**, and are worth knowing before you
+depend on them. Whether Dependabot or Renovate proposes a bump for a
+`git+https` dependency pinned to a tag is **not verified** — if neither does,
+your pin rots at a known version, which is a different failure from an unpinned
+one and not a better one. And this repository is public, which is what makes the
+install need no credential; that is load-bearing rather than incidental.
+
+**No `ee-control:` stamp is written here**, and that is the decision rather than
+an omission. A stamp names a control and the gate that deployed it, and no
+control says *the checker is installed* — SUP-001, SUP-002 and SUP-003 are about
+lockfiles, update proposals and frozen installs. The checker being present is
+what makes all three *checkable*, which is a different claim.
+
+`/register-adopt` dispatches this first, before its own pre-flight, so if you
+came through § 0 it has already happened. It is here as its own step because a
+guide that assumed the instrument was present is how the gap went unnoticed for
+as long as it did: inside the repository that defines the standard, `uv run
+register-check` resolves because the project being run is the project being
+checked.
 
 ## 3 — The gates
 
@@ -866,6 +933,9 @@ the deploying skill and the register contract; see
 
 ## 4 — Run the checker
 
+If `register-check` is not there, it is not installed — § 2.3 is the step that
+puts it there, and it is a step rather than an assumption.
+
 ```bash
 uv run register-check                    # the whole register
 uv run register-check run --tier 1       # Tier 1 only — note the `run`
@@ -1160,6 +1230,7 @@ Each row is done when its evidence exists, not when the step has been performed.
 
 | # | Step | Evidence |
 | --- | --- | --- |
+| 0 | The checker is installed, pinned and locked | `uv run register-check --version` runs, and your lockfile names `register-check` at the tag the register pins (§ 2.3). Nothing below can be evidenced without it |
 | 1 | Repository visibility or plan allows rulesets | `gh api repos/O/R/rulesets` returns a list |
 | 2 | Default-branch ruleset created | `repos/O/R/branches/BRANCH --jq .protected` is `true`, and a direct push is refused |
 | 3 | Secret scanning push protection on | `.security_and_analysis.secret_scanning_push_protection.status` is `enabled` |
@@ -1173,7 +1244,7 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 7c | The branch protection you recorded is the one GitHub enforces | `register-check run --control CI-001` with a token — the remote block reports the rules in effect, not the file |
 | 8 | The conformance run is a required status check | `uv run register-check` with a token reports GOV-001 `PASS` — from register contract 26 it reads which checks GitHub actually enforces on your default branch, and fails one your register requires and the platform does not. Without a token it reports `SKIPPED (no credentials)` and says which half it did verify |
 | 8a | A merge has actually been refused | A pull request whose required check fails cannot be merged. Four green links and a merge that goes through anyway is what no report can rule out (§ 4.2) |
-| 9 | CI carries a credential the remote blocks can answer from | The `Standard` run's report shows SEC-001's and SEC-003's remote blocks ✓ rather than `SKIPPED` or `UNCLASSIFIED` — and the token is an environment secret behind a branch policy, not a repository secret (§ 4.3) |
+| 9 | CI carries a credential the remote blocks can answer from | The conformance run's report shows SEC-001's and SEC-003's remote blocks ✓ rather than `SKIPPED` or `UNCLASSIFIED` — and the token is an environment secret behind a branch policy, not a repository secret (§ 4.3) |
 | 9a | That credential is named in your register before it exists | `register-check run --control SEC-003` passes rather than failing on a secret nothing names |
 | 10 | The conformance step passes `--require-complete` | A run that cannot verify a control fails the check rather than printing that it could not. Turn it on **after** row 9, not before |
 | 10a | The fork path, if you take fork pull requests | A test running the step's own script asserts it tolerates `3` and only `3` (§ 4.3). Do not write the branch if you do not need it |

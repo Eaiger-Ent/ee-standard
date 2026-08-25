@@ -325,6 +325,41 @@ an internal mirror is a reasonable thing for a repository to differ on without
 the checker changing, so it answers *yes* to
 [ADR 0018](adr/0018-register-checker-boundary.md)'s test.
 
+**`install` names where an adopting repository obtains the tool**, and is the
+one field here that is about a repository other than this one:
+
+```yaml
+  register-check:
+    source: lockfile
+    lockfile: uv.lock
+    invocation: uv run register-check
+    install:
+      repository: https://github.com/<owner>/<repo>   # https, so no credential
+      ref: v0.1.0                                     # a version tag, never a branch
+```
+
+It is optional, and it exists for the case `lockfile` cannot answer on its own:
+`source: lockfile` says a package manager owns the version, and says nothing
+about how the package got into the manifest. For every other tool that is not a
+question — `markdownlint-cli2` is on npm — and for the checker it was the whole
+of the gap ([ADR 0032](adr/0032-the-checker-is-installed-from-a-tagged-ref.md)):
+three Tier-1 controls run a command that, outside this repository, did not exist.
+
+`repository` must be an `https` URL, because an adopter clones it without being
+granted anything, and a scheme that needs a credential is an install nobody
+outside can run. `ref` must be a version tag such as `v1.2.3`. A branch resolves
+to whatever it says today — the defect DEV-001 refuses in an image tag and
+SUP-003 in an action ref — and a bare SHA is a pin that says nothing about which
+release it is. The address lives here rather than in the skill that reads it for
+the same reason `release_repo` does: a fork or an internal mirror is a
+reasonable thing for a repository to differ on without the checker changing.
+
+What is deliberately **not** here is the spelling that turns an address into a
+requirement. That is `ecosystems.<name>.git_dependency`, because PEP 440's
+direct reference is a fact about Python and not about this project — and a
+repository moving to an internal mirror would otherwise have to restate the
+grammar to change the host.
+
 **`invocation` is its mirror** — required under `source: lockfile` and
 `source: toolchain`, rejected under `source: literal`. A literal tool is
 installed onto `PATH` at each locus, so its pin is the version; the other two
@@ -426,6 +461,24 @@ is unable to satisfy. Inventing an idiom for ecosystems no gate deploys into
 would be worse than leaving it absent, which is why it is not required
 everywhere. Each command must contain the `{package}` placeholder; one with
 nowhere to put the name adds a different dependency every time, or none.
+
+**`git_dependency` is how this ecosystem spells a dependency on a git ref**, as
+the `{package}` that `add_dev_dependency` above then takes. It must name all
+three of `{package}`, `{repository}` and `{ref}`; a template that dropped one
+would compose an address that resolves to *something*, which is worse than one
+that does not compose.
+
+```yaml
+  python:
+    git_dependency: "{package} @ git+{repository}@{ref}"
+```
+
+It is optional, and its absence is a verdict rather than a default:
+`register-install` stops and says this ecosystem has no spelling for a git
+dependency instead of inventing one, because the wrong grammar fails at install
+time in the adopter's repository rather than here. Only `python` declares one
+today, and [ADR 0032](adr/0032-the-checker-is-installed-from-a-tagged-ref.md)
+§ The non-Python adopter is not solved records that as known.
 
 The evidence must come from a step in a workflow that runs on `push` or
 `pull_request`. A frozen install in a manually-triggered workflow shows what

@@ -551,19 +551,39 @@ and rewriting ten of them would spend the revision machinery on a
 find-and-replace.
 
 Per [ADR 0032](docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md)
-(**Accepted** 2026-08-24, **not yet implemented**) the
-checker reaches an adopting repository as a dependency pinned to a **tagged git
-ref** of this public repository, placed by a new skill, `register-install`,
-which owns nothing else and which `register-adopt` dispatches first. Not
-`gate-supply-chain` — no control names *the checker is installed* — and not the
-dispatcher's pre-flight, which verifies through the instrument it would be
-installing. This repository has **no tags today**, and the tag is what an
-adopter pins, so cutting `v0.1.0` is work that ADR creates.
+(**Accepted** 2026-08-24, **implemented** 2026-08-25 at register contract 29)
+the checker reaches an adopting repository as a dependency pinned to a **tagged
+git ref** of this public repository, placed by `register-install`, which owns
+nothing else and which `register-adopt` dispatches **before its own pre-flight**
+— a pre-flight that verifies through an instrument it does not have verifies
+nothing. Not `gate-supply-chain` — no control names *the checker is installed* —
+which is also why it is the one skill in the plugin that writes **no provenance
+stamp**: a stamp names a control, and there is none to name.
+
+The address is split across two register sections on purpose.
+`tools.register-check.install` holds `repository` and `ref`, because a fork or
+an internal mirror is a thing a repository differs on; `ecosystems.<name>.git_dependency`
+holds the spelling that joins them to a package name, because PEP 440's direct
+reference is a fact about Python. Composed in one field, moving to a mirror
+would mean restating the grammar. `git_dependency` is declared by **python
+alone**, and its absence elsewhere is a verdict — the skill stops rather than
+inventing an idiom that would fail in the adopter's repository instead of here.
+
+**`v0.1.0` exists** (cut 2026-08-25 on `055336d`), and the discipline ADR 0032
+predicted would be skipped is a test rather than an intention:
+`tests/test_register_install.py` fails the build if the register pins a tag this
+repository has not cut, or one whose commit declares a different
+`pyproject.toml` version. It deliberately does **not** compare the tag against
+the working tree — `install.ref` is the last *released* checker and the version
+in the tree is what the next release will be, so those legitimately differ.
+Whether a bot proposes a bump for a tagged git dependency is **not verified**
+and is recorded as unverified, not assumed.
 
 Gate skills live in `plugins/control-register/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,
 the whole family, plus `register-adopt`, the dispatcher that ships no templates
-because it writes no artefacts of its own. A gate verifies itself with
+because it writes no artefacts of its own, and `register-install`, which ships
+none because the one thing it writes — a dependency pin — belongs to no control. A gate verifies itself with
 `register-check run --control <ID>` and never by reading its own files back —
 that command runs the control's verify blocks through the same `run_control` the
 full audit calls, which is what makes "one assert implementation" true rather

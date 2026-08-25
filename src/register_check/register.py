@@ -78,8 +78,14 @@ _TOOL_ALLOWED = (
     "pinned_at",
     "invocation",
     "release_repo",
+    "install",
 )
 _TOOL_SOURCES = ("lockfile", "literal", "toolchain")
+_INSTALL_ALLOWED = ("repository", "ref")
+#: A git ref a repository may be pinned to. A tag, and a version tag: ADR 0032
+#: decided the pin, and a branch or a bare SHA would each be a different
+#: promise — a branch moves, and a SHA says nothing about which release it is.
+_VERSION_TAG = re.compile(r"v\d+\.\d+\.\d+")
 _ECOSYSTEM_ALLOWED = (
     "manifest",
     "lockfiles",
@@ -89,6 +95,7 @@ _ECOSYSTEM_ALLOWED = (
     "lock_entry",
     "add_dev_dependency",
     "frozen_install_command",
+    "git_dependency",
 )
 #: The ecosystem keys every ecosystem must declare. `add_dev_dependency` is not
 #: among them: it is required only of an ecosystem a stack names, because that
@@ -248,6 +255,26 @@ class Tool:
     # reasonable thing for a repository to differ on without the checker
     # changing, so it answers *yes* to ADR 0018's test.
     release_repo: str | None = None
+    # Where an adopting repository obtains this tool from, when obtaining it is
+    # not something its package manager already knows how to do. A register
+    # fact from contract 29 (ADR 0032): the checker reaches an adopter as a
+    # dependency pinned to a tagged ref of a repository, and which repository
+    # is a thing a fork or an internal mirror changes without the checker
+    # changing.
+    install: Install | None = None
+
+
+@dataclass(frozen=True)
+class Install:
+    """An address a skill can install a tool from, and the tag it is pinned to.
+
+    Two fields rather than one composed string, because the spelling that joins
+    them is the *ecosystem's* — `ecosystems.<name>.git_dependency` — and a
+    repository that changed its mirror would otherwise have to restate PEP 440.
+    """
+
+    repository: str
+    ref: str
 
 
 @dataclass(frozen=True)
@@ -288,6 +315,12 @@ class Ecosystem:
     # ecosystem's own patterns, so a gate cannot write a step the checker will
     # not credit.
     frozen_install_command: dict[str, str] = field(default_factory=dict)
+    # How this ecosystem spells a dependency on a git ref, as the `{package}`
+    # that `add_dev_dependency` above takes. Optional, and its absence is a
+    # verdict rather than a default: a skill that needs it says this ecosystem
+    # has no spelling for one, which is the same rule `add_dev_dependency`
+    # follows — an invented idiom is worse than an absent one.
+    git_dependency: str | None = None
 
 
 @dataclass(frozen=True)
@@ -988,6 +1021,31 @@ class _Validator:
                         "version recorded here and not the path it is reached by",
                     )
                     continue
+                install_raw = entry.get("install")
+                install: Install | None = None
+                if install_raw is not None:
+                    if not isinstance(install_raw, dict):
+                        self.error(f"{at}.install", "must be a mapping of repository and ref")
+                        continue
+                    self._unknown_keys(install_raw, _INSTALL_ALLOWED, f"{at}.install")
+                    repository = install_raw.get("repository")
+                    ref = install_raw.get("ref")
+                    if not isinstance(repository, str) or not repository.startswith("https://"):
+                        self.error(
+                            f"{at}.install.repository",
+                            "must be an https URL — an adopter clones it without a credential, "
+                            "and a scheme that needs one is an install nobody outside can run",
+                        )
+                        continue
+                    if not isinstance(ref, str) or not _VERSION_TAG.fullmatch(ref):
+                        self.error(
+                            f"{at}.install.ref",
+                            "must be a version tag such as v1.2.3 — a branch resolves to "
+                            "whatever it says today, which is the defect DEV-001 refuses in an "
+                            "image tag and SUP-003 in an action ref",
+                        )
+                        continue
+                    install = Install(repository=repository, ref=ref)
                 tools[str(name)] = Tool(
                     name=str(name),
                     source=str(source),
@@ -998,6 +1056,7 @@ class _Validator:
                     pinned_at=pinned_at,
                     invocation=invocation.strip() if isinstance(invocation, str) else None,
                     release_repo=release_repo,
+                    install=install,
                 )
         ecosystems: dict[str, Ecosystem] = {}
         ecosystems_raw = raw.get("ecosystems") or {}
@@ -1060,10 +1119,25 @@ class _Validator:
                             f"missing: {', '.join(uncovered)}",
                         )
                         continue
+                    git_dependency = entry.get("git_dependency")
+                    if git_dependency is not None and (
+                        not isinstance(git_dependency, str)
+                        or not {"{package}", "{repository}", "{ref}"} <= set(
+                            re.findall(r"\{\w+\}", git_dependency)
+                        )
+                    ):
+                        self.error(
+                            f"{at}.git_dependency",
+                            "must be a template naming {package}, {repository} and {ref} — one "
+                            "that dropped a field would compose an address that resolves to "
+                            "something, which is worse than one that does not compose",
+                        )
+                        continue
                     ecosystems[str(name)] = Ecosystem(
                         name=str(name),
                         add_dev_dependency=adds,
                         frozen_install_command=frozen,
+                        git_dependency=git_dependency,
                         **fields,
                     )
         predicates_raw = raw.get("predicates")

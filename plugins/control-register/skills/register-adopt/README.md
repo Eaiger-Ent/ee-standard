@@ -14,6 +14,17 @@ If a control has no gate, it is planned as **dispatch elsewhere** (DOC-001 is
 `08-adopting.md`. Neither is dropped from the plan — a control absent from the
 plan reads as a control that does not apply.
 
+## It dispatches `register-install` first, and that is not a gate
+
+Everything this skill does runs `register-check` — including the pre-flight that
+computes the plan. So Step 0 checks the checker is there and, if it is not,
+dispatches `/register-install`.
+
+It is not in the dispatch table below and is not selectable. No control names
+*the checker is installed*, so it deploys nothing and appears in no plan row; a
+plan that offered to skip it would offer to compute itself without the
+instrument it is computed with.
+
 ## Why the dispatch order is what it is
 
 Not alphabetical, and not the order the gates were built.
