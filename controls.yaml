@@ -412,7 +412,7 @@ tools:
     # one tool in the repository that is not pinned.
     install:
       repository: https://github.com/Eaiger-Ent/ee-standard
-      ref: v0.3.0
+      ref: v0.4.0
   uv:
     source: literal
     # Where the release artefact is fetched from, as for gitleaks. The
