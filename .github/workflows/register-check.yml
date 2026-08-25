@@ -18,18 +18,11 @@ permissions:
   contents: read
 
 jobs:
-  # The job id is the status-check context, and the default branch's ruleset
-  # requires `standard-check`. It is the last thing ADR 0031's rename moves,
-  # because a pull request cannot change a ruleset: the job, CI-001's
-  # `required_checks:` and the recorded ruleset are renamed together, in the
-  # same change as the confirmed API call that makes the platform agree.
-  #
-  # A second job reporting the new name was tried and is wrong. GOV-001 asks
-  # which job the blocking controls' steps are reached from and whether a
-  # ruleset requires *that* job — so a job that only mirrors another's result
-  # is a required check with no gate behind it, which is the T-3 shape the
-  # meta-control exists to catch.
-  standard-check:
+  # The job id is the status-check context CI-001 requires, so it is the same
+  # string in four places: here, in the register's `required_checks:`, in the
+  # recorded ruleset and in the ruleset GitHub enforces. Only the last is not a
+  # file, which is why renaming it took a change of its own (ADR 0031).
+  register-check:
     runs-on: ubuntu-latest
     steps:
       # SUP-003 — pinned to a commit SHA. Full history: gitleaks scans

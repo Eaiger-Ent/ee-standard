@@ -531,17 +531,19 @@ checker. **The repository is not renamed**: `Eaiger-Ent/ee-standard` is still
 its address, and `ee-standard` in a path, a URL, a volume name or the
 `EE_STANDARD` secret prefix means the repository rather than the plugin.
 
-**Four names have not moved yet, and must move together.** CI-001's
-`required_checks:`, the context in `.github/rulesets/default-branch.json`, the
-gating job's id in `.github/workflows/register-check.yml`, and the ruleset
-GitHub enforces all still read `standard-check`. GOV-001 fails a check the
-register requires and the platform does not enforce, and only a confirmed API
-call changes a ruleset — so move 2 is one pull request plus one `/gate-repo`
-call, and that pull request's first check run is expected to fail GOV-001 until
-the call is made. A **transitional job** reporting the old name was tried and is
-wrong: GOV-001 asks which job the blocking controls' steps are reached from, so
-a job that only mirrors another's result is a required check with no gate behind
-it. The ADR's revision 2 records this.
+**Move 2 landed 2026-08-25 at register contract 28**, and it is worth knowing
+why it needed a change of its own. The required status check's name is one
+string in four places — CI-001's `required_checks:`, the context in
+`.github/rulesets/default-branch.json`, the gating job's id in
+`.github/workflows/register-check.yml`, and the ruleset GitHub enforces — and
+only the last is not a file. GOV-001 fails a check the register requires and the
+platform does not enforce, so no part of it could move ahead of the others: the
+pull request moved three, a confirmed `/gate-repo` PUT moved the fourth, and the
+pull request's first check run failed GOV-001 until that call was made. A
+**transitional job** reporting the old name was tried and is wrong — GOV-001
+asks which job the blocking controls' steps are reached from, so a job that only
+mirrors another's result is a required check with no gate behind it. The ADR's
+revision 2 records this.
 
 Outside `docs/adr/`, `grep -rn 'standard[-_]check'` returning nothing is the
 finish condition. **Inside it, the old name stays** — an ADR is a dated record,

@@ -15,11 +15,17 @@
 // which is the more dangerous way round: nothing failed, and the file a reader
 // would trust was the incomplete one.
 //
+// **Re-applied on 2026-08-25, at register contract 28**, to rename the required
+// check from `standard-check` to `register-check` (ADR 0031 move 2). That is
+// the one part of CI-001 no pull request can change, so this file, the
+// register's `required_checks:`, the gating job's id and the platform all moved
+// in a single change — and this is the payload that moved the platform.
+//
 // The file is JSONC, as `.devcontainer/devcontainer.json` is, so that it can
 // carry its own stamp. `gate-repo` strips the comment lines before POSTing,
 // because GitHub's API takes strict JSON.
 {
-  // ee-control: CI-001  ee-skill: gate-repo@0.1.0  register: v0.19.0  register-contract: 19
+  // ee-control: CI-001  ee-skill: gate-repo@0.1.0  register: v0.22.0  register-contract: 28
   "name": "default-branch-protection",
   "target": "branch",
   "enforcement": "active",
@@ -55,17 +61,9 @@
       // job ids of the two gating workflows. A rule of this type naming no
       // context requires no check at all, which is what this file said before
       // contract 19 and what the assert now refuses.
-      //
-      // `standard-check` rather than `register-check`, for one more move. ADR
-      // 0031 renames the checker, and this file is the payload `gate-repo`
-      // PUTs — so the name changes here, in CI-001's `required_checks:`, in
-      // the gating job's id and on the platform itself in one change, which is
-      // move 2. Nothing in a pull request can change what GitHub enforces, and
-      // GOV-001 fails the moment the register asks for a check the platform
-      // does not have, so no part of this may move ahead of the others.
       "parameters": {
         "required_status_checks": [
-          { "context": "standard-check" },
+          { "context": "register-check" },
           { "context": "lint-md" }
         ],
         "strict_required_status_checks_policy": true,

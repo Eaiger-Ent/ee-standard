@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.21.0
+version: 0.22.0
 
 meta:
   owner: platform-engineering
@@ -283,14 +283,16 @@ meta:
   #     reading the old key finds nothing, which is the whole reason this
   #     number moves for a rename.
   #
-  #     CI-001's `required_checks:` does **not** move with it, and that is the
-  #     one deliberate lag in the change. GOV-001 fails a check the register
-  #     requires and the platform does not enforce, and a ruleset changes only
-  #     by an API call no pull request can make — so the register, the recorded
-  #     ruleset and the gating job keep the old name until that call is made,
-  #     and all four move together. ADR 0031 § The required check cannot be
-  #     renamed in one move.
-  register_contract: 27
+  #     CI-001's `required_checks:` did **not** move with it. Contract 28 is
+  #     that name, moved.
+  # 28: CI-001 requires `register-check` rather than `standard-check`, which is
+  #     the same string in four places — this list, the recorded ruleset, the
+  #     gating job's id, and the ruleset GitHub enforces. Only the last is not
+  #     a file, and no pull request can change it, so all four moved in one
+  #     change: this one, plus the confirmed API call that accompanied it.
+  #     GOV-001 reads the platform's enforced checks against this list, so a
+  #     rename that arrived here first would fail the run checking it.
+  register_contract: 28
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -1256,15 +1258,7 @@ controls:
           # pull_request, and must not be suppressed — a required check that
           # cannot fail is theme T-3 arriving through the ruleset.
           #
-          # `standard-check` rather than `register-check`, for one more move.
-          # ADR 0031 renames the checker, and GOV-001's remote half fails a
-          # check the register requires and the platform does not enforce — so
-          # this name, the recorded ruleset's and the gating job's all move in
-          # the same change as the confirmed API call that makes the platform
-          # agree. Renaming it here first would fail the run that is checking
-          # the rename. See ADR 0031 § The required check cannot be renamed in
-          # one move.
-          required_checks: [standard-check, lint-md]
+          required_checks: [register-check, lint-md]
           # `strict_required_status_checks_policy`. With it off, a check that
           # passed against stale code still counts, so a merge can be gated by a
           # run that never saw what it is merging.
@@ -1288,7 +1282,7 @@ controls:
           # definitions of "protected", free to drift — and the drift would be
           # invisible, since nothing compares two copies of a rule to each
           # other. `test_gate_repo_deploy.py` holds the two `args:` equal.
-          required_checks: [standard-check, lint-md]
+          required_checks: [register-check, lint-md]
           require_branches_up_to_date: true
     owner: platform-engineering
     deployed_by: gate-repo
