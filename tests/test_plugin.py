@@ -23,9 +23,9 @@ import pytest
 import yaml
 
 from conftest import REPO_ROOT, a_register
-from standard_check.provenance import MARKER, stamps_in
+from register_check.provenance import MARKER, stamps_in
 
-PLUGIN = REPO_ROOT / "plugins/ee-standard"
+PLUGIN = REPO_ROOT / "plugins/control-register"
 SKILLS = sorted(p for p in (PLUGIN / "skills").iterdir() if p.is_dir())
 
 
@@ -40,7 +40,7 @@ def _frontmatter(skill: Path) -> dict[str, object]:
 
 def test_the_plugin_declares_itself() -> None:
     manifest = json.loads((PLUGIN / ".claude-plugin/plugin.json").read_text(encoding="utf-8"))
-    assert manifest["name"] == "ee-standard"
+    assert manifest["name"] == "control-register"
     assert re.fullmatch(r"\d+\.\d+\.\d+", manifest["version"])
     # P7 is about dependencies being declared in JSON rather than in prose. An
     # empty list is a declaration; an absent key is not.
@@ -137,7 +137,7 @@ def test_the_templates_stamp_what_they_write(skill: Path) -> None:
     templates = sorted((skill / "templates").glob("*"))
     if not templates:
         # A skill that ships no templates must be one that writes no artefacts.
-        # `standard-adopt` is the only such skill and it is so by design: every
+        # `register-adopt` is the only such skill and it is so by design: every
         # artefact is written by the gate that owns the control, which is what
         # keeps one control's config in one place. A *gate* with no templates
         # would be a gate whose deployment has no reviewable source.
@@ -199,8 +199,8 @@ def test_the_gate_verifies_through_the_checker_and_not_otherwise(skill: Path) ->
     """One assert implementation, established rather than asserted.
 
     Phase 2's criterion is "verified by there being one copy, not by comparing
-    two". The one copy is `standard_check.asserts`; the only way a skill reaches
-    it is `standard-check run --control <ID>`, which evaluates the control's own
+    two". The one copy is `register_check.asserts`; the only way a skill reaches
+    it is `register-check run --control <ID>`, which evaluates the control's own
     verify blocks through the same `run_control` the full audit calls.
 
     So what is checked here is that every control the skill claims to deploy is
@@ -212,7 +212,7 @@ def test_the_gate_verifies_through_the_checker_and_not_otherwise(skill: Path) ->
     entry = _sidecar()["gates"].get(skill.name)
     if entry is None:
         pytest.skip(f"{skill.name} deploys nothing — there is no verify step to check")
-    verify = [line for line in text.splitlines() if "standard-check" in line and "run" in line]
+    verify = [line for line in text.splitlines() if "register-check" in line and "run" in line]
     assert verify, f"{skill.name} has no verify step that calls the checker"
     joined = " ".join(verify)
     for control in entry["controls"]:

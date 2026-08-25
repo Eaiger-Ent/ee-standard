@@ -36,7 +36,7 @@ The seventh is `gate-repo`, in § The sixth gate, and it completes the family.
 
 The eighth is the shipped devcontainer template, in § The template.
 
-The ninth is `standard-adopt`, in § The front door, which is the last piece of
+The ninth is `register-adopt`, in § The front door, which is the last piece of
 the phase.
 
 **Ten criteria of eleven are closed.** § Where Phase 2 finished holds the audit
@@ -98,7 +98,7 @@ that hides a tracked source file. Each is a `FAIL` naming what went.
 templates — one copy of the content — and the test proves those artefacts are
 accepted where a repository had none. It does not prove that a model follows the
 prose in `SKILL.md`, and no test can. That distinction is why the criterion is
-worded around what `standard-check` reports rather than around the skill running
+worded around what `register-check` reports rather than around the skill running
 to completion.
 
 ### Gates and checker share one assert implementation
@@ -106,10 +106,10 @@ to completion.
 The criterion asks for this to be *"verified by there being one copy, not by
 comparing two"*. Three things make that so:
 
-1. The one copy is `standard_check.asserts` — a single namespace merging
+1. The one copy is `register_check.asserts` — a single namespace merging
    `asserts_file` and `asserts_command`, which the register's closed assert set
    is validated against.
-2. The only way a skill reaches it is `standard-check run --control <ID>`, added
+2. The only way a skill reaches it is `register-check run --control <ID>`, added
    here. It runs the control's own verify blocks through `run_control`, the same
    function the full audit calls. A gate cannot pass itself where the auditor
    would fail it, because it is the auditor that answers.
@@ -164,7 +164,7 @@ where the two disagree** — two fields in one entry saying who deploys a contro
 free to drift apart, would be theme T-2 inside the one file that exists to
 prevent it.
 
-The stamp pattern itself moved to `standard_check.provenance`. It had two
+The stamp pattern itself moved to `register_check.provenance`. It had two
 definitions: the checker had none and the test had a regex, so the format the
 test accepted and the format anything else accepted were free to differ. The
 test now also requires *every* marker in a file to parse, not merely the first —
@@ -204,7 +204,7 @@ to stop reading only the first stamp in a file.
 
 ## Preflight P1–P11
 
-Run against `plugins/ee-standard/skills/gate-secrets` with
+Run against `plugins/control-register/skills/gate-secrets` with
 `preflight-check.sh`, which ships in `ee-skills` and cannot run in this
 repository's CI. Re-run on 2026-08-20 against `skill-preflight@0.1.15` after
 `/skill-update` moved it three versions — same result, and the check script is
@@ -226,7 +226,7 @@ overall: PASS, 0 failures
 ```
 
 The criterion says *every* SKILL.md, and five gate skills plus three
-`standard-*` skills do not exist yet, so it stays open. What this run
+`register-*` skills do not exist yet, so it stays open. What this run
 establishes is that the shape the rest will copy passes today.
 
 `tests/test_plugin.py` holds the checks only this repository can make — that the
@@ -261,7 +261,7 @@ TYP-001  FAIL  … and: no tracked file carries a provenance stamp naming
 TST-001  FAIL  no CI step runs the test command
 ```
 
-After deploying from the shipped templates, `standard-check run --control
+After deploying from the shipped templates, `register-check run --control
 LNT-001 --control TYP-001 --control TST-001` exits `0` — not `3`. That
 difference from `gate-secrets` is the point rather than an accident: all three
 controls verify from files and none declares a `remote` locus, so there is
@@ -563,17 +563,17 @@ exempts what it published. A second implementation would eventually disagree
 with the first, and the disagreement would surface as a commit blocked at one
 locus and waved through at another.
 
-So the hook runs `standard-check run --control SUP-003`. One assert, one
+So the hook runs `register-check run --control SUP-003`. One assert, one
 implementation, at both loci — the same argument that made a gate verify itself
-through `standard-check run --control <ID>` rather than by reading its own files
-back. `tools.standard-check` records how a locus reaches it, because a bare name
+through `register-check run --control <ID>` rather than by reading its own files
+back. `tools.register-check` records how a locus reaches it, because a bare name
 resolves from `PATH` (ADR 0020) and for this tool what answered would be
 auditing the repository.
 
 **Running the checker is not the same as auditing with it.** The first
 implementation of `supply_chain_gate_wired_at_all_loci` credited this
 repository's pre-commit locus immediately — and the hook it credited was
-`standard-check schema`, which validates the register and reads not one control.
+`register-check schema`, which validates the register and reads not one control.
 A SUP-003 gate that could never have failed SUP-003. `schema`, `meta`, `assert`
 and `explain` are now excluded by name, and `test_a_non_auditing_subcommand_is_not_this_locus`
 holds it.
@@ -589,7 +589,7 @@ and the skill checks for it before writing one.
 | Field | What it settles | Why it is not the checker's |
 | --- | --- | --- |
 | `ecosystems.<name>.frozen_install_command` | What a gate *writes* to install from the lockfile, keyed by the lockfile present | `uv sync --frozen` and `poetry install --sync` are both python. The same argument as `add_dev_dependency` at contract 13 |
-| `tools.standard-check` | How a locus reaches the checker | An adopter installs it as a dependency and reaches it however their package manager does |
+| `tools.register-check` | How a locus reaches the checker | An adopter installs it as a dependency and reaches it however their package manager does |
 | `SUP-00x.deployed_by` | Which gate owns these artefacts | The same statement contract 12 made for the quality controls |
 
 **The pair that cannot drift.** `frozen_install` is what the checker credits;
@@ -617,7 +617,7 @@ about a locus rather than about the property:
 SUP-003  FAIL
    ✓ file: actions-pinned-to-sha — every third-party action reference is pinned by SHA
    ✗ file: supply_chain_gate_wired_at_all_loci — pre-commit locus — no hook runs
-     'uv run standard-check' for SUP-003
+     'uv run register-check' for SUP-003
 ```
 
 And the reverse, on the deployed repository with one reference reverted to a
@@ -636,10 +636,10 @@ stamped now that the gate that owns them exists — and one genuinely new:
 
 | Artefact | Control | State |
 | --- | --- | --- |
-| `.github/workflows/standard-check.yml` — frozen install | SUP-001 | Adopted, stamped |
+| `.github/workflows/register-check.yml` — frozen install | SUP-001 | Adopted, stamped |
 | `.github/dependabot.yml` | SUP-002 | Adopted, stamped |
-| `.github/workflows/standard-check.yml` — the full audit | SUP-003 | Adopted, stamped; no step added |
-| `.pre-commit-config.yaml` — `standard-check-supply-chain` | SUP-003 | **New.** The locus that had never existed |
+| `.github/workflows/register-check.yml` — the full audit | SUP-003 | Adopted, stamped; no step added |
+| `.pre-commit-config.yaml` — `register-check-supply-chain` | SUP-003 | **New.** The locus that had never existed |
 
 `.github/dependabot.yml` is the eighth stamped file in this repository and the
 only one whose stamp sits at the top rather than at a section: every line of it
@@ -714,7 +714,7 @@ hadolint at no locus, and any site listed would be a site
 
 Working around that would have meant either installing an unused binary here or
 weakening a rule that exists for a good reason. Neither is the answer. The
-answer is that `standard-check run --control BLD-001` runs the `hadolint` block
+answer is that `register-check run --control BLD-001` runs the `hadolint` block
 through the same path the audit uses, so a repository with a Dockerfile needs no
 second wiring — and an absent linter reports `UNCLASSIFIED — cannot verify`
 (ADR 0016) rather than passing. What closes it is a `tools.hadolint` entry in
@@ -751,7 +751,7 @@ Twelve cases, including both halves failing independently:
 BLD-001  FAIL
    ✓ file: devcontainer_user_is_non_root — states a non-root user (remoteUser: vscode)
    ✗ file: gate_wired_at_declared_loci — pre-commit locus — nothing runs
-     'uv run standard-check' for BLD-001
+     'uv run register-check' for BLD-001
 ```
 
 and its mirror, with the user reverted to `root` on a fully deployed repository:
@@ -934,7 +934,7 @@ trailing comment fails here rather than at the API call.
 This gate calls an API whose effect is immediate and shared. No test can prove a
 model asks first. What can be held is that the skill says to, in terms that name
 the blast radius — *it affects every collaborator, not only you* — that it does
-not treat `standard-adopt`'s plan approval as covering a call that is not a
+not treat `register-adopt`'s plan approval as covering a call that is not a
 file, and that a failed call is never retried with a weaker ruleset. Those four
 sentences are asserted in `test_the_skill_confirms_before_it_calls`, which is a
 weaker guarantee than the others in this repository and is labelled as one.
@@ -963,7 +963,7 @@ than the register asks. If that reading is wanted, it is a register change.
 {"skill": "gate-repo", "overall": "PASS", "fails": 0}
 ```
 
-## The template — `plugins/ee-standard/templates/devcontainer/`
+## The template — `plugins/control-register/templates/devcontainer/`
 
 The eighth slice, and the first that is not code.
 
@@ -1053,13 +1053,13 @@ needs an operator with Docker, and the commands are in `08-adopting.md` § 2.0:
 ```bash
 grep -rl '{{' .devcontainer          # expect no output
 devcontainer build --workspace-folder .
-standard-check run --control BLD-001 --control DEV-001
+register-check run --control BLD-001 --control DEV-001
 ```
 
 Recorded as open rather than ticked. A criterion closed on a build nobody ran is
 the over-tick this document exists to catch.
 
-## The front door — `standard-adopt`
+## The front door — `register-adopt`
 
 The ninth slice, and the last. It writes no gate configuration: every artefact is
 written by the gate that owns the control, which is what keeps one control's
@@ -1141,15 +1141,15 @@ The criterion is ticked on the first and the second is recorded rather than
 glossed — which is the distinction seven re-opened boxes in this project exist to
 teach.
 
-### Preflight P1–P11 — `standard-adopt`
+### Preflight P1–P11 — `register-adopt`
 
 ```text
-{"skill": "standard-adopt", "overall": "PASS", "fails": 0}
+{"skill": "register-adopt", "overall": "PASS", "fails": 0}
 ```
 
 One test moved to accommodate it. `test_the_templates_stamp_what_they_write`
 required every skill to ship templates, which is right for a gate and wrong for
-a dispatcher: `standard-adopt` ships none **because** it writes no artefacts. The
+a dispatcher: `register-adopt` ships none **because** it writes no artefacts. The
 test now skips a skill with no templates only after checking it is not a gate —
 a gate with no templates would be one whose deployment has no reviewable source.
 
@@ -1185,7 +1185,7 @@ exactly the silence three of this phase's slices were spent removing.
 credential* is satisfied by a workflow **not** referencing one.
 `no-static-cloud-keys` reads every workflow file, which is the whole of the `ci`
 locus for a control whose content is an absence. There is no gate to install, no
-artefact to write, and so no stamp — which is why it is `standard-adopt`'s
+artefact to write, and so no stamp — which is why it is `register-adopt`'s
 *checked, not deployed* row rather than a gap.
 
 **SUP-002's `ci` locus is read, and measured.** Its assert reads a config file
@@ -1285,7 +1285,7 @@ uncommitted `.gitignore` both exit `0`, and both protect exactly one clone.
 **Watched failing**, all three, in `tests/test_asserts_file.py`, and end to end
 in `tests/test_gate_secrets_deploy.py` — where deleting the deployed rule, moving
 it to `.git/info/exclude`, and force-adding a credential file each fail SEC-001.
-`tests/test_standard_adopt.py` holds the last of it: after `standard-adopt` runs,
+`tests/test_register_adopt.py` holds the last of it: after `register-adopt` runs,
 the rule satisfying SEC-001 is the *template's own* `.devcontainer/.gitignore`,
 and deleting it fails the control. The template's comment is now true in the
 other direction.
@@ -1332,7 +1332,7 @@ what `GET /repos/Eaiger-Ent/ee-standard/rulesets/20937135` returns, transcribed.
 The live ruleset returns:
 
 ```json
-"required_status_checks":[{"context":"standard-check"},{"context":"lint-md"}]
+"required_status_checks":[{"context":"register-check"},{"context":"lint-md"}]
 ```
 
 Both contexts are dropped, along with every `pull_request` parameter. The
@@ -1360,7 +1360,7 @@ not anticipate.
 Neither changes a verdict, and both are the kind of drift that makes a reader
 trust the wrong file.
 
-`plugins/ee-standard/README.md` — the plugin's own front page — still listed
+`plugins/control-register/README.md` — the plugin's own front page — still listed
 `gate-supply-chain`, `gate-build` and `gate-iac` as *Phase 2* meaning unbuilt,
 and `gate-repo` as *Phase 3*. All six had shipped. The two genuinely unbuilt
 rows now name the phase that owns each rather than sharing a number with the
@@ -1382,13 +1382,13 @@ stamped artefact describing its own previous shape.
 Recorded because a review that lists only findings reads as though nothing else
 was looked at.
 
-The full suite passes, `ruff` and `mypy` are clean, `standard-check` exits `3`
+The full suite passes, `ruff` and `mypy` are clean, `register-check` exits `3`
 and `--require-complete` exits `1`. The ten pre-existing stamps parse and name
 real controls. `deploys.json`'s per-gate controls agree with every `deployed_by`,
 including SEC-002, which is listed under `gate-secrets` and deliberately has no
 `deployed_by` — it is verified from the workflows and has no artefact of its own.
 The workflow's tolerance of exit `3` is bounded in a comment and held by a Phase
-3 criterion. The required status check contexts on the platform — `standard-check`
+3 criterion. The required status check contexts on the platform — `register-check`
 and `lint-md` — match the job ids in both workflows.
 
 One thing was found and deliberately not treated as a defect: the shipped
@@ -1495,7 +1495,7 @@ imports `asserts_file`, so reading workflows from the latter would have been a
 cycle. The split between those two modules is by *what an assert reads*, not by
 `kind:`, and this move makes that more true rather than less.
 
-`standard-adopt`'s fixture gained `_ADOPTER_CHECKS`, one statement of what the
+`register-adopt`'s fixture gained `_ADOPTER_CHECKS`, one statement of what the
 adopter's job is called, read by both the deployment and the audit. That is
 `08-adopting.md` § 3.7 — *your register records your own files* — in miniature,
 and it is the first place in this repository where the adopter's register had to

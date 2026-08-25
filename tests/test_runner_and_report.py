@@ -8,10 +8,10 @@ from typing import Any
 import pytest
 
 from conftest import make_repo, minimal_register, write_register
-from standard_check.cli import main
-from standard_check.register import Register, load_register
-from standard_check.repo import Repo
-from standard_check.runner import Verdict, run_control, worst
+from register_check.cli import main
+from register_check.register import Register, load_register
+from register_check.repo import Repo
+from register_check.runner import Verdict, run_control, worst
 
 
 def _register_at(root: Path, document: dict[str, Any]) -> tuple[Register, Repo]:

@@ -150,7 +150,7 @@ empty set, so a non-git directory reports eight predicate skips and exits 0, and
 `gitleaks detect` prints "0 commits scanned … no leaks found" for a scan that
 examined nothing. Two exit criteria now cover the target-repo half.
 
-The **register** half is still open. `standard-check` parses `controls.yaml` and
+The **register** half is still open. `register-check` parses `controls.yaml` and
 reports on what it finds; a glob change, a schema regression, or a
 silently-caught parse error that yields zero controls produces a green run,
 because nothing failed. Phase 1.5's criteria cover unknown keys and asserts that
@@ -344,7 +344,7 @@ either repo sets.
 | A | This repo's working instructions; Tier-2/3 candidates | After Tier 1 is proven end to end |
 | A, scope-exemption vocabulary | [`01-register-schema.md`](01-register-schema.md), with Phase 1.5's `variance` work | Phase 1.5 — same question, same field |
 | B, `advisory` may carry no `verify` | [`01-register-schema.md`](01-register-schema.md) | Phase 1.5 — one sentence, and § E is already reworking the vocabulary |
-| B, register-level vacuity guard | `standard-check` — the half Phase 1.5 § C does not cover | Phase 1.5 |
+| B, register-level vacuity guard | `register-check` — the half Phase 1.5 § C does not cover | Phase 1.5 |
 | B, skip legitimacy = ownership of the precondition | Schema, as the criterion behind Phase 1.5's individual skip fixes | Phase 1.5 |
 | B, auto-fix corrupts silently | DOC-001 `enforces` text; `.claude/hooks/md-lint.py` | **Now** — it is unattended on every write |
 | B, repair-vs-report | A candidate control, not a note | Phase 2, with the gate skills |

@@ -26,7 +26,7 @@ from __future__ import annotations
 import re
 
 from conftest import REPO_ROOT
-from standard_check.asserts_command import _install_offences, _logical_lines
+from register_check.asserts_command import _install_offences, _logical_lines
 
 _SETUP = REPO_ROOT / ".devcontainer/setup.sh"
 

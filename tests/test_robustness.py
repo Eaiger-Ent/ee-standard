@@ -15,10 +15,10 @@ from pathlib import Path
 import pytest
 
 from conftest import a_register, make_repo, write_register
-from standard_check.cli import main
-from standard_check.register import VerifyBlock
-from standard_check.repo import Repo, strip_jsonc
-from standard_check.runner import Verdict, run_block, run_command_assert
+from register_check.cli import main
+from register_check.register import VerifyBlock
+from register_check.repo import Repo, strip_jsonc
+from register_check.runner import Verdict, run_block, run_command_assert
 
 _HOOK = "repos:\n  - repo: local\n    hooks:\n      - id: gitleaks\n"
 

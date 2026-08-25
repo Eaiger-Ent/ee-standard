@@ -24,8 +24,8 @@ import json
 import re
 
 from conftest import REPO_ROOT, a_register
-from standard_check.asserts_file import toolchain_version
-from standard_check.register import Tool
+from register_check.asserts_file import toolchain_version
+from register_check.register import Tool
 
 
 def _managed() -> tuple[str, ...]:

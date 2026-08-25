@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 2,
+  "gates": {
+    "gate-secrets": {
+      "contractVersion": 4,
+      "controls": [
+        "SEC-001",
+        "SEC-002",
+        "SEC-003"
+      ],
+      "artifacts": [
+        ".pre-commit-config.yaml#gitleaks",
+        ".github/workflows/register-check.yml#secret-scan",
+        ".devcontainer/setup.sh#gitleaks"
+      ]
+    },
+    "gate-supply-chain": {
+      "contractVersion": 3,
+      "controls": [
+        "SUP-001",
+        "SUP-002",
+        "SUP-003"
+      ],
+      "artifacts": [
+        ".github/workflows/register-check.yml#frozen-install",
+        ".github/dependabot.yml",
+        ".pre-commit-config.yaml#supply-chain",
+        ".github/workflows/register-check.yml#conformance",
+        ".devcontainer/setup.sh#package-manager"
+      ]
+    },
+    "gate-build": {
+      "contractVersion": 2,
+      "controls": [
+        "BLD-001",
+        "DEV-001"
+      ],
+      "artifacts": [
+        ".devcontainer/devcontainer.json#remoteUser",
+        ".devcontainer/devcontainer.json#image",
+        ".devcontainer/devcontainer-lock.json",
+        ".pre-commit-config.yaml#build"
+      ]
+    },
+    "gate-repo": {
+      "contractVersion": 3,
+      "controls": [
+        "CI-001"
+      ],
+      "artifacts": [
+        ".github/rulesets/default-branch.json"
+      ]
+    },
+    "gate-iac": {
+      "contractVersion": 2,
+      "controls": [
+        "IAC-001"
+      ],
+      "artifacts": [
+        ".pre-commit-config.yaml#iac",
+        ".github/workflows/register-check.yml#iac"
+      ]
+    },
+    "gate-quality": {
+      "contractVersion": 4,
+      "controls": [
+        "LNT-001",
+        "TYP-001",
+        "TST-001"
+      ],
+      "artifacts": [
+        ".devcontainer/devcontainer.json#customizations.vscode.extensions",
+        ".vscode/settings.json#editor-binding",
+        ".pre-commit-config.yaml#lint",
+        ".pre-commit-config.yaml#typecheck",
+        ".github/workflows/register-check.yml#lint",
+        ".github/workflows/register-check.yml#type-check",
+        ".github/workflows/register-check.yml#tests"
+      ]
+    }
+  }
+}

@@ -36,15 +36,15 @@ plugin shipping `skill-sync`, `skill-update`, `marketplace-replace-local`) and
 the dispatcher model used by `design-authoring`.
 
 ```text
-plugins/ee-standard/
+plugins/control-register/
   .claude-plugin/
     plugin.json          name, version, dependencies
     deploys.json         sidecar — see § The deploys sidecar
   LICENSE                required by CI on every plugin
   skills/
-    standard-adopt/      dispatcher — the front door
-    standard-check/      installs + wraps the conformance checker
-    standard-variance/   classifies and reports local deltas
+    register-adopt/      dispatcher — the front door
+    register-check/      installs + wraps the conformance checker
+    register-variance/   classifies and reports local deltas
     gate-secrets/        SEC-001, SEC-002
     gate-supply-chain/   SUP-001, SUP-002, SUP-003
     gate-build/          BLD-001, DEV-001
@@ -64,7 +64,7 @@ is not what `/skill-submit-new` reads. Both differences are Phase 6's and are
 recorded in [`05-promotion.md`](05-promotion.md) § What the incubator actually
 holds rather than restated here.
 
-## The dispatcher: `standard-adopt`
+## The dispatcher: `register-adopt`
 
 The only entry point a user needs.
 
@@ -75,7 +75,7 @@ The only entry point a user needs.
    version, action. Nothing is written yet.
 3. **Confirm** — one `AskUserQuestion` covering the whole plan.
 4. **Dispatch** — invoke each needed `gate-*` skill in dependency order.
-5. **Verify** — run `standard-check` and report. A gate that deployed but does
+5. **Verify** — run `register-check` and report. A gate that deployed but does
    not verify is reported as a failure of the adoption, not a success.
 6. **Commit** — one commit, conventional format, listing the control IDs
    deployed.
@@ -109,21 +109,21 @@ It is the only gate that changes something outside the repository, so it always
 confirms explicitly before acting, regardless of the plan already approved in
 step 3.
 
-## The checker: `standard-check`
+## The checker: `register-check`
 
 **The checker is not a skill.** It is an ordinary executable, installed from a
 pinned version, that reads `controls.yaml` and exits non-zero on failure. CI runs
 it with no Claude present — that is the whole point of the plugin boundary.
 
-The `standard-check` *skill* does two things a binary cannot: install and pin the
+The `register-check` *skill* does two things a binary cannot: install and pin the
 binary, and explain a failure in context with a proposed fix.
 
 ```bash
-standard-check                 # all applicable controls; exit 1 on any failure
-standard-check run --tier 1    # subset — the subcommand is required
-standard-check explain SEC-001 # what it checks, why, and the standard it cites
-standard-check meta GOV-001    # the meta-controls
-standard-check schema          # validate controls.yaml itself
+register-check                 # all applicable controls; exit 1 on any failure
+register-check run --tier 1    # subset — the subcommand is required
+register-check explain SEC-001 # what it checks, why, and the standard it cites
+register-check meta GOV-001    # the meta-controls
+register-check schema          # validate controls.yaml itself
 ```
 
 Verdicts are `PASS`, `FAIL`, `SKIPPED (predicate)`, `SKIPPED (no credentials)`,
@@ -147,7 +147,7 @@ knowable at the moment it becomes true.
 | --- | --- | --- |
 | On install | A newly installed plugin deploys config; none present in this repo | "`lint-md` installed. It deploys a config, a hook and a CI step — run `/lint-md` to wire it." |
 | On update | A plugin moved past a version where *what it writes* changed | "`lint-md` 1.0.6 → 1.1.0 changes its deployed config. Re-run to pick it up." |
-| On sweep | The deployed artefact has been edited away from what the skill would write | Reported by `standard-variance` with its direction |
+| On sweep | The deployed artefact has been edited away from what the skill would write | Reported by `register-variance` with its direction |
 
 ### The noise control
 
@@ -173,7 +173,7 @@ silent through every release that did not change the output.
       "controls": ["SEC-001", "SEC-002"],
       "artifacts": [
         ".pre-commit-config.yaml#gitleaks",
-        ".github/workflows/standard-check.yml#secret-scan"
+        ".github/workflows/register-check.yml#secret-scan"
       ]
     }
   }
@@ -213,7 +213,7 @@ still one file at one path, and the gate a stamp names is the key to compare
 against.
 
 It gains a read-only reconciliation section and an offer to hand off to
-`standard-adopt`. It never writes gate config itself. `lint-md` sets
+`register-adopt`. It never writes gate config itself. `lint-md` sets
 `disable-model-invocation: true` anyway, so recommending is the only available
 move — the correct constraint rather than an obstacle.
 
@@ -224,7 +224,7 @@ were never deployed would report success — precisely the wrong answer. That
 criterion must widen from *a stale plugin* to *a stale plugin or an owed
 deployment*, or the new report will be computed and then contradicted by the
 summary printed underneath it. This is a `skill-submit-amend` against
-`ee-skills-manage`, tracked separately from the `ee-standard` submission.
+`ee-skills-manage`, tracked separately from the `control-register` submission.
 
 ### Loudness
 
@@ -233,7 +233,7 @@ and rung of the controls each pending deployment carries. A Tier-1 security
 control awaiting deployment reads differently from a markdown rule without
 inventing a severity field to say so.
 
-In CI, `standard-check` **reports** a pending deployment rather than failing on
+In CI, `register-check` **reports** a pending deployment rather than failing on
 it — except where the owed deployment belongs to a Tier-1 control, which fails.
 That is the ratchet: stability everywhere it can be afforded, and no quiet
 erosion where it cannot.
@@ -272,7 +272,7 @@ Plus, from `CONTRIBUTING.md`:
   hardcoded path breaks when the plugin is copied into the install cache.
 - An entry is required in both `marketplace.json` and `readme-meta.json`.
 
-The 500-line limit is the binding constraint on `standard-adopt`. The dispatcher
+The 500-line limit is the binding constraint on `register-adopt`. The dispatcher
 must stay a dispatcher: plan, confirm, delegate, verify, report. Every table of
 per-control detail belongs in the register or a `templates/` file the skill
 reads, not inline in the SKILL.md.

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from conftest import make_repo
-from standard_check.predicates import PredicateSyntaxError, compile_predicate
+from register_check.predicates import PredicateSyntaxError, compile_predicate
 
 
 def test_boolean_predicates() -> None:

@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from conftest import a_register, make_repo
-from standard_check.asserts_file import (
+from register_check.asserts_file import (
     dependency_update_config_covers_all_ecosystems,
     devcontainer_image_digest_pinned,
     devcontainer_lock_covers_all_features,

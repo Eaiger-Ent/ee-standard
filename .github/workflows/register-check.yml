@@ -1,0 +1,163 @@
+# The conformance gate. Every blocking control with a ci locus is reachable
+# from this workflow (GOV-001): the quality gates run individually for
+# readable failures, then `register-check` runs the whole register.
+name: Conformance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Declared rather than defaulted, because the Conformance step below hands this
+# token to `register-check` so its `kind: remote` blocks can read platform state
+# (ADR 0021). `contents: read` is what `actions/checkout` needs and what reading
+# a branch's effective rules needs; nothing in this workflow writes. No
+# provenance stamp: no gate deploys this block, and a stamp naming one would
+# claim a deployment that never happened.
+permissions:
+  contents: read
+
+jobs:
+  # The job id is the status-check context, and the default branch's ruleset
+  # requires `standard-check`. It is the last thing ADR 0031's rename moves,
+  # because a pull request cannot change a ruleset: the job, CI-001's
+  # `required_checks:` and the recorded ruleset are renamed together, in the
+  # same change as the confirmed API call that makes the platform agree.
+  #
+  # A second job reporting the new name was tried and is wrong. GOV-001 asks
+  # which job the blocking controls' steps are reached from and whether a
+  # ruleset requires *that* job — so a job that only mirrors another's result
+  # is a required check with no gate behind it, which is the T-3 shape the
+  # meta-control exists to catch.
+  standard-check:
+    runs-on: ubuntu-latest
+    steps:
+      # SUP-003 — pinned to a commit SHA. Full history: gitleaks scans
+      # commits (SEC-001) and GOV-002 compares baselines against main.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        run: |
+          # renovate: datasource=pypi depName=uv
+          pip install uv==0.12.5
+
+      # ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  register: v0.14.0  register-contract: 14
+      #
+      # Adopted, not deployed: hand-written in Phase 0.5 and stamped when the
+      # gate that owns it was built. It sits above every other gate's steps
+      # because they run the tools it places — an ordering the gate writes
+      # deliberately rather than by where the file happened to grow.
+      - name: Install dependencies (frozen)
+        # SUP-001 — install from the committed lockfile, never re-resolve.
+        run: uv sync --frozen
+
+      # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  register: v0.11.0  register-contract: 11
+      #
+      # Adopted, not deployed: hand-written in Phase 0.5 and stamped when the
+      # gate that owns it was built. The version and digest below are the
+      # register's, and `tool_versions_match_register` holds them to it.
+      - name: Install gitleaks
+        # SEC-001 — same pinned version as .devcontainer/setup.sh.
+        run: |
+          # renovate: datasource=github-releases depName=gitleaks/gitleaks
+          GITLEAKS_VERSION=8.30.1
+          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tgz" | sha256sum -c -
+          tar -xzf gitleaks.tgz gitleaks
+          sudo install gitleaks /usr/local/bin/gitleaks
+          rm gitleaks gitleaks.tgz
+
+      - name: Install markdownlint
+        # DOC-001 — the full conformance run below re-verifies the markdown
+        # gate, so its binary must be present at this locus too. Version from
+        # package-lock.json; `npm ci` is also SUP-001's frozen node install.
+        run: npm ci --no-audit --no-fund
+
+      # ee-control: LNT-001  ee-skill: gate-quality@0.1.0  register: v0.12.0  register-contract: 12
+      #
+      # Adopted, not deployed. The three steps below are one gate's ci locus:
+      # `gate-quality` writes them together because they share a workflow and a
+      # frozen install, and splitting them across three skills would have three
+      # skills editing one file. Each is invoked through `uv run`, so the
+      # version is uv.lock's at every locus rather than a literal here.
+      - name: Lint
+        run: uv run ruff check .
+
+      # ee-control: TYP-001  ee-skill: gate-quality@0.1.0  register: v0.12.0  register-contract: 12
+      - name: Type check
+        run: uv run mypy
+
+      # ee-control: TST-001  ee-skill: gate-quality@0.1.0  register: v0.12.0  register-contract: 12
+      - name: Tests
+        run: uv run pytest
+
+      # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  register: v0.11.0  register-contract: 11
+      - name: Secret scan
+        run: gitleaks detect --no-banner --redact
+
+      # ee-control: SUP-003  ee-skill: gate-supply-chain@0.1.0  register: v0.14.0  register-contract: 14
+      #
+      # SUP-003's ci locus. No step of its own: this full audit runs the checker
+      # with no `--control`, so it reaches every applicable control including
+      # SUP-003, and a second step would be the same check twice. The gate
+      # checks for exactly this before writing one.
+      - name: Conformance
+        # Actions does not put GITHUB_TOKEN in a step's environment; a workflow
+        # has to hand it over. Without this the remote blocks would report
+        # SKIPPED (no credentials) on a runner that had a usable token sitting
+        # right there — the checker declining to answer a question it could
+        # have answered (ADR 0021).
+        #
+        # From register contract 25 the credential handed over is
+        # PLATFORM_READ_TOKEN, the standing fine-grained token ADR 0022 governs
+        # and `platform_credentials:` names. It exists for one permission the
+        # job token does not carry — `Administration: read` — without which
+        # SEC-001's remote block cannot see `security_and_analysis` and reports
+        # UNCLASSIFIED over a repository where push protection is on.
+        #
+        # The fallback is not belt-and-braces. A pull request **from a fork**
+        # receives no repository secret, so the expression is empty there and
+        # the job token answers what it can: this repository is public, fork
+        # pull requests are a shape it must survive, and a run that reported
+        # SKIPPED (no credentials) because one secret was absent would decline
+        # to answer CI-001 as well, which the job token can answer perfectly
+        # well.
+        env:
+          GITHUB_TOKEN: ${{ secrets.PLATFORM_READ_TOKEN || github.token }}
+          # Read into the environment rather than interpolated into the script
+          # below. The value is a boolean GitHub computes and could not carry an
+          # injection, but an expression expanded into shell is a shape worth
+          # not having in a file other repositories read.
+          FROM_A_FORK: ${{ github.event.pull_request.head.repo.fork }}
+        # Exit codes per ADR 0016: 0 fully verified and clean, 1 a verified
+        # violation, 3 no violation but something could not be verified.
+        #
+        # `--require-complete` promotes 3 to 1, and this step passes it from
+        # 2026-08-24. That ends the tolerance ADR 0016 § Ratified tolerance
+        # ratified on 2026-08-17 and re-bounded twice: a run that cannot verify
+        # a control now fails, rather than printing that it could not and
+        # passing anyway. What made it possible was not one thing — the token
+        # PLATFORM_READ_TOKEN (contract 25) let SEC-001 and SEC-003 answer, and
+        # GOV-001 dropping its `partial:` (contract 26) removed the thing that
+        # denied this run a 0 by design whatever the credentials.
+        #
+        # One case survives, and it is not a residue of the old tolerance. A
+        # pull request from a fork receives no repository secret, so the token
+        # above resolves to the job token, SEC-001's remote block cannot read
+        # `security_and_analysis`, and the run reports UNCLASSIFIED for a
+        # control that holds. Failing there would fail a contributor for a
+        # credential this repository deliberately does not give them. So a fork
+        # run tolerates 3, and only 3 — a verified violation still fails, and
+        # the incompleteness is still printed on every run.
+        run: |
+          if [ "$FROM_A_FORK" = "true" ]; then
+            uv run register-check && status=0 || status=$?
+            if [ "$status" -ne 0 ] && [ "$status" -ne 3 ]; then
+              exit "$status"
+            fi
+          else
+            uv run register-check --require-complete
+          fi
+

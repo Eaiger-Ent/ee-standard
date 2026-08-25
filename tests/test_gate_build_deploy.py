@@ -26,10 +26,10 @@ import pytest
 import yaml
 
 from conftest import REPO_ROOT, make_repo
-from standard_check.cli import main
-from standard_check.register import Register, load_register
+from register_check.cli import main
+from register_check.register import Register, load_register
 
-SKILL = REPO_ROOT / "plugins/ee-standard/skills/gate-build"
+SKILL = REPO_ROOT / "plugins/control-register/skills/gate-build"
 REGISTER_PATH = REPO_ROOT / "controls.yaml"
 SKILL_VERSION = "0.1.0"
 _CONTROLS = ("BLD-001", "DEV-001")
@@ -77,7 +77,7 @@ def _render(template: str, register: Register) -> str:
     A placeholder left unfilled is a failure here rather than an artefact
     deployed with `{{IMAGE_DIGEST}}` in it.
     """
-    tool = "standard-check"
+    tool = "register-check"
     text = template
     for placeholder, value in {
         "{{TOOL}}": tool,
@@ -237,7 +237,7 @@ def test_the_deployed_devcontainer_is_still_readable(deployed: Path) -> None:
     with a JSONC reader. A round trip through a JSON writer would drop them —
     which is why the skill merges rather than reparses.
     """
-    from standard_check.repo import load_jsonc
+    from register_check.repo import load_jsonc
 
     doc = load_jsonc(deployed / ".devcontainer/devcontainer.json")
     assert isinstance(doc, dict)
@@ -351,7 +351,7 @@ def test_a_full_audit_reaches_both_controls_without_a_selective_step(
     extra step. If the checker did not credit it, the skill's instruction to
     write nothing would leave both controls failing.
     """
-    invocation = _register().tools["standard-check"].invocation
+    invocation = _register().tools["register-check"].invocation
     for name in (".pre-commit-config.yaml", ".github/workflows/ci.yml"):
         path = deployed / name
         path.write_text(

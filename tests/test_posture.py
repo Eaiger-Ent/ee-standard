@@ -30,7 +30,7 @@ import pytest
 
 from conftest import REPO_ROOT, a_register
 
-PLUGIN = REPO_ROOT / "plugins/ee-standard"
+PLUGIN = REPO_ROOT / "plugins/control-register"
 ADR = REPO_ROOT / "docs/adr/0022-a-platform-token-ci-carries.md"
 BUILD_PLAN = REPO_ROOT / "docs/04-build-plan.md"
 

@@ -3,7 +3,7 @@
 Field-by-field specification for `controls.yaml`. Concepts behind these fields
 are in [`00-concepts.md`](00-concepts.md).
 
-The register is validated by `standard-check schema` on every commit. A malformed
+The register is validated by `register-check schema` on every commit. A malformed
 register is a build failure, not a warning — everything downstream derives from
 it, so an unparseable register means no control is enforced.
 
@@ -175,7 +175,7 @@ The three kinds are distinguished by *what performs the verification*, not by
 which module implements it: `command` shells out to an external tool and reads
 its exit code, `file` runs an in-process assertion over repository files, and
 `remote` reads platform API state. An in-process assertion declared as
-`kind: command` — the `standard-check assert <name>` form used before contract
+`kind: command` — the `register-check assert <name>` form used before contract
 3 — is now a schema error. It is not cosmetic: GOV-001 derives reachability from
 `kind: command` blocks, so the miscategorisation decided that control's verdict.
 
@@ -191,7 +191,7 @@ Any block may declare that it is not yet fully implemented ([ADR
 
 ```yaml
   - kind: command
-    run: standard-check meta GOV-001
+    run: register-check meta GOV-001
     partial:
       unverified: >-
         whether the CI workflow is a required status check
@@ -216,7 +216,7 @@ meta_controls:
   - id: GOV-002
     verify:
       - kind: command
-        run: standard-check meta GOV-002
+        run: register-check meta GOV-002
 ```
 
 It runs **in process** — `verify_meta.py` matches that exact shape and calls the
@@ -232,7 +232,7 @@ unifying the two would mean widening every assert's return type to carry a
 verdict — a cost paid by eight asserts to tidy three blocks.
 
 **And it decides nothing.** The reason contract 3 rejected the
-`standard-check assert …` spelling was that GOV-001 derives reachability from
+`register-check assert …` spelling was that GOV-001 derives reachability from
 `kind: command` blocks, so the miscategorisation chose a control's verdict.
 GOV-001 iterates `register.controls` and never `meta_controls`, so the same
 mistake here reaches no verdict at all.
@@ -354,7 +354,7 @@ assert checks each declared locus against this form, so a locus reverting to
     version: "8.30.1"
     pinned_at:
       - .devcontainer/setup.sh
-      - .github/workflows/standard-check.yml
+      - .github/workflows/register-check.yml
 ```
 
 `tool_versions_match_register` reads exactly these paths. A declared site that
@@ -363,7 +363,7 @@ the same silence, and silence reading as agreement is what this field was moved
 out of the checker to stop. A toolchain file is held to the same two rules for
 the same reason: untracked fails, and tracked-but-naming-no-version fails, since
 either leaves every locus resolving as though the file were not there. Until contract 8 the loci were four of this
-repository's own filenames inside `standard-check`, so renaming a workflow took
+repository's own filenames inside `register-check`, so renaming a workflow took
 it out of comparison with no verdict changing, and an adopting repository was
 told its tools were pinned at no known locus against paths it had never had
 (`docs/09-phase-1.5-review.md` § H2).

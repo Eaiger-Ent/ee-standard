@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-24
-**Revision:** 1
+**Revision:** 2
 
 ## Background
 
@@ -137,22 +137,52 @@ that pull request can never merge: GitHub waits forever for a context nothing
 reports. It is § 4.2 of [`08-adopting.md`](../08-adopting.md) read from the
 other end.
 
-So the rename lands in **three moves**, forced by the platform:
+So the rename lands in **two moves**, forced by the platform:
 
-1. Rename everything, **keeping a job that still reports `standard-check`**
-   alongside the new `register-check`. This pull request can merge.
-2. Re-run `/gate-repo` so the ruleset requires `register-check`. A confirmed API
-   call, per that gate's update question.
-3. Remove the transitional job. This pull request can merge, because the ruleset
-   now requires the check that remains.
+1. Rename everything the register does not hold against the platform: the
+   package, the executable, the plugin, the skills, the workflow *file*, the
+   tests and the documents. Four things keep the old name — CI-001's
+   `required_checks:`, the recorded ruleset's context, the gating job's id, and
+   the ruleset GitHub enforces. This pull request can merge, because nothing it
+   changes is a status-check context.
+2. Rename those four **in one change**: a pull request moving the other three,
+   and a confirmed `/gate-repo` API call moving the platform. The pull request's
+   first check run fails GOV-001 — the register asks for a check the platform
+   does not yet enforce — and passes once the call has been made. It then merges
+   against a ruleset requiring the check its own branch reports.
 
-The intermediate state has two names for one thing, which is ordinarily the
-failure this repository exists to prevent. It is tolerable here for one reason
-and only one: it is bounded by a single pull request, and neither name is
-authoritative during it — the register names one of them, and the other exists
-solely to satisfy a ruleset that is about to stop asking for it. If move 3 is
-not taken in the same session, the transitional job is a second copy and should
-be treated as a defect.
+**Amended 2026-08-25: this was three moves, and the middle one does not work.**
+The original sequence kept a second job reporting `standard-check` while a new
+`register-check` job did the work, so that the ruleset always had a context to
+wait for. GOV-001 refuses it. The meta-control asks which job the blocking
+controls' steps are reached from and whether a ruleset requires *that* job — so
+a job that only mirrors another's result is a required check with no gate behind
+it, which is the T-3 shape GOV-001 exists to catch. It was written, run, and
+failed with all eleven blocking controls named. Duplicating the whole job under
+both ids would satisfy GOV-001 and is a second copy of the gate, which is worse
+than the thing being avoided.
+
+What is left is a smaller intermediate state than the one first planned: no
+duplicate job, and the two names coexist only between the pull request opening
+and the API call — long enough for one red check run, which is the run that
+proves the platform had not been changed yet. The cost is that any *other* pull
+request open across that call is blocked until it is rebased onto the new job
+id, which is a reason to make the call promptly rather than a reason not to.
+
+### The finish condition stops at the ADR corpus
+
+`grep -rn 'standard[-_]check'` returning nothing is the finish condition
+**outside `docs/adr/`**. An ADR is a dated record of a decision taken, and the
+ten accepted ADRs that mention the checker were correct on their dates; rewriting
+them would spend [ADR 0025](0025-an-amendment-is-a-recorded-revision.md)'s
+revision machinery — which exists to make governance acts visible — on a
+find-and-replace, and would leave ten ADRs whose revision history says nothing
+about what was decided. The corpus is governed by
+[ADR 0026](0026-an-adr-stands-on-its-own.md), and a reader who greps an old ADR's
+`standard-check` finds this one.
+
+Everywhere else the name is a live reference — something a reader would type, a
+path they would open, or a file a machine reads — and there it changes.
 
 ### The register contract bumps
 
@@ -184,6 +214,13 @@ Anyone with the current plugin installed has to reinstall it under the new name;
 there is no rename path for an installed plugin. Nobody outside this repository
 has it installed today, which is the reason to do this now rather than after the
 marketplace submission.
+
+## Revision History
+
+| # | Date | Change | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-24 | Original decision: the plugin, checker and non-gate skills are named for the register | Nathan Carney |
+| 2 | 2026-08-25 | The rename is two moves, not three: GOV-001 refuses a transitional job that reports a context with no gate behind it. The finish-condition grep is bounded to exclude the ADR corpus | Nathan Carney |
 
 ## Related ADRs
 

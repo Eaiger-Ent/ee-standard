@@ -19,7 +19,7 @@ Phase 2, alongside the gates. That is right for the **template** — the artefac
 this repo ships to consumers, which Phase 2 still owns. It is wrong for **this
 repo's own environment**, for two reasons:
 
-**Phase 1 is development work.** Building `standard-check` means writing and
+**Phase 1 is development work.** Building `register-check` means writing and
 running Python. If that happens on a host toolchain, the first thing the
 standard repo does is violate the premise it exists to enforce.
 
@@ -203,7 +203,7 @@ and uv reads it at every locus. That is the one place, and now it really is one:
 | File | What it decides |
 | --- | --- |
 | `.python-version` | The interpreter every locus runs the gates on. **Change this one.** |
-| `pyproject.toml` `requires-python` | Which interpreters `standard-check` claims to support. A floor, published in package metadata — not this container's choice |
+| `pyproject.toml` `requires-python` | Which interpreters `register-check` claims to support. A floor, published in package metadata — not this container's choice |
 
 **Why the shebangs still say `uv run`.** `.python-version` binds only what goes
 through uv, and while the feature existed a bare `python3` in a login shell was

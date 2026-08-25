@@ -2,7 +2,7 @@
 # `requires-python` in pyproject.toml is true.
 #
 # `.python-version` names the interpreter every locus runs the gates on
-# (ADR 0027). `requires-python` names the oldest interpreter standard-check
+# (ADR 0027). `requires-python` names the oldest interpreter register-check
 # claims to work on, and adopters install it as a dependency, so somebody is on
 # that floor. When the two differ, nothing runs on the floor unless this job
 # does — a property published in package metadata and tested nowhere, which is

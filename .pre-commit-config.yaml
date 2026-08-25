@@ -63,16 +63,16 @@ repos:
       # nothing until contract 14. The gate is the checker itself: no
       # third-party action linter shares this register's notion of an
       # owner-exempt action, and a second implementation would eventually
-      # disagree with the first. Reached through `tools.standard-check.invocation`
+      # disagree with the first. Reached through `tools.register-check.invocation`
       # rather than by name, because a bare name resolves from PATH and what
       # answered would be auditing this repository (ADR 0020).
       #
-      # The hook below it runs `standard-check schema`, which validates the
+      # The hook below it runs `register-check schema`, which validates the
       # register and reads no control at all — which is why that one does not
       # count as this locus and this one exists.
-      - id: standard-check-supply-chain
-        name: standard-check (SUP-003)
-        entry: uv run standard-check run --control SUP-003
+      - id: register-check-supply-chain
+        name: register-check (SUP-003)
+        entry: uv run register-check run --control SUP-003
         language: system
         pass_filenames: false
         files: ^\.github/workflows/.*\.ya?ml$
@@ -85,18 +85,18 @@ repos:
       # the same binary twice for no extra verdict — but the stamp read-back
       # matches on the control being evaluated, so one stamp would leave the
       # other control's pre-commit locus unrecorded.
-      - id: standard-check-build
-        name: standard-check (BLD-001, DEV-001)
-        entry: uv run standard-check run --control BLD-001 --control DEV-001
+      - id: register-check-build
+        name: register-check (BLD-001, DEV-001)
+        entry: uv run register-check run --control BLD-001 --control DEV-001
         language: system
         pass_filenames: false
         files: ^(Dockerfile|.*/Dockerfile|\.devcontainer/.*)$
 
       # The register is validated on every commit that touches it
       # (docs/01-register-schema.md).
-      - id: standard-check-schema
+      - id: register-check-schema
         name: register schema
-        entry: uv run standard-check schema
+        entry: uv run register-check schema
         language: system
         pass_filenames: false
         files: ^controls\.yaml$

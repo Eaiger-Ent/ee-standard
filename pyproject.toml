@@ -1,4 +1,4 @@
-# standard-check — the conformance checker for the ee-standard control register.
+# register-check — the conformance checker for the Equal Experts control register.
 #
 # The checker is an ordinary executable, not a skill: CI runs it with no Claude
 # present (docs/00-concepts.md § The plugin boundary). This file is also the
@@ -6,9 +6,9 @@
 # locus references these tables, none carries its own copy.
 
 [project]
-name = "standard-check"
+name = "register-check"
 version = "0.1.0"
-description = "Conformance checker for the ee-standard control register"
+description = "Conformance checker for the Equal Experts control register"
 readme = "README.md"
 requires-python = ">=3.14"
 license = "Apache-2.0"
@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-standard-check = "standard_check.cli:main"
+register-check = "register_check.cli:main"
 
 [dependency-groups]
 dev = [
@@ -33,7 +33,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/standard_check"]
+packages = ["src/register_check"]
 
 [tool.ruff]
 # No `target-version`. Ruff infers it from `requires-python` above, and that is

@@ -25,15 +25,15 @@ from typing import Any
 import yaml
 
 from conftest import REPO_ROOT, a_register, make_repo, register_with, write_register
-from standard_check.asserts_command import (
+from register_check.asserts_command import (
     ci_installs_frozen,
     markdown_gate_wired_at_all_loci,
     no_static_cloud_keys,
     typecheck_strict_and_blocking,
 )
-from standard_check.asserts_file import lockfile_present_and_tracked, tool_versions_match_register
-from standard_check.register import load_register
-from standard_check.repo import Repo
+from register_check.asserts_file import lockfile_present_and_tracked, tool_versions_match_register
+from register_check.register import load_register
+from register_check.repo import Repo
 
 _GATING = "on: [push, pull_request]\njobs:\n  job:\n    runs-on: ubuntu-latest\n    steps:\n"
 _DISPATCH = "on:\n  workflow_dispatch:\njobs:\n  job:\n    runs-on: ubuntu-latest\n    steps:\n"
@@ -65,7 +65,7 @@ def _pinning_repo(root: Path, version: str = "8.30.1", path: str = "ci/install.s
 def test_h2_a_declared_site_that_does_not_exist_is_a_failure(tmp_path: Path) -> None:
     """The rename that used to pass.
 
-    Moving `.github/workflows/standard-check.yml` to another name, and drifting
+    Moving `.github/workflows/register-check.yml` to another name, and drifting
     both of its pins, left SUP-001 reporting PASS: the file was no longer one of
     the four the checker knew, so nothing compared it, and the § G fix — fail
     when a literal tool is pinned at *no* locus — could not see it, because the

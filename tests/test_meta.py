@@ -13,11 +13,11 @@ from pathlib import Path
 from typing import Any
 
 from conftest import FakeGitHub, make_repo, minimal_register, write_register
-from standard_check.meta import gov_001, gov_002, gov_003
-from standard_check.register import Register, load_register
-from standard_check.remote import NoCredentials, Unreadable, Unresolvable
-from standard_check.repo import Repo
-from standard_check.runner import Verdict
+from register_check.meta import gov_001, gov_002, gov_003
+from register_check.register import Register, load_register
+from register_check.remote import NoCredentials, Unreadable, Unresolvable
+from register_check.repo import Repo
+from register_check.runner import Verdict
 
 
 def _load(root: Path, document: dict[str, Any]) -> tuple[Register, Repo]:
@@ -36,7 +36,7 @@ _ON = "on: [push, pull_request]\n"
 
 _WORKFLOW_FULL_RUN = (
     _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
-    "      - run: uv run standard-check\n"
+    "      - run: uv run register-check\n"
 )
 
 _WORKFLOW_SUPPRESSED = _WORKFLOW_FULL_RUN + "        continue-on-error: true\n"
@@ -61,7 +61,7 @@ def test_gov_001_ignores_suppressed_steps(tmp_path: Path) -> None:
     register, repo = _load(tmp_path, minimal_register())
     workflow = (
         _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
-        "      - run: uv run standard-check\n"
+        "      - run: uv run register-check\n"
         "        continue-on-error: true\n"
     )
     make_repo(tmp_path, {".github/workflows/check.yml": workflow})
@@ -82,7 +82,7 @@ def test_gov_001_full_run_survives_shell_punctuation(tmp_path: Path) -> None:
     workflow = (
         _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
         "      - run: |\n"
-        "          uv run standard-check && status=0 || status=$?\n"
+        "          uv run register-check && status=0 || status=$?\n"
         '          if [ "$status" -ne 0 ] && [ "$status" -ne 3 ]; then\n'
         '            exit "$status"\n'
         "          fi\n"
@@ -95,7 +95,7 @@ def test_gov_001_full_run_survives_shell_punctuation(tmp_path: Path) -> None:
 def test_gov_001_does_not_count_installing_the_checker_as_running_it(
     tmp_path: Path,
 ) -> None:
-    """`pip install standard-check` is not evidence that anything is checked.
+    """`pip install register-check` is not evidence that anything is checked.
 
     An invocation starts a command; it never follows another word. Substring
     matching made installing the tool mark every control reachable at once —
@@ -104,7 +104,7 @@ def test_gov_001_does_not_count_installing_the_checker_as_running_it(
     register, repo = _load(tmp_path, minimal_register())
     workflow = (
         _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
-        "      - run: pip install standard-check\n"
+        "      - run: pip install register-check\n"
     )
     make_repo(tmp_path, {".github/workflows/check.yml": workflow})
     verdict, message = gov_001(register, repo)
@@ -123,7 +123,7 @@ def test_gov_001_reaches_a_control_verified_only_by_file_asserts(tmp_path: Path)
     register, repo = _load(tmp_path, minimal_register())
     workflow = (
         _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
-        "      - run: uv run standard-check assert precommit_hook_present\n"
+        "      - run: uv run register-check assert precommit_hook_present\n"
     )
     make_repo(tmp_path, {".github/workflows/check.yml": workflow})
     verdict, message = gov_001(register, repo)
@@ -143,7 +143,7 @@ def test_gov_001_rejects_a_workflow_that_gates_no_merge(tmp_path: Path) -> None:
     workflow = (
         "on:\n  workflow_dispatch:\n"
         "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
-        "      - run: uv run standard-check\n"
+        "      - run: uv run register-check\n"
     )
     make_repo(tmp_path, {".github/workflows/check.yml": workflow})
     verdict, message = gov_001(register, repo)
@@ -158,7 +158,7 @@ def test_gov_001_accepts_a_workflow_that_gates_only_pull_requests(tmp_path: Path
     workflow = (
         "on:\n  pull_request:\n"
         "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
-        "      - run: uv run standard-check\n"
+        "      - run: uv run register-check\n"
     )
     make_repo(tmp_path, {".github/workflows/check.yml": workflow})
     verdict, message = gov_001(register, repo)
@@ -170,7 +170,7 @@ def test_gov_001_does_not_accept_a_different_assert_as_evidence(tmp_path: Path) 
     register, repo = _load(tmp_path, minimal_register())
     workflow = (
         _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
-        "      - run: uv run standard-check assert actions-pinned-to-sha\n"
+        "      - run: uv run register-check assert actions-pinned-to-sha\n"
     )
     make_repo(tmp_path, {".github/workflows/check.yml": workflow})
     verdict, message = gov_001(register, repo)

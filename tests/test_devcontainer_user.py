@@ -21,10 +21,10 @@ from typing import Any
 import pytest
 
 from conftest import a_register, make_repo
-from standard_check.asserts_file import devcontainer_user_is_non_root
-from standard_check.register import load_register
-from standard_check.repo import Repo
-from standard_check.runner import Verdict, run_control
+from register_check.asserts_file import devcontainer_user_is_non_root
+from register_check.register import load_register
+from register_check.repo import Repo
+from register_check.runner import Verdict, run_control
 
 _IMAGE = "mcr.example/base:trixie@sha256:" + "a" * 64
 

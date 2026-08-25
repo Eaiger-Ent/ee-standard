@@ -27,10 +27,10 @@ import pytest
 import yaml
 
 from conftest import REPO_ROOT, make_repo
-from standard_check.cli import main
-from standard_check.register import Register, load_register
+from register_check.cli import main
+from register_check.register import Register, load_register
 
-SKILL = REPO_ROOT / "plugins/ee-standard/skills/gate-iac"
+SKILL = REPO_ROOT / "plugins/control-register/skills/gate-iac"
 REGISTER_PATH = REPO_ROOT / "controls.yaml"
 SKILL_VERSION = "0.1.0"
 
@@ -58,7 +58,7 @@ def _register() -> Register:
 
 
 def _render(template: str, register: Register) -> str:
-    tool = "standard-check"
+    tool = "register-check"
     text = template
     for placeholder, value in {
         "{{TOOL}}": tool,
@@ -281,7 +281,7 @@ def test_a_full_audit_reaches_the_control_without_a_selective_step(
     deployed: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """The no-op path the skill documents, checked rather than asserted."""
-    invocation = _register().tools["standard-check"].invocation
+    invocation = _register().tools["register-check"].invocation
     for name in (".pre-commit-config.yaml", ".github/workflows/ci.yml"):
         path = deployed / name
         path.write_text(

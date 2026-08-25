@@ -103,7 +103,7 @@ Phase 0 complete — the register exists, with a rationale ADR per control in
 Phase 0.5 complete — this repo's own devcontainer, digest-pinned and verified.
 Operator guide: [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md).
 
-Phase 1 built — `standard-check` exists (`uv run standard-check`) and this repo
+Phase 1 built — `register-check` exists (`uv run register-check`) and this repo
 satisfies every control the checker can verify.
 
 Phase 1.5, remediation, is complete as of 2026-08-18 — 26 exit criteria, seven of
@@ -114,7 +114,7 @@ evidence behind every tick are in
 [`docs/09-phase-1.5-review.md`](docs/09-phase-1.5-review.md).
 
 Phase 2, the gates, is 11 criteria of 12 — the whole `gate-*` family plus
-`standard-adopt` ship in [`plugins/ee-standard/`](plugins/ee-standard/), and the
+`register-adopt` ship in [`plugins/control-register/`](plugins/control-register/), and the
 one open criterion needs an operator with Docker
 ([`docs/10-phase-2-review.md`](docs/10-phase-2-review.md)).
 

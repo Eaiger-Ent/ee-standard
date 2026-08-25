@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from conftest import REPO_ROOT, a_register, make_repo, register_with
-from standard_check.asserts_file import tool_versions_match_register, toolchain_version
+from register_check.asserts_file import tool_versions_match_register, toolchain_version
 
 
 def _only_python(toolchain: str = ".python-version") -> Any:

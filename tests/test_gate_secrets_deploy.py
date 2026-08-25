@@ -9,7 +9,7 @@ throwaway repository built here with no secrets configuration at all.
 own shipped templates — `templates/precommit-hook.yaml` and
 `templates/ci-steps.yaml`, rendered with the register's values, one copy of the
 content. What is proved is that those artefacts, in a repository that had none,
-are accepted by `standard-check` at SEC-001's local loci, and that removing any
+are accepted by `register-check` at SEC-001's local loci, and that removing any
 one of them is rejected. What is *not* proved is that a model follows the
 prose in `SKILL.md` — no test can establish that, and claiming otherwise would
 be the kind of tick this repository has re-opened seven times.
@@ -29,10 +29,10 @@ import pytest
 import yaml
 
 from conftest import REPO_ROOT, make_repo, requires_tool
-from standard_check.cli import main
-from standard_check.register import Register, load_register
+from register_check.cli import main
+from register_check.register import Register, load_register
 
-SKILL = REPO_ROOT / "plugins/ee-standard/skills/gate-secrets"
+SKILL = REPO_ROOT / "plugins/control-register/skills/gate-secrets"
 REGISTER_PATH = REPO_ROOT / "controls.yaml"
 SKILL_VERSION = "0.1.0"
 

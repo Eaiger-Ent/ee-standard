@@ -64,7 +64,7 @@
       "description": "gitleaks ships a checksum this PR cannot update",
       "matchPackageNames": ["gitleaks/gitleaks"],
       "prBodyNotes": [
-        "**This PR does not update the release checksums.** `gitleaks` is verified by `sha256sum -c` at both install sites, and the register records the digest alongside the version. Update all four before merging: `tools.gitleaks.sha256` in `controls.yaml`, the two architecture digests in `.devcontainer/setup.sh`, and the digest in `.github/workflows/standard-check.yml`. Leaving them stale fails the install step rather than passing silently, which is the intended direction — but it fails the build, so do it in this PR."
+        "**This PR does not update the release checksums.** `gitleaks` is verified by `sha256sum -c` at both install sites, and the register records the digest alongside the version. Update all four before merging: `tools.gitleaks.sha256` in `controls.yaml`, the two architecture digests in `.devcontainer/setup.sh`, and the digest in `.github/workflows/register-check.yml`. Leaving them stale fails the install step rather than passing silently, which is the intended direction — but it fails the build, so do it in this PR."
       ]
     }
   ]
