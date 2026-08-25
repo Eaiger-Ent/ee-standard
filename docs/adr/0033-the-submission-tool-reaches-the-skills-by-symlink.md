@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-25
-**Revision:** 1
+**Revision:** 2
 
 ## Background
 
@@ -100,6 +100,20 @@ submission time.
 choosing for itself. That is a side effect worth having: the gates can now be
 exercised here, against the repository that defines what they deploy.
 
+> **Amended 2026-08-25.** The paragraph above stopped being true, and the
+> decision it supports did not change. Seven of the eight skills — the six gates
+> and `register-install` — dropped `disable-model-invocation: true` under
+> [ADR 0035](0035-a-dispatched-skill-is-reachable.md), because
+> `register-adopt` dispatches them and a callee carrying that flag cannot be
+> reached at all: the front door stopped at Step 0 the first time anyone ran it
+> outside this repository. `register-adopt` itself keeps the flag, so the entry
+> point is still a person's. What guards `gate-repo`'s platform mutations is its
+> own per-call confirmation, enumerated by
+> `tests/test_gate_repo_confirmation.py`, and not this frontmatter key. The
+> symlinks, and every argument for them above, are unaffected — the links exist
+> so `/skill-submit-new` can resolve `<name>/SKILL.md`, which has nothing to do
+> with who may invoke what.
+
 ## Consequences
 
 ### The amendment is submission 5, and it is not conditional on this
@@ -152,3 +166,10 @@ so.
 - [Git — symbolic links in the index](https://git-scm.com/docs/git-config#Documentation/git-config.txt-coresymlinks)
   — mode `120000`, and the `core.symlinks` behaviour the Windows consequence
   above describes.
+
+## Revision History
+
+| Revision | Date | Summary | Ratifier |
+| --- | --- | --- | --- |
+| 1 | 2026-08-25 | Original decision: the submission tool reaches the skills by tracked symlink | Nathan Carney |
+| 2 | 2026-08-25 | Corrects the "nothing becomes model-invocable" consequence, which ADR 0035 made false for seven of the eight skills | Nathan Carney |

@@ -39,3 +39,12 @@ Expect exit `3` today, not `0`. SEC-001's remote block reports
 `SKIPPED (no credentials)` until `kind: remote` verification lands in Phase 3.
 The local loci are verified; the remote locus is not, and the report says so
 rather than rounding up.
+
+## Invocation
+
+Invoked by `register-adopt`, which dispatches it through the Skill tool — do
+not add `disable-model-invocation: true` here. A dispatched skill carrying that
+flag cannot be reached at all, which is preflight P9 and is what stopped the
+front door at Step 0 in Phase 4. The reasoning, and what guards the platform
+mutations instead, is
+[ADR 0035](../../../../docs/adr/0035-a-dispatched-skill-is-reachable.md).

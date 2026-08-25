@@ -5,7 +5,6 @@ description: >
   apply it through the GitHub API after an explicit confirmation.
   Triggers: 'deploy gate-repo', 'protect the default branch', '/gate-repo'.
 argument-hint: "[--repo <path>] [--register <path>]"
-disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 

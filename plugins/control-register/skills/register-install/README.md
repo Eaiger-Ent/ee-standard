@@ -89,3 +89,12 @@ better one.
 a Python package in its lockfile. `uv tool install` onto `PATH` is the only
 remaining route and carries the hazard ADR 0020 measured. This skill stops and
 says so rather than inventing a spelling.
+
+## Invocation
+
+Invoked by `register-adopt`, which dispatches it through the Skill tool — do
+not add `disable-model-invocation: true` here. A dispatched skill carrying that
+flag cannot be reached at all, which is preflight P9 and is what stopped the
+front door at Step 0 in Phase 4. The reasoning, and what guards the platform
+mutations instead, is
+[ADR 0035](../../../../docs/adr/0035-a-dispatched-skill-is-reachable.md).

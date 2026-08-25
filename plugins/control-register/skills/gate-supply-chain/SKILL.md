@@ -5,7 +5,6 @@ description: >
   update proposals for every ecosystem, every CI action pinned to a SHA.
   Triggers: 'deploy gate-supply-chain', 'pin CI actions', '/gate-supply-chain'.
 argument-hint: "[--repo <path>] [--register <path>]"
-disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 

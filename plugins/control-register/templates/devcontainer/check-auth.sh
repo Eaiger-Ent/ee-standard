@@ -70,6 +70,10 @@ check_tool() {
 }
 
 check_tool claude claude
+# The one tool `setup.sh` installs itself, and the one every verification in
+# this standard runs through. A container reporting every credential green and
+# no uv is a container in which nothing can be checked.
+check_tool uv uv
 
 # Identity may come from git config or from GIT_AUTHOR_* in the environment
 # (fetch-secrets.sh supplies the latter). `git var` asks the question actually

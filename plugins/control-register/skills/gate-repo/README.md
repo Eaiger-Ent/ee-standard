@@ -95,3 +95,12 @@ required less is a control silently downgraded, and CI-001 is
 ruleset both apply and the union of their requirements is enforced, so removing
 the old one is a real reduction until the ruleset is confirmed active. The skill
 confirms first, then asks.
+
+## Invocation
+
+Invoked by `register-adopt`, which dispatches it through the Skill tool — do
+not add `disable-model-invocation: true` here. A dispatched skill carrying that
+flag cannot be reached at all, which is preflight P9 and is what stopped the
+front door at Step 0 in Phase 4. The reasoning, and what guards the platform
+mutations instead, is
+[ADR 0035](../../../../docs/adr/0035-a-dispatched-skill-is-reachable.md).

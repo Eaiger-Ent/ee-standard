@@ -5,7 +5,6 @@ description: >
   and test command at every locus they declare, stamp what it writes, verify
   through register-check. Triggers: 'deploy gate-quality', '/gate-quality'.
 argument-hint: "[--repo <path>] [--register <path>]"
-disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 
