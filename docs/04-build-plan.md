@@ -947,8 +947,18 @@ be told so, not worked around locally.
 Per [`05-promotion.md`](05-promotion.md), in the order given there: the
 `CONTRIBUTING.md` corrections first (small, independent, establishes contact),
 then `control-register` plus the `governance` category, then the `skill-update`
-amendment — plus the `lint-md` amendment identified in Phase 1.5 § F, which
-makes four.
+amendment — plus the `lint-md` amendment identified in Phase 1.5 § F, and the
+`skill-submit-new` layout amendment [ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md)
+adds, which makes five. The last is deliberately last: the symlinks settle this
+repository's own path, so the general fix is never on the critical path.
+
+**None of them may be raised until Phase 4 has run** —
+[`05-promotion.md`](05-promotion.md) § Before submitting anything, and it is
+this repository's own rule rather than a maintainer's, which is what makes it
+the kind that gets quietly downgraded when everything else is finished. The one
+exception is the `CONTRIBUTING.md` corrections, which are about the destination
+rather than about this plugin. What is prepared and what is waiting is the table
+in that section.
 
 ### Exit criteria — phase 6
 
@@ -957,15 +967,27 @@ makes four.
       guide that still calls the shipped machinery "not built" is the mirror of
       one that describes tooling which does not exist
 
-- [ ] A repo-root `LICENSE` exists and is copied into the plugin —
+- [x] A repo-root `LICENSE` exists and is copied into the plugin —
       `check_plugin_license.py` fails without it, and `pyproject.toml` already
-      declares Apache-2.0. Carried as debt since Phase 1.5, gating here
-- [ ] How `/skill-submit-new` reaches skills that live in a plugin directory is
+      declares Apache-2.0. Carried as debt since Phase 1.5, gating here.
+      **Done 2026-08-25**: stock Apache-2.0 with the copyright line filled in,
+      at the root and at `plugins/control-register/LICENSE`, held byte-identical
+      by `tests/test_skill_links.py` — each plugin is copied into its own
+      install cache, so a single root licence does not follow it, and two that
+      disagree is a worse problem than one that is missing
+- [x] How `/skill-submit-new` reaches skills that live in a plugin directory is
       decided and done. It resolves `<name>/SKILL.md` in the project or
       user-level Claude skills directory, and this repository's are in
-      `plugins/control-register/skills/` — a copy, a symlink, or a fifth submission
-      teaching it the plugin layout ([`05-promotion.md`](05-promotion.md) §
-      What the incubator actually holds)
+      `plugins/control-register/skills/` ([`05-promotion.md`](05-promotion.md) §
+      What the incubator actually holds).
+      **Decided 2026-08-25** by
+      [ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md):
+      tracked symlinks at `.claude/skills/<name>`, so there is one definition
+      and a second reference rather than a copy, and the amendment teaching the
+      tool about plugin layouts is submission 5 rather than a blocker.
+      `tests/test_skill_links.py` derives the link set from the plugin in both
+      directions, so a ninth skill added without a link fails the build instead
+      of being found missing while eight issues are being written
 - [ ] Every skill in the family is submitted, and every issue names the **same**
       `promote-config.json` entry. `/skill-submit-new` is per skill and its
       generated entry is `{"skills": ["<name>"]}`, so the default outcome of

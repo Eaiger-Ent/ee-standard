@@ -84,18 +84,28 @@ costs a sentence in an issue and the wrong guess costs a resubmission.
 **The marketplace layout, by contrast, is settled — and is the one built here.**
 `ee-skills/plugins/adr-toolkit/` holds exactly `.claude-plugin/`, `LICENSE`,
 `README.md` and `skills/`, with one directory per skill inside. That is
-`plugins/control-register/` in this repository, field for field, with `LICENSE` the
-one piece still missing. Nothing about the local tree needs rearranging for the
-destination; what needs deciding is only how it is handed over.
+`plugins/control-register/` in this repository, field for field — **including
+`LICENSE`, added 2026-08-25**, which `check_plugin_license.py` fails a plugin
+for lacking. It is byte-identical to the repository root's, held so by
+`tests/test_skill_links.py`, because each plugin is copied into its own install
+cache and a single root licence does not follow it. Nothing about the local tree
+needs rearranging for the destination; what needs deciding is only how it is
+handed over.
 
-**`/skill-submit-new` will not find these skills.** It resolves
-`<name>/SKILL.md` in the project Claude skills directory or the user-level one.
-This repository has no `.claude/skills/` at all, and the skills live at
-`plugins/control-register/skills/<name>/`. Something has to bridge that at submission
-time — a copy, a symlink, or an amendment to the submission skill that teaches
-it the plugin layout. **This is undecided**, and it is recorded here rather than
-settled because the third option is a fifth submission and that is not a
-decision to make silently.
+**`/skill-submit-new` will not find these skills on its own.** It resolves
+`<name>/SKILL.md` in the project Claude skills directory or the user-level one,
+and the skills live at `plugins/control-register/skills/<name>/`. **Settled on
+2026-08-25 by [ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md):**
+each skill is exposed at `.claude/skills/<name>` as a tracked symlink into the
+plugin, so there is one definition and a second reference rather than a copy —
+and the amendment that would teach the tool about plugin layouts is submission 5
+rather than a blocker on submissions 1 to 4. A copy made at submission time was
+rejected: eight of them, by hand, at the one moment the content has to be right
+and there is no iterate-in-review loop to fix it in.
+
+`tests/test_skill_links.py` derives the link set from the plugin in both
+directions, so a ninth skill added without a link fails the build rather than
+being discovered as "not found" while eight issues are being written.
 
 ## Corrections to `CONTRIBUTING.md`
 
@@ -107,11 +117,20 @@ fixes) and are recorded here so this plan is not built on them.
 | --- | --- |
 | Run `/submit-amendment`; it "opens a PR against the incubator on branch `amend/<skill>--<author>-<YYYYMMDD>`" | The skill is `/skill-submit-amend`, and it opens a **GitHub issue**. No such branch is created. |
 | "A maintainer runs `scripts/promote.py` here" | `scripts/` contains `check_duplicated_files.py`, `check_plugin_license.py`, `render_readme.py`, `sync-contrib-bundle.py`. There is no `promote.py` anywhere in the repo. |
-| "Preflight P1–P6 … `plugins/skill-review/skills/skill-review/scripts/preflight-check.sh`" | The script implements **P1–P11**, and there is no `skill-review` plugin. It ships as nine byte-identical copies under `skills/skill-scripts/scripts/`. |
+| "Preflight P1–P6 … `plugins/skill-review/skills/skill-review/scripts/preflight-check.sh`" | The script implements **P1–P11**, and there is no `skill-review` plugin. It ships as nine byte-identical copies under `plugins/<plugin>/skills/skill-scripts/scripts/`. |
+| "SKILL.md files are governed by the preflight P1–P6 checks" (a second line, further down) | The same error twice in one document, and the second instance is easy to miss when fixing the first. |
 
 The first is the one that matters operationally — planning for a PR you can push
 commits to, and finding an issue you cannot, changes how much must be finished
 before you submit.
+
+**All four re-verified on 2026-08-25** against an installed checkout at
+`~/.claude/plugins/marketplaces/ee-skills/` (`2ce0e19`), five days after they
+were first read. None has been fixed, so submission 3 still has something to
+say. Also observed then, and not an error so much as a thing worth knowing
+before looking for it: `skill-submit-new` is not a plugin of its own — it ships
+inside `ee-skills-contribute`, where `skill-submit-amend` is a top-level plugin.
+Both open issues.
 
 ## Gates a submission must pass
 
@@ -135,6 +154,13 @@ list:
 Plus the repository CI gates: `markdownlint-cli2`, `claude plugin validate .`,
 `scripts/render_readme.py --check`, `scripts/check_plugin_license.py`,
 `scripts/check_duplicated_files.py`.
+
+**Run on 2026-08-25 against all eight skills** — the six gates, `register-adopt`
+and `register-install` — using the marketplace's own script from an installed
+checkout rather than a description of it. Every skill returned `PASS` on P1
+through P11 with no check below `PASS`. That is evidence rather than an
+expectation, and it is worth re-running before submitting, because the script is
+the marketplace's and moves without asking.
 
 P1 and P2 bind hardest on this family. `register-adopt` is a dispatcher across
 six gates and could trivially exceed 500 lines if per-control detail is inlined
@@ -215,6 +241,7 @@ plugins are separate again and should not be bundled with any of it:
 | 2. `skill-update` widening | `/skill-submit-amend` against `ee-skills-manage` | Changes an existing, widely installed skill. Reviewers assessing a new plugin and reviewers assessing a behaviour change to a shipped one are asking different questions. |
 | 3. `CONTRIBUTING.md` corrections | Direct PR (Lane B) | Documentation fix, explicitly permitted as a direct PR. Useful to land first — it is small, independent, and establishes contact before the large submission arrives. |
 | 4. `lint-md` amendment | `/skill-submit-amend` against `ee-skills-incubator` | Raised 2026-08-18 as [issue #530](https://github.com/EqualExperts/ee-skills-incubator/issues/530), and **mostly shipped in `lint-md@1.0.7`** on 2026-08-20: the CI template now pins `actions/checkout` to a SHA, the tool installs as an exact-pinned dev dependency with `npm ci` at the other loci, and the pre-commit hook is `repo: local` with no `rev:` copy. Two rows remain open, and both are this repository's own ADRs rather than the original report: a locus must reach the artefact the lockfile pins, where 1.0.7 still writes `npx --no-install` ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)); and an exemption may not hide a tracked file, where a fresh deployment still writes `.claude/**` into `ignores` ([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)). This is a follow-up on an open issue, not a fresh submission. |
+| 5. `skill-submit-new` layout amendment | `/skill-submit-amend` against `ee-skills-incubator` | Teaches the tool to resolve `plugins/<plugin>/skills/<skill>/`, which `preflight-check.sh` in the same marketplace already does — one of the two tools has learned about plugin layouts and the other has not. **Not a blocker**: [ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md) clears the path locally with symlinks, so this is the general fix for the next repository rather than the one this one waits on. Deliberately last, so it is never on the critical path. |
 
 Submission 4 was identified by this repository deploying `lint-md` and then
 having to hand-edit every artefact it wrote — recorded in
@@ -238,3 +265,34 @@ published instructions, with `register-check` passing afterwards.
 
 A conformance tool that has only ever been run against the repository that
 defines conformance has not been tested. It has been demonstrated.
+
+**That gate is Phase 4, and Phase 4 has not run.** It needs a host with Docker,
+which the container this repository is developed in does not have
+([`04-build-plan.md`](04-build-plan.md) § Before this phase can start). So no
+issue may be opened yet, and the rule is this repository's own rather than a
+maintainer's — which makes it exactly the kind of rule that gets quietly
+downgraded when the rest of the work is finished and only the gate remains.
+
+### What is ready, and what it is waiting on
+
+Everything below is done, so that when the gate opens the submission is a
+submission rather than a week of preparation. Stated as a table because "the
+submission is prepared" is the sort of claim that hides the one row that is not.
+
+| Piece | State |
+| --- | --- |
+| Plugin layout matches the marketplace's | Done — `plugins/control-register/`, field for field |
+| `LICENSE` in the plugin | Done 2026-08-25, byte-identical to the root's, held by a test |
+| Preflight P1–P11 on all eight skills | Done 2026-08-25 — every skill `PASS`, run against the marketplace's own script |
+| The names the `promote-config.json` entry will use | Done — [ADR 0031](adr/0031-the-plugin-is-named-for-the-register.md), and the rename landed 2026-08-25 |
+| How the tool reaches the skills | Done — [ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md) |
+| The `governance` category entry | Drafted above; lands in the same PR as the submission, in the destination repository |
+| `marketplace.json` and `readme-meta.json` entries | Not stageable here — both live in `ee-skills`, and are written when the plugin is promoted |
+| Submission 3 (`CONTRIBUTING.md` corrections) | Ready, and **independent of the gate** — it is a documentation PR about the destination, not a submission of this plugin |
+| Submissions 1, 2, 4, 5 | Blocked on Phase 4 |
+
+Submission 3 is the one row that could go today. It is listed as ready rather
+than sent, because opening a pull request against another organisation's
+repository is an act with a person on the other end of it, and the reason to
+land it first — establishing contact before the large submission arrives — is
+worth less if the large submission is still weeks away.
