@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A control register for Equal Experts repositories: `controls.yaml` defines what
 "conformant" means, a family of Claude skills deploys the gates, and a checker
-(`standard-check`, in `src/standard_check/`) audits them.
+(`register-check`, in `src/register_check/`) audits them.
 
 Current status: Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
 with no re-opened criteria outstanding. **Phase 2 is 12/13** and **Phase 3 is
@@ -21,14 +21,14 @@ deliberately left open.
 
 One Phase 2 criterion is still open. The **devcontainer template** has not been
 built: the 2026-08-24 rebuild was of this repository's own container, and the
-template at `plugins/ee-standard/templates/devcontainer/` is a different
+template at `plugins/control-register/templates/devcontainer/` is a different
 artefact — this container has no Docker, so nothing here has run
 `devcontainer build`, and the commands for an operator are in
 `docs/08-adopting.md` § 2.0. It is **deferred to Phase 4**, which has to build
 the template from placeholders to exist at all, so doing it here would be a
 rehearsal of the same build.
 
-Read `docs/09-phase-1.5-review.md` before touching `src/standard_check/`:
+Read `docs/09-phase-1.5-review.md` before touching `src/register_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
 as settled without checking it — **seven** boxes have been re-opened after being
@@ -45,7 +45,7 @@ third `source` — `toolchain` — because both existing values would be false: 
 value does not live in the register to be repeated (`literal`) and no package
 manager produced the file (`lockfile`). **A support floor is not a pin.**
 `requires-python` stays a floor and stays a support claim; narrowing it to force
-the environment would tell an adopter that `standard-check` does not work on a
+the environment would tell an adopter that `register-check` does not work on a
 newer interpreter. `[tool.ruff] target-version` is deliberately absent — ruff
 derives it from `requires-python`, and writing it out was a third copy that had
 already drifted. The gap was invisible because there was no second copy to spot:
@@ -57,7 +57,7 @@ and implemented 2026-08-24) the pin and the support floor are both **3.14**:
 derived target is 3.14 too — it moved with the floor and nobody edited it, which
 is what deleting the written-out `target-version` bought. The floor was raised
 because nobody had ever decided it; `>=3.13` was the number the container
-happened to have. **An adopter on 3.13 can no longer install `standard-check`**,
+happened to have. **An adopter on 3.13 can no longer install `register-check`**,
 and that is the accepted cost, cheap to reverse.
 
 Per [ADR 0029](docs/adr/0029-the-editor-locus-is-configured-by-the-repository.md)
@@ -131,7 +131,7 @@ whose three `resolved` digests were then checked against what `ghcr.io` serves
 for the declared tags. **`devcontainer upgrade` is not needed** and never was
 the only route; it moves pins forward without building. The one thing the
 rebuild did **not** close is the shipped template at
-`plugins/ee-standard/templates/devcontainer/`, a different artefact — different
+`plugins/control-register/templates/devcontainer/`, a different artefact — different
 features, `{{PROJECT_NAME}}` placeholders to substitute — that nobody has
 built.
 
@@ -159,7 +159,7 @@ ordinary case. It is **not** a gate and must never enter CI-001's
 `required_checks:`. It is also the only place `UV_PYTHON` is set, which is the
 one thing that outranks `.python-version`.
 
-`kind: remote` reads platform API state (`src/standard_check/remote.py`,
+`kind: remote` reads platform API state (`src/register_check/remote.py`,
 `asserts_remote.py`, `rulesets.py`), reasoned in
 [ADR 0021](docs/adr/0021-how-remote-verification-authenticates.md). It has
 four outcomes, and only two are about the repository: **no token** is
@@ -206,7 +206,7 @@ on a fine-grained or installation token the header is how expiry is reported at
 all, so its absence is GitHub declining to answer and the block is
 `UNCLASSIFIED`. **The block answers only inside a GitHub Actions job**, because
 SEC-003's locus is `ci` and a developer's own token is a different credential;
-the accepted cost is that a **local `standard-check` run now exits `3` rather
+the accepted cost is that a **local `register-check` run now exits `3` rather
 than `0`**, which is the honest report rather than a regression. **Requirement 4 landed at contract 24**: a second remote block,
 `platform_token_is_not_classic`, fails on the **presence** of `X-OAuth-Scopes`
 — the header GitHub returns for a classic personal access token and for no
@@ -229,7 +229,7 @@ of everyone else is deleted** — an undocumented divergence is indistinguishabl
 from an oversight. **Every requirement that precedes the token is now closed**
 (ADR 0022 § Applied — pass 4), and **the token exists**: `PLATFORM_READ_TOKEN`,
 a repository secret set 2026-08-24, named in the register at contract 25 and
-handed to `standard-check` by the conformance workflow with a
+handed to `register-check` by the conformance workflow with a
 `|| github.token` fallback for pull requests from forks, which receive no
 repository secret. Its `max_lifetime_hours: 2184` is a **permission rather than
 a measurement** — the longest life the register allows a standing credential,
@@ -282,7 +282,7 @@ means a verified violation, `0` means every applicable control was verified, and
 `UNCLASSIFIED`, not `FAIL`. A verification block declares its own partial
 implementation **in the register**, with an expiry — never in the checker.
 
-**The `Standard` workflow passes `--require-complete` from 2026-08-24**, which
+**The `Conformance` workflow passes `--require-complete` from 2026-08-24**, which
 ended ADR 0016's ratified tolerance (that ADR's revision 5). A run that cannot
 verify a control fails rather than printing that it could not and passing. **One
 case survives and must not be widened**: a pull request from a fork receives no
@@ -295,9 +295,9 @@ that quietly becomes general.
 
 ## Commands
 
-- Full conformance run: `uv run standard-check` (also: `schema`, `run --tier 1`,
+- Full conformance run: `uv run register-check` (also: `schema`, `run --tier 1`,
   `meta GOV-001`, `assert <name>`, `explain <ID>`). CI runs it in
-  `.github/workflows/standard-check.yml`.
+  `.github/workflows/register-check.yml`.
 - Quality gates: `uv run ruff check .`, `uv run mypy`, `uv run pytest` — all
   configured in `pyproject.toml`, the single definition every locus reads.
 - Build-plan progress: `uv run python scripts/plan_progress.py` — a derived view
@@ -331,7 +331,7 @@ exists to prevent.
 **Python counts as a second copy.** Per
 [ADR 0018](docs/adr/0018-register-checker-boundary.md) (**Accepted** 2026-08-17,
 **implemented** over contracts 3, 5, 6 and 8), before writing a rule into
-`src/standard_check/` ask: *could a reasonable Equal Experts repository need this
+`src/register_check/` ask: *could a reasonable Equal Experts repository need this
 to differ without changing the checker?* If yes, it belongs in `controls.yaml` —
 mandated tool names and their per-locus evidence live in `stacks:` — including which files a stack's gates must cover and where each
 tool's allow-list lives — lockfile
@@ -366,7 +366,7 @@ Defined in `docs/00-concepts.md`; the schema is `docs/01-register-schema.md`.
   schema error, because GOV-001 reads `kind: command` blocks and the
   miscategorisation decided its verdict. **One exception, bounded by the
   validator**: a meta-control verifies itself with
-  `run: standard-check meta GOV-NNN`, which runs in-process. The shape is forced
+  `run: register-check meta GOV-NNN`, which runs in-process. The shape is forced
   — a meta-control returns a three-valued `Verdict` and a `kind: file` assert
   returns a boolean — and it decides nothing, since GOV-001 never reads
   `meta_controls`. A control using that spelling, or a meta-control naming
@@ -395,11 +395,11 @@ Defined in `docs/00-concepts.md`; the schema is `docs/01-register-schema.md`.
 Files deployed by ee-skills plugins carry an `ee-control:` provenance header
 naming the control, the deploying skill and version, the register version **and
 the register contract** — `docs/00-concepts.md` § The provenance stamp has the
-format, one parser lives at `src/standard_check/provenance.py` (never write a
+format, one parser lives at `src/register_check/provenance.py` (never write a
 second), and `tests/test_provenance_stamps.py` checks every stamp parses and
 names a real control. Twelve files carry one: `.markdownlint.yaml`,
 `.markdownlint-cli2.yaml`, `.github/workflows/lint.yml`,
-`.claude/hooks/md-lint.py`, `.github/workflows/standard-check.yml`,
+`.claude/hooks/md-lint.py`, `.github/workflows/register-check.yml`,
 `.devcontainer/devcontainer.json`, `.vscode/settings.json` — the second of
 `gate-quality`'s two editor-locus artefacts, added at contract 21, because
 installing an extension and that extension holding a file type are separate
@@ -520,21 +520,36 @@ decision the corpus has retired. Archiving breaks inbound links: rewrite them in
 the same change. Note the cost — `adr-toolkit` globs `docs/adr/*.md`, so an
 archived ADR leaves the corpus `/adr-consistency` scans.
 
-Two decisions taken on 2026-08-24 are **Accepted and not yet implemented**, and
-everything below still uses the old names. Per
-[ADR 0031](docs/adr/0031-the-plugin-is-named-for-the-register.md) the plugin,
-the checker and the non-gate skills are named for the **register**:
-`ee-standard` becomes `control-register`, `standard-check` becomes
-`register-check`, `standard-adopt` becomes `register-adopt`, and Phase 5's
-classifier is `register-variance`. The gates keep their names and no provenance
-stamp changes — a stamp names a control and a gate, never the checker. The
-rename lands in **three moves** because the default branch requires a status
-check named `standard-check`: rename while a job still reports the old name,
-re-run `/gate-repo` so the ruleset requires the new one, then drop the
-transitional job. A single pull request cannot do it — it would remove the check
-its own merge is waiting for.
+Per [ADR 0031](docs/adr/0031-the-plugin-is-named-for-the-register.md)
+(**Accepted** 2026-08-24, revision 2, **move 1 implemented** 2026-08-25 at
+register contract 27) the plugin, the checker and the non-gate skills are named
+for the **register**: the plugin is `control-register`, the checker is
+`register-check`, and the skills are `register-adopt`, `register-install` and —
+when Phase 5 builds it — `register-variance`. The gates keep their names and no
+provenance stamp changed, because a stamp names a control and a gate, never the
+checker. **The repository is not renamed**: `Eaiger-Ent/ee-standard` is still
+its address, and `ee-standard` in a path, a URL, a volume name or the
+`EE_STANDARD` secret prefix means the repository rather than the plugin.
 
-Per [ADR 0032](docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md) the
+**Four names have not moved yet, and must move together.** CI-001's
+`required_checks:`, the context in `.github/rulesets/default-branch.json`, the
+gating job's id in `.github/workflows/register-check.yml`, and the ruleset
+GitHub enforces all still read `standard-check`. GOV-001 fails a check the
+register requires and the platform does not enforce, and only a confirmed API
+call changes a ruleset — so move 2 is one pull request plus one `/gate-repo`
+call, and that pull request's first check run is expected to fail GOV-001 until
+the call is made. A **transitional job** reporting the old name was tried and is
+wrong: GOV-001 asks which job the blocking controls' steps are reached from, so
+a job that only mirrors another's result is a required check with no gate behind
+it. The ADR's revision 2 records this.
+
+Outside `docs/adr/`, `grep -rn 'standard[-_]check'` returning nothing is the
+finish condition. **Inside it, the old name stays** — an ADR is a dated record,
+and rewriting ten of them would spend the revision machinery on a
+find-and-replace.
+
+Per [ADR 0032](docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md)
+(**Accepted** 2026-08-24, **not yet implemented**) the
 checker reaches an adopting repository as a dependency pinned to a **tagged git
 ref** of this public repository, placed by a new skill, `register-install`,
 which owns nothing else and which `register-adopt` dispatches first. Not
@@ -543,11 +558,11 @@ dispatcher's pre-flight, which verifies through the instrument it would be
 installing. This repository has **no tags today**, and the tag is what an
 adopter pins, so cutting `v0.1.0` is work that ADR creates.
 
-Gate skills live in `plugins/ee-standard/skills/` — `gate-secrets`,
+Gate skills live in `plugins/control-register/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,
-the whole family, plus `standard-adopt`, the dispatcher that ships no templates
+the whole family, plus `register-adopt`, the dispatcher that ships no templates
 because it writes no artefacts of its own. A gate verifies itself with
-`standard-check run --control <ID>` and never by reading its own files back —
+`register-check run --control <ID>` and never by reading its own files back —
 that command runs the control's verify blocks through the same `run_control` the
 full audit calls, which is what makes "one assert implementation" true rather
 than intended. A gate holds **no** pinned version of its own; templates carry

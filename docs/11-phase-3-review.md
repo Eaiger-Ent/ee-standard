@@ -31,7 +31,7 @@ the controls a repository would fail is not evidence of much.
 
 ### The four decisions, and where they are recorded
 
-Implementing this puts rules into `src/standard_check/`, which
+Implementing this puts rules into `src/register_check/`, which
 [ADR 0018](adr/0018-register-checker-boundary.md) does not allow to happen
 unreasoned. The reasoning is
 [ADR 0021](adr/0021-how-remote-verification-authenticates.md), and it settles:
@@ -79,7 +79,7 @@ the *checker* holding two different readings of the same args, which is theme
 remote half read the same rules differently, and no test compares two copies of
 a rule to each other.
 
-So the reading moved to `src/standard_check/rulesets.py` and both asserts call
+So the reading moved to `src/register_check/rulesets.py` and both asserts call
 it. `test_there_is_no_second_copy_of_the_rule_vocabulary` holds them to it by
 identity, and `test_the_recorded_ruleset_and_the_platform_are_judged_by_one_function`
 takes this repository's own recorded `rules:` array, hands it to the **remote**
@@ -117,7 +117,7 @@ Run in this container against `Eaiger-Ent/ee-standard`, with a token in the
 environment:
 
 ```text
-$ uv run standard-check run --control SEC-001 --control CI-001
+$ uv run register-check run --control SEC-001 --control CI-001
 ee-standard conformance report — register v0.19.0 (contract 19)
 
 Tier 1
@@ -203,7 +203,7 @@ depends on this slice; both are simply not in it.
 ### What this slice built
 
 Nothing. It is a verification slice: the criterion *"GOV-003 fails on a control
-past `review_by`"* was satisfied by `src/standard_check/meta.py` when the
+past `review_by`"* was satisfied by `src/register_check/meta.py` when the
 checker was first built (`1e21364`, 2026-08-16), and the box had stayed
 unticked because nobody had gone and looked. Recording that is cheaper than
 re-deriving it a third time, and leaving it unticked would misreport what
@@ -228,7 +228,7 @@ rule.
 Against the register as it stands, both halves hold:
 
 ```console
-$ uv run standard-check meta GOV-003
+$ uv run register-check meta GOV-003
 GOV-003: PASS — no control is past its review date, and no partial declaration
 expired
 exit 0
@@ -239,7 +239,7 @@ by running the real register with one date moved back. First a control past its
 review date:
 
 ```console
-$ uv run standard-check --register past-review.yaml meta GOV-003
+$ uv run register-check --register past-review.yaml meta GOV-003
 GOV-003: FAIL — past their review date: SEC-001 (review_by 2001-01-01)
 exit 1
 ```
@@ -248,7 +248,7 @@ Then the other half, with GOV-001's `partial:` expiry moved instead — the case
 ADR 0017 wrote the expiry for:
 
 ```console
-$ uv run standard-check --register expired-partial.yaml meta GOV-003
+$ uv run register-check --register expired-partial.yaml meta GOV-003
 GOV-003: FAIL — past their review date: GOV-001 (partial declaration expired
 2001-01-01: whether GitHub enforces the recorded ruleset — …)
 exit 1
@@ -326,10 +326,10 @@ explicitly, and that is the whole point of the field.
 ### Evidence
 
 ```console
-$ uv run standard-check schema
+$ uv run register-check schema
 schema: OK — register v0.20.0 (contract 22), 14 controls, 3 meta-controls
 
-$ uv run standard-check run --control SEC-003
+$ uv run register-check run --control SEC-003
   SEC-003  PASS   CI carries no platform credential the register does not name
 exit 0
 ```
@@ -428,7 +428,7 @@ section exists to prevent.
 
 ### What it costs, stated rather than hidden
 
-A local `standard-check` run now exits `3` rather than `0` — 12 passed, 1
+A local `register-check` run now exits `3` rather than `0` — 12 passed, 1
 skipped (predicate), 1 unclassified. That is not a regression to repair: a
 control the run cannot answer is one it must not claim.
 
@@ -622,7 +622,7 @@ adopter criterion covering the whole phase.
 ### What this slice built
 
 The register entry for `PLATFORM_READ_TOKEN` at contract 25, and the workflow
-line that hands it to `standard-check` in place of the job token. The secret
+line that hands it to `register-check` in place of the job token. The secret
 itself was set by a human on 2026-08-24, after every requirement ADR 0022
 § The precondition puts before a token was closed.
 
@@ -727,10 +727,10 @@ That is why the no-credentials case is `SKIPPED (no credentials)` **with the
 file half in the message** rather than a bare skip:
 
 ```console
-$ env -u GITHUB_TOKEN -u GH_TOKEN uv run standard-check meta GOV-001
+$ env -u GITHUB_TOKEN -u GH_TOKEN uv run register-check meta GOV-001
 GOV-001: SKIPPED (no credentials) — every applicable blocking control is reached
 from a step that can fail, in a job the register requires (lint-md,
-standard-check) — but whether GitHub enforces that is unread: no token was
+register-check) — but whether GitHub enforces that is unread: no token was
 offered, and a recorded ruleset the platform was never told about protects
 nothing
 exit 3
@@ -759,9 +759,9 @@ drifted with nothing comparing them — the module's whole premise.
 ### Evidence
 
 ```console
-$ uv run standard-check meta GOV-001
+$ uv run register-check meta GOV-001
 GOV-001: PASS — every applicable blocking control is reached from a step that
-can fail, in a job the register requires (lint-md, standard-check), and GitHub
+can fail, in a job the register requires (lint-md, register-check), and GitHub
 enforces those checks on Eaiger-Ent/ee-standard@main — the whole chain from
 control to blocked merge is read
 exit 0
@@ -907,7 +907,7 @@ independently of the plan-level confirmation*, and the skill answered two thirds
 of it. The confirmation before `POST /rulesets` was written out in full, named
 its blast radius, and said in terms that an earlier plan approval does not cover
 it — `tests/test_gate_repo_deploy.py::test_the_skill_confirms_before_it_calls`
-held all three properties, and `standard-adopt` said the same from its side.
+held all three properties, and `register-adopt` said the same from its side.
 
 The other two calls did not have that.
 
@@ -966,7 +966,7 @@ The skill and its README told an adopter that exit `3` was *"the expected
 result"* and that exit `0` was *"not reachable today"*, because CI-001's remote
 block reported `SKIPPED (no credentials)` "until Phase 3 implements
 `kind: remote`". Phase 3's first slice implemented it on 2026-08-22, and this
-repository's own `standard-check run --control CI-001` has exited `0` since.
+repository's own `register-check run --control CI-001` has exited `0` since.
 A shipped gate telling an adopter to expect the wrong exit code is the kind of
 staleness this phase is otherwise about, so both files now say that which of
 `0` and `3` you get turns on credentials, and that saying which one happened
@@ -1096,9 +1096,9 @@ Every command the two new sections give was run here before it was written down.
 
 | Command | Result |
 | --- | --- |
-| `standard-check meta GOV-001` | `PASS — … and GitHub enforces those checks on Eaiger-Ent/ee-standard@main — the whole chain from control to blocked merge is read` |
+| `register-check meta GOV-001` | `PASS — … and GitHub enforces those checks on Eaiger-Ent/ee-standard@main — the whole chain from control to blocked merge is read` |
 | the same, with no token in the environment | `SKIPPED (no credentials) — … but whether GitHub enforces that is unread` — the half it did verify is named, which is the claim § 4.2 makes about it |
-| `gh api repos/…/rules/branches/main --jq …` | `["standard-check","lint-md"]` |
+| `gh api repos/…/rules/branches/main --jq …` | `["register-check","lint-md"]` |
 
 **What is not evidence.** Nobody has followed § 4.2 or § 4.3 as an adopter,
 because the adopter does not exist until Phase 4 — whose criterion is *no step

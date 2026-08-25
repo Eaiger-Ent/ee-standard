@@ -262,7 +262,7 @@ That precondition is the seam, and it decides the division of labour cleanly:
 | Configure it for this project's stack | `project-init` |
 | Pin the image and features, verify pinning holds | `gate-build` (DEV-001) |
 | Confirm tools are present and authenticated | `devcontainer-check` |
-| Confirm the config still matches the register | `standard-check` |
+| Confirm the config still matches the register | `register-check` |
 
 So `gate-build` runs **after** `project-init`, not instead of it. `project-init`
 decides *which* image; DEV-001 insists that whichever it chose is pinned. Those

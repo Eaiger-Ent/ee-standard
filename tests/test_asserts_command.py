@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from conftest import a_register, make_repo, register_with
-from standard_check.asserts_command import (
+from register_check.asserts_command import (
     actions_pinned_to_sha,
     ci_installs_frozen,
     markdown_gate_wired_at_all_loci,
@@ -14,10 +14,10 @@ from standard_check.asserts_command import (
     no_unregistered_workflow_secrets,
     typecheck_strict_and_blocking,
 )
-from standard_check.asserts_command import (
+from register_check.asserts_command import (
     tests_run_and_block as check_tests_run_and_block,  # aliased: pytest would collect the name
 )
-from standard_check.repo import Repo
+from register_check.repo import Repo
 
 _SHA = "a" * 40
 
@@ -282,7 +282,7 @@ def test_markdown_gate_reads_the_cli2_config_shape(tmp_path: Path) -> None:
 def _secret_workflow(reference: str, on: str = "[push, pull_request]") -> str:
     return (
         f"on: {on}\njobs:\n  job:\n    runs-on: ubuntu-latest\n    steps:\n"
-        f"      - run: standard-check\n        env:\n          TOKEN: {reference}\n"
+        f"      - run: register-check\n        env:\n          TOKEN: {reference}\n"
     )
 
 

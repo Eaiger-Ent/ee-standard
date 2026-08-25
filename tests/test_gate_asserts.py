@@ -24,9 +24,9 @@ import pytest
 import yaml
 
 from conftest import REPO_ROOT, a_register, make_repo, register_with, write_register
-from standard_check.asserts_command import secrets_gate_wired_at_all_loci
-from standard_check.asserts_file import provenance_stamp_present
-from standard_check.register import load_register
+from register_check.asserts_command import secrets_gate_wired_at_all_loci
+from register_check.asserts_file import provenance_stamp_present
+from register_check.register import load_register
 
 _HOOK = """repos:
   - repo: local
@@ -46,7 +46,7 @@ jobs:
       - run: gitleaks detect --no-banner --redact
 """
 
-_WIRED = {".pre-commit-config.yaml": _HOOK, ".github/workflows/standard-check.yml": _CI}
+_WIRED = {".pre-commit-config.yaml": _HOOK, ".github/workflows/register-check.yml": _CI}
 
 _ARGS: dict[str, object] = {"tool": "gitleaks", "ignore_file": ".gitleaksignore"}
 
@@ -72,7 +72,7 @@ def test_deleting_the_ci_job_fails_the_control(tmp_path: Path) -> None:
 
 
 def test_deleting_the_pre_commit_hook_fails_the_control(tmp_path: Path) -> None:
-    repo = make_repo(tmp_path, {".github/workflows/standard-check.yml": _CI})
+    repo = make_repo(tmp_path, {".github/workflows/register-check.yml": _CI})
     result = secrets_gate_wired_at_all_loci(repo, a_register(), _ARGS)
     assert not result.passed
     assert "pre-commit locus" in result.message
@@ -88,7 +88,7 @@ def test_a_workflow_that_gates_nothing_is_not_the_ci_locus(tmp_path: Path) -> No
         tmp_path,
         {
             ".pre-commit-config.yaml": _HOOK,
-            ".github/workflows/standard-check.yml": _CI.replace(
+            ".github/workflows/register-check.yml": _CI.replace(
                 "on: [push, pull_request]", "on: [workflow_dispatch]"
             ),
         },
@@ -104,7 +104,7 @@ def test_a_ci_step_running_the_whole_hook_suite_reaches_the_gate(tmp_path: Path)
         tmp_path,
         {
             ".pre-commit-config.yaml": _HOOK,
-            ".github/workflows/standard-check.yml": _CI.replace(
+            ".github/workflows/register-check.yml": _CI.replace(
                 "gitleaks detect --no-banner --redact", "pre-commit run --all-files"
             ),
         },
@@ -160,7 +160,7 @@ def test_the_tool_name_comes_from_the_register_not_the_checker(tmp_path: Path) -
         tmp_path,
         {
             ".pre-commit-config.yaml": _HOOK.replace("gitleaks", "trufflehog"),
-            ".github/workflows/standard-check.yml": _CI.replace("gitleaks", "trufflehog"),
+            ".github/workflows/register-check.yml": _CI.replace("gitleaks", "trufflehog"),
         },
     )
     assert secrets_gate_wired_at_all_loci(repo, a_register(), {"tool": "trufflehog"}).passed
@@ -185,7 +185,7 @@ def test_a_lockfile_tool_is_looked_for_by_its_pinned_invocation(tmp_path: Path) 
         tmp_path,
         {
             ".pre-commit-config.yaml": _HOOK.replace("gitleaks", "markdownlint-cli2"),
-            ".github/workflows/standard-check.yml": _CI.replace(
+            ".github/workflows/register-check.yml": _CI.replace(
                 "gitleaks detect --no-banner --redact", "markdownlint-cli2 ."
             ),
         },
@@ -330,7 +330,7 @@ def test_a_stamp_for_a_sibling_control_does_not_satisfy_this_one(tmp_path: Path)
 
 
 def test_the_assert_says_so_when_run_outside_a_control(tmp_path: Path) -> None:
-    """`standard-check assert <name>` evaluates an assert with no control.
+    """`register-check assert <name>` evaluates an assert with no control.
 
     A verdict invented for a question nobody asked is worse than the refusal:
     this assert's whole subject is *which* control's deployment was recorded.

@@ -25,8 +25,8 @@ from typing import Any
 import pytest
 
 from conftest import a_register, make_repo, register_with
-from standard_check.asserts_file import stack_tool_pinned_in_lockfile, substitute_package
-from standard_check.repo import Repo
+from register_check.asserts_file import stack_tool_pinned_in_lockfile, substitute_package
+from register_check.repo import Repo
 
 _PYPROJECT = """
 [project]

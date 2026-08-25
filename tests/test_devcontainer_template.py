@@ -32,10 +32,10 @@ from pathlib import Path
 import pytest
 
 from conftest import REPO_ROOT, make_repo
-from standard_check.cli import main
-from standard_check.repo import load_jsonc
+from register_check.cli import main
+from register_check.repo import load_jsonc
 
-TEMPLATE = REPO_ROOT / "plugins/ee-standard/templates/devcontainer"
+TEMPLATE = REPO_ROOT / "plugins/control-register/templates/devcontainer"
 REGISTER_PATH = REPO_ROOT / "controls.yaml"
 PROJECT = "probe-app"
 

@@ -41,7 +41,7 @@ expensive to correct.
 | GOV-002 cannot fail in CI. `_previous_content` falls back `origin/main` → `main` → `HEAD`, so once a growth is committed, "previous" *is* the grown file. Confirmed: growth uncommitted → FAIL; same growth committed → PASS | Catches dirty worktrees only | Compare against the default branch's merge-base, and fail closed when no comparison point exists |
 | DOC-001 asserts only that a config file exists. Confirmed: `line_length: 100000` plus a 1600-character line passes; deleting the CI step, the pre-commit hook or the editor hook also passes | **Closed** at contract 5 — `markdown_gate_wired_at_all_loci` | A `doc_gate_wired_at_all_loci` assert mirroring LNT-001's, plus an assertion on the ceiling the register names |
 | A control whose tool is missing reports FAIL. `hadolint`, `checkov` and `tflint` are absent from this container, so any repo with a `Dockerfile` or a `.tf` gets "command not found" | "Cannot verify" is indistinguishable from "violates" | `UNCLASSIFIED` — the verdict already exists for exactly this |
-| GOV-001 derives reachability from a substring test, and any bare `standard-check` step short-circuits every control | `pip install standard-check` would mark all controls reachable | Match invocations, not substrings; see § Decisions for how loudly it should admit being partial |
+| GOV-001 derives reachability from a substring test, and any bare `register-check` step short-circuits every control | `pip install register-check` would mark all controls reachable | Match invocations, not substrings; see § Decisions for how loudly it should admit being partial |
 | `SKIPPED (no credentials)` leaves the exit code at 0 | CI is green while SEC-001's remote half and all of CI-001 are unverified | See § Decisions |
 
 ### B — Runs that abort instead of reporting
@@ -126,7 +126,7 @@ by listing only two of the four values. `UNCLASSIFIED` is likewise unreachable
 from every code path.
 
 **The `kind: command` / `kind: file` taxonomy has been subverted.** **All eight**
-`standard-check assert …` blocks are file-shape assertions declared as commands —
+`register-check assert …` blocks are file-shape assertions declared as commands —
 not five of seven, as this section previously recorded; the count was re-measured
 on 2026-08-17 against the register's own loader. ADR 0002 even describes SEC-002
 as "a file-shaped assertion" while the register calls it a command.
@@ -137,11 +137,11 @@ verdict. Measured against the register as it stands, GOV-001 sees:
 
 | What GOV-001 sees | Controls | Consequence |
 | --- | --- | --- |
-| The bare token `standard-check` | SEC-002, SUP-001, SUP-003, LNT-001, TYP-001, TST-001 | Six blocking controls collapse to one indistinguishable token; any CI step containing that substring marks all six reachable |
+| The bare token `register-check` | SEC-002, SUP-001, SUP-003, LNT-001, TYP-001, TST-001 | Six blocking controls collapse to one indistinguishable token; any CI step containing that substring marks all six reachable |
 | No `kind: command` block at all | SUP-002, DEV-001 | Blocking, `ci`, verified only by file asserts. `commands` is empty, so `reached` is always false and they can pass only via the bare-invocation short-circuit |
 | A distinct tool token | SEC-001, BLD-001, IAC-001, DOC-001 | The only four where the reachability test measures anything |
 
-So neither branch of GOV-001 measures reachability: with a bare `standard-check`
+So neither branch of GOV-001 measures reachability: with a bare `register-check`
 step every control passes vacuously, and without one SUP-002 and DEV-001 fail
 however well they are wired. This is the control the register calls its
 highest-value one, and the guard against theme **T-3**.
@@ -400,7 +400,7 @@ tell the asserts where to look.
 
 #### H1 — GOV-001 accepts a workflow that never runs on push or pull_request
 
-Changing `on:` in `.github/workflows/standard-check.yml` to `workflow_dispatch:`
+Changing `on:` in `.github/workflows/register-check.yml` to `workflow_dispatch:`
 and changing nothing else produces this report:
 
 ```text
@@ -458,7 +458,7 @@ mirror are the guards.
 #### H2 — the loci a tool is pinned at were a list in the checker
 
 `_VERSION_SITES` in `asserts_file.py` named four paths. Renaming
-`.github/workflows/standard-check.yml` to `conformance.yml` and drifting both of
+`.github/workflows/register-check.yml` to `conformance.yml` and drifting both of
 its pins to `9.9.9` left SUP-001 reporting PASS: the file was no longer one of
 the four, so nothing compared it. This is § G's defect — gitleaks compared at no
 locus — one refactor away from returning, and the § G fix (fail when a `literal`
@@ -469,7 +469,7 @@ The same list points the other way for anyone else. A repository that installs
 gitleaks from a workflow of its own naming fails SUP-001 with *"gitleaks is
 declared `source: literal` but is pinned at no known locus
 (.pre-commit-config.yaml, .devcontainer/setup.sh, .github/workflows/lint.yml,
-.github/workflows/standard-check.yml)"* — this repository's four filenames,
+.github/workflows/register-check.yml)"* — this repository's four filenames,
 quoted at an adopter as though they were the standard. By
 [ADR 0018](adr/0018-register-checker-boundary.md)'s test the answer is not close:
 a reasonable Equal Experts repository needs these to differ without the checker
@@ -486,7 +486,7 @@ reports:
 
 ```text
 SUP-001  FAIL  ✗ gitleaks is recorded as pinned at
-               .github/workflows/standard-check.yml, which does not exist
+               .github/workflows/register-check.yml, which does not exist
 ```
 
 A declared site holding no pin fails too: the file being there and the version
@@ -586,9 +586,9 @@ A decision rather than a defect, and Phase 2's skills read the taxonomy.
 **Closed 2026-08-18** by writing the exception down and bounding it — see the
 closing note at the end of this section.
 
-The schema rejects a `run:` whose command is `standard-check assert`, with the message
+The schema rejects a `run:` whose command is `register-check assert`, with the message
 that an in-process assertion is `kind: file`. It accepts
-`standard-check meta GOV-001`, and `verify_meta.py` then matches that string and
+`register-check meta GOV-001`, and `verify_meta.py` then matches that string and
 runs the check **in-process** — the same shape, exempted by nothing written
 down. `CLAUDE.md` states the rule with no exception: *"declaring an in-process
 assertion as `kind: command` is a schema error"*.
@@ -748,12 +748,12 @@ artefact, so this widens the amend at
 
 #### H8 — three smaller findings
 
-- GOV-001's full-run short-circuit matches `standard-check run --tier 1` and
-  `standard-check --repo ../other`. A narrowed run, or a run against a different
+- GOV-001's full-run short-circuit matches `register-check run --tier 1` and
+  `register-check --repo ../other`. A narrowed run, or a run against a different
   directory, marks every blocking control reachable. No such step exists today
   and all controls are Tier 1, so this is latent until Tier 2 — but Tier 2 is the
   first thing that makes it wrong.
-- `standard-check --repo ../other`, the form
+- `register-check --repo ../other`, the form
   [`08-adopting.md`](08-adopting.md) § 4 documents, fails for any repository that
   does not contain its own `controls.yaml`, which is every adopter. The guide
   does not mention `--register`. It also exits `1` — "a verified violation" — for
@@ -848,7 +848,7 @@ prevent.
       controls pass, none fails, and CI-001 and SEC-001 are unverified.
       The `Standard` workflow **tolerates `3` and nothing else** until Phase 3,
       per ADR 0016 § Ratified tolerance — the flip to `--require-complete` is
-      held by a Phase 3 criterion, because `standard-check` is a required check
+      held by a Phase 3 criterion, because `register-check` is a required check
       and a hard failure here would freeze the branch against its own repair
 - [x] A control whose tool is absent reports `UNCLASSIFIED`, distinct from FAIL,
       and a meta-control that cannot reach a comparison point does the same —
@@ -859,11 +859,11 @@ prevent.
       control only if it actually runs that control's verification. Both
       degenerate readings in § E are gone. The full-run case matches an
       invocation — a command word at the start of a command, optionally behind
-      `uv run` — so `pip install standard-check` is no longer evidence that
+      `uv run` — so `pip install register-check` is no longer evidence that
       anything is checked, and shell punctuation around the invocation no longer
       changes the verdict. The per-control case matches each block's own tool or
       assert name, so the six controls that collapsed to the token
-      `standard-check` are distinguishable and a control verified only by file
+      `register-check` are distinguishable and a control verified only by file
       asserts can be reached on its own evidence
 - [x] Every verification block declares the `kind` it actually is. No file-shape
       assertion is declared `kind: command`, and GOV-001 can find a blocking `ci`

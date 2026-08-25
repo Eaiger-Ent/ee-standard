@@ -55,6 +55,14 @@
       // job ids of the two gating workflows. A rule of this type naming no
       // context requires no check at all, which is what this file said before
       // contract 19 and what the assert now refuses.
+      //
+      // `standard-check` rather than `register-check`, for one more move. ADR
+      // 0031 renames the checker, and this file is the payload `gate-repo`
+      // PUTs — so the name changes here, in CI-001's `required_checks:`, in
+      // the gating job's id and on the platform itself in one change, which is
+      // move 2. Nothing in a pull request can change what GitHub enforces, and
+      // GOV-001 fails the moment the register asks for a check the platform
+      // does not have, so no part of this may move ahead of the others.
       "parameters": {
         "required_status_checks": [
           { "context": "standard-check" },

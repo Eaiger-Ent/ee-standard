@@ -30,13 +30,13 @@ from conftest import (
     register_with,
     write_register,
 )
-from standard_check.asserts_command import (
+from register_check.asserts_command import (
     linter_wired_at_all_loci,
     no_failure_suppression,
     typecheck_strict_and_blocking,
 )
-from standard_check.register import load_register
-from standard_check.repo import Repo
+from register_check.register import load_register
+from register_check.repo import Repo
 
 _WORKFLOW = (
     "on: [push, pull_request]\njobs:\n  job:\n    runs-on: ubuntu-latest\n    steps:\n"

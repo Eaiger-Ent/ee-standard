@@ -24,7 +24,7 @@ import subprocess
 import pytest
 
 from conftest import REPO_ROOT, a_register
-from standard_check.provenance import EXPECTED, MARKER, stamps_in
+from register_check.provenance import EXPECTED, MARKER, stamps_in
 
 
 def _stamped_files() -> list[str]:
@@ -103,7 +103,7 @@ def test_the_deployed_artefacts_are_the_ones_that_carry_stamps() -> None:
         # SEC-001's two, from Phase 2. Both were hand-wired in Phase 0.5 and
         # adopted by `gate-secrets` rather than deployed from nothing — the
         # stamps say so, which is what keeps them from claiming otherwise.
-        ".github/workflows/standard-check.yml",
+        ".github/workflows/register-check.yml",
         # `gate-quality`'s editor locus, which is two files rather than one.
         # `devcontainer.json` installs the extension; `.vscode/settings.json`
         # says that extension holds the file type, which from register contract

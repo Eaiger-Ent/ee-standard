@@ -18,7 +18,7 @@ import json
 from pathlib import Path
 
 from conftest import a_register, editor_settings, make_repo
-from standard_check.asserts_command import (
+from register_check.asserts_command import (
     actions_pinned_to_sha,
     ci_installs_frozen,
     linter_wired_at_all_loci,
@@ -26,15 +26,15 @@ from standard_check.asserts_command import (
     no_static_cloud_keys,
     typecheck_strict_and_blocking,
 )
-from standard_check.asserts_command import (
+from register_check.asserts_command import (
     tests_run_and_block as check_tests_run_and_block,
 )
-from standard_check.asserts_file import (
+from register_check.asserts_file import (
     dependency_update_config_covers_all_ecosystems,
     devcontainer_image_digest_pinned,
     dockerfile_final_user_is_non_root,
 )
-from standard_check.predicates import compile_predicate
+from register_check.predicates import compile_predicate
 
 _DIGEST = "sha256:" + "a" * 64
 _SHA40 = "d" * 40

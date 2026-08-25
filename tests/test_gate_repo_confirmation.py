@@ -32,7 +32,7 @@ import pytest
 
 from conftest import REPO_ROOT
 
-SKILL = REPO_ROOT / "plugins/ee-standard/skills/gate-repo"
+SKILL = REPO_ROOT / "plugins/control-register/skills/gate-repo"
 SKILL_TEXT = (SKILL / "SKILL.md").read_text(encoding="utf-8")
 
 # The section that must list every mutating call. Named here because the test
@@ -175,7 +175,7 @@ def test_each_question_names_its_own_blast_radius(phrase: str, why: str) -> None
 
 
 def test_no_confirmation_is_waivable_by_an_earlier_approval() -> None:
-    """Including `standard-adopt`'s plan.
+    """Including `register-adopt`'s plan.
 
     That is the approval most likely to be read as covering these, because it is
     the one a person actually gave a few minutes earlier.
@@ -184,7 +184,7 @@ def test_no_confirmation_is_waivable_by_an_earlier_approval() -> None:
     assert "No confirmation here is waivable by an earlier approval" in text
     assert "never ask them as one question with one answer" in text
     adopt = " ".join(
-        (REPO_ROOT / "plugins/ee-standard/skills/standard-adopt/SKILL.md").read_text(
+        (REPO_ROOT / "plugins/control-register/skills/register-adopt/SKILL.md").read_text(
             encoding="utf-8"
         ).split()
     )

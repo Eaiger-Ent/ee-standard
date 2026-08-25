@@ -1,4 +1,4 @@
-"""`standard-check run --control <ID>` — the one entry point a gate verifies through.
+"""`register-check run --control <ID>` — the one entry point a gate verifies through.
 
 Phase 2's criterion is *"gates and checker share one assert implementation —
 verified by there being one copy, not by comparing two"*. The mechanism is this
@@ -24,7 +24,7 @@ from typing import Any
 import pytest
 
 from conftest import make_repo, minimal_register, write_register
-from standard_check.cli import main
+from register_check.cli import main
 
 _HOOKS = "repos:\n  - repo: local\n    hooks:\n      - id: gitleaks\n"
 

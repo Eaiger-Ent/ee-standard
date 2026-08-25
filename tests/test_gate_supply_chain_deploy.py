@@ -11,7 +11,7 @@ are already SHA-pinned, and SUP-003 still fails.
 **What this proves, and what it does not.** The artefacts come from the skill's
 own shipped templates, rendered with the register's values, one copy of the
 content. What is proved is that those artefacts, in a repository that had none,
-are accepted by `standard-check`, and that removing any one of them is rejected.
+are accepted by `register-check`, and that removing any one of them is rejected.
 What is *not* proved is that a model follows the prose in `SKILL.md` — no test
 can establish that.
 
@@ -28,10 +28,10 @@ import pytest
 import yaml
 
 from conftest import REPO_ROOT, make_repo
-from standard_check.cli import main
-from standard_check.register import Register, load_register
+from register_check.cli import main
+from register_check.register import Register, load_register
 
-SKILL = REPO_ROOT / "plugins/ee-standard/skills/gate-supply-chain"
+SKILL = REPO_ROOT / "plugins/control-register/skills/gate-supply-chain"
 REGISTER_PATH = REPO_ROOT / "controls.yaml"
 SKILL_VERSION = "0.1.0"
 ECOSYSTEM = "python"
@@ -65,11 +65,11 @@ def _adopter_register(root: Path) -> Path:
     fixture repository judged against them is told its tools are pinned at files
     it has never had — which is the § H2 defect, quoted back at a test.
 
-    So the fixture keeps `standard-check`, whose authority is the lockfile it
+    So the fixture keeps `register-check`, whose authority is the lockfile it
     does commit, and drops the three literal tools it does not install.
     """
     document = yaml.safe_load(REGISTER_PATH.read_text(encoding="utf-8"))
-    document["tools"] = {"standard-check": document["tools"]["standard-check"]}
+    document["tools"] = {"register-check": document["tools"]["register-check"]}
     target = root / "adopter-register.yaml"
     target.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
     for control in document["controls"] + document.get("meta_controls", []):
@@ -94,7 +94,7 @@ def _render(template: str, register: Register) -> str:
     artefact deployed with `{{FROZEN_INSTALL}}` in it.
     """
     ecosystem = register.ecosystems[ECOSYSTEM]
-    tool = "standard-check"
+    tool = "register-check"
     text = template
     for placeholder, value in {
         "{{ECOSYSTEM}}": ECOSYSTEM,
@@ -337,7 +337,7 @@ def test_a_hook_that_audits_another_control_is_not_this_locus(
 def test_a_non_auditing_subcommand_is_not_this_locus(
     deployed: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """`standard-check schema` validates the register and reads no control.
+    """`register-check schema` validates the register and reads no control.
 
     This repository's own pre-commit config runs exactly that, and without this
     distinction it would have been credited with a SUP-003 gate that could never
@@ -366,7 +366,7 @@ def test_a_full_audit_reaches_the_control_without_a_selective_step(
     write nothing would leave the control failing.
     """
     workflow = deployed / ".github/workflows/ci.yml"
-    invocation = _register().tools["standard-check"].invocation
+    invocation = _register().tools["register-check"].invocation
     workflow.write_text(
         workflow.read_text(encoding="utf-8").replace(
             f"{invocation} run --control SUP-003", f"{invocation}"

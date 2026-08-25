@@ -64,7 +64,7 @@ that says they are one plugin:
 So a multi-skill plugin is ordinary rather than exotic — `git-summary-plugin`
 declares ten. What is *not* ordinary is getting one out of `/skill-submit-new`,
 which writes `"<name>": { "skills": ["<name>"] }`: a single-skill entry, once per
-issue. The consolidated entry naming all of `ee-standard`'s skills has to be
+issue. The consolidated entry naming all of `control-register`'s skills has to be
 written deliberately and asked for in the issues, or nine plugins arrive where
 one was intended.
 
@@ -84,14 +84,14 @@ costs a sentence in an issue and the wrong guess costs a resubmission.
 **The marketplace layout, by contrast, is settled — and is the one built here.**
 `ee-skills/plugins/adr-toolkit/` holds exactly `.claude-plugin/`, `LICENSE`,
 `README.md` and `skills/`, with one directory per skill inside. That is
-`plugins/ee-standard/` in this repository, field for field, with `LICENSE` the
+`plugins/control-register/` in this repository, field for field, with `LICENSE` the
 one piece still missing. Nothing about the local tree needs rearranging for the
 destination; what needs deciding is only how it is handed over.
 
 **`/skill-submit-new` will not find these skills.** It resolves
 `<name>/SKILL.md` in the project Claude skills directory or the user-level one.
 This repository has no `.claude/skills/` at all, and the skills live at
-`plugins/ee-standard/skills/<name>/`. Something has to bridge that at submission
+`plugins/control-register/skills/<name>/`. Something has to bridge that at submission
 time — a copy, a symlink, or an amendment to the submission skill that teaches
 it the plugin layout. **This is undecided**, and it is recorded here rather than
 settled because the third option is a fifth submission and that is not a
@@ -136,7 +136,7 @@ Plus the repository CI gates: `markdownlint-cli2`, `claude plugin validate .`,
 `scripts/render_readme.py --check`, `scripts/check_plugin_license.py`,
 `scripts/check_duplicated_files.py`.
 
-P1 and P2 bind hardest on this family. `standard-adopt` is a dispatcher across
+P1 and P2 bind hardest on this family. `register-adopt` is a dispatcher across
 six gates and could trivially exceed 500 lines if per-control detail is inlined
 — which is the second reason, after drift, that detail belongs in the register
 and in `templates/` files the skill reads.
@@ -144,7 +144,7 @@ and in `templates/` files the skill reads.
 ## What ships with the plugin
 
 The directory layout these sit in is the marketplace's, verified against
-`ee-skills/plugins/adr-toolkit` and already matched by `plugins/ee-standard/` —
+`ee-skills/plugins/adr-toolkit` and already matched by `plugins/control-register/` —
 see § What the incubator actually holds rather than a second description here.
 
 | Artefact | Requirement |
@@ -189,7 +189,7 @@ Proposed entry:
   "key": "governance",
   "label": "Governance",
   "description": "Skills that define, deploy, or audit engineering standards across repositories — control registers, conformance checking, drift detection, and the deployment of shared CI and pre-commit configuration.",
-  "examples": ["ee-standard"],
+  "examples": ["control-register"],
   "not_for": "Single-tool setup helpers (use `development`) or one-off environment checks (use `productivity`)."
 }
 ```
@@ -211,7 +211,7 @@ plugins are separate again and should not be bundled with any of it:
 
 | Submission | Target | Why separate |
 | --- | --- | --- |
-| 1. `ee-standard` | `/skill-submit-new`, once per skill | The new plugin, plus the `governance` category. Every issue must name the same `promote-config.json` entry — `"ee-standard": {"skills": [ … ]}` — or the skills are promoted as separate single-skill plugins, which is what the tool's generated entry says by default. |
+| 1. `control-register` | `/skill-submit-new`, once per skill | The new plugin, plus the `governance` category. Every issue must name the same `promote-config.json` entry — `"control-register": {"skills": [ … ]}` — or the skills are promoted as separate single-skill plugins, which is what the tool's generated entry says by default. |
 | 2. `skill-update` widening | `/skill-submit-amend` against `ee-skills-manage` | Changes an existing, widely installed skill. Reviewers assessing a new plugin and reviewers assessing a behaviour change to a shipped one are asking different questions. |
 | 3. `CONTRIBUTING.md` corrections | Direct PR (Lane B) | Documentation fix, explicitly permitted as a direct PR. Useful to land first — it is small, independent, and establishes contact before the large submission arrives. |
 | 4. `lint-md` amendment | `/skill-submit-amend` against `ee-skills-incubator` | Raised 2026-08-18 as [issue #530](https://github.com/EqualExperts/ee-skills-incubator/issues/530), and **mostly shipped in `lint-md@1.0.7`** on 2026-08-20: the CI template now pins `actions/checkout` to a SHA, the tool installs as an exact-pinned dev dependency with `npm ci` at the other loci, and the pre-commit hook is `repo: local` with no `rev:` copy. Two rows remain open, and both are this repository's own ADRs rather than the original report: a locus must reach the artefact the lockfile pins, where 1.0.7 still writes `npx --no-install` ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)); and an exemption may not hide a tracked file, where a fresh deployment still writes `.claude/**` into `ignores` ([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)). This is a follow-up on an open issue, not a fresh submission. |
@@ -232,9 +232,9 @@ sitting below it.
 
 ## Before submitting anything
 
-The gate is the consumer repo, not the checklist. `ee-standard` must have been
+The gate is the consumer repo, not the checklist. `control-register` must have been
 deployed onto a repository that did not author it, by someone following only the
-published instructions, with `standard-check` passing afterwards.
+published instructions, with `register-check` passing afterwards.
 
 A conformance tool that has only ever been run against the repository that
 defines conformance has not been tested. It has been demonstrated.

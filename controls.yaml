@@ -1,4 +1,4 @@
-# ee-standard control register
+# The Equal Experts control register
 #
 # The single source of truth for what "conformant" means at Equal Experts.
 # Every other artefact in this repo — CI templates, gate skills, the conformance
@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.20.0
+version: 0.21.0
 
 meta:
   owner: platform-engineering
@@ -16,7 +16,7 @@ meta:
   # 2: DEV-001 gained the image-digest half of its verification (Phase 0.5
   #    exit criterion — see docs/06-devcontainer-setup.md § Known gap).
   # 3: The `kind:` taxonomy was corrected — eight in-process assertions were
-  #    declared `kind: command` as `standard-check assert …` strings and are
+  #    declared `kind: command` as `register-check assert …` strings and are
   #    now `kind: file`. `variance: justified` was removed from the vocabulary
   #    (unimplementable as specified) and its two users are `narrowing-only`.
   #    Verification blocks may declare themselves partial (ADR 0017).
@@ -87,7 +87,7 @@ meta:
   #     repository with no pre-commit hook for it at all reported PASS. That is
   #     the shape contract 11 fixed in SEC-001, found again in three more
   #     controls, and `supply_chain_gate_wired_at_all_loci` is the same move.
-  #     `tools.standard-check` records how a locus reaches the checker, because
+  #     `tools.register-check` records how a locus reaches the checker, because
   #     SUP-003's pre-commit gate is the checker itself and a bare name resolves
   #     from PATH (ADR 0020). `ecosystems.<name>.frozen_install_command` records
   #     what a gate *writes* where `frozen_install` records what the checker
@@ -105,7 +105,7 @@ meta:
   #     list rather than hard-coding two — three near-copies of one assert was
   #     already one too many, and IAC-001 would have made a fourth.
   #     BLD-001's gate at both loci is the checker, for both halves of the
-  #     control: `standard-check run --control BLD-001` runs the
+  #     control: `register-check run --control BLD-001` runs the
   #     `kind: command` hadolint block through the same path the audit uses, so
   #     a repository with a Dockerfile needs no second wiring for it. What such
   #     a repository does need is a `tools.hadolint` entry of its own, naming
@@ -277,12 +277,25 @@ meta:
   #     target, handed in by the runner exactly as it is handed to a control's
   #     blocks. Resolving it inside the meta-control would let two verdicts in
   #     one report describe different repositories.
-  register_contract: 26
+  # 27: The checker is renamed. `tools.standard-check` becomes
+  #     `tools.register-check`, with `invocation: uv run register-check`, and
+  #     every gate's self-verification is spelled with it (ADR 0031). A skill
+  #     reading the old key finds nothing, which is the whole reason this
+  #     number moves for a rename.
+  #
+  #     CI-001's `required_checks:` does **not** move with it, and that is the
+  #     one deliberate lag in the change. GOV-001 fails a check the register
+  #     requires and the platform does not enforce, and a ruleset changes only
+  #     by an API call no pull request can make — so the register, the recorded
+  #     ruleset and the gating job keep the old name until that call is made,
+  #     and all four move together. ADR 0031 § The required check cannot be
+  #     renamed in one move.
+  register_contract: 27
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
 # repo does not satisfy is SKIPPED, not failed. Predicates are evaluated by
-# standard-check against the repo's own files — never self-declared.
+# register-check against the repo's own files — never self-declared.
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 # Pinned tool versions. ADR 0018: a version a repository might reasonably need
@@ -348,22 +361,22 @@ tools:
     sha256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
     pinned_at:
       - .devcontainer/setup.sh
-      - .github/workflows/standard-check.yml
+      - .github/workflows/register-check.yml
   # The checker itself. SUP-003 and DEV-001 declare a `pre-commit` locus and
   # have no third-party tool that could serve it — the check is this checker's
-  # own — so their pre-commit gate runs `standard-check`, and a locus that runs
+  # own — so their pre-commit gate runs `register-check`, and a locus that runs
   # a bare name resolves from PATH (ADR 0020). Recorded here so the gate writes
   # the form the repository actually uses: an adopter installs the checker as a
   # dependency and reaches it however their package manager does.
   #
   # `source: lockfile` is honest in this repository as well as in an adopting
-  # one, though for a different reason: here `standard-check` is the project
+  # one, though for a different reason: here `register-check` is the project
   # `uv.lock` resolves, rather than a dependency it pins. Either way `uv run`
   # reaches the artefact uv.lock governs and nothing on PATH.
-  standard-check:
+  register-check:
     source: lockfile
     lockfile: uv.lock
-    invocation: uv run standard-check
+    invocation: uv run register-check
   uv:
     source: literal
     # Where the release artefact is fetched from, as for gitleaks. The
@@ -390,7 +403,7 @@ tools:
     sha256: 68a509da24b06b4223a1c0175fb5eb5bc79342b76cbeff0cfe51ac3f5b17b6b2
     pinned_at:
       - .devcontainer/setup.sh
-      - .github/workflows/standard-check.yml
+      - .github/workflows/register-check.yml
       # Not a gate, and still a locus: `support-floor.yml` installs uv to run
       # the tests on the oldest interpreter `requires-python` claims. A site
       # that installs a pinned tool is a site that can drift from the register,
@@ -412,7 +425,7 @@ tools:
   #
   # That floor stays a floor, and stays in pyproject.toml. It is the package's
   # support claim, not this repository's environment; narrowing it to force the
-  # environment would tell an adopter that standard-check does not work on 3.14,
+  # environment would tell an adopter that register-check does not work on 3.14,
   # which is false. The two facts are recorded separately from here on.
   python:
     source: toolchain
@@ -1091,11 +1104,11 @@ controls:
       # The gate is the checker itself: there is no third-party tool that reads
       # this register's notion of an owner-exempt action, and a second
       # implementation would eventually disagree with the first. `invocation`
-      # comes from `tools.standard-check`, because a locus running a bare name
+      # comes from `tools.register-check`, because a locus running a bare name
       # resolves from PATH (ADR 0020).
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: standard-check }
+        args: { tool: register-check }
       - kind: file
         assert: provenance_stamp_present
         args: { skill: gate-supply-chain }
@@ -1149,7 +1162,7 @@ controls:
       # does (contract 14's finding, in the control beside it).
       #
       # The gate is the checker, and it covers both halves at once:
-      # `standard-check run --control BLD-001` runs the `hadolint` block above
+      # `register-check run --control BLD-001` runs the `hadolint` block above
       # through the same path the audit uses, so a repository with a Dockerfile
       # needs no second wiring for it. What such a repository does need is a
       # `tools.hadolint` entry naming the loci it installs the linter at — an
@@ -1157,7 +1170,7 @@ controls:
       # register pins none because this repository has no Dockerfile.
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: standard-check }
+        args: { tool: register-check }
       - kind: file
         assert: provenance_stamp_present
         args: { skill: gate-build }
@@ -1193,7 +1206,7 @@ controls:
         assert: devcontainer_image_digest_pinned
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: standard-check }
+        args: { tool: register-check }
       - kind: file
         assert: provenance_stamp_present
         args: { skill: gate-build }
@@ -1242,6 +1255,15 @@ controls:
           # job ids. Each must be a job in a workflow that runs on push or
           # pull_request, and must not be suppressed — a required check that
           # cannot fail is theme T-3 arriving through the ruleset.
+          #
+          # `standard-check` rather than `register-check`, for one more move.
+          # ADR 0031 renames the checker, and GOV-001's remote half fails a
+          # check the register requires and the platform does not enforce — so
+          # this name, the recorded ruleset's and the gating job's all move in
+          # the same change as the confirmed API call that makes the platform
+          # agree. Renaming it here first would fail the run that is checking
+          # the rename. See ADR 0031 § The required check cannot be renamed in
+          # one move.
           required_checks: [standard-check, lint-md]
           # `strict_required_status_checks_policy`. With it off, a check that
           # passed against stale code still counts, so a merge can be gated by a
@@ -1426,7 +1448,7 @@ controls:
       # neither because this repository has no `*.tf` to analyse.
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: standard-check }
+        args: { tool: register-check }
       - kind: file
         assert: provenance_stamp_present
         args: { skill: gate-iac }
@@ -1496,7 +1518,7 @@ meta_controls:
       predecessor retrospective.
     verify:
       - kind: command
-        run: standard-check meta GOV-001
+        run: register-check meta GOV-001
         # The `partial:` this block carried from contract 3 is gone at contract
         # 26, because the thing it declared unverified is now read. Two
         # questions hid inside "is it required", and contract 19 separated
@@ -1521,7 +1543,7 @@ meta_controls:
       an exemption list, not a migration.
     verify:
       - kind: command
-        run: standard-check meta GOV-002
+        run: register-check meta GOV-002
 
   - id: GOV-003
     title: No control is past its review date
@@ -1533,4 +1555,4 @@ meta_controls:
       for agreement.
     verify:
       - kind: command
-        run: standard-check meta GOV-003
+        run: register-check meta GOV-003

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from conftest import REPO_ROOT, minimal_register, write_register
-from standard_check.register import load_register
+from register_check.register import load_register
 
 
 def test_real_register_passes_schema() -> None:
@@ -41,11 +41,11 @@ def test_an_assertion_declared_as_a_command_is_rejected(tmp_path: Path) -> None:
 
     An in-process assertion declared `kind: command` is what let GOV-001 read it
     as a reachable CI step while the `kind: file` blocks beside it were
-    invisible — six controls collapsed to the token `standard-check`, and two
+    invisible — six controls collapsed to the token `register-check`, and two
     verified only by file asserts had no token at all.
     """
     document = minimal_register(
-        verify=[{"kind": "command", "run": "standard-check assert no-static-cloud-keys"}]
+        verify=[{"kind": "command", "run": "register-check assert no-static-cloud-keys"}]
     )
     errors = _errors_for(tmp_path, document)
     assert any("is `kind: file` with an `assert:` name" in e for e in errors)
@@ -393,13 +393,13 @@ def test_an_empty_cloud_credential_list_is_a_schema_error(tmp_path: Path) -> Non
 def test_a_control_may_not_verify_by_meta_self_invocation(tmp_path: Path) -> None:
     """§ H5. The exception is bounded, or it is a hole.
 
-    `standard-check meta GOV-NNN` is the one in-process assertion the taxonomy
+    `register-check meta GOV-NNN` is the one in-process assertion the taxonomy
     admits as a command, because a meta-control's three-valued Verdict has no
     `kind: file` spelling. A *control* using it would be § E again — in the
     branch GOV-001 actually reads.
     """
     document = minimal_register(
-        verify=[{"kind": "command", "run": "standard-check meta GOV-003"}]
+        verify=[{"kind": "command", "run": "register-check meta GOV-003"}]
     )
     errors = _errors_for(tmp_path, document)
     assert any("only a meta-control may verify itself" in e for e in errors), errors
@@ -409,7 +409,7 @@ def test_a_meta_control_may_not_run_another_meta_controls_check(tmp_path: Path) 
     """Rendering GOV-002's verdict under GOV-003's name is a miscategorisation too."""
     document = minimal_register()
     document["meta_controls"][0]["verify"] = [
-        {"kind": "command", "run": "standard-check meta GOV-002"}
+        {"kind": "command", "run": "register-check meta GOV-002"}
     ]
     errors = _errors_for(tmp_path, document)
     assert any("a meta-control verifies itself" in e for e in errors), errors

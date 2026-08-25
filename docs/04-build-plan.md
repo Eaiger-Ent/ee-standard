@@ -90,7 +90,7 @@ generalise from rather than a specification to implement blind.
 
 Two reasons this cannot wait:
 
-**Phase 1 is development work.** If `standard-check` is written on a host
+**Phase 1 is development work.** If `register-check` is written on a host
 toolchain, the first thing the standard repo does is violate the premise it
 exists to enforce.
 
@@ -194,13 +194,13 @@ against complete text.
 
 ## Phase 1 — The checker
 
-Build `standard-check` as an ordinary executable. Python, installed from a
+Build `register-check` as an ordinary executable. Python, installed from a
 pinned version, no Claude anywhere near it — inside the Phase 0.5 container.
 
 Implement in this order, because each stage is testable against the register that
 already exists:
 
-1. Schema validation (`standard-check schema`) — the register validates itself
+1. Schema validation (`register-check schema`) — the register validates itself
 2. `kind: command` verification — shell out, exit code is the verdict
 3. `kind: file` assertions — the closed set named in `controls.yaml`
 4. Predicate evaluation — `SKIPPED (predicate)` distinct from `PASS`
@@ -213,7 +213,7 @@ that must not be stubbed.
 
 ### Exit criteria — phase 1
 
-- [x] `standard-check schema` passes against `controls.yaml`
+- [x] `register-check schema` passes against `controls.yaml`
 - [x] Running against this repo produces a report with no `UNCLASSIFIED` verdicts
       arising from checker bugs (as opposed to genuine ambiguity) — re-opened as
       vacuously true, **closed 2026-08-17**: `UNCLASSIFIED` now has two
@@ -273,7 +273,7 @@ phase's forensics live there.
   DOC-001 was introduced already at 250, the commit message said "from the
   previous 80", and the ADR said 120. Three numbers for one event, cited as the
   register's canonical precedent. The passage is removed.
-- ~~`standard-check --tier 1` and `standard-check drift` are documented and do
+- ~~`register-check --tier 1` and `register-check drift` are documented and do
   not work~~ — **closed 2026-08-18**, by correcting the documents rather than
   the code. `02-skill-family.md` and `CLAUDE.md` now say `run --tier 1`, the
   non-existent `drift` subcommand is gone from both, and
@@ -310,7 +310,7 @@ phase's forensics live there.
   template has to answer the same question for every tool it installs.
 - Three smaller ones, all § H8: GOV-001's full-run short-circuit accepts
   `run --tier 1` and `--repo ../other` as evidence for every blocking control
-  (latent until Tier 2 exists); `standard-check --repo ../other` fails for any
+  (latent until Tier 2 exists); `register-check --repo ../other` fails for any
   repository without its own `controls.yaml`, which is every adopter, and exits
   `1` where the CLI reserves `2` for that class. The third — `runner.py`'s
   every-block-narrowed-out path returning `SKIPPED (predicate)` — was
@@ -330,7 +330,7 @@ phase's forensics live there.
   title is broader than what passes, since the npm and curl pins are precisely
   the two Dependabot cannot propose.
 - Doc sweep: the schema doc's rung enum omits `blocking (baselined)`;
-  "validated by `standard-check schema` on every commit" is scoped to commits
+  "validated by `register-check schema` on every commit" is scoped to commits
   touching the register; "every URL in the register is verified to resolve" has
   no mechanism (all thirteen do resolve today); `03-devcontainer.md` lists a
   `claude-user-settings.json` that does not exist; CLAUDE.md's "sixteen
@@ -440,14 +440,14 @@ fixed in both.
 
 - [x] Every adopter-facing step this phase introduces is in
       [`08-adopting.md`](08-adopting.md) with its evidence — the gate skills'
-      prerequisites, what `standard-adopt` needs before it can run, and what the
+      prerequisites, what `register-adopt` needs before it can run, and what the
       template requires of a repository that copies it. `gate-secrets` (§ 3.1),
       `gate-quality` (§ 3.2), `gate-supply-chain` (§ 3.3), `gate-build` (§ 3.4),
       `gate-iac` (§ 3.5) and `gate-repo` (§ 3.6) have theirs written down, the
-      template has § 2.0, and `standard-adopt` has § 0 — the front door
+      template has § 2.0, and `register-adopt` has § 0 — the front door
 
 - [x] `gate-secrets` deploys onto a repo with none of its config, and
-      `standard-check` then reports SEC-001 PASS for its local loci — closed
+      `register-check` then reports SEC-001 PASS for its local loci — closed
       2026-08-19 against a throwaway repository, since this one has wired
       `gitleaks` by hand since Phase 0.5. Evidence, including each artefact
       deleted in turn and watched failing, in
@@ -463,11 +463,11 @@ fixed in both.
       `deploys.json` and reading it is Phase 5's sweep
       ([ADR 0018](adr/0018-register-checker-boundary.md) § Applied — fifth pass).
       **Closed 2026-08-21**: all six gates exist and each control reads back its
-      own stamp, verified end to end in `tests/test_standard_adopt.py`
+      own stamp, verified end to end in `tests/test_register_adopt.py`
 - [x] Gates and checker share one assert implementation — verified by there
       being one copy, not by comparing two. Closed 2026-08-19: the copy is
-      `standard_check.asserts`, a gate reaches it only through
-      `standard-check run --control <ID>`, and a gate that deploys a control it
+      `register_check.asserts`, a gate reaches it only through
+      `register-check run --control <ID>`, and a gate that deploys a control it
       does not name there fails a test
 - [x] The editor locus is verified by exclusion, not by presence — **added
       2026-08-24** by
@@ -498,7 +498,7 @@ fixed in both.
       LNT-001 stamp that makes it the twelfth stamped artefact. Both points
       landed together, so the contract moved once rather than twice
 - [ ] The devcontainer template builds, and DEV-001 passes against it — the
-      template ships at `plugins/ee-standard/templates/devcontainer/` and
+      template ships at `plugins/control-register/templates/devcontainer/` and
       DEV-001's and BLD-001's property blocks pass against a copy of it
       (`tests/test_devcontainer_template.py`). **Open on the other half**: this
       devcontainer has no Docker, so nothing here has built it, and a tick on a
@@ -557,9 +557,9 @@ fixed in both.
       declare
 
 - [x] Every SKILL.md passes preflight P1–P11 — all six gates and
-      `standard-adopt` pass with zero failures, each recorded in
+      `register-adopt` pass with zero failures, each recorded in
       `10-phase-2-review.md` under its own § Preflight P1–P11 heading. The
-      `standard-check` and `standard-variance` skills are Phase 3's and Phase
+      `register-check` and `register-variance` skills are Phase 3's and Phase
       5's respectively, and are not this phase's to ship
 - [x] Every control's declared `locus:` is read by something. Found open in
       Phase 2: SUP-003, BLD-001, DEV-001 and IAC-001 each declared
@@ -585,9 +585,9 @@ fixed in both.
       dropped — whether the repository says a job is required is now answered
       from a file, and whether GitHub enforces it stays Phase 3's
 
-- [x] `standard-adopt` end-to-end on a scratch repo: plan → confirm → deploy →
+- [x] `register-adopt` end-to-end on a scratch repo: plan → confirm → deploy →
       verify → commit, with the verify step genuinely able to fail — closed
-      2026-08-21 by `tests/test_standard_adopt.py`, which drives every gate in
+      2026-08-21 by `tests/test_register_adopt.py`, which drives every gate in
       the skill's own dispatch order through their shipped templates and watches
       the verify step fail on a suppressed lint step. **What is proved is that
       the pipeline works, not that a model follows the prose**; that limit is
@@ -781,8 +781,8 @@ Sequence, per [`03-devcontainer.md`](03-devcontainer.md):
 
 1. Create the repo with the `.devcontainer/` template
 2. Run `/project-init` — it configures the devcontainer for the stack
-3. Run `/standard-adopt` — it deploys the gates
-4. Run `standard-check` — it passes
+3. Run `/register-adopt` — it deploys the gates
+4. Run `register-check` — it passes
 5. Deliberately weaken something, and confirm the checker catches it. Whether
    the **direction** of the weakening is classified is Phase 5's, with the skill
    that does it — see § What moved to Phase 5, and why.
@@ -801,7 +801,7 @@ Each was decided on 2026-08-24.
 | Where it lives | **Eaiger-Ent**, where `gh` is already authenticated and every platform act in § 1 is grantable without waiting on anyone | Note what it does not test: the same accounts hold admin here, which is the fact that lets this repository take a posture it does not publish. The adopter's environment gate is exercised by configuration, not by a different threat model |
 | How the plugin reaches the consumer | **Submitted to the ee-skills marketplace**, so the consumer installs it the way any Equal Experts repository will | There is no marketplace entry today, and no `.claude-plugin/marketplace.json` in this repository. Until one exists, `/register-adopt` does not exist in the consumer repo |
 | How the checker reaches the consumer | A dependency pinned to a **tagged git ref**, placed by `register-install` ([ADR 0032](adr/0032-the-checker-is-installed-from-a-tagged-ref.md)) | The tag has to exist: this repository has **no tags**, and the tag is what an adopter pins |
-| The names | `control-register`, `register-check`, `register-adopt` ([ADR 0031](adr/0031-the-plugin-is-named-for-the-register.md)) | The rename lands **before** this phase, in three moves — a consumer repository that adopts a name already known to be wrong writes it into its own register, workflow and ruleset, and the rename is then in two repositories |
+| The names | `control-register`, `register-check`, `register-adopt` ([ADR 0031](adr/0031-the-plugin-is-named-for-the-register.md)) | The rename lands **before** this phase, in two moves — a consumer repository that adopts a name already known to be wrong writes it into its own register, workflow and ruleset, and the rename is then in two repositories. Move 1 landed 2026-08-25 at register contract 27; move 2 is the status-check context, which only a confirmed API call can change |
 | `project-init` installed | It is in the ee-skills marketplace and is **not installed here** | One `claude plugin install`. Without it the composition criterion below cannot be judged at all |
 
 ### Exit criteria — phase 4
@@ -824,7 +824,7 @@ Each was decided on 2026-08-24.
 
 - [ ] The consumer repo reaches full Tier-1 conformance
 - [ ] No step required knowledge held only by the author
-- [ ] `project-init` and `standard-adopt` compose without fighting over
+- [ ] `project-init` and `register-adopt` compose without fighting over
       `devcontainer.json`
 - [ ] Weakening a `narrowing-only` control is **caught** — the checker fails it,
       naming the control and what was weakened. This is the half that exists
@@ -845,7 +845,7 @@ Wire the mechanism that keeps deployments current.
 - `deploys.json` sidecars, with contract versions
 - The `skill-update` widening (submission 2 in
   [`05-promotion.md`](05-promotion.md))
-- A scheduled sweep running `standard-check` across repos, reporting rather than
+- A scheduled sweep running `register-check` across repos, reporting rather than
   fixing
 
 ### Exit criteria — phase 5
@@ -946,7 +946,7 @@ be told so, not worked around locally.
 
 Per [`05-promotion.md`](05-promotion.md), in the order given there: the
 `CONTRIBUTING.md` corrections first (small, independent, establishes contact),
-then `ee-standard` plus the `governance` category, then the `skill-update`
+then `control-register` plus the `governance` category, then the `skill-update`
 amendment — plus the `lint-md` amendment identified in Phase 1.5 § F, which
 makes four.
 
@@ -963,7 +963,7 @@ makes four.
 - [ ] How `/skill-submit-new` reaches skills that live in a plugin directory is
       decided and done. It resolves `<name>/SKILL.md` in the project or
       user-level Claude skills directory, and this repository's are in
-      `plugins/ee-standard/skills/` — a copy, a symlink, or a fifth submission
+      `plugins/control-register/skills/` — a copy, a symlink, or a fifth submission
       teaching it the plugin layout ([`05-promotion.md`](05-promotion.md) §
       What the incubator actually holds)
 - [ ] Every skill in the family is submitted, and every issue names the **same**
@@ -981,7 +981,7 @@ makes four.
       invocation, the ADR 0019 exemption, the `node_modules` guard that matches
       prose, and the overwrite prompt that does not recognise a provenance
       header — enumerated in § Accepting an upstream skill release
-- [ ] `ee-standard` installable from the marketplace **as one plugin**, with
+- [ ] `control-register` installable from the marketplace **as one plugin**, with
       every skill in it — not as one plugin per skill
 - [ ] The consumer repo re-adopts from the *marketplace* copy and still passes —
       proving the plugin works when installed, not only when developed

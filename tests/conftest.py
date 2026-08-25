@@ -13,9 +13,9 @@ from typing import Any
 import pytest
 import yaml
 
-from standard_check.register import Register, load_register
-from standard_check.remote import CI_VARIABLE, TOKEN_VARIABLES, GitHub
-from standard_check.repo import Repo
+from register_check.register import Register, load_register
+from register_check.remote import CI_VARIABLE, TOKEN_VARIABLES, GitHub
+from register_check.repo import Repo
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -182,7 +182,7 @@ MINIMAL_REGISTER: dict[str, Any] = {
             "title": "No control is past its review date",
             "enforces": "No review_by is earlier than today.",
             "rationale": "Expiry forces the re-decision.",
-            "verify": [{"kind": "command", "run": "standard-check meta GOV-003"}],
+            "verify": [{"kind": "command", "run": "register-check meta GOV-003"}],
         }
     ],
 }

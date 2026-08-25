@@ -30,10 +30,10 @@ from typing import Any
 import pytest
 
 from conftest import REPO_ROOT, make_repo
-from standard_check.cli import main
-from standard_check.register import Register, load_register
+from register_check.cli import main
+from register_check.register import Register, load_register
 
-SKILL = REPO_ROOT / "plugins/ee-standard/skills/gate-repo"
+SKILL = REPO_ROOT / "plugins/control-register/skills/gate-repo"
 REGISTER_PATH = REPO_ROOT / "controls.yaml"
 SKILL_VERSION = "0.1.0"
 RULESET_PATH = ".github/rulesets/default-branch.json"
@@ -352,6 +352,10 @@ def test_the_register_states_the_requirements_once(deployed: Path) -> None:
         "require_pull_request": True,
         "require_status_checks": True,
         "allow_force_push": False,
+        # `standard-check`, not `register-check`, until ADR 0031's move 2.
+        # GOV-001 fails a check the register requires and the platform does
+        # not enforce, and only a confirmed API call changes a ruleset — so
+        # this name moves in the same change as the platform's, never before.
         "required_checks": ["standard-check", "lint-md"],
         "require_branches_up_to_date": True,
     }

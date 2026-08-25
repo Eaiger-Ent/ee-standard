@@ -28,15 +28,15 @@ from conftest import (
     register_with,
     write_register,
 )
-from standard_check import remote as remote_module
-from standard_check.asserts_remote import (
+from register_check import remote as remote_module
+from register_check.asserts_remote import (
     REMOTE_ASSERTS,
     default_branch_ruleset_satisfies,
     github_push_protection_enabled,
     platform_token_expires_within,
     platform_token_is_not_classic,
 )
-from standard_check.remote import (
+from register_check.remote import (
     CI_VARIABLE,
     OAUTH_SCOPES_HEADER,
     TOKEN_EXPIRY_HEADER,
@@ -45,8 +45,8 @@ from standard_check.remote import (
     Unreadable,
     Unresolvable,
 )
-from standard_check.repo import Repo
-from standard_check.runner import Verdict, run_control
+from register_check.repo import Repo
+from register_check.runner import Verdict, run_control
 
 # The register's own CI-001 arguments. Held here so a test that changes what
 # "protected" means has to say so out loud rather than drift quietly.
@@ -54,7 +54,7 @@ RULESET_ARGS: dict[str, Any] = {
     "require_pull_request": True,
     "require_status_checks": True,
     "allow_force_push": False,
-    "required_checks": ["standard-check", "lint-md"],
+    "required_checks": ["register-check", "lint-md"],
     "require_branches_up_to_date": True,
 }
 
@@ -252,7 +252,7 @@ def test_a_setting_the_token_cannot_see_is_not_a_setting_that_is_off() -> None:
 def test_a_branch_protected_as_the_register_requires_passes() -> None:
     result = default_branch_ruleset_satisfies(protected_repo(), a_register(), RULESET_ARGS)
     assert result.passed, result.message
-    assert "standard-check, lint-md" in result.message
+    assert "register-check, lint-md" in result.message
 
 
 def test_the_default_branch_is_the_repositorys_own_not_a_hard_coded_name() -> None:
@@ -291,7 +291,7 @@ def test_a_status_check_rule_naming_no_context_fails() -> None:
 
 def test_a_missing_required_check_fails() -> None:
     result = default_branch_ruleset_satisfies(
-        protected_repo(effective=satisfying_rules(contexts=["standard-check"])),
+        protected_repo(effective=satisfying_rules(contexts=["register-check"])),
         a_register(),
         RULESET_ARGS,
     )
@@ -323,7 +323,7 @@ def _remote_control(tmp_path: Path, assert_name: str) -> tuple[Any, Repo]:
 
 
 def _load(tmp_path: Path) -> Any:
-    from standard_check.register import load_register
+    from register_check.register import load_register
 
     return load_register(tmp_path / "controls.yaml")
 
@@ -374,7 +374,7 @@ def test_the_register_declares_only_implemented_remote_asserts() -> None:
     is not finished while a `kind: remote` block in the shipped register has no
     implementation behind it.
     """
-    from standard_check.register import load_register
+    from register_check.register import load_register
 
     register, _ = load_register(Path(__file__).resolve().parent.parent / "controls.yaml")
     assert register is not None
@@ -401,8 +401,8 @@ def test_the_recorded_ruleset_and_the_platform_are_judged_by_one_function() -> N
     file assert gives it. Two readings could otherwise disagree with nothing
     comparing them — theme T-2, arriving in the checker instead of the register.
     """
-    from standard_check.register import load_register
-    from standard_check.repo import load_jsonc
+    from register_check.register import load_register
+    from register_check.repo import load_jsonc
 
     root = Path(__file__).resolve().parent.parent
     register, _ = load_register(root / "controls.yaml")
@@ -426,9 +426,9 @@ def test_the_recorded_ruleset_and_the_platform_are_judged_by_one_function() -> N
 
 def test_there_is_no_second_copy_of_the_rule_vocabulary() -> None:
     """Both asserts read GitHub's rule spellings from `rulesets.py`, not their own."""
-    import standard_check.asserts_command as file_side
-    import standard_check.asserts_remote as remote_side
-    from standard_check import rulesets
+    import register_check.asserts_command as file_side
+    import register_check.asserts_remote as remote_side
+    from register_check import rulesets
 
     for module in (file_side, remote_side):
         assert (

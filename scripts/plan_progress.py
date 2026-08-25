@@ -9,7 +9,7 @@ It deliberately reports only what the plan states, and infers no ordering,
 gating or priority — the plan says which phase gates which, and re-encoding that
 here would be the duplication the register exists to prevent (theme T-2).
 
-Deliberately **not** a `standard-check` subcommand: the checker audits any repo
+Deliberately **not** a `register-check` subcommand: the checker audits any repo
 against `controls.yaml`, and a repo being audited has no build plan of ours.
 Keeping this in `scripts/` means consumers never ship a command that reads a
 file they do not have.

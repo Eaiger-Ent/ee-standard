@@ -1,0 +1,29 @@
+# Written into the target repository's `.pre-commit-config.yaml`, under the
+# `repos: - repo: local` entry's `hooks:` list. Double-brace placeholders are
+# substituted from the register before the block is written; none of them is a
+# value this file is allowed to decide.
+#
+# One hook for two controls, and one stamp per control above it. BLD-001 and
+# DEV-001 declare the same two loci and are enforced by the same command, so a
+# second hook would run the same binary twice for no extra verdict. Both stamps
+# are needed even so: the read-back matches on the control being evaluated, so a
+# hook stamped for BLD-001 alone leaves DEV-001's pre-commit locus unrecorded.
+#
+# The gate is the checker, and for BLD-001 that covers both halves of a control
+# with two shapes. `register-check run --control BLD-001` runs the register's
+# `hadolint` block through the same path the audit uses, so a repository with a
+# Dockerfile needs no second wiring for its linter — what it needs is a
+# `tools.hadolint` entry of its own, because an absent linter is UNCLASSIFIED
+# (ADR 0016) rather than a pass.
+#
+# {{TOOL_INVOCATION}} is the register's `tools.{{TOOL}}.invocation`, written
+# verbatim. A bare name would resolve from PATH, and for this tool what answered
+# would be auditing the repository (ADR 0020).
+      # ee-control: BLD-001  ee-skill: gate-build@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: DEV-001  ee-skill: gate-build@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      - id: {{TOOL}}-build
+        name: {{TOOL}} (BLD-001, DEV-001)
+        entry: {{TOOL_INVOCATION}} run --control BLD-001 --control DEV-001
+        language: system
+        pass_filenames: false
+        files: ^(Dockerfile|.*/Dockerfile|\.devcontainer/.*)$
