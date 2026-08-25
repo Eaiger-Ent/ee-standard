@@ -352,11 +352,7 @@ def test_the_register_states_the_requirements_once(deployed: Path) -> None:
         "require_pull_request": True,
         "require_status_checks": True,
         "allow_force_push": False,
-        # `standard-check`, not `register-check`, until ADR 0031's move 2.
-        # GOV-001 fails a check the register requires and the platform does
-        # not enforce, and only a confirmed API call changes a ruleset — so
-        # this name moves in the same change as the platform's, never before.
-        "required_checks": ["standard-check", "lint-md"],
+        "required_checks": ["register-check", "lint-md"],
         "require_branches_up_to_date": True,
     }
 

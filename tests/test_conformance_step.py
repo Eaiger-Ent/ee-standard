@@ -32,7 +32,7 @@ WORKFLOW = REPO_ROOT / ".github/workflows/register-check.yml"
 
 def _conformance_step() -> dict[str, object]:
     doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
-    steps = doc["jobs"]["standard-check"]["steps"]
+    steps = doc["jobs"]["register-check"]["steps"]
     step = next((s for s in steps if s.get("name") == "Conformance"), None)
     assert step is not None, "no Conformance step in the Conformance workflow"
     assert isinstance(step, dict)
