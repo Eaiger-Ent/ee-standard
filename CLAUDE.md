@@ -479,7 +479,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **31** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0032 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **32** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0033 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fourteen Tier-1 controls, with
@@ -578,6 +578,23 @@ the working tree — `install.ref` is the last *released* checker and the versio
 in the tree is what the next release will be, so those legitimately differ.
 Whether a bot proposes a bump for a tagged git dependency is **not verified**
 and is recorded as unverified, not assumed.
+
+Per [ADR 0033](docs/adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md)
+(**Accepted** and implemented 2026-08-25) each skill is also reachable at
+`.claude/skills/<name>`, as a **tracked symlink** into the plugin — `120000` in
+the index, not a copy. `/skill-submit-new` resolves `<name>/SKILL.md` in the
+project's Claude skills directory and this repository uses the marketplace's
+plugin layout, so without the links the submission tool cannot see any of the
+eight skills. A copy made at submission time was rejected: eight of them, by
+hand, at the one moment the content has to be right and with no way to push a
+fix, since a submission is an issue rather than a pull request.
+`tests/test_skill_links.py` derives the set from the plugin in both directions,
+so a ninth skill without a link is a build failure. The side effect is
+deliberate — every gate is now invocable here as `/gate-secrets` and the rest —
+and it is safe because all eight carry `disable-model-invocation: true`, so they
+are available to a person and never to a model choosing for itself.
+**`LICENSE` now exists**, at the root and in the plugin, byte-identical and held
+so by the same test; `check_plugin_license.py` fails a plugin without one.
 
 Gate skills live in `plugins/control-register/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,
