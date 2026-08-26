@@ -4,18 +4,91 @@ Copy this directory to `.devcontainer/` in a new repository. It is the state a
 repository is in **before** any gate has run: pinned, non-root, and choosing
 nothing on your behalf beyond a base image.
 
+Where it is on your machine depends on how you got the plugin. Installed from a
+marketplace, it is inside the plugin's install cache rather than in any
+repository you can see:
+
 ```bash
-cp -R "$(dirname "$0")" .devcontainer   # or copy it from the plugin directory
-grep -rl '{{' .devcontainer             # every placeholder still to replace
+# Installed plugin — the version directory is the plugin's own version.
+cp -R ~/.claude/plugins/cache/<marketplace>/control-register/<version>/templates/devcontainer \
+      .devcontainer
+
+# Working from a clone of the standard instead.
+cp -R path/to/ee-standard/plugins/control-register/templates/devcontainer .devcontainer
 ```
 
-Two placeholders, both `{{PROJECT_NAME}}` — the container's display name and the
-named volume that carries Claude Code's credential state between rebuilds. Give
-the volume a name unique to the project; two repositories sharing one volume
-share one authenticated session, which is confusing the first time and wrong the
-second.
+Then, in this order:
+
+```bash
+rm .devcontainer/README.md              # this file documents the template, not your project
+grep -rl '{{' .devcontainer             # every placeholder still to substitute
+```
+
+**Delete this file first, and the order is the point.** The grep matches any
+file quoting the placeholder pattern, including one that only explains it — so
+while this README is in the copy, the check reports it for ever and a clean
+result is unobtainable. Phase 4 met that as a live defect rather than a
+hypothetical.
+
+## The placeholders
+
+`{{PROJECT_NAME}}`, twice in `devcontainer.json` — the container's display name
+and the named volume that carries Claude Code's credential state between
+rebuilds. Give the volume a name unique to the project; two repositories sharing
+one volume share one authenticated session, which is confusing the first time
+and wrong the second.
+
+`{{UV_VERSION}}`, `{{UV_SHA256_X86_64}}` and `{{UV_SHA256_AARCH64}}` in
+`setup.sh` — uv, which every verification in this standard runs on and which no
+gate can install, because a gate's own verify step is a `uv run`. Copy the first
+two straight out of the register you are adopting:
+
+```bash
+uv_version=$(grep -A4 '^  uv:' controls.yaml | sed -n 's/^ *version: *//p')
+uv_sha=$(grep -A4 '^  uv:' controls.yaml | sed -n 's/^ *sha256: *//p')
+```
+
+They are placeholders rather than pins on purpose: the version stays in the
+register and this file references it, which is the difference between a
+reference and the second copy this standard exists to prevent. Once
+`.devcontainer/setup.sh` is named in that tool's `pinned_at`,
+`tool_versions_match_register` reconciles the two and a drifted copy is a
+verdict rather than a surprise.
+
+The register pins **one** checksum, for x86_64. The aarch64 one comes from the
+same release on GitHub and is compared by nothing — a gap this standard already
+carries for its own container, recorded rather than hidden:
+
+```bash
+gh release download "$uv_version" --repo astral-sh/uv \
+  --pattern 'uv-aarch64-unknown-linux-gnu.tar.gz.sha256' --output -
+```
 
 Then run `/gate-build`, which pins whatever you changed and stamps it.
+
+## Before the first `devcontainer up`
+
+`initializeCommand` runs `fetch-secrets.sh` on the **host**, and it exits `1`
+when the Keychain holds no Claude Code OAuth token — the container never starts.
+So one host-side step comes before everything else:
+
+```bash
+claude setup-token
+security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "sk-ant-oat01-..."
+```
+
+A GitHub token is optional but wanted, or `gh` inside the container starts
+unauthenticated:
+
+```bash
+security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "ghp_..."
+```
+
+Either name may be prefixed with the checkout directory in `UPPER_SNAKE_CASE` to
+scope it to one project — a checkout in `my-app` reads `MY_APP_GITHUB_TOKEN`
+before `GITHUB_TOKEN`. `check-auth.sh` reports which entry answered on every
+container start, so a value that came from the wrong place is visible rather
+than assumed.
 
 ## Why this exists
 
@@ -59,6 +132,28 @@ Not in anticipation. The register's predicates already model this: a repository
 with no `*.tf` skips IAC-001, and by the same logic it has no business
 installing OpenTofu. Add the feature when the language does, and re-run
 `devcontainer upgrade` so the lock file keeps covering everything.
+
+**Three features are here regardless, and none of them is a language choice.**
+`github-cli` because every repository needs it. `claude-code` because the
+published route into this standard is `/register-adopt`, a Claude Code skill —
+a container that cannot run Claude Code cannot adopt the register from inside
+itself, and `check-auth.sh` has always probed for `claude`. And `node`, which is
+Claude Code's runtime: the `claude-code` feature declares node a **soft**
+dependency, so the CLI drops it from the install order rather than pulling it
+in, and the feature's own apt fallback finds no `nodejs`/`npm` pair on trixie.
+The build then fails with *"Node.js and npm are required but could not be
+installed"*. Naming node here is what turns that soft dependency into a real
+one.
+
+**A feature added to an existing container needs the container rebuilt, not
+restarted.** `devcontainer up` on a container that already exists reuses it, and
+the lock file is regenerated only on a build — so the lock ends up covering the
+features you had, not the ones you declared, which is precisely the partial lock
+DEV-001 fails:
+
+```bash
+devcontainer up --workspace-folder . --remove-existing-container
+```
 
 ## The two files that must stay gitignored
 

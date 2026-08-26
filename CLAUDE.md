@@ -9,29 +9,53 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 (`register-check`, in `src/register_check/`) audits them.
 
 Current status: Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
-with no re-opened criteria outstanding. **Phase 2 is 12/13** and **Phase 3 is
-complete** as of 2026-08-24; the register is at contract 26.
+with no re-opened criteria outstanding. **Phase 3 is complete** as of
+2026-08-24; **Phase 2 is 12/13** and **Phase 4 is 3/7** as of 2026-08-25; the
+register is at contract 30.
 `docs/04-build-plan.md` is the only list of outstanding work and `uv run python scripts/plan_progress.py` is its
 derived view — never keep a second copy of that status here. The slice-by-slice
-record, and the evidence behind every criterion either phase ticks, lives in
+record, and the evidence behind every criterion each phase ticks, lives in
 `docs/10-phase-2-review.md` — including § Where Phase 2 finished, the closing
 audit run over the register rather than over the ledger, and § What the second
-review found — and in `docs/11-phase-3-review.md`, including what each slice
-deliberately left open.
+review found — in `docs/11-phase-3-review.md`, including what each slice
+deliberately left open, and in `docs/12-phase-4-review.md`.
 
-One Phase 2 criterion is still open. The **devcontainer template** has not been
-built: the 2026-08-24 rebuild was of this repository's own container, and the
-template at `plugins/control-register/templates/devcontainer/` is a different
-artefact — this container has no Docker, so nothing here has run
-`devcontainer build`, and the commands for an operator are in
-`docs/08-adopting.md` § 2.0. It is **deferred to Phase 4**, which has to build
-the template from placeholders to exist at all, so doing it here would be a
-rehearsal of the same build.
+**The devcontainer template has been built.** Phase 4 built it on 2026-08-25, in
+`Eaiger-Ent/ee-standard-consumer`, on a macOS host with Docker — which is what
+that criterion was deferred to Phase 4 to wait for, and it closed there. It did
+not build first time, and the three defects it exposed are the reason a file
+test could not have closed it: the container had no Claude Code and no node, so
+it could not run the skill that is the published route into this standard; it
+had no uv, while its own `setup.sh` called `uv sync --frozen`
+([ADR 0034](docs/adr/0034-the-template-bootstraps-uv.md)); and `devcontainer up`
+on an existing container left the lock file covering one feature of two.
+
+The Phase 2 criterion still open is a **different** one, re-opened by Phase 4:
+*every SKILL.md passes preflight P1–P11*. See ADR 0035 below.
+
+**Work in the container, not on the host.** Phase 4's first deployment run was
+driven from the macOS host and cost three things no verdict showed: the host's
+uv was 0.8.13 where the register pins 0.12.5, so the run was green about a
+version it was not using; the bind-mounted `.venv` is host-built or
+container-built and never both, so switching destroys and rebuilds it; and the
+pre-commit hook was never installed while every gate reported that locus wired.
+Only four steps are genuinely the host's — `claude setup-token` and the Keychain
+entries, `fetch-secrets.sh` (it **is** `initializeCommand`), `devcontainer
+build`/`up`, and copying the template in before a container exists.
+`docs/08-adopting.md` § 2.0a is that split as a table.
+
+**A wired locus is not an installed hook.** `.pre-commit-config.yaml` states
+intent; `.git/hooks/pre-commit` is whether anything runs, and every gate reads
+the first. The template now installs the hook on the config's own presence
+rather than on the tail of a lockfile branch, and `check-auth.sh` **reports** a
+missing one — reported, never repaired, which is that script's rule. It cannot
+be a control: `.git/hooks/` is untracked and CI has no hooks installed, which is
+the honest boundary of what the register can check.
 
 Read `docs/09-phase-1.5-review.md` before touching `src/register_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
-as settled without checking it — **seven** boxes have been re-opened after being
+as settled without checking it — **eight** boxes have been re-opened after being
 ticked, four of them on 2026-08-18 by the review recorded as
 `docs/09-phase-1.5-review.md` § H, which found GOV-001 passing a workflow that
 ran on neither push nor pull_request, a tool compared only at filenames the
@@ -479,7 +503,8 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **32** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0033 because 0015 is archived. There are no open decisions |
+| `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the thirteen things it found |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **34** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0035 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fourteen Tier-1 controls, with
@@ -590,11 +615,56 @@ hand, at the one moment the content has to be right and with no way to push a
 fix, since a submission is an issue rather than a pull request.
 `tests/test_skill_links.py` derives the set from the plugin in both directions,
 so a ninth skill without a link is a build failure. The side effect is
-deliberate — every gate is now invocable here as `/gate-secrets` and the rest —
-and it is safe because all eight carry `disable-model-invocation: true`, so they
-are available to a person and never to a model choosing for itself.
+deliberate — every gate is now invocable here as `/gate-secrets` and the rest.
+That ADR's revision 2 corrects what made it safe: **seven of the eight no longer
+carry `disable-model-invocation: true`**, per
+[ADR 0035](docs/adr/0035-a-dispatched-skill-is-reachable.md)
+(**Accepted** and implemented 2026-08-25). `register-adopt` dispatches them and a
+callee carrying that flag cannot be reached at all, so the documented front door
+had never been able to take its first step — Phase 4 found it at Step 0 of the
+first adoption outside this repository. `register-adopt` keeps the flag, so the
+entry point is still a person's; each callee's `README.md` says it is dispatched
+and that the flag must not come back, which is the fix preflight P9 itself
+prescribes. What guards `gate-repo`'s platform mutations is its own per-call
+confirmation, enumerated by `tests/test_gate_repo_confirmation.py`, and never
+this frontmatter key. **Do not invoke a gate here casually** — they are now
+model-invocable and they write into this repository.
 **`LICENSE` now exists**, at the root and in the plugin, byte-identical and held
 so by the same test; `check_plugin_license.py` fails a plugin without one.
+
+Per [ADR 0034](docs/adr/0034-the-template-bootstraps-uv.md) (**Accepted** and
+implemented 2026-08-25) the shipped template installs **uv** from the pinned
+release tarball against the published sha256, with `{{UV_VERSION}}`,
+`{{UV_SHA256_X86_64}}` and `{{UV_SHA256_AARCH64}}` substituted out of the
+register the adopter is adopting. It is the one install no gate can make, because
+a gate verifies itself with `uv run register-check` and would be running its own
+verification on the tool it had not installed yet. **A placeholder is not a pin**
+— the register holds the number and the file references it — so Phase 2's *"the
+template pins no tool version by hand"* criterion stays closed on its own terms,
+and the grep in `tests/test_devcontainer_template.py` is stricter after the
+change than before: a `FOO_VERSION=` assignment still fails and one whose value
+is a placeholder passes, with both directions asserted. Substitute **unquoted**:
+`tool_versions_match_register` matches a tool name and a version across `@`, `=`,
+`:` or whitespace, so a quote lands where it looks for the separator and the pin
+is reported missing.
+
+**From register contract 30 a control's `rationale_adr` may be an `http(s)`
+citation as well as a path.** It resolves against the register's own directory,
+so a register fetched into a repository that did not author it failed **every**
+control on a `docs/` tree it was never going to have — which is what stopped the
+first real adoption at Step 1. The shipped register cites
+`.../blob/main/docs/adr/…`, and the renamed-ADR check the path form bought lives
+in `tests/test_rationale_citations.py`, which holds every citation to the address
+`tools.register-check.install.repository` names **and** to a file in this tree.
+It is a test rather than a control for ADR 0022 requirement 6's reason. Never
+pin a tag in those URLs: the tag has one home, `install.ref`, and fourteen copies
+of a release number is the drift this register exists to prevent.
+
+**The register a tag ships must name that same tag.** `v0.1.0` was cut one
+contract before `tools.register-check.install` existed, so the only obtainable
+register could not install the checker it describes. `install.ref` and
+`pyproject.toml`'s version are now set in the commit the tag names, which makes
+the checker and the register one artefact rather than two that can disagree.
 
 Gate skills live in `plugins/control-register/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,

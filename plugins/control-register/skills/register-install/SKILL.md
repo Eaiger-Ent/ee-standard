@@ -6,7 +6,6 @@ description: >
   run. Triggers: 'install the checker', 'install register-check',
   '/register-install'.
 argument-hint: "[--repo <path>] [--register <path>]"
-disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 

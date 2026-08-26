@@ -5,7 +5,6 @@ description: >
   Terraform at pre-commit and in CI, where their exit codes block the merge.
   Triggers: 'deploy gate-iac', 'wire terraform analysis', '/gate-iac'.
 argument-hint: "[--repo <path>] [--register <path>]"
-disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 

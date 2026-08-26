@@ -19,10 +19,10 @@ prevent, so the gaps are stated rather than glossed.
 
 | Part | State | Where it is |
 | --- | --- | --- |
-| The register — what "conformant" means | **Exists** | `controls.yaml` |
+| The register — what "conformant" means | **Exists**; fetch it at a tag | `controls.yaml`, and § 0.1 |
 | `register-check` — the checker | **Exists** | `src/register_check/`, run with `uv run register-check` |
 | Platform prerequisites (this document, § 1) | **Exists**, manual | Below |
-| A devcontainer you can copy | **Exists** for this repo; the generalised template ships with placeholders and has not been built yet | `.devcontainer/`, and § 2.0 |
+| A devcontainer you can copy | **Exists and has been built** — Phase 4 built the shipped template in a repository that did not author it, on 2026-08-25 | `.devcontainer/`, and § 2.0 |
 | `gate-secrets` — deploys SEC-001, checks SEC-002 and SEC-003 | **Exists** | `plugins/control-register/skills/gate-secrets/` |
 | `gate-quality` — deploys LNT-001, TYP-001, TST-001 | **Exists** | `plugins/control-register/skills/gate-quality/` |
 | The other four `gate-*` skills | **Exists** | `plugins/control-register/skills/` |
@@ -53,6 +53,38 @@ commits.
 /register-adopt --repo . --register ./controls.yaml
 ```
 
+### 0.1 — Where `./controls.yaml` comes from
+
+That command names a register, and until you have one there is nothing to plan
+from — the skill stops and says so. The plugin does not ship one, deliberately:
+the register is what a repository adopts, not what a skill installs, and yours
+becomes yours the moment you edit it (§ 3.7).
+
+Take it from the same tagged ref the checker is pinned to, so the register and
+the checker that reads it are one artefact rather than two that may disagree:
+
+```bash
+curl -fsSL -o controls.yaml \
+  https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/v0.4.0/controls.yaml
+git add controls.yaml
+```
+
+**How you know it worked**, and this is worth doing before anything else:
+
+```bash
+uv run register-check --repo . --register ./controls.yaml schema
+```
+
+A tag whose register predates a field the skills need is a real failure and it
+looks like your repository's fault: Phase 4 fetched the only tag that existed
+and got `register-install` stopping on a missing `tools.register-check.install`,
+because the tag had been cut one contract before that field landed. The `schema`
+command above is what tells you which you are looking at.
+
+**The register is committed, not vendored-and-forgotten.** It is a file in your
+repository from here on, and `git log` on it is the record of every deliberate
+divergence you take from the standard.
+
 Everything in the sections below is either a step it takes for you, or a step it
 tells you that you owe. Read § 1 first anyway: those are the acts no skill can
 take, and a plan that reaches them is a plan waiting on you.
@@ -67,6 +99,14 @@ exits `0`; without one they report `SKIPPED (no credentials)` and the run exits
 `3`. The
 skill names which blocks were skipped rather than rounding up. Read § 4.1
 before deciding which of the two you are looking at.
+
+**Run it interactively.** `gate-build` writes `.devcontainer/devcontainer.json`,
+which Claude Code treats as a sensitive file: the edit raises a permission
+prompt, and a headless run has nobody to answer it. Phase 4 lost two runs to
+this before recognising it, and an allow-rule in `.claude/settings.local.json`
+does not lift a sensitive-file guard. This is a property of the harness rather
+than of the standard, and knowing it is the difference between a five-minute
+adoption and an afternoon.
 
 **One confirmation, and one exception.** It asks once, covering the whole plan.
 `gate-repo` asks **again** on its own, and that is right rather than redundant:
@@ -175,12 +215,110 @@ for a file.
 
 ## 2 — The development environment
 
+### 2.0a — Which steps run on your machine, and which run in the container
+
+Four things have to run on the host, and everything else has to run inside.
+This is not a style preference: the whole point of the register is that every
+locus reaches the *same pinned artefact*, and your host is a locus nobody
+declared.
+
+| Runs on the host | Why it cannot be inside |
+| --- | --- |
+| `claude setup-token`, and the Keychain entries | The Keychain is the host's, and this is what `fetch-secrets.sh` reads |
+| `fetch-secrets.sh` | It **is** `initializeCommand` — it runs before a container exists |
+| `devcontainer build` / `up` | There is no Docker in the container |
+| Copying the template in | Nothing to copy it into until it is there |
+
+**Everything after that goes inside**: `uv`, `register-check`, every gate,
+`pre-commit`, the tests, and your commits.
+
+Phase 4 ran the adoption on the host and it cost three things, none of which the
+report showed. The host's uv was **0.8.13** where the register pins **0.12.5**,
+so the run was green about a version it was not using. The `.venv` is
+bind-mounted, so it is host-built or container-built and never both — switching
+destroys and rebuilds it. And the pre-commit hook was never installed, while
+every gate reported its `pre-commit` locus wired, because the gates read
+`.pre-commit-config.yaml` and a hook is a different thing.
+
+```bash
+# How you know which one you are in.
+devcontainer exec --workspace-folder . uv --version   # the pinned one
+uv --version                                          # whatever your host has
+```
+
+If the two disagree, the container is right.
+
 ### 2.0 — Where the devcontainer comes from
 
-A conformant `.devcontainer/` ships with the plugin, at
-`plugins/control-register/templates/devcontainer/`. Copy it, replace the
-double-brace placeholders — `grep -rl '{{' .devcontainer` lists them — and run
-`/gate-build` to pin what you chose and stamp it.
+A conformant `.devcontainer/` ships with the plugin. **Where it is on your
+machine depends on how you got the plugin**, and this is the first thing Phase 4
+found missing from this guide — the path below is where it lives in the
+repository that authors the standard, which is not a path an adopter has:
+
+```bash
+# Installed from a marketplace: inside the plugin's install cache.
+cp -R ~/.claude/plugins/cache/<marketplace>/control-register/<version>/templates/devcontainer \
+      .devcontainer
+
+# From a clone of the standard instead.
+cp -R path/to/ee-standard/plugins/control-register/templates/devcontainer .devcontainer
+```
+
+Then, **in this order**:
+
+```bash
+rm .devcontainer/README.md            # documents the template, not your project
+grep -rl '{{' .devcontainer           # every placeholder still to substitute
+```
+
+Delete the README first, and the order is the point: the grep matches any file
+quoting the placeholder pattern, including one that only explains it, so while
+that file is in the copy a clean result is unobtainable. Phase 4 substituted
+every placeholder and the check still reported a file.
+
+There are **four** placeholders, not one. `{{PROJECT_NAME}}` twice in
+`devcontainer.json`, and `{{UV_VERSION}}`, `{{UV_SHA256_X86_64}}` and
+`{{UV_SHA256_AARCH64}}` in `setup.sh` — uv, which every verification in this
+standard runs through and which no gate can install, because a gate's own verify
+step is a `uv run`
+([ADR 0034](adr/0034-the-template-bootstraps-uv.md)). The first two come
+straight out of the register you fetched in § 0.1:
+
+```bash
+uv_version=$(grep -A4 '^  uv:' controls.yaml | sed -n 's/^ *version: *//p')
+uv_sha=$(grep -A4 '^  uv:' controls.yaml | sed -n 's/^ *sha256: *//p')
+```
+
+**Substitute them unquoted.** `tool_versions_match_register` matches a tool name
+followed by a version across `@`, `=`, `:` or whitespace, so `uv_version="0.12.5"`
+puts a quote where it looks for the separator and the pin is reported missing —
+a file that reconciles against nothing while looking correct.
+
+Then run `/gate-build` to pin what you chose and stamp it.
+
+**Before the first `devcontainer up`, populate the host Keychain.**
+`initializeCommand` runs `fetch-secrets.sh` on your machine and exits `1` when
+there is no Claude Code OAuth token, so the container never starts and the
+message arrives before you have a container to read it in:
+
+```bash
+claude setup-token
+security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "sk-ant-oat01-..."
+security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "ghp_..."   # optional, but `gh` needs it
+```
+
+Either name may be prefixed with your checkout directory in `UPPER_SNAKE_CASE`
+to scope it to one project. `check-auth.sh` reports which entry answered on
+every container start.
+
+**Adding a feature means rebuilding, not restarting.** `devcontainer up` reuses
+an existing container and the lock file is regenerated only on a build, so the
+lock ends up covering the features you had rather than the ones you declared —
+which is exactly the partial lock DEV-001 fails:
+
+```bash
+devcontainer up --workspace-folder . --remove-existing-container
+```
 
 **Why it ships here rather than as a template repository.** `project-init` has
 one stated precondition: `.devcontainer/devcontainer.json` must already exist,
@@ -215,9 +353,15 @@ by removing it.
 ```bash
 grep -rl '{{' .devcontainer          # expect no output
 devcontainer build --workspace-folder .
+devcontainer exec --workspace-folder . uv --version    # the bootstrap actually ran
 register-check run --control BLD-001 --control DEV-001
 register-check run --control SEC-001   # the .gitignore that came with the copy
 ```
+
+The `uv --version` line is there because Phase 4 built a container that reported
+every credential green and had no uv in it, while this template's own `setup.sh`
+called `uv sync --frozen` a few lines down. A container in which nothing can be
+checked passes every check you can run in it.
 
 A fresh copy fails the loci and stamp blocks of both controls, which is correct:
 `gate-build` has not run yet. It should pass `devcontainer_user_is_non_root`,
@@ -454,8 +598,26 @@ checked.
 
 All six gates are built — see § 3.1 to § 3.6, and § 0 for the front door that
 dispatches them in order. DOC-001 is the one control no gate here deploys: it is
-`lint-md`'s, in another plugin. What follows describes this repository's own
-artefacts, which are the reference implementation:
+`lint-md`'s, in another plugin.
+
+**And that plugin is one you may not be able to install.** `lint-md` lives in
+the `EqualExperts/ee-skills` marketplace, which is **private**. If your account
+cannot reach it, DOC-001 has no route through this guide at all — the plan
+names it *dispatch elsewhere*, and elsewhere is somewhere you cannot go.
+Phase 4 met this and resolved it by **copying** the skill into the consumer
+repository's `.claude/skills/`, which is a copy of someone else's skill living
+in your repository, going stale silently: exactly the duplication this standard
+exists to prevent, and not a recommendation.
+
+Until that is resolved, treat DOC-001 as **the one control an outside adopter
+may have to satisfy by hand** — a pinned `markdownlint-cli2` in your lockfile,
+a `.markdownlint.yaml`, and the same invocation at each locus § 3 describes. It
+is the same access-shaped single point of failure the devcontainer template was
+moved into this plugin to escape, and it is recorded here rather than
+discovered.
+
+What follows describes this repository's own artefacts, which are the reference
+implementation:
 
 | Locus | File here | What it gives you |
 | --- | --- | --- |

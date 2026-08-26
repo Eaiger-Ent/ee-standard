@@ -1,8 +1,15 @@
 {
   // The control-register devcontainer template. Copy this directory to
-  // `.devcontainer/` in a new repository, replace every double-brace
-  // placeholder — `grep -rl '{{' .devcontainer` lists them — then run
-  // `/gate-build` to pin what you chose and stamp it.
+  // `.devcontainer/` in a new repository, substitute every double-brace
+  // placeholder, delete the README that came with the copy, and run
+  // `/gate-build` to pin what you chose and stamp it. README.md gives the
+  // command that lists the placeholders still to substitute.
+  //
+  // That command is spelled out there and not here on purpose: a file that
+  // quotes the placeholder pattern in its own comments matches that pattern
+  // for ever, so the check can never come back clean while it lives in a file
+  // the check reads. Phase 4 hit exactly that — a fully substituted copy still
+  // listed this file.
   //
   // This file chooses nothing on your behalf beyond the base image, and pins
   // everything it does choose. `project-init` decides which image and which
@@ -32,7 +39,24 @@
   // fails one, and this project's own Phase 0.5 exit criterion was re-opened
   // over exactly that.
   "features": {
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+
+    // Not a language choice either, and not optional. The published route into
+    // this standard is `/register-adopt`, a Claude Code skill, so a container
+    // that cannot run Claude Code cannot adopt the register from inside itself.
+    // `check-auth.sh` has always probed for `claude`; until Phase 4 built this
+    // template nothing installed it, and the remedy it printed — re-run
+    // setup.sh — could never work.
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {},
+
+    // Node is here as Claude Code's runtime, not as a language choice — the
+    // rule above still holds. The claude-code feature declares node a *soft*
+    // dependency, so the CLI drops it from the install order rather than
+    // pulling it in, and the feature's own apt fallback cannot find a
+    // `nodejs`/`npm` pair on trixie. The build fails at that point with
+    // "Node.js and npm are required but could not be installed". Naming node
+    // here is what makes the soft dependency a hard one.
+    "ghcr.io/devcontainers/features/node:2": {}
   },
 
   // Secrets are fetched on the host and never committed. Both generated files

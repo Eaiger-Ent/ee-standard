@@ -66,7 +66,32 @@ ignore the recommendation, which costs more than the edit saved.
 | `also_see` | no | list | Supplementary `{name, url}` references. Each URL is validated like `standard.url`. |
 | `baseline` | yes | path or `null` | Path to the baseline artefact, or `null` for no exemptions ever. |
 | `review_by` | yes | ISO date | GOV-003 fails the build after this date. |
-| `rationale_adr` | yes | path | The ADR recording why this control exists. |
+| `rationale_adr` | yes | path or URL | The ADR recording why this control exists. A path resolves against the **register's own directory**; an `http(s)` URL is a citation, whose existence the schema does not decide. See below. |
+
+### `rationale_adr`
+
+**A path or an `http(s)` URL, and which one you use depends on where your ADRs
+live relative to your register.**
+
+A path resolves against the directory holding `controls.yaml`, not against the
+repository being checked. That is right for the repository that authors a
+register and wrong for every repository that adopts one: a register fetched into
+a consumer repo names `docs/adr/…` files that were never going to be there, and
+until register contract 30 that failed **every control in the register** on a
+directory the adopter had no reason to have. Phase 4 met it at Step 1 of the
+first real adoption.
+
+So a citation may be a URL instead. The schema checks its shape and stops there —
+whether a URL resolves is not decidable from a file, and a check that guessed
+would be reporting on something it never looked at.
+
+**What replaces the existence check is not nothing.** For the register this
+repository ships, `tests/test_rationale_citations.py` holds every citation to
+the address `tools.register-check.install.repository` names *and* to a file in
+this working tree, so a renamed or archived ADR still fails a build — just not
+an adopter's. That is a test rather than a control because it governs how this
+repository keeps its own records, not what a conformant repository contains
+([ADR 0022](adr/0022-a-platform-token-ci-carries.md) requirement 6).
 
 ### `id`
 

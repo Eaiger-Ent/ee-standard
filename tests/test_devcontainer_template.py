@@ -153,7 +153,15 @@ def test_the_container_states_a_non_root_user() -> None:
 _VERSION_LITERAL = re.compile(
     r"""
     (?:==|@|=v?|\s-v\s|:|/v?)\d+\.\d+\.\d+  # pip==1.2.3, tool@1.2.3, VER=1.2.3, /v1.2.3/
-    | \b[A-Z_]*VERSION[A-Z_]*=\S           # any FOO_VERSION= assignment
+    | \b[A-Z_]*VERSION[A-Z_]*=(?!["\']?\{\{)\S  # any FOO_VERSION= assignment whose
+                                           # value is not a `{{PLACEHOLDER}}`.
+                                           # A placeholder is by construction
+                                           # not a hand-written literal: it
+                                           # carries no version at all until an
+                                           # adopter substitutes one out of the
+                                           # register, which is the criterion's
+                                           # own "sourced from" rather than
+                                           # "typed here" (ADR 0034).
     | sha256:[0-9a-f]{64}                  # a checksum, which pins an artefact
     | \b[0-9a-f]{64}\b                      # the same checksum, bare, as
                                            # `echo "<hex>  f" | sha256sum -c -`
@@ -199,8 +207,25 @@ def test_the_grep_would_catch_a_pin_if_one_appeared() -> None:
         'echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  t"'
         " | sha256sum -c -",
         "npm install -g markdownlint-cli2@0.18.1",
+        'UV_VERSION="0.12.5"',
     ):
         assert _VERSION_LITERAL.search(line), line
+
+
+def test_the_grep_passes_a_placeholder_that_carries_no_version() -> None:
+    """The other half of ADR 0034, and the one that could go wrong quietly.
+
+    Widening a rule to admit a placeholder is one edit away from admitting the
+    literal it was written to catch, so both directions are checked: the lines
+    below carry no version and must pass, and `UV_VERSION="0.12.5"` above
+    carries one and must still fail.
+    """
+    for line in (
+        'uv_version="{{UV_VERSION}}"',
+        'UV_VERSION="{{UV_VERSION}}"',
+        'uv_sha="{{UV_SHA256_AARCH64}}"',
+    ):
+        assert not _VERSION_LITERAL.search(line), line
 
 
 def test_setup_installs_only_from_a_lockfile_the_repo_commits() -> None:
@@ -299,3 +324,41 @@ def test_the_template_carries_no_value_the_register_pins() -> None:
         text = path.read_text(encoding="utf-8")
         for version in pinned:
             assert version not in text, f"{path.name} repeats the register's pin {version}"
+
+
+def test_the_hook_install_is_guarded_by_the_config_not_by_a_lockfile() -> None:
+    """A wired locus with no installed hook.
+
+    `.pre-commit-config.yaml` states the intent and `.git/hooks/pre-commit` is
+    whether anything runs. The install used to hang off the `uv.lock` arm, so a
+    repository that gained a lockfile *after* its container was created never
+    got a hook — and Phase 4's consumer repo was exactly that: config deployed,
+    stamped, every locus reported wired by the checker, and every commit sailing
+    through. Declared and unreachable, in the artefact the standard deploys.
+    """
+    text = (TEMPLATE / "setup.sh").read_text(encoding="utf-8")
+    body = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
+    guard = re.search(r'if \[ -f \.pre-commit-config\.yaml \]; then(.*?)\nfi', body, re.S)
+    assert guard is not None, (
+        "no `.pre-commit-config.yaml` guard in setup.sh — the hook install must "
+        "be on the config's own terms, not a tail of a lockfile branch"
+    )
+    assert "pre-commit install" in guard.group(1)
+    # And nowhere else: an install inside a lockfile arm is the bug returning.
+    outside = body.replace(guard.group(0), "")
+    assert "pre-commit install" not in outside, (
+        "`pre-commit install` still hangs off a lockfile branch in setup.sh"
+    )
+
+
+def test_check_auth_reports_a_missing_hook() -> None:
+    """Reported, never repaired — this script's own rule.
+
+    It cannot be a control: `.git/hooks/` is untracked, and CI has no hooks
+    installed and should not. So the only place that can notice is the start-up
+    report, and a report that did not look would leave the gap invisible, which
+    is how it survived a whole adoption.
+    """
+    text = (TEMPLATE / "check-auth.sh").read_text(encoding="utf-8")
+    assert ".git/hooks/pre-commit" in text
+    assert ".pre-commit-config.yaml" in text

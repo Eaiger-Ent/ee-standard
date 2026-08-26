@@ -36,6 +36,7 @@ import pytest
 import yaml
 
 from conftest import REPO_ROOT, a_register
+from register_check.cli import main
 from register_check.provenance import stamps_in
 
 SKILL = REPO_ROOT / "plugins/control-register/skills/register-install"
@@ -232,3 +233,24 @@ def test_the_dispatcher_dispatches_it_first_and_does_not_install_anything_itself
         "the checker has to be there before the pre-flight that runs it"
     )
     assert "Do not install the checker here" in text
+
+
+def test_the_probe_both_skills_run_is_a_command_the_checker_accepts(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`register-adopt` Step 0 and `register-install` Step 4 both run
+    `uv run register-check --version` as their liveness probe, and until Phase 4
+    the checker did not implement it. Both skills stopped there, in a repository
+    where the install had *worked*: the right artefact, at the right tag,
+    recorded in the lockfile, and no way to ask whether it was there.
+
+    The probe is read out of the skill rather than retyped, so a skill that
+    changes its probe fails here rather than in an adopter's repository.
+    """
+    probe = re.search(r"register-check (--[a-z-]+)\b", SKILL_TEXT)
+    assert probe is not None, "the skill names no `register-check` probe at all"
+    flag = probe.group(1)
+    with pytest.raises(SystemExit) as exit_info:
+        main([flag])
+    assert exit_info.value.code == 0, f"`register-check {flag}` is not a command the CLI accepts"
+    assert capsys.readouterr().out.strip().startswith("register-check ")

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from importlib.metadata import version
 from pathlib import Path
 
 from register_check.meta import META_CHECKS
@@ -40,6 +41,20 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="register-check",
         description="Conformance checker for the Equal Experts control register.",
+    )
+    # The liveness probe `register-adopt` and `register-install` both run before
+    # anything else. It did not exist until Phase 4 ran the front door in a
+    # repository that did not author the standard and both skills stopped on
+    # `unrecognized arguments: --version` — a checker installed correctly,
+    # pinned correctly, and unusable because nothing could ask it whether it was
+    # there. Read from the installed distribution rather than written here: a
+    # literal would be a second copy of `pyproject.toml`'s version, free to
+    # drift from the tag the register pins.
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"register-check {version('register-check')}",
+        help="print the installed checker's version and exit",
     )
     parser.add_argument(
         "--repo", type=Path, default=Path.cwd(), help="repository to check (default: cwd)"

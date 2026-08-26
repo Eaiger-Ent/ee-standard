@@ -6,7 +6,6 @@ description: >
   pre-commit and CI, stamp what it writes, verify through register-check.
   Triggers: 'deploy gate-secrets', 'wire secret scanning', '/gate-secrets'.
 argument-hint: "[--repo <path>] [--register <path>]"
-disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 

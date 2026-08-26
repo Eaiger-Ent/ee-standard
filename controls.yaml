@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.23.0
+version: 0.24.0
 
 meta:
   owner: platform-engineering
@@ -305,7 +305,7 @@ meta:
   #     thing `register-adopt` dispatches. Split across two sections
   #     deliberately: the address is a fact about this project, and the
   #     spelling is a fact about the ecosystem.
-  register_contract: 29
+  register_contract: 30
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -412,7 +412,7 @@ tools:
     # one tool in the repository that is not pinned.
     install:
       repository: https://github.com/Eaiger-Ent/ee-standard
-      ref: v0.1.0
+      ref: v0.4.0
   uv:
     source: literal
     # Where the release artefact is fetched from, as for gitleaks. The
@@ -960,7 +960,7 @@ controls:
     variance: forbidden
     baseline: null
     review_by: 2027-08-16
-    rationale_adr: docs/adr/0001-secrets-never-reach-the-remote.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0001-secrets-never-reach-the-remote.md
 
   - id: SEC-002
     title: CI authenticates without a long-lived cloud credential
@@ -984,7 +984,7 @@ controls:
     variance: forbidden
     baseline: null
     review_by: 2027-08-16
-    rationale_adr: docs/adr/0002-federated-ci-identity.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0002-federated-ci-identity.md
 
   # ADR 0022. SEC-002 above stays cloud-scoped: its title, its `enforces`, its
   # NIST citation and ADR 0002 are all about cloud identity, and broadening it
@@ -1050,7 +1050,7 @@ controls:
     variance: forbidden
     baseline: null
     review_by: 2027-08-24
-    rationale_adr: docs/adr/0022-a-platform-token-ci-carries.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0022-a-platform-token-ci-carries.md
 
   # --- Supply chain --------------------------------------------------------
 
@@ -1095,7 +1095,7 @@ controls:
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
-    rationale_adr: docs/adr/0003-frozen-dependency-resolution.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0003-frozen-dependency-resolution.md
 
   - id: SUP-002
     title: Dependency updates are proposed automatically
@@ -1123,7 +1123,7 @@ controls:
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
-    rationale_adr: docs/adr/0004-automated-dependency-proposals.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0004-automated-dependency-proposals.md
 
   - id: SUP-003
     title: Third-party CI actions are pinned to a commit SHA
@@ -1163,7 +1163,7 @@ controls:
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
-    rationale_adr: docs/adr/0005-pinned-ci-actions.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0005-pinned-ci-actions.md
 
   # --- Build and runtime ---------------------------------------------------
 
@@ -1225,7 +1225,7 @@ controls:
     variance: forbidden
     baseline: null
     review_by: 2027-08-16
-    rationale_adr: docs/adr/0006-containers-run-unprivileged.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0006-containers-run-unprivileged.md
 
   - id: DEV-001
     title: Devcontainer features are version-pinned
@@ -1261,7 +1261,7 @@ controls:
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
-    rationale_adr: docs/adr/0007-pinned-devcontainer-features.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0007-pinned-devcontainer-features.md
 
   # --- Repository controls -------------------------------------------------
 
@@ -1333,7 +1333,7 @@ controls:
     variance: forbidden
     baseline: null
     review_by: 2027-08-16
-    rationale_adr: docs/adr/0008-protected-default-branch.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0008-protected-default-branch.md
 
   # --- Code quality --------------------------------------------------------
 
@@ -1385,7 +1385,7 @@ controls:
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
-    rationale_adr: docs/adr/0009-single-lint-definition.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0009-single-lint-definition.md
 
   - id: TYP-001
     title: Static type checking runs in strict mode and blocks
@@ -1417,7 +1417,7 @@ controls:
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
-    rationale_adr: docs/adr/0010-strict-typing-from-birth.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0010-strict-typing-from-birth.md
 
   - id: TST-001
     title: A failing test fails the build
@@ -1447,7 +1447,7 @@ controls:
     variance: forbidden
     baseline: null
     review_by: 2027-08-16
-    rationale_adr: docs/adr/0011-test-failures-are-terminal.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0011-test-failures-are-terminal.md
 
   # --- Infrastructure ------------------------------------------------------
 
@@ -1495,7 +1495,7 @@ controls:
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
-    rationale_adr: docs/adr/0012-iac-static-analysis.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0012-iac-static-analysis.md
 
   # --- Documentation -------------------------------------------------------
 
@@ -1536,7 +1536,7 @@ controls:
     variance: narrowing-only
     baseline: null
     review_by: 2027-08-16
-    rationale_adr: docs/adr/0013-one-markdown-rule-set.md
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0013-one-markdown-rule-set.md
 
 # ---------------------------------------------------------------------------
 # Meta-controls. These do not check the code — they check the register and its

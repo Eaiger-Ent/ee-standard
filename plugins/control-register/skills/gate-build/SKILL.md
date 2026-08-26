@@ -5,7 +5,6 @@ description: >
   and a complete devcontainer lock file, enforced at both declared loci.
   Triggers: 'deploy gate-build', 'pin the devcontainer', '/gate-build'.
 argument-hint: "[--repo <path>] [--register <path>]"
-disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 

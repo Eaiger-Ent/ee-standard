@@ -781,8 +781,31 @@ class _Validator:
         elif not isinstance(review_by, datetime.date):
             self.error(f"{where}.review_by", f"must be an ISO date, got {review_by!r}")
         rationale_adr = raw["rationale_adr"]
+        # A path **or** an `https://` citation, and the second is why an adopter
+        # can use this register at all. A path resolves against the register's
+        # own directory, which is the authoring repository — so a register
+        # fetched into a repository that did not write it failed every control
+        # it contains on a `docs/` directory it was never going to have. Phase 4
+        # met that at Step 1 of the first real adoption: fourteen controls,
+        # fourteen "file does not exist".
+        #
+        # The existence of a URL is not decidable here and is not pretended to
+        # be. What replaces it for the shipped register is
+        # `tests/test_rationale_citations.py`, which holds every citation to the
+        # address `tools.register-check.install.repository` names and to a file
+        # in this working tree — the renamed-ADR check, kept where it can
+        # actually run, beside `test_adr_revisions.py` for the same reason
+        # (ADR 0022 requirement 6: how this repository keeps its own records is
+        # not what a conformant repository contains).
         if not isinstance(rationale_adr, str):
-            self.error(f"{where}.rationale_adr", "must be a path")
+            self.error(f"{where}.rationale_adr", "must be a path or an http(s) URL")
+        elif rationale_adr.startswith(("http://", "https://")):
+            pass
+        elif "://" in rationale_adr:
+            self.error(
+                f"{where}.rationale_adr",
+                f"must be a path or an http(s) URL, got {rationale_adr!r}",
+            )
         elif not (self.register_path.parent / rationale_adr).is_file():
             self.error(f"{where}.rationale_adr", f"file does not exist: {rationale_adr}")
         for text_field in ("title", "enforces", "owner"):

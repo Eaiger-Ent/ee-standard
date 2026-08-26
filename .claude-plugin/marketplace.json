@@ -1,0 +1,23 @@
+{
+  "name": "ee-standard",
+  "owner": {
+    "name": "Equal Experts",
+    "email": "nathan.carney@equalexperts.com"
+  },
+  "metadata": {
+    "description": "The Equal Experts control register: one plugin carrying the register, the checker and the gate skills that deploy it."
+  },
+  "plugins": [
+    {
+      "name": "control-register",
+      "description": "Deploys and verifies the Equal Experts control standard. The register in controls.yaml defines what conformant means; the gate skills write the artefacts, and register-check audits them.",
+      "category": "governance",
+      "author": {
+        "name": "Equal Experts",
+        "email": "nathan.carney@equalexperts.com"
+      },
+      "homepage": "https://github.com/Eaiger-Ent/ee-standard/tree/main/plugins/control-register",
+      "source": "./plugins/control-register"
+    }
+  ]
+}
