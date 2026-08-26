@@ -19,14 +19,14 @@ step never observed failing is not known to work.
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, make_repo
+from conftest import REPO_ROOT, gate_contract, make_repo
 from register_check.cli import main
+from register_check.provenance import stamps_in
 from register_check.register import Register, load_register
 
 SKILL = REPO_ROOT / "plugins/control-register/skills/gate-build"
@@ -86,6 +86,7 @@ def _render(template: str, register: Register) -> str:
         "{{IMAGE}}": _IMAGE,
         "{{IMAGE_DIGEST}}": _DIGEST,
         "{{SKILL_VERSION}}": SKILL_VERSION,
+        "{{GATE_CONTRACT}}": gate_contract("gate-build"),
         "{{REGISTER_VERSION}}": register.version,
         "{{REGISTER_CONTRACT}}": str(register.register_contract),
     }.items():
@@ -219,15 +220,13 @@ def test_one_hook_carries_a_stamp_for_each_control(deployed: Path) -> None:
     }
     for path, controls in stamped.items():
         text = (deployed / path).read_text(encoding="utf-8")
-        found = re.findall(
-            r"ee-control: (\S+)\s+ee-skill: (\S+)\s+register: v(\S+)\s+register-contract: (\d+)",
-            text,
-        )
-        assert {control for control, _, _, _ in found} == controls, path
-        for _, skill, version, contract in found:
-            assert skill == f"gate-build@{SKILL_VERSION}"
-            assert version == register.version
-            assert contract == str(register.register_contract)
+        found = stamps_in(text)
+        assert {stamp.control for stamp in found} == controls, path
+        for stamp in found:
+            assert (stamp.skill, stamp.skill_version) == ("gate-build", SKILL_VERSION)
+            assert stamp.register_version == register.version
+            assert stamp.register_contract == register.register_contract
+            assert stamp.gate_contract == int(gate_contract("gate-build"))
 
 
 def test_the_deployed_devcontainer_is_still_readable(deployed: Path) -> None:
@@ -301,9 +300,7 @@ def test_a_root_user_added_after_deployment_is_caught(
     assert "✓ file: gate_wired_at_declared_loci" in out
 
 
-def test_a_floating_image_tag_is_caught(
-    deployed: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_a_floating_image_tag_is_caught(deployed: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """A complete lock file over a floating tag reads as solved and is not."""
     devcontainer = deployed / ".devcontainer/devcontainer.json"
     devcontainer.write_text(
@@ -316,9 +313,7 @@ def test_a_floating_image_tag_is_caught(
     assert "DEV-001  FAIL" in out
 
 
-def test_a_partial_lock_file_is_caught(
-    deployed: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_a_partial_lock_file_is_caught(deployed: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """Phase 0.5's re-opened criterion, as a test.
 
     A lock file covering some features reads as solved and is not — the state

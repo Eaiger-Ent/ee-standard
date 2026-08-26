@@ -33,8 +33,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, make_repo, requires_tool
+from conftest import REPO_ROOT, gate_contract, make_repo, requires_tool
 from register_check.cli import main
+from register_check.provenance import stamps_in
 from register_check.register import Register, load_register
 
 PLUGIN = REPO_ROOT / "plugins/control-register"
@@ -155,9 +156,7 @@ def _fill(text: str, register: Register, gate: str, **extra: str) -> str:
             else ""
         ),
         "{{EDITOR_BINDING_SETTING}}": (
-            stack.gates["lint"].editor_binding.setting
-            if stack.gates["lint"].editor_binding
-            else ""
+            stack.gates["lint"].editor_binding.setting if stack.gates["lint"].editor_binding else ""
         ),
         "{{TYPECHECK_TOOL}}": stack.gates["typecheck"].tool,
         "{{TYPECHECK_HOOK_ID}}": stack.gates["typecheck"].pre_commit or "",
@@ -165,6 +164,7 @@ def _fill(text: str, register: Register, gate: str, **extra: str) -> str:
         "{{COVERAGE_KEY}}": stack.gates["typecheck"].coverage_key or "",
         "{{TEST_COMMAND}}": "uv run pytest",
         "{{SKILL_VERSION}}": SKILL_VERSION,
+        "{{GATE_CONTRACT}}": gate_contract(gate),
         "{{REGISTER_VERSION}}": register.version,
         "{{REGISTER_CONTRACT}}": str(register.register_contract),
         **extra,
@@ -319,7 +319,7 @@ def _deploy_all(root: Path, register: Register) -> None:
     devcontainer.write_text(
         devcontainer.read_text(encoding="utf-8").replace(
             '"extensions": []',
-            f"{stamp}\n      \"extensions\": [{extension.group(1)}]",
+            f'{stamp}\n      "extensions": [{extension.group(1)}]',
             1,
         ),
         encoding="utf-8",
@@ -346,9 +346,7 @@ def _deploy_all(root: Path, register: Register) -> None:
         root,
         _fill(_payload(_gate("gate-quality") / "precommit-hooks.yaml"), register, "gate-quality"),
     )
-    _steps(
-        root, _fill(_payload(_gate("gate-quality") / "ci-steps.yaml"), register, "gate-quality")
-    )
+    _steps(root, _fill(_payload(_gate("gate-quality") / "ci-steps.yaml"), register, "gate-quality"))
 
     # 5 — gate-iac. Not applicable here: no `*.tf`, so the gate writes nothing.
 
@@ -494,6 +492,7 @@ def test_after_adopting_every_local_locus_verifies(
     deployed it here would be testing a skill this repository does not ship.
     """
     code, out = _verdict(adopted, capsys)
+
     # The report pads control ids to a common width, so match on the id plus a
     # run of spaces rather than on a fixed gap.
     def verdict(control: str) -> str:
@@ -565,13 +564,14 @@ def test_every_deployed_control_carries_its_own_stamp(adopted: Path) -> None:
         check=False,
     ).stdout.split():
         text = (adopted / path).read_text(encoding="utf-8")
-        for control, skill, version, contract in re.findall(
-            r"ee-control: (\S+)\s+ee-skill: (\S+)\s+register: v(\S+)\s+register-contract: (\d+)",
-            text,
-        ):
-            stamped.add(control)
-            assert version == register.version, (path, skill)
-            assert contract == str(register.register_contract), (path, skill)
+        for stamp in stamps_in(text):
+            stamped.add(stamp.control)
+            assert stamp.register_version == register.version, (path, stamp.skill)
+            assert stamp.register_contract == register.register_contract, (path, stamp.skill)
+            # A gate's own stamps carry its deployment contract (ADR 0038);
+            # `lint-md` is another plugin's and carries none.
+            if stamp.skill.startswith("gate-"):
+                assert stamp.gate_contract == int(gate_contract(stamp.skill)), path
     # SEC-002 has no artefact of its own — it is verified from the workflows
     # SEC-001's gate writes — and IAC-001 does not apply here.
     assert stamped == set(_DEPLOYED) - {"SEC-002"}, stamped

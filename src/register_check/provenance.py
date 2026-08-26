@@ -10,13 +10,26 @@ exists to prevent — so the pattern is defined once, here.
 
 What a stamp records, and why each field:
 
-    # ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.5.0  register-contract: 5
+    # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  gate-contract: 5
+    #   register: v0.23.0  register-contract: 30            (one line in the file)
 
 `register` moves for any change including a typo in a comment; `register-contract`
 moves only when a control's `rung`, `verify`, `variance` or `applies_to` changes
 — that is, only when what gets deployed could differ. A reader comparing
 versions alone cannot tell whether anything they hold is affected; with the
 contract they can.
+
+`gate-contract` is the same argument about the *gate* rather than the register
+(ADR 0038): `gates.<gate>.contractVersion` from the plugin's `deploys.json`,
+read by the gate as it writes. It moves only when what that gate writes changes,
+so a documentation release of the plugin recommends nothing. The skill version
+beside it cannot serve: eight skills share one `plugin.json` version, so it is
+not a per-gate fact at all.
+
+It is **optional**, and its absence is a state rather than a default. Every
+stamp written before ADR 0038 lacks it, and those deployments are *unrecorded* —
+neither current nor stale — until the gate next deploys. Filling one in by hand
+would record a redeployment that did not happen.
 """
 
 from __future__ import annotations
@@ -34,6 +47,7 @@ MARKER = "ee-control:"
 _STAMP = re.compile(
     r"ee-control:\s*(?P<control>\S+)\s+"
     r"ee-skill:\s*(?P<skill>\S+?)@(?P<skill_version>\S+)\s+"
+    r"(?:gate-contract:\s*(?P<gate_contract>\d+)\s+)?"
     r"register:\s*v(?P<register_version>\d+\.\d+\.\d+)\s+"
     r"register-contract:\s*(?P<register_contract>\d+)"
 )
@@ -41,7 +55,8 @@ _STAMP = re.compile(
 #: What a well-formed stamp looks like, for error messages that show rather than
 #: describe. Kept beside the pattern so the two cannot disagree.
 EXPECTED = (
-    "ee-control: ID  ee-skill: name@version  register: vX.Y.Z  register-contract: N"
+    "ee-control: ID  ee-skill: name@version  [gate-contract: N]  "
+    "register: vX.Y.Z  register-contract: N"
 )
 
 
@@ -52,6 +67,11 @@ class Stamp:
     skill_version: str
     register_version: str
     register_contract: int
+    #: The gate's deployment contract at the moment it wrote this artefact, or
+    #: `None` for a stamp written before ADR 0038 added the field. `None` is
+    #: "nobody recorded it", never "contract zero" — the two are reported
+    #: differently and a default would erase the distinction.
+    gate_contract: int | None = None
 
 
 def stamps_in(text: str) -> list[Stamp]:
@@ -68,6 +88,11 @@ def stamps_in(text: str) -> list[Stamp]:
             skill_version=match.group("skill_version"),
             register_version=match.group("register_version"),
             register_contract=int(match.group("register_contract")),
+            gate_contract=(
+                int(match.group("gate_contract"))
+                if match.group("gate_contract") is not None
+                else None
+            ),
         )
         for match in _STAMP.finditer(text)
     ]
@@ -100,7 +125,7 @@ def stamps_by_file(repo: Repo) -> dict[str, list[Stamp]]:
     for path in sorted(_files_with_marker(repo)):
         try:
             text = repo.read(path)
-        except (OSError, UnicodeDecodeError):
+        except OSError, UnicodeDecodeError:
             continue  # a binary or unreadable file carries no stamp
         stamps = stamps_in(text)
         if stamps:

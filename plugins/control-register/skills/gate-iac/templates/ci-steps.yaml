@@ -12,6 +12,6 @@
 # `narrowing-only` with `baseline: null`: a step that reports findings without
 # blocking is theme T-3 — a gate that is not a gate — and the register's
 # `suppression:` list is what the checker matches such a step against.
-      # ee-control: IAC-001  ee-skill: gate-iac@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: IAC-001  ee-skill: gate-iac@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       - name: Infrastructure analysis
         run: {{TOOL_INVOCATION}} run --control IAC-001

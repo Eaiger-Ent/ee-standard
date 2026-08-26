@@ -26,7 +26,7 @@
 // protecting the default branch the day the default moves, silently.
 // --- .github/rulesets/default-branch.json ---
 {
-  // ee-control: CI-001  ee-skill: gate-repo@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+  // ee-control: CI-001  ee-skill: gate-repo@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
   "name": "{{RULESET_NAME}}",
   "target": "branch",
   "enforcement": "active",

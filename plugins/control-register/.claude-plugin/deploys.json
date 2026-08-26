@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "gates": {
     "gate-secrets": {
-      "contractVersion": 4,
+      "contractVersion": 5,
       "controls": [
         "SEC-001",
         "SEC-002",
@@ -15,7 +15,7 @@
       ]
     },
     "gate-supply-chain": {
-      "contractVersion": 3,
+      "contractVersion": 4,
       "controls": [
         "SUP-001",
         "SUP-002",
@@ -30,7 +30,7 @@
       ]
     },
     "gate-build": {
-      "contractVersion": 2,
+      "contractVersion": 3,
       "controls": [
         "BLD-001",
         "DEV-001"
@@ -43,7 +43,7 @@
       ]
     },
     "gate-repo": {
-      "contractVersion": 3,
+      "contractVersion": 4,
       "controls": [
         "CI-001"
       ],
@@ -52,7 +52,7 @@
       ]
     },
     "gate-iac": {
-      "contractVersion": 2,
+      "contractVersion": 3,
       "controls": [
         "IAC-001"
       ],
@@ -62,7 +62,7 @@
       ]
     },
     "gate-quality": {
-      "contractVersion": 4,
+      "contractVersion": 5,
       "controls": [
         "LNT-001",
         "TYP-001",

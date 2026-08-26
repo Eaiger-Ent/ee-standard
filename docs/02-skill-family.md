@@ -180,6 +180,13 @@ only when the deployed output changes**. Redeployment is recommended when the
 installed contract version is ahead of the one stamped in the repo, and stays
 silent through every release that did not change the output.
 
+**The stamp carries that number** — `gate-contract`, added by
+[ADR 0038](adr/0038-the-stamp-records-the-deployment-contract.md), which is what
+gives the comparison above something on the repository's side to compare
+against. It was missing for three contracts and nothing noticed, because nothing
+read `deploys.json`. A stamp written before it says *unrecorded*, which is
+neither current nor stale.
+
 ### The `deploys` sidecar
 
 ```json
@@ -187,7 +194,7 @@ silent through every release that did not change the output.
   "schemaVersion": 2,
   "gates": {
     "gate-secrets": {
-      "contractVersion": 1,
+      "contractVersion": 5,
       "controls": ["SEC-001", "SEC-002"],
       "artifacts": [
         ".pre-commit-config.yaml#gitleaks",
@@ -229,6 +236,10 @@ every plugin at its discovery step. Reading each plugin's `deploys.json` from
 skill already pauses to report. Per-gate contracts do not change that: it is
 still one file at one path, and the gate a stamp names is the key to compare
 against.
+
+The reconciliation itself is `register-check deployments`, so `skill-update` and
+`register-adopt` report the same states from the same code rather than each
+computing its own.
 
 It gains a read-only reconciliation section and an offer to hand off to
 `register-adopt`. It never writes gate config itself. `lint-md` sets

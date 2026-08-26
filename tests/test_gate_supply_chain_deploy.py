@@ -27,8 +27,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, make_repo
+from conftest import REPO_ROOT, gate_contract, make_repo
 from register_check.cli import main
+from register_check.provenance import stamps_in
 from register_check.register import Register, load_register
 
 SKILL = REPO_ROOT / "plugins/control-register/skills/gate-supply-chain"
@@ -103,6 +104,7 @@ def _render(template: str, register: Register) -> str:
         "{{TOOL}}": tool,
         "{{TOOL_INVOCATION}}": register.tools[tool].invocation or "",
         "{{SKILL_VERSION}}": SKILL_VERSION,
+        "{{GATE_CONTRACT}}": gate_contract("gate-supply-chain"),
         "{{REGISTER_VERSION}}": register.version,
         "{{REGISTER_CONTRACT}}": str(register.register_contract),
     }.items():
@@ -193,9 +195,9 @@ def test_the_frozen_command_is_one_the_checker_credits() -> None:
     """
     ecosystem = _register().ecosystems[ECOSYSTEM]
     for lockfile, command in ecosystem.frozen_install_command.items():
-        assert any(
-            re.search(pattern, command) for pattern in ecosystem.frozen_install
-        ), f"{lockfile}: {command!r} matches no frozen_install pattern"
+        assert any(re.search(pattern, command) for pattern in ecosystem.frozen_install), (
+            f"{lockfile}: {command!r} matches no frozen_install pattern"
+        )
 
 
 def test_before_deploying_all_three_controls_fail(
@@ -239,15 +241,13 @@ def test_the_deployed_stamps_record_the_register_they_came_from(deployed: Path) 
     }
     for path, controls in stamped.items():
         text = (deployed / path).read_text(encoding="utf-8")
-        found = re.findall(
-            r"ee-control: (\S+)\s+ee-skill: (\S+)\s+register: v(\S+)\s+register-contract: (\d+)",
-            text,
-        )
-        assert {control for control, _, _, _ in found} == controls, path
-        for _, skill, version, contract in found:
-            assert skill == f"gate-supply-chain@{SKILL_VERSION}"
-            assert version == register.version
-            assert contract == str(register.register_contract)
+        found = stamps_in(text)
+        assert {stamp.control for stamp in found} == controls, path
+        for stamp in found:
+            assert (stamp.skill, stamp.skill_version) == ("gate-supply-chain", SKILL_VERSION)
+            assert stamp.register_version == register.version
+            assert stamp.register_contract == register.register_contract
+            assert stamp.gate_contract == int(gate_contract("gate-supply-chain"))
 
 
 def test_the_deployed_workflow_is_valid_yaml_that_still_gates(deployed: Path) -> None:
@@ -379,9 +379,7 @@ def test_a_full_audit_reaches_the_control_without_a_selective_step(
     assert "SUP-003  PASS" in out
 
 
-def test_removing_the_stamps_is_caught(
-    deployed: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_removing_the_stamps_is_caught(deployed: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """A deployment whose provenance was stripped is not a deployment on record."""
     for name in (".pre-commit-config.yaml", ".github/workflows/ci.yml", ".github/dependabot.yml"):
         path = deployed / name
@@ -409,9 +407,7 @@ def test_stamping_one_control_and_forgetting_the_others_is_caught(
     """
     path = deployed / ".github/dependabot.yml"
     kept = [
-        line
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if "ee-control:" not in line
+        line for line in path.read_text(encoding="utf-8").splitlines() if "ee-control:" not in line
     ]
     path.write_text("\n".join(kept) + "\n", encoding="utf-8")
     make_repo(deployed, {})

@@ -103,6 +103,14 @@ And once, not per ecosystem:
 | `TOOL_INVOCATION` | `tools.<TOOL>.invocation` — how a locus reaches the checker |
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
+| `SKILL_VERSION` | the plugin's `.claude-plugin/plugin.json`, `version` |
+| `GATE_CONTRACT` | the plugin's `.claude-plugin/deploys.json`, `gates.gate-supply-chain.contractVersion` |
+
+The last two rows are the **plugin's** numbers rather than the register's,
+read from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/`. `GATE_CONTRACT` is what a
+stamp records as `gate-contract`, and it moves only when what this gate writes
+changes, so a documentation release of the plugin recommends nothing
+(ADR 0038). If `${CLAUDE_PLUGIN_ROOT}` is unset, stop and say so.
 
 **`FROZEN_INSTALL` is keyed by lockfile, not by ecosystem.** `uv sync --frozen`
 and `poetry install --sync` are both python; which one is right is a fact about
@@ -178,7 +186,7 @@ repository.
 
 Read `${CLAUDE_SKILL_DIR}/templates/ci-steps.yaml` and substitute
 `{{FROZEN_INSTALL}}`, `{{ECOSYSTEM}}`, `{{TOOL_INVOCATION}}`, `{{TOOL}}`,
-`{{SKILL_VERSION}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`.
+`{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`.
 
 - **`INSTALL_STATE` shows a frozen install already:** write nothing, stamp the
   step that is there for SUP-001, and say it was adopted.

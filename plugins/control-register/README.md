@@ -41,9 +41,10 @@ themselves the enforcement — nothing here runs at commit time, and a repositor
 whose conformance depended on a model being present would have no gate at all.
 
 Every artefact a gate writes carries an `ee-control:` provenance stamp naming
-the control, the deploying skill and version, and the register's version and
-contract. The contract is what makes "deployed but stale" computable without
-firing a redeployment notice on every documentation release.
+the control, the deploying skill and version, the gate's deployment contract,
+and the register's version and contract. The two contracts are what make
+"deployed but stale" computable without firing a redeployment notice on every
+documentation release.
 
 ## Verification
 
@@ -65,6 +66,10 @@ the second is worth anything.
 changes. A redeployment is recommended when a gate's installed contract is ahead
 of the one stamped in a repository, and stays silent through every release that
 did not change what that gate writes.
+
+`register-check deployments` is the reader. It exits `0` over any number of
+stale or undeployed gates — staleness is reported, never enforced — and non-zero
+only for a stamp claiming a contract the installed gate has not reached.
 
 Per gate, rather than per plugin, because six gates ship here: one shared number
 would recommend redeploying `gate-secrets` every time `gate-quality`'s output

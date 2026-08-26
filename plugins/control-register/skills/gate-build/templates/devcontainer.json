@@ -15,7 +15,7 @@
 // container that does not start.
 // --- .devcontainer/devcontainer.json — merged into what is already there ---
 {
-  // ee-control: BLD-001  ee-skill: gate-build@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+  // ee-control: BLD-001  ee-skill: gate-build@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
   //
   // Stated rather than inherited. A devcontainer naming neither `containerUser`
   // nor `remoteUser` runs as whatever its base image uses, which may be root
@@ -23,7 +23,7 @@
   // property BLD-001 states.
   "remoteUser": "{{CONTAINER_USER}}",
 
-  // ee-control: DEV-001  ee-skill: gate-build@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+  // ee-control: DEV-001  ee-skill: gate-build@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
   //
   // A complete lock file over a floating image tag is the more dangerous
   // half-state: it reads as solved and is not. Both halves or neither.

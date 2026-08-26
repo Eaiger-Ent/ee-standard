@@ -19,8 +19,8 @@
 # {{TOOL_INVOCATION}} is the register's `tools.{{TOOL}}.invocation`, written
 # verbatim. A bare name would resolve from PATH, and for this tool what answered
 # would be auditing the repository (ADR 0020).
-      # ee-control: BLD-001  ee-skill: gate-build@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
-      # ee-control: DEV-001  ee-skill: gate-build@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: BLD-001  ee-skill: gate-build@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: DEV-001  ee-skill: gate-build@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       - id: {{TOOL}}-build
         name: {{TOOL}} (BLD-001, DEV-001)
         entry: {{TOOL_INVOCATION}} run --control BLD-001 --control DEV-001

@@ -22,21 +22,22 @@ survive the filter the gate applies to it.
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from conftest import REPO_ROOT, make_repo
+from conftest import REPO_ROOT, gate_contract, make_repo
 from register_check.cli import main
+from register_check.provenance import Stamp, stamps_in
 from register_check.register import Register, load_register
 
 SKILL = REPO_ROOT / "plugins/control-register/skills/gate-repo"
 REGISTER_PATH = REPO_ROOT / "controls.yaml"
 SKILL_VERSION = "0.1.0"
 RULESET_PATH = ".github/rulesets/default-branch.json"
+
 
 def _register() -> Register:
     register, errors = load_register(REGISTER_PATH)
@@ -93,6 +94,7 @@ def _render(template: str, register: Register) -> str:
         "{{REQUIRED_CHECKS}}": contexts,
         "{{REQUIRE_BRANCHES_UP_TO_DATE}}": json.dumps(args["require_branches_up_to_date"]),
         "{{SKILL_VERSION}}": SKILL_VERSION,
+        "{{GATE_CONTRACT}}": gate_contract("gate-repo"),
         "{{REGISTER_VERSION}}": register.version,
         "{{REGISTER_CONTRACT}}": str(register.register_contract),
     }.items():
@@ -128,9 +130,7 @@ def _stripped(root: Path) -> Any:
     is the payload and not a convenience view of it.
     """
     text = (root / RULESET_PATH).read_text(encoding="utf-8")
-    body = "\n".join(
-        line for line in text.splitlines() if not line.lstrip().startswith("//")
-    )
+    body = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("//"))
     parsed = json.loads(body)
     assert isinstance(parsed, dict)
     return parsed
@@ -236,15 +236,15 @@ def test_the_recorded_ruleset_is_valid_json_once_the_comments_are_stripped(
 def test_the_recorded_stamp_records_the_register_it_came_from(deployed: Path) -> None:
     register = _register()
     text = (deployed / RULESET_PATH).read_text(encoding="utf-8")
-    stamp = re.search(
-        r"ee-control: (\S+)\s+ee-skill: (\S+)\s+register: v(\S+)\s+register-contract: (\d+)", text
-    )
-    assert stamp is not None
-    assert stamp.groups() == (
-        "CI-001",
-        f"gate-repo@{SKILL_VERSION}",
-        register.version,
-        str(register.register_contract),
+    found = stamps_in(text)
+    assert len(found) == 1, found
+    assert found[0] == Stamp(
+        control="CI-001",
+        skill="gate-repo",
+        skill_version=SKILL_VERSION,
+        register_version=register.version,
+        register_contract=register.register_contract,
+        gate_contract=int(gate_contract("gate-repo")),
     )
 
 
@@ -319,15 +319,12 @@ def test_an_untracked_record_is_not_a_record(
     assert "is not tracked" in out
 
 
-def test_removing_the_stamp_is_caught(
-    deployed: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_removing_the_stamp_is_caught(deployed: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _rewrite(
         deployed,
-        lambda text: "\n".join(
-            line for line in text.splitlines() if "ee-control:" not in line
-        )
-        + "\n",
+        lambda text: (
+            "\n".join(line for line in text.splitlines() if "ee-control:" not in line) + "\n"
+        ),
     )
     code, out = _verdict(deployed, capsys)
     assert code == 1

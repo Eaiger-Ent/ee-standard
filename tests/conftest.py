@@ -119,6 +119,21 @@ def make_repo(root: Path, files: dict[str, str], commit: bool = True) -> Repo:
     return Repo(root)
 
 
+def gate_contract(gate: str) -> str:
+    """The deployment contract the installed plugin declares for one gate.
+
+    Read rather than written down, for the reason ADR 0038 gives for the field
+    existing at all: the number has one home, and a test that repeated it would
+    keep passing over a bump nobody carried into the templates.
+    """
+    sidecar = json.loads(
+        (REPO_ROOT / "plugins/control-register/.claude-plugin/deploys.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    return str(sidecar["gates"][gate]["contractVersion"])
+
+
 @pytest.fixture
 def real_repo() -> Repo:
     return Repo(REPO_ROOT)

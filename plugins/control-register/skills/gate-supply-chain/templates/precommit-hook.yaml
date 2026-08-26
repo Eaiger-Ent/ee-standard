@@ -21,7 +21,7 @@
 # control a developer has to fix rather than reporting the whole register at
 # them. `files:` limits the hook to commits that touch a workflow — the only
 # commits that can introduce an unpinned action.
-      # ee-control: SUP-003  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: SUP-003  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       - id: {{TOOL}}-supply-chain
         name: {{TOOL}} (SUP-003)
         entry: {{TOOL_INVOCATION}} run --control SUP-003

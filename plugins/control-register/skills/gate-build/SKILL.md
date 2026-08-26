@@ -90,6 +90,14 @@ the authority for anything, and every step below reads it.
 | `LOCI` | BLD-001's and DEV-001's `locus:` lists |
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
+| `SKILL_VERSION` | the plugin's `.claude-plugin/plugin.json`, `version` |
+| `GATE_CONTRACT` | the plugin's `.claude-plugin/deploys.json`, `gates.gate-build.contractVersion` |
+
+The last two rows are the **plugin's** numbers rather than the register's,
+read from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/`. `GATE_CONTRACT` is what a
+stamp records as `gate-contract`, and it moves only when what this gate writes
+changes, so a documentation release of the plugin recommends nothing
+(ADR 0038). If `${CLAUDE_PLUGIN_ROOT}` is unset, stop and say so.
 
 **If `tools.<TOOL>` has no `invocation`**, stop. The pre-commit gate would have
 to run a bare tool name, which resolves from `PATH` — and what answered would be
@@ -188,7 +196,7 @@ question about that image rather than about this control.
 
 Read `${CLAUDE_SKILL_DIR}/templates/devcontainer.json` and substitute
 `{{CONTAINER_USER}}`, `{{IMAGE}}`, `{{IMAGE_DIGEST}}`, `{{SKILL_VERSION}}`,
-`{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`. Merge it into the
+`{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`. Merge it into the
 `devcontainer.json` that is there — **as text, not by reparsing and dumping**.
 The stamps are `//` comments and a round trip through a JSON writer drops them;
 the checker reads this file with a JSONC reader, so the comments stay legal.

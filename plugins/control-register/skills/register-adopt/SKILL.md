@@ -126,21 +126,31 @@ Then read the plugin's `deploys.json` for each gate named:
 
 ### Read what is already deployed
 
-Every `ee-control:` stamp already in the repository:
+Ask the checker, which reads the plugin's `deploys.json` and the repository's
+stamps through the one parser everything else reads them through:
 
 ```bash
-git grep -l 'ee-control:' || echo NONE
+register-check --repo "$REPO" --register "$REGISTER" deployments
 ```
 
-For each, record the control, the skill and version that wrote it, and the
-register contract it names. Three states matter and they are not the same:
+Record the state it gives each gate. They are not the same act:
 
-- **Absent** — nothing deployed this control here.
-- **Behind** — the stamp names a register contract lower than the current one.
-  That is *staleness*, which is reported and never enforced. A re-run may be
-  owed; it is not owed by this skill's judgement.
-- **Ahead** — the stamp names a contract the register has not reached. That is a
-  defect, not staleness, and `provenance_stamp_present` fails it.
+- **NOT APPLICABLE** — no control this gate carries applies to this repository.
+  Nothing is owed, and planning it as a deployment would invent work.
+- **NEVER DEPLOYED** — no stamp names this gate. The ordinary case here.
+- **UNRECORDED** — deployed before the stamp carried a `gate-contract`
+  (ADR 0038). Whether it is current cannot be known, so it is treated as owed.
+- **STALE** — the gate's stamped contract is behind the installed one, so what
+  it writes has changed. *Staleness is reported and never enforced*: a re-run
+  may be owed, and it is not owed by this skill's judgement.
+- **CURRENT** — stamped at the installed contract. Skip it unless the operator
+  asks otherwise.
+- **AHEAD** — a stamp claims a contract the installed gate has not reached. A
+  defect, not staleness; stop and report it rather than deploying over it.
+
+A gate's *version* moving is not any of these. The plugin's version moves for
+documentation and trigger-phrase releases, and eight skills share it, so nothing
+here reads it.
 
 ### The controls that are not simply "deploy"
 

@@ -950,13 +950,13 @@ Wire the mechanism that keeps deployments current.
       [`08-adopting.md`](08-adopting.md) with its evidence — how a repository
       opts into the sweep, and how its owner reads a staleness report
 
-- [ ] Bumping a gate's version *without* changing its output produces **no**
+- [x] Bumping a gate's version *without* changing its output produces **no**
       redeployment recommendation
-- [ ] Bumping its contract version *does*
+- [x] Bumping its contract version *does*
 - [ ] `skill-update` reports an owed deployment where every plugin is current,
       and does not print *Already done* over it
 - [ ] The sweep runs unattended and produces a report nobody has to ask for
-- [ ] A repo that has never deployed is distinguishable from one deployed and
+- [x] A repo that has never deployed is distinguishable from one deployed and
       current, and from one deployed and stale
 - [ ] Taking an upstream skill release is a supported operation with a recorded
       outcome: **redeployed**, or **declined with the disagreement named**.

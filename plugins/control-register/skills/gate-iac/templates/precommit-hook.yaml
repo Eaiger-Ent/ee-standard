@@ -16,7 +16,7 @@
 # `files:` limits the hook to commits that touch infrastructure code. A commit
 # that changes no `*.tf` cannot introduce a finding in one, and a hook that runs
 # the whole analysis on every commit is a hook developers learn to bypass.
-      # ee-control: IAC-001  ee-skill: gate-iac@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: IAC-001  ee-skill: gate-iac@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       - id: {{TOOL}}-iac
         name: {{TOOL}} (IAC-001)
         entry: {{TOOL_INVOCATION}} run --control IAC-001

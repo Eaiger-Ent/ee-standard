@@ -164,8 +164,8 @@ Every artefact a gate skill deploys carries a comment identifying what wrote it,
 which control it serves, and from which register version **and contract**:
 
 ```text
-# .markdownlint.yaml — written by the gate skill
-# ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.5.0  register-contract: 5
+# .pre-commit-config.yaml — the hook the gate skill owns
+# ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  gate-contract: 5  register: v0.23.0  register-contract: 30
 ```
 
 `register-contract` is not decoration. The register's *version* moves for any
@@ -175,6 +175,20 @@ could differ. Recording only the version means every stamp goes stale on every
 release, which is the noise this design exists to avoid, and a reader comparing
 `v0.5.0` against `v0.5.1` cannot tell whether anything they hold is affected.
 With the contract in the stamp, they can.
+
+`gate-contract` is the same argument one level down, and it is the number the
+staleness report actually compares ([ADR 0038](adr/0038-the-stamp-records-the-deployment-contract.md)).
+It is `gates.<gate>.contractVersion` from the plugin's `deploys.json`, read by
+the gate as it writes, and it moves only when what *that gate* writes changes.
+The skill version beside it cannot serve: the eight skills share one
+`plugin.json` version, so it is not a per-gate fact at all and a rule keyed to
+it would move six gates whenever one shipped.
+
+The field is **optional**, and its absence is a state rather than a default. A
+stamp written before ADR 0038 does not carry it, and the honest report for that
+deployment is *unrecorded* — neither current nor stale — until the gate next
+deploys. Writing the number in by hand would record a redeployment that did not
+happen.
 
 A file a skill owns **in part** carries the stamp above the section it owns,
 not at the top of the file. `.pre-commit-config.yaml` holds hooks for five
@@ -186,9 +200,11 @@ Three distinct states become distinguishable:
 
 | State | Detected by |
 | --- | --- |
-| Never deployed | No stamp, no artefact |
-| Deployed and current | Stamp matches installed skill and register contract |
-| Deployed and stale | Stamp is behind the installed skill's deployment contract or the register contract |
+| Never deployed | No stamp naming the gate |
+| Deployed and current | The gate's stamps name the installed deployment contract |
+| Deployed and stale | A stamp names a deployment contract behind the installed one |
+| Deployed, contract unrecorded | A stamp predating ADR 0038, carrying no `gate-contract` |
+| Not applicable | No control the gate carries applies to this repository |
 
 Staleness is **reported, never enforced** — see § Notify, never redeploy below.
 A stale stamp is a recommendation to redeploy, so nothing in the checker fails a
@@ -198,13 +214,16 @@ control exists is a defect in the deployment, not a staleness signal. A stamp
 claiming a contract the register has not reached is one too, and fails: a
 deployment cannot be ahead of the thing it deploys.
 
-**Nothing reports staleness yet.** The three rows above describe what the sweep
-will distinguish, and the sweep is Phase 5's — reading a plugin's `deploys.json`
-from the checker is that phase's work, and its exit criteria hold it. Until then
-`register-check` says only that a stamp is well-formed, and the stale stamps in
-this repository are stale in silence. The distinction matters because "reported,
-never enforced" reads as a description of today and is a description of the
-design: the half that is built is *never enforced*.
+`register-check deployments` reports those rows, gate by gate, ordered by the
+tier and rung of the controls each one carries. It exits `0` over any number of
+stale or undeployed gates — that is what *reported, never enforced* means as an
+exit code — and non-zero only for the defect: a stamp claiming a contract the
+installed gate has not reached.
+
+**A conformance run still says nothing about staleness.** The report is its own
+command, and `register-check` proper says only that a stamp is well-formed.
+Failing a run over an owed deployment is the Tier-1 ratchet described in
+[`02-skill-family.md`](02-skill-family.md) § Loudness, and it is not built.
 
 ## Notify, never redeploy
 
