@@ -30,8 +30,11 @@ had no uv, while its own `setup.sh` called `uv sync --frozen`
 ([ADR 0034](docs/adr/0034-the-template-bootstraps-uv.md)); and `devcontainer up`
 on an existing container left the lock file covering one feature of two.
 
-The Phase 2 criterion still open is a **different** one, re-opened by Phase 4:
-*every SKILL.md passes preflight P1–P11*. See ADR 0035 below.
+**Phase 2 is closed.** Its last criterion — *every SKILL.md passes preflight
+P1–P11*, re-opened by Phase 4 — was re-closed 2026-08-26 on a re-run over all
+eight skills. It did not pass first time: `gate-quality` failed P1 at 510 lines,
+and the 56 lines over the ceiling were two sections pasted into every skill they
+governed, so the fix was ADR 0036 below and not an edit to the longest file.
 
 **Work in the container, not on the host.** Phase 4's first deployment run was
 driven from the macOS host and cost three things no verdict showed: the host's
@@ -504,7 +507,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
 | `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the twenty-six things it found |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **34** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0035 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **35** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0036 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fourteen Tier-1 controls, with
@@ -665,6 +668,18 @@ contract before `tools.register-check.install` existed, so the only obtainable
 register could not install the checker it describes. `install.ref` and
 `pyproject.toml`'s version are now set in the commit the tag names, which makes
 the checker and the register one artefact rather than two that can disagree.
+
+Per [ADR 0036](docs/adr/0036-shared-skill-prose-has-one-home.md)
+(**Accepted** and implemented 2026-08-26) **prose more than one skill must
+follow is shipped once**, under `plugins/control-register/reference/`, and read
+at runtime through `${CLAUDE_PLUGIN_ROOT}`; the skill carries a pointer and
+nothing more. Two files exist — `pre-commit-runner.md` and
+`write-narration.md` — and they were twelve pasted copies of two rules until a
+preflight line count found them. Do not paste a shared section back into a
+SKILL.md: `tests/test_shared_reference.py` fails that, and fails a pointer to a
+file the plugin does not ship. The reference files cite ADR 0036 in prose rather
+than by link, because `docs/` is not shipped and a relative link out of the
+plugin resolves here and dangles in every installation.
 
 Gate skills live in `plugins/control-register/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,

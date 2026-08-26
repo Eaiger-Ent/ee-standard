@@ -736,12 +736,19 @@ running the skill interactively answers the prompt and continues. It is recorded
 in § 0 of the adoption guide, because losing two runs to it is a cost worth
 warning about.
 
-So these criteria remain open, and none of them is known to fail:
+So these criteria remained open at that point, and none of them was known to
+fail:
 
-- the consumer repo reaching full Tier-1 conformance
-- `project-init` and `register-adopt` composing — **answered as a finding**, but
-  the fix is upstream and not yet made
-- weakening a `narrowing-only` control and watching the checker catch it
+- the consumer repo reaching full Tier-1 conformance — **closed 2026-08-26**
+- `project-init` and `register-adopt` composing — **answered as a finding**, and
+  still open, because the fix is upstream and not yet made
+- weakening a `narrowing-only` control and watching the checker catch it —
+  **closed 2026-08-26**, in three shapes rather than one
+
+The two that closed did so after the gates were deployed interactively, which is
+what the harness's prompt needed and what a headless run could not give it.
+[`04-build-plan.md`](04-build-plan.md) § Phase 4 carries the evidence for each.
+One criterion of the seven is open, and it is the composition one.
 
 ## The criteria this phase closes, and how
 
@@ -791,3 +798,45 @@ cannot notice that a container has no uv in it.
 `ee-skills-incubator` is private; the template is a directory in the plugin, and
 Phase 4 obtained it from a plugin install cache with no access to any private
 repository. Closed by construction, and now exercised.
+
+## The preflight re-run, and what it found
+
+Finding 10 re-opened a Phase 2 criterion — *every SKILL.md passes preflight
+P1–P11* — and said the box would stay open until the preflight was **re-run**
+over the changed skills, because a criterion closed on the reading that failed
+it once is closed on nothing. Run on 2026-08-26, against
+`skill-preflight@0.1.15`, over all **eight** skills rather than the seven the
+first pass covered: `register-install` did not exist then.
+
+**Seven passed and one failed**, and the failure was not the one this phase had
+been looking at:
+
+```text
+"skill": "gate-quality", "overall": "FAIL", "fails": 1,
+"P1_line_count": {"status": "FAIL", "value": 510, "limit": 500}
+```
+
+`gate-quality` had gone 454 → 478 → 510 lines across the two changes that closed
+findings 19 and 24 — both of which were written by pasting a section into every
+skill it governed, twelve copies of two rules. So a line count found a
+duplication, and the fix is
+[ADR 0036](adr/0036-shared-skill-prose-has-one-home.md): the two sections are
+shipped once under `plugins/control-register/reference/` and read at runtime
+through `${CLAUDE_PLUGIN_ROOT}`, with `tests/test_shared_reference.py` failing
+both a pointer to a file the plugin does not ship and a skill that takes the
+section back. Every skill now passes with zero failures, `gate-quality` at 477.
+
+**Two results the re-run reports without failing**, recorded because a green
+line that hides them is exactly what re-opened this criterion.
+
+P4 — *side-effect verbs detected; `disable-model-invocation` is not true* — is a
+**WARN** on the six skills [ADR 0035](adr/0035-a-dispatched-skill-is-reachable.md)
+took the flag off. That is the accepted state, and its guard is `gate-repo`'s
+per-call confirmation rather than the frontmatter key.
+
+P9 still reports *no sub-skill invocations detected* for `register-adopt`. The
+check that should have caught finding 10 is still blind to a dispatch named in
+prose rather than in a field it resolves, so nothing about the re-run makes P9
+able to see it. What holds the property now is
+`tests/test_register_adopt.py` and the `README.md` note P9 itself prescribed —
+this repository's own tests, not the marketplace's check having improved.

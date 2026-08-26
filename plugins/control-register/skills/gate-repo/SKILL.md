@@ -160,27 +160,15 @@ blast radius plainly, in these terms:
 
 ## Say what each write is for, before you make it
 
-**One line before every file write, and no write without one.** The person
-approving it sees a diff and nothing else: not which control it serves, not
-which step of how many, not what will check it. The provenance stamp names the
-control, but it arrives buried in the middle of the change it is explaining.
-Nothing has failed at that point and nothing has passed — this gate deploys
-first and verifies last, which is right, and it means the approver is being
-asked to accept a change on trust unless you give them the reason first.
-
-Use exactly this shape:
-
-```text
-<CONTROL-ID> · step <n>/<total> · <path>
-  what it does:  <one clause>
-  why now:       <what is absent or wrong without it>
-  verified by:   register-check run --control <CONTROL-ID>, at the verify step
-```
-
-If a write serves more than one control, name them all. If it is a re-run and
-the file already carries this gate's region, say that instead — *"already
-deployed at contract N, replacing this gate's own block"* — because
-"idempotent" is a claim the approver cannot check from a diff either.
+**Read `${CLAUDE_PLUGIN_ROOT}/reference/write-narration.md` and use the shape it
+gives, before your first write.** One line before every file write, and no write
+without one: the person approving it sees a diff and nothing else, and this
+skill deploys first and verifies last, so nothing has failed or passed yet. The
+shape is held there rather than here because seven copies of a rule is the drift
+this standard exists to prevent — see ADR 0036. If `${CLAUDE_PLUGIN_ROOT}` is
+unset, the skill was reached as a project skill rather than through the plugin,
+and the file is at `plugins/control-register/reference/` in the standard's
+repository.
 
 ## Step 1 — Record the ruleset
 

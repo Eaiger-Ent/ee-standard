@@ -287,6 +287,17 @@ must stay a dispatcher: plan, confirm, delegate, verify, report. Every table of
 per-control detail belongs in the register or a `templates/` file the skill
 reads, not inline in the SKILL.md.
 
+It bound `gate-quality` first, and for a different reason
+([ADR 0036](adr/0036-shared-skill-prose-has-one-home.md)). Two of Phase 4's
+fixes were written as a section pasted into every skill they governed — twelve
+copies of two rules — and the count reached 510 before anything noticed. So
+**prose more than one skill must follow is shipped once**, under
+`plugins/control-register/reference/`, and read at runtime through
+`${CLAUDE_PLUGIN_ROOT}`; the skill carries a pointer and nothing more. Two files
+exist: `pre-commit-runner.md` and `write-narration.md`.
+`tests/test_shared_reference.py` fails a pointer to a file the plugin does not
+ship, and a skill that takes the section back.
+
 ## Category
 
 None of the four existing categories (`development`, `productivity`, `workflow`,

@@ -552,7 +552,7 @@ fixed in both.
       for no loci: every gate now writes and verifies each locus its controls
       declare
 
-- [ ] Every SKILL.md passes preflight P1–P11 — all six gates and
+- [x] Every SKILL.md passes preflight P1–P11 — all six gates and
       `register-adopt` passed with zero failures, each recorded in
       `10-phase-2-review.md` under its own § Preflight P1–P11 heading. The
       `register-check` and `register-variance` skills are Phase 3's and Phase
@@ -569,7 +569,22 @@ fixed in both.
       `README.md` note P9 itself prescribes — and the box stays open until the
       preflight is **re-run** over the changed skills, because a criterion
       closed on the reading that failed it once is closed on nothing
-      ([`12-phase-4-review.md`](12-phase-4-review.md) § 10)
+      ([`12-phase-4-review.md`](12-phase-4-review.md) § 10).
+      **Re-closed 2026-08-26** on that re-run, over all **eight** skills — the
+      set grew by `register-install` since the first pass — with every one
+      reporting `"overall": "PASS", "fails": 0`. It did not pass first time:
+      `gate-quality` failed P1 at 510 lines, and the 56 lines over the ceiling
+      were two sections pasted into every skill they governed, so the fix was
+      [ADR 0036](adr/0036-shared-skill-prose-has-one-home.md) rather than an
+      edit to the longest file. **Two things this run reports and does not
+      fail**, recorded because a green line that hides them is what re-opened
+      this box: P4 is a WARN for the six skills [ADR 0035](adr/0035-a-dispatched-skill-is-reachable.md)
+      took `disable-model-invocation` off, which is the accepted state and not
+      a regression; and P9 still reports *no sub-skill invocations detected* for
+      `register-adopt`, so the check that would have caught the original defect
+      is still blind to a dispatch named in prose — this criterion is closed on
+      the register's own tests, not on P9 having learned to see
+      ([`12-phase-4-review.md`](12-phase-4-review.md) § The preflight re-run)
 - [x] Every control's declared `locus:` is read by something. Found open in
       Phase 2: SUP-003, BLD-001, DEV-001 and IAC-001 each declared
       `[pre-commit, ci]` and verified only their property, so a repository with
