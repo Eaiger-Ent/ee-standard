@@ -8,7 +8,7 @@ where the evidence behind every criterion it ticks lives, and where what the
 phase found is written down whether or not a criterion covers it.
 
 **The phase's purpose, in the plan's own words:** *"The genuine risk is Phase 4
-revealing something Phases 1–3 assumed."* It revealed nineteen such things. Three
+revealing something Phases 1–3 assumed."* It revealed twenty-two such things. Three
 of them made the published route impossible to follow rather than awkward, one
 put a wired-but-unreachable locus inside the artefact the standard itself
 deploys, and none of them could have been found from inside this repository,
@@ -429,6 +429,83 @@ without running the checker between writes. That would be a different design —
 verify-as-you-go rather than deploy-then-verify — and it is not obviously better:
 a control half-deployed fails for a reason that is not a defect, and reporting
 that failure at each step would train an operator to ignore it.
+
+### 20 — DOC-001 was satisfied by hand, and § 3 had no procedure for it
+
+`gate-repo` reached its ruleset step and stopped, correctly:
+
+```text
+REQUIRED_CHECKS from the register:
+  register-check   ✓ produced by the job above
+  lint-md          ✗ no gating job produces this
+```
+
+It offered three resolutions and refused to choose: apply with both contexts and
+every merge blocks forever on a check nothing reports; drop `lint-md` and a
+control that is `variance: forbidden` with `baseline: null` is silently
+downgraded; or record without applying. **Record-only is the only one that does
+not lie**, and it is what was taken.
+
+The underlying problem is § 12 — the plugin that deploys DOC-001 is in a private
+marketplace. § 3 said, in prose, that an outside adopter may have to satisfy the
+control by hand. It gave no procedure, which made it the one part of this guide
+asserting something nobody had done.
+
+**Done now, and it works.** The step that turned out to matter is that
+**DOC-001 asks for no provenance stamp** — its verify blocks are the tool itself
+and `markdown_gate_wired_at_all_loci`, with no `provenance_stamp_present` — so a
+hand-wired deployment passes the control *completely*, rather than passing it in
+part and failing on a gate that was never involved. `deployed_by: lint-md` only
+matters where a stamp is read. The artefacts carry a comment saying nothing
+deployed them and why no stamp is written, because a stamp naming `lint-md`
+would record a deployment that did not happen.
+
+§ 3 now carries the six steps, and DOC-001 reports `PASS` in the consumer
+repository with no plugin installed and no private marketplace reached.
+
+### 21 — `gitignore: true` is only as good as the `.gitignore`
+
+The consumer repository had **no root `.gitignore` at all**, and nothing in this
+standard writes one — the template ships `.devcontainer/.gitignore`, which
+carries SEC-001's two credential lines and nothing else. Run 1 did not hit this
+because `project-init` writes one at its Step 7b; run 2 does not run
+`project-init`, so the gap showed.
+
+Two consequences, one loud and one quiet. `git add -A` staged **1,542** files
+from `node_modules`. And DOC-001 failed on markdown that is not this
+repository's:
+
+```text
+node_modules/to-regex-range/README.md:295:1 error MD033/no-inline-html
+```
+
+`.markdownlint-cli2.yaml` sets `gitignore: true` precisely so the tool is scoped
+to what git does not ignore — which is a scoping rather than an exemption, and
+therefore permitted under ADR 0019 where an `ignores:` entry would not be. But
+it is a scoping *by reference*, and the thing it refers to did not exist.
+
+**Closed** in the guide rather than in code: § 3's DOC-001 procedure now names
+the root `.gitignore` as a step with the reason, since neither the template nor
+any gate can write a file whose contents are the adopter's own.
+
+### 22 — The register's `pinned_at` named a file only the author has
+
+Exactly as § 3.7 predicts, and worth recording because it is the check working:
+
+```text
+✗ tool_versions_match_register — uv is recorded as pinned at
+  .github/workflows/support-floor.yml, which does not exist
+```
+
+`support-floor.yml` is a workflow this repository has and an adopter does not.
+`pinned_at` is compared path by path, so a listed path that is absent is a
+failure — which is the property that stops a renamed workflow leaving comparison
+silently. The consumer removed the line from **its own** register, with a
+comment recording that it did so and why, and SUP-001 passes.
+
+This is the first edit § 3.7 says an adopter makes, and the first time anybody
+has made it. It is also the moment the register stops being ours and starts
+being theirs.
 
 ## What the two skills did when they could run
 

@@ -100,13 +100,40 @@ exits `0`; without one they report `SKIPPED (no credentials)` and the run exits
 skill names which blocks were skipped rather than rounding up. Read § 4.1
 before deciding which of the two you are looking at.
 
-**Run it interactively.** `gate-build` writes `.devcontainer/devcontainer.json`,
-which Claude Code treats as a sensitive file: the edit raises a permission
-prompt, and a headless run has nobody to answer it. Phase 4 lost two runs to
-this before recognising it, and an allow-rule in `.claude/settings.local.json`
-does not lift a sensitive-file guard. This is a property of the harness rather
-than of the standard, and knowing it is the difference between a five-minute
-adoption and an afternoon.
+**Run it interactively, and start the session with `--permission-mode acceptEdits`.**
+
+```bash
+claude --permission-mode acceptEdits
+```
+
+Two different things make a headless or default-mode run painful, and they have
+different answers.
+
+`gate-build` writes `.devcontainer/devcontainer.json`, which Claude Code treats
+as a **sensitive file**: the edit raises a prompt whatever mode you are in, and
+a headless run has nobody to answer it. An allow-rule in
+`.claude/settings.local.json` does **not** lift a sensitive-file guard — Phase 4
+lost two runs to that before recognising it. This is a property of the harness
+rather than of the standard.
+
+Everything else — `.pre-commit-config.yaml`, the workflows, `pyproject.toml`,
+`.github/dependabot.yml` — is an ordinary write, and in default mode each one
+stops for approval. A full adoption is a few dozen of them. `acceptEdits`
+accepts those silently and leaves the handful of guarded files still asking,
+which is the checkpoint worth keeping.
+
+**What it does not silence, and must not.** `gate-repo` asks its own question
+before each API call that changes platform state, and those are the skill's
+questions rather than the harness's — a permission mode does not touch them.
+`tests/test_gate_repo_confirmation.py` enumerates every non-`GET` call in that
+skill and fails the build if one lacks a question standing in front of it. So
+the guard that matters survives every mode, including
+`--dangerously-skip-permissions`.
+
+**Read the prompts you do get.** Each write is preceded by a line naming the
+control, the step, what the write does, why it is needed now and what will
+verify it. Nothing has failed or passed at that moment — a gate deploys first
+and verifies last — so that line is the whole of the reason you are being given.
 
 **One confirmation, and one exception.** It asks once, covering the whole plan.
 `gate-repo` asks **again** on its own, and that is right rather than redundant:
@@ -617,12 +644,50 @@ repository's `.claude/skills/`, which is a copy of someone else's skill living
 in your repository, going stale silently: exactly the duplication this standard
 exists to prevent, and not a recommendation.
 
-Until that is resolved, treat DOC-001 as **the one control an outside adopter
-may have to satisfy by hand** — a pinned `markdownlint-cli2` in your lockfile,
-a `.markdownlint.yaml`, and the same invocation at each locus § 3 describes. It
-is the same access-shaped single point of failure the devcontainer template was
-moved into this plugin to escape, and it is recorded here rather than
-discovered.
+Until that is resolved, DOC-001 is **the one control an outside adopter may have
+to satisfy by hand**. It is the same access-shaped single point of failure the
+devcontainer template was moved into this plugin to escape, and it is recorded
+here rather than discovered.
+
+The good news, which is not obvious: **DOC-001 asks for no provenance stamp.**
+Its verify blocks are the tool itself and `markdown_gate_wired_at_all_loci` —
+there is no `provenance_stamp_present`, so a hand-wired deployment passes the
+control completely rather than passing it in part. `deployed_by: lint-md` only
+matters where a stamp is read, and here nothing reads one. **Do not write a
+stamp naming `lint-md`**: a stamp names the skill that deployed the artefact, and
+recording a deployment that did not happen is worse than recording none.
+
+Six steps, done and verified in Phase 4's consumer repository:
+
+```bash
+npm init -y && npm install --save-dev markdownlint-cli2   # the lockfile is the pin
+```
+
+1. `package-lock.json` — commit it. The register declares this tool
+   `source: lockfile`, so there is no version to write anywhere else.
+2. `.markdownlint.yaml` — the rule set, with `MD013.line_length` at or under the
+   register's ceiling. DOC-001 is `narrowing-only`: tighten, never loosen.
+3. `.markdownlint-cli2.yaml` — `gitignore: true` and `ignores: []`. The first
+   scopes the tool to what git does not ignore, which is not an exemption; the
+   second stays empty, because per
+   [ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md) an exemption may
+   never hide a tracked file, and `markdown_gate_wired_at_all_loci` fails one
+   that does.
+4. **A root `.gitignore` containing `node_modules/`.** This is the step that
+   looks like housekeeping and is not: `gitignore: true` is only as good as your
+   `.gitignore`, and without this line the linter walks every third-party README
+   under `node_modules` and DOC-001 fails on somebody else's markdown. Phase 4's
+   consumer had no root `.gitignore` at all — nothing in this standard writes
+   one — and staged 1,542 files before anyone noticed.
+5. A `pre-commit` hook whose `entry` is `node_modules/.bin/markdownlint-cli2`,
+   never `npx --no-install`.
+6. A CI job **whose id is `lint-md`**, running the same binary. That string is
+   what CI-001's `required_checks:` names, and GitHub matches a required check
+   by the context a job produces — rename the job and your ruleset waits forever
+   for a check nothing reports.
+
+Then `register-check run --control DOC-001`, which is what makes this a
+deployment rather than a hope.
 
 What follows describes this repository's own artefacts, which are the reference
 implementation:
