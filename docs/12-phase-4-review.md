@@ -8,7 +8,7 @@ where the evidence behind every criterion it ticks lives, and where what the
 phase found is written down whether or not a criterion covers it.
 
 **The phase's purpose, in the plan's own words:** *"The genuine risk is Phase 4
-revealing something Phases 1–3 assumed."* It revealed eighteen such things. Three
+revealing something Phases 1–3 assumed."* It revealed nineteen such things. Three
 of them made the published route impossible to follow rather than awkward, one
 put a wired-but-unreachable locus inside the artefact the standard itself
 deploys, and none of them could have been found from inside this repository,
@@ -390,6 +390,45 @@ note: .pre-commit-config.yaml exists and pre-commit is not installed,
 `tests/test_devcontainer_template.py` reads the arms out of the script and fails
 any that installs without probing first — watched failing against the previous
 version.
+
+### 19 — Every write arrived as a diff with no reason attached
+
+The operator, mid-run: *"lots of requests to accept a change to
+`.pre-commit-config.yaml`, `setup.sh`, etc., but nothing is explaining what test
+has passed or failed or why the update is needed."*
+
+That is exactly right, and the first half of the answer is that **nothing had
+failed and nothing had passed**. A gate deploys first and verifies last — Step 5
+is `register-check run --control <ID>` — so at the moment of the prompt there is
+no test result to quote, by design. What was missing is the *forward* reason:
+which control this serves, which step of how many, and what will check it.
+
+The provenance stamp does name the control. It arrives buried in the middle of
+the diff it is explaining, twenty lines in, which is not where somebody deciding
+whether to accept a change is looking.
+
+**Closed** — every gate, and `register-install`, now carries a *Say what each
+write is for* rule with a fixed shape:
+
+```text
+SEC-001 · step 1/6 · .devcontainer/setup.sh
+  what it does:  installs the scanner at the version the register pins
+  why now:       the pre-commit hook this gate writes next has nothing to run
+  verified by:   register-check run --control SEC-001, at the verify step
+```
+
+`register-adopt` is exempt, because it writes no artefacts of its own — the same
+reason it ships no templates. `tests/test_plugin.py` fails a skill that can
+write files and does not carry the rule, so a ninth skill inherits it rather
+than rediscovering the complaint.
+
+**The gap this does not close** is the one the operator's phrasing points at: a
+gate cannot tell you a control *passes* until every artefact for it exists, so
+an incremental "this write made SEC-001 go green" report is not available
+without running the checker between writes. That would be a different design —
+verify-as-you-go rather than deploy-then-verify — and it is not obviously better:
+a control half-deployed fails for a reason that is not a defect, and reporting
+that failure at each step would train an operator to ignore it.
 
 ## What the two skills did when they could run
 
