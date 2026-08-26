@@ -33,6 +33,25 @@ on an existing container left the lock file covering one feature of two.
 The Phase 2 criterion still open is a **different** one, re-opened by Phase 4:
 *every SKILL.md passes preflight P1–P11*. See ADR 0035 below.
 
+**Work in the container, not on the host.** Phase 4's first deployment run was
+driven from the macOS host and cost three things no verdict showed: the host's
+uv was 0.8.13 where the register pins 0.12.5, so the run was green about a
+version it was not using; the bind-mounted `.venv` is host-built or
+container-built and never both, so switching destroys and rebuilds it; and the
+pre-commit hook was never installed while every gate reported that locus wired.
+Only four steps are genuinely the host's — `claude setup-token` and the Keychain
+entries, `fetch-secrets.sh` (it **is** `initializeCommand`), `devcontainer
+build`/`up`, and copying the template in before a container exists.
+`docs/08-adopting.md` § 2.0a is that split as a table.
+
+**A wired locus is not an installed hook.** `.pre-commit-config.yaml` states
+intent; `.git/hooks/pre-commit` is whether anything runs, and every gate reads
+the first. The template now installs the hook on the config's own presence
+rather than on the tail of a lockfile branch, and `check-auth.sh` **reports** a
+missing one — reported, never repaired, which is that script's rule. It cannot
+be a control: `.git/hooks/` is untracked and CI has no hooks installed, which is
+the honest boundary of what the register can check.
+
 Read `docs/09-phase-1.5-review.md` before touching `src/register_check/`:
 it records what each assert was wrong about and why, and Phase 2 copies that
 assert layer into six gate skills. Do not treat a ticked box in an earlier phase
@@ -484,7 +503,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
-| `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the nine things it found |
+| `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the thirteen things it found |
 | `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **34** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0035 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 

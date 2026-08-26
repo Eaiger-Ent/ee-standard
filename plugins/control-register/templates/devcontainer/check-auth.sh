@@ -75,6 +75,28 @@ check_tool claude claude
 # no uv is a container in which nothing can be checked.
 check_tool uv uv
 
+# **A wired locus with no installed hook.** `.pre-commit-config.yaml` is a
+# statement of intent and `.git/hooks/pre-commit` is whether anything runs, and
+# every gate that declares a `pre-commit` locus reads the first. Phase 4's
+# consumer repo had the config deployed, stamped, and reported wired by the
+# checker, with no hook installed and every commit sailing through — because
+# hooks are installed at container-create and that repo gained its lockfile
+# afterwards.
+#
+# It is reported here rather than repaired, which is this script's rule: a
+# start-up hook that silently fixed state would hide which locus stopped working
+# and when. It cannot be a control either — `.git/hooks/` is untracked, and CI
+# has no hooks installed and should not.
+if [ -f "$REPO_DIR/.pre-commit-config.yaml" ]; then
+  if [ -x "$REPO_DIR/.git/hooks/pre-commit" ]; then
+    echo "  ✓ pre-commit hook — installed"
+  else
+    echo "  ✗ pre-commit hook — .pre-commit-config.yaml is present and"
+    echo "      .git/hooks/pre-commit is not. Nothing runs at the pre-commit"
+    echo "      locus. Fix: bash .devcontainer/setup.sh"
+  fi
+fi
+
 # Identity may come from git config or from GIT_AUTHOR_* in the environment
 # (fetch-secrets.sh supplies the latter). `git var` asks the question actually
 # being asked — can git name an author? — and answers it whichever way it is set.

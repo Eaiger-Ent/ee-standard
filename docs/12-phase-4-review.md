@@ -8,10 +8,11 @@ where the evidence behind every criterion it ticks lives, and where what the
 phase found is written down whether or not a criterion covers it.
 
 **The phase's purpose, in the plan's own words:** *"The genuine risk is Phase 4
-revealing something Phases 1–3 assumed."* It revealed nine such things. Three of
-them made the published route impossible to follow rather than awkward, and none
-of them could have been found from inside this repository, because each is a
-consequence of not being it.
+revealing something Phases 1–3 assumed."* It revealed thirteen such things. Three
+of them made the published route impossible to follow rather than awkward, one
+put a wired-but-unreachable locus inside the artefact the standard itself
+deploys, and none of them could have been found from inside this repository,
+because each is a consequence of not being it.
 
 ## What the phase had that no earlier phase did
 
@@ -195,6 +196,93 @@ project to be ticked and later found false, and the first found from outside.
 in its `README.md`. What guards `gate-repo`'s platform mutations is its own
 per-call confirmation, which Phase 3 made a build failure to omit — not a
 frontmatter key that made the skill unreachable.
+
+### 11 — The adoption ran on the host, and the report did not say so
+
+The first deployment run was driven from the macOS host: all 372 entries of that
+session carry `cwd: /Users/nathan/git/ee-standard-consumer`, and all 58 shell
+calls with them. It reached almost-conformance, and three things were wrong that
+no verdict showed.
+
+**The host's uv was 0.8.13; the register pins 0.12.5.** The container has the
+pinned one, installed from the verified tarball. `tool_versions_match_register`
+compares the pin recorded in `setup.sh`, not the binary doing the work, so the
+run was green about a version it was not using.
+
+**The `.venv` thrashes.** It is bind-mounted, so it is host-built or
+container-built and never both. Running the checker inside afterwards printed
+`Removed virtual environment` and rebuilt it. The host venv was a Homebrew
+CPython rather than the interpreter `.python-version` names — 3.14.7 by luck.
+
+**The pre-commit hook was never installed.** `.pre-commit-config.yaml` deployed
+and stamped, every gate reporting its `pre-commit` locus wired, and
+`.git/hooks/pre-commit` absent — so every commit in the repository, including
+the gates' own, ran nothing. Declared and unreachable, theme **T-3**, inside the
+artefact the standard itself had just deployed. See § 13.
+
+The file-level verdicts are identical host and container — they were diffed, not
+assumed. The three that differ (SEC-001, SEC-003, GOV-001) differ on
+credentials: the container carries `GITHUB_TOKEN` from `.env.docker`, so inside
+it GOV-001 is a true `FAIL` — GitHub enforces no required check yet — where the
+host reports `SKIPPED (no credentials)`.
+
+**Why it happened is a finding, not a preference.** The plugin was installed
+from a **directory marketplace at a host path**, which does not exist inside the
+consumer container, so `control-register` could not be installed there at all.
+Until the plugin is in a marketplace the container can reach, an adopter's
+container cannot install the gates either.
+
+**Closed** — `08-adopting.md` § 2.0a is the host/container split as a table, with
+the four host-only steps and the one-line check for which side you are on.
+
+### 12 — `lint-md` is in a private marketplace
+
+DOC-001 is *dispatch elsewhere* in every plan this repository produces, and
+elsewhere is `EqualExperts/ee-skills`, which is **private**. An adopter outside
+Equal Experts cannot install it, so DOC-001 has no route through the guide at
+all.
+
+Phase 4 resolved it by **copying** the skill into the consumer repository's
+`.claude/skills/lint-md/` — a copy of someone else's skill, in the adopter's
+repository, going stale silently. That is the duplication this standard exists
+to prevent, and it is recorded as what happened rather than as a recommendation.
+
+It is the same access-shaped single point of failure the devcontainer template
+was moved into this plugin to escape, and **no criterion covers it**.
+`08-adopting.md` § 3 now names DOC-001 as the one control an outside adopter may
+have to satisfy by hand, and says what that means. Solving it is Phase 6's, with
+the other `lint-md` business.
+
+### 13 — A wired locus with no installed hook
+
+The one worth more than its fix. `.pre-commit-config.yaml` is a statement of
+intent; `.git/hooks/pre-commit` is whether anything runs. Every gate that
+declares a `pre-commit` locus reads the first.
+
+The template installed the hook on the tail of the `uv.lock` arm, so a
+repository that gained a lockfile *after* its container was created never got
+one — which is every repository that adopts the standard before it has a
+lockfile, and was the consumer repo exactly.
+
+**Closed in two places, and neither is a control.** The install now hangs off
+`.pre-commit-config.yaml`'s own presence, reaching `pre-commit` the way its
+locus does. And `check-auth.sh` **reports** a missing hook on every container
+start — reported rather than repaired, which is that script's stated rule, since
+a start-up hook that silently fixed state would hide which locus stopped working
+and when.
+
+It cannot be a control: `.git/hooks/` is untracked, and CI has no hooks
+installed and should not. That is the honest boundary of what a register can
+check, and it is worth stating where somebody will look for it.
+
+Both halves are held by tests that were **watched failing** before the fix
+(`tests/test_devcontainer_template.py`), and the new report was run against the
+live consumer container, where it says:
+
+```text
+✗ pre-commit hook — .pre-commit-config.yaml is present and
+    .git/hooks/pre-commit is not. Nothing runs at the pre-commit locus.
+```
 
 ## What the two skills did when they could run
 

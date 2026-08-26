@@ -324,3 +324,41 @@ def test_the_template_carries_no_value_the_register_pins() -> None:
         text = path.read_text(encoding="utf-8")
         for version in pinned:
             assert version not in text, f"{path.name} repeats the register's pin {version}"
+
+
+def test_the_hook_install_is_guarded_by_the_config_not_by_a_lockfile() -> None:
+    """A wired locus with no installed hook.
+
+    `.pre-commit-config.yaml` states the intent and `.git/hooks/pre-commit` is
+    whether anything runs. The install used to hang off the `uv.lock` arm, so a
+    repository that gained a lockfile *after* its container was created never
+    got a hook — and Phase 4's consumer repo was exactly that: config deployed,
+    stamped, every locus reported wired by the checker, and every commit sailing
+    through. Declared and unreachable, in the artefact the standard deploys.
+    """
+    text = (TEMPLATE / "setup.sh").read_text(encoding="utf-8")
+    body = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
+    guard = re.search(r'if \[ -f \.pre-commit-config\.yaml \]; then(.*?)\nfi', body, re.S)
+    assert guard is not None, (
+        "no `.pre-commit-config.yaml` guard in setup.sh — the hook install must "
+        "be on the config's own terms, not a tail of a lockfile branch"
+    )
+    assert "pre-commit install" in guard.group(1)
+    # And nowhere else: an install inside a lockfile arm is the bug returning.
+    outside = body.replace(guard.group(0), "")
+    assert "pre-commit install" not in outside, (
+        "`pre-commit install` still hangs off a lockfile branch in setup.sh"
+    )
+
+
+def test_check_auth_reports_a_missing_hook() -> None:
+    """Reported, never repaired — this script's own rule.
+
+    It cannot be a control: `.git/hooks/` is untracked, and CI has no hooks
+    installed and should not. So the only place that can notice is the start-up
+    report, and a report that did not look would leave the gap invisible, which
+    is how it survived a whole adoption.
+    """
+    text = (TEMPLATE / "check-auth.sh").read_text(encoding="utf-8")
+    assert ".git/hooks/pre-commit" in text
+    assert ".pre-commit-config.yaml" in text

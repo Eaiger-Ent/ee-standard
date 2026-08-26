@@ -90,15 +90,28 @@ fi
 
 if [ -f uv.lock ]; then
   uv sync --frozen
-  uv run pre-commit install
 elif [ -f poetry.lock ]; then
   poetry install --sync
-  poetry run pre-commit install
-elif [ -f .pre-commit-config.yaml ]; then
-  # A repository with hooks and no Python lockfile still needs them installed.
-  # `pre-commit` itself comes from the image or a feature; if it is absent, say
-  # so rather than installing an unpinned copy.
-  if command -v pre-commit >/dev/null 2>&1; then
+fi
+
+# **The git hook is installed on its own terms, not as a tail of a lockfile
+# branch.** It used to hang off the `uv.lock` arm, so a repository that gained a
+# lockfile *after* its container was created never got one — and Phase 4's
+# consumer repo is exactly that: `.pre-commit-config.yaml` deployed and
+# stamped, every locus reported wired, and `.git/hooks/pre-commit` absent. The
+# gates read the config file, which is a statement of intent; the hook is
+# whether anything runs. Declared and unreachable is the failure this standard
+# exists to catch, and it had reached the artefact the standard itself deploys.
+#
+# `pre-commit` is reached the way its locus reaches it — through the package
+# manager where a lockfile pins it, and only otherwise off `PATH`. An absent one
+# is reported rather than installed unpinned.
+if [ -f .pre-commit-config.yaml ]; then
+  if [ -f uv.lock ]; then
+    uv run pre-commit install
+  elif [ -f poetry.lock ]; then
+    poetry run pre-commit install
+  elif command -v pre-commit >/dev/null 2>&1; then
     pre-commit install
   else
     echo "note: .pre-commit-config.yaml exists and pre-commit is not installed." >&2

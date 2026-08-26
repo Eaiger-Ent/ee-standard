@@ -1057,6 +1057,18 @@ in that section.
       every skill in it — not as one plugin per skill
 - [ ] The consumer repo re-adopts from the *marketplace* copy and still passes —
       proving the plugin works when installed, not only when developed
+- [ ] **DOC-001 has a route for an adopter who cannot see `ee-skills`.** Added
+      2026-08-25 by Phase 4, which found that the marketplace holding `lint-md`
+      is **private**: every plan this repository produces rows DOC-001 as
+      *dispatch elsewhere*, and elsewhere is somewhere an outside adopter cannot
+      go. Phase 4 resolved it by copying the skill into the consumer's
+      `.claude/skills/`, which is a copy of another plugin's skill living in the
+      adopter's repository and going stale silently — recorded as what happened,
+      not as a recommendation
+      ([`12-phase-4-review.md`](12-phase-4-review.md) § 12). It is the same
+      access-shaped single point of failure the devcontainer template was moved
+      into this plugin to escape, and it belongs here because the answer is a
+      publication decision rather than a code change
 
 ## What is deliberately not in scope
 

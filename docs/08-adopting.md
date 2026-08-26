@@ -215,6 +215,39 @@ for a file.
 
 ## 2 — The development environment
 
+### 2.0a — Which steps run on your machine, and which run in the container
+
+Four things have to run on the host, and everything else has to run inside.
+This is not a style preference: the whole point of the register is that every
+locus reaches the *same pinned artefact*, and your host is a locus nobody
+declared.
+
+| Runs on the host | Why it cannot be inside |
+| --- | --- |
+| `claude setup-token`, and the Keychain entries | The Keychain is the host's, and this is what `fetch-secrets.sh` reads |
+| `fetch-secrets.sh` | It **is** `initializeCommand` — it runs before a container exists |
+| `devcontainer build` / `up` | There is no Docker in the container |
+| Copying the template in | Nothing to copy it into until it is there |
+
+**Everything after that goes inside**: `uv`, `register-check`, every gate,
+`pre-commit`, the tests, and your commits.
+
+Phase 4 ran the adoption on the host and it cost three things, none of which the
+report showed. The host's uv was **0.8.13** where the register pins **0.12.5**,
+so the run was green about a version it was not using. The `.venv` is
+bind-mounted, so it is host-built or container-built and never both — switching
+destroys and rebuilds it. And the pre-commit hook was never installed, while
+every gate reported its `pre-commit` locus wired, because the gates read
+`.pre-commit-config.yaml` and a hook is a different thing.
+
+```bash
+# How you know which one you are in.
+devcontainer exec --workspace-folder . uv --version   # the pinned one
+uv --version                                          # whatever your host has
+```
+
+If the two disagree, the container is right.
+
 ### 2.0 — Where the devcontainer comes from
 
 A conformant `.devcontainer/` ships with the plugin. **Where it is on your
@@ -565,8 +598,26 @@ checked.
 
 All six gates are built — see § 3.1 to § 3.6, and § 0 for the front door that
 dispatches them in order. DOC-001 is the one control no gate here deploys: it is
-`lint-md`'s, in another plugin. What follows describes this repository's own
-artefacts, which are the reference implementation:
+`lint-md`'s, in another plugin.
+
+**And that plugin is one you may not be able to install.** `lint-md` lives in
+the `EqualExperts/ee-skills` marketplace, which is **private**. If your account
+cannot reach it, DOC-001 has no route through this guide at all — the plan
+names it *dispatch elsewhere*, and elsewhere is somewhere you cannot go.
+Phase 4 met this and resolved it by **copying** the skill into the consumer
+repository's `.claude/skills/`, which is a copy of someone else's skill living
+in your repository, going stale silently: exactly the duplication this standard
+exists to prevent, and not a recommendation.
+
+Until that is resolved, treat DOC-001 as **the one control an outside adopter
+may have to satisfy by hand** — a pinned `markdownlint-cli2` in your lockfile,
+a `.markdownlint.yaml`, and the same invocation at each locus § 3 describes. It
+is the same access-shaped single point of failure the devcontainer template was
+moved into this plugin to escape, and it is recorded here rather than
+discovered.
+
+What follows describes this repository's own artefacts, which are the reference
+implementation:
 
 | Locus | File here | What it gives you |
 | --- | --- | --- |
