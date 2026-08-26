@@ -527,7 +527,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
 | `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the twenty-six things it found |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **35** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0036 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **36** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0037 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fourteen Tier-1 controls, with
@@ -700,6 +700,22 @@ SKILL.md: `tests/test_shared_reference.py` fails that, and fails a pointer to a
 file the plugin does not ship. The reference files cite ADR 0036 in prose rather
 than by link, because `docs/` is not shipped and a relative link out of the
 plugin resolves here and dangles in every installation.
+
+Per [ADR 0037](docs/adr/0037-the-template-is-the-whole-devcontainer-step.md)
+(**Accepted** and implemented 2026-08-26) **`project-init` is not part of this
+standard's adoption route.** The shipped template produces a *configured*
+`.devcontainer/` — image pinned by digest, features declared, lock file covering
+them — so there is no configure-it-for-the-stack step and no skill that performs
+one. Where the template's image does not fit, **the adopter changes it by hand**
+and `gate-build` pins what it finds; the gate still never chooses. The decision
+was forced by measurement rather than taste: `project-init` Step 4 replaces the
+digest pin with a floating tag below the register's floor and adds a second,
+conflicting node feature, and its precondition makes it run *after* the template
+is copied. `docs/08-adopting.md` § 2.0 had already dropped it in Phase 2 while
+eight other places still described a division of labour with it — two of them
+shipped. **The composition exit criterion is retired, not met**, and
+`docs/04-build-plan.md` § Phase 4 records why. Do not re-add `project-init` to a
+prior-art table: each of the four that lost it says in one line that it did.
 
 Gate skills live in `plugins/control-register/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,

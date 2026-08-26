@@ -28,12 +28,13 @@ value you need is not in the register, stop and say so — inventing one puts a
 second copy of a rule in a skill, which is the drift this standard exists to
 prevent.
 
-**This gate pins what it finds; it does not choose.** `project-init` decides
-*which* image and which features a repository uses; DEV-001 insists that
+**This gate pins what it finds; it does not choose.** The shipped devcontainer
+template decides which image and which features a repository starts from, and an
+adopter whose stack it does not fit chooses for themselves; DEV-001 insists that
 whichever were chosen are pinned, and BLD-001 that the container does not end as
-root. Those are different questions and neither skill should be asked the
-other's (`docs/03-devcontainer.md` § How this composes with `project-init`).
-Inventing an image or a user here produces a container that does not start.
+root. Those are different questions, and this gate is only ever asked the second
+(ADR 0037). Inventing an image or a user here produces a container that does not
+start.
 
 **Do not use when:**
 

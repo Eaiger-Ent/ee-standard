@@ -803,11 +803,10 @@ end to end by following only the published instructions.
 
 Sequence, per [`03-devcontainer.md`](03-devcontainer.md):
 
-1. Create the repo with the `.devcontainer/` template
-2. Run `/project-init` — it configures the devcontainer for the stack
-3. Run `/register-adopt` — it deploys the gates
-4. Run `register-check` — it passes
-5. Deliberately weaken something, and confirm the checker catches it. Whether
+1. Create the repo with the `.devcontainer/` template, substituted
+2. Run `/register-adopt` — it deploys the gates
+3. Run `register-check` — it passes
+4. Deliberately weaken something, and confirm the checker catches it. Whether
    the **direction** of the weakening is classified is Phase 5's, with the skill
    that does it — see § What moved to Phase 5, and why.
 
@@ -826,7 +825,7 @@ Each was decided on 2026-08-24.
 | How the plugin reaches the consumer | **Submitted to the ee-skills marketplace**, so the consumer installs it the way any Equal Experts repository will | **Taken a different way on 2026-08-25**, because Phase 6 forbids submitting anything before Phase 4 has run and this row made that circular. `.claude-plugin/marketplace.json` now exists — Phase 6's *"installable as one plugin"* criterion needs it regardless — and the consumer installed `control-register` from this directory as a marketplace, exactly as `ee-skills` is registered on this host. The deviation is real and bounded: Phase 6's last criterion re-adopts from the marketplace copy, which is where installing-as-published gets tested |
 | How the checker reaches the consumer | A dependency pinned to a **tagged git ref**, placed by `register-install` ([ADR 0032](adr/0032-the-checker-is-installed-from-a-tagged-ref.md)) | **Met** 2026-08-25, register contract 29: the skill exists, `tools.register-check.install` names the address and `ecosystems.python.git_dependency` the spelling, and `v0.1.0` is cut. `tests/test_register_install.py` fails the build if the register pins a tag nobody cut, or one whose commit declares a different version |
 | The names | `control-register`, `register-check`, `register-adopt` ([ADR 0031](adr/0031-the-plugin-is-named-for-the-register.md)) | **Met** — both moves landed before the consumer repository existed. Move 1 at register contract 27, move 2 at contract 28, so nothing wrong was written into a second repository |
-| `project-init` installed | It is in the ee-skills marketplace and is **not installed here** | **Met** 2026-08-25 — installed from the `ee-skills` marketplace and run in the consumer repository. The composition criterion is answered, and the answer is that they fight ([`12-phase-4-review.md`](12-phase-4-review.md)) |
+| `project-init` installed | It is in the ee-skills marketplace and is **not installed here** | **Met** 2026-08-25 — installed from the `ee-skills` marketplace and run in the consumer repository, which is what produced the measurement. It is **no longer a prerequisite of anything**: the route does not run it ([ADR 0037](adr/0037-the-template-is-the-whole-devcontainer-step.md)), and the row is kept because the measurement it bought is what that decision rests on |
 
 ### Exit criteria — phase 4
 
@@ -834,6 +833,24 @@ The evidence for every row below is in
 [`12-phase-4-review.md`](12-phase-4-review.md), which also records the nine
 things the phase found that no criterion asked about — three of which made the
 published route impossible to follow rather than awkward.
+
+**One criterion was retired rather than met, on 2026-08-26.** It read
+*`project-init` and `register-adopt` compose without fighting over
+`devcontainer.json`*, and this phase answered it: they do not. `project-init`
+Step 4 replaces the template's digest-pinned image with the floating tag
+`mcr.microsoft.com/devcontainers/python:3.12` — failing DEV-001's image pin, at a
+version below the register's floor — and adds `node:1` beside the template's
+`node:2`, leaving a lock file covering neither. The order is forced, because
+`project-init` requires `devcontainer.json` to exist.
+
+It is retired rather than open because
+[ADR 0037](adr/0037-the-template-is-the-whole-devcontainer-step.md) took
+`project-init` off the route: the shipped template produces a configured
+`.devcontainer/`, and no document of this standard now instructs an adopter to
+run it. A criterion asking whether two skills compose cannot be met by a route
+that runs one of them, and leaving it open would gate this phase on a change to a
+repository nobody here owns. Recorded here rather than deleted, because a
+criterion that silently disappears is indistinguishable from one nobody noticed.
 
 - [x] Every step the consumer repo needed is in
       [`08-adopting.md`](08-adopting.md) **before** the criterion below is
@@ -879,17 +896,6 @@ published route impossible to follow rather than awkward.
       ([`12-phase-4-review.md`](12-phase-4-review.md))
 - [ ] No step required knowledge held only by the author — judged after the row
       above, since the steps it would judge have not all been taken
-- [ ] `project-init` and `register-adopt` compose without fighting over
-      `devcontainer.json` — **answered, and the answer is that they do not.**
-      `project-init` Step 4 replaces the digest-pinned image with the floating
-      tag `mcr.microsoft.com/devcontainers/python:3.12`, failing DEV-001's image
-      pin and naming a version below the register's floor, and adds `node:1`
-      beside the template's `node:2` because its skip-check tests for the wrong
-      one — leaving a lock file covering neither. The order is forced:
-      `project-init` requires `devcontainer.json` to exist, so the template is
-      copied first and Step 4 overwrites the two things it exists to pin. The
-      box stays open because a finding is not a fix, and the fix is upstream —
-      a Phase 6 submission with a measurement behind it
 - [x] Weakening a `narrowing-only` control is **caught** — the checker fails it,
       naming the control and what was weakened. **Closed 2026-08-26** in three
       shapes rather than one, each weakening made in the consumer repository and
@@ -1115,7 +1121,7 @@ in that section.
 | Tier 2 and Tier 3 controls | Tier 1 must be proven end to end first. Adding controls is cheap once the machinery works and expensive before. **[ADR 0023](adr/0023-smallest-model-a-task-can-be-trusted-to.md)'s `AGT-001` is the first Tier-2 control queued behind this** — Accepted 2026-08-23, and deliberately unimplemented until Phase 4 has proven Tier 1. |
 | Auto-fix | Notify, never redeploy. Proposed fixes are a Phase 5+ conversation, and only ever as a PR. |
 | Non-GitHub platforms | `remote` verification is GitHub-shaped. Another platform means another assert set, which is a real project, not a flag. |
-| Replacing `lint-md`, `project-init`, `devcontainer-check` | They work. The standard composes with them. |
+| Replacing `lint-md` or `devcontainer-check` | They work. The standard composes with them. `project-init` was in this row until 2026-08-26 and is not replaced either — it is simply not on the route ([ADR 0037](adr/0037-the-template-is-the-whole-devcontainer-step.md)). |
 
 ## Sequencing risk
 

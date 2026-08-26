@@ -243,35 +243,37 @@ The `.devcontainer/` directory carries `fetch-secrets.sh`, `setup.sh`,
 `claude-user-settings.json` — the same file set as the existing template, with
 project-specific content stripped.
 
-## How this composes with `project-init`
+## Who owns which step
 
-`project-init` already owns interactive devcontainer configuration: it asks about
-the stack, maps answers to image and features, edits `devcontainer.json`,
-validates it with `validate-jsonc.sh`, writes the README, applies `gh repo edit`
-settings, and commits.
-
-It has one stated precondition — **`.devcontainer/devcontainer.json` must already
-exist.** Its own guidance when it does not is *"Clone the ee-skills-incubator
-template repo or add the file manually, then re-run `/project-init`."*
-
-That precondition is the seam, and it decides the division of labour cleanly:
+The template produces the `.devcontainer/`, and it produces a configured one:
+the image by digest, the features, `setup.sh`, `check-auth.sh`,
+`fetch-secrets.sh` and a lock file covering every feature. There is no
+configure-it-afterwards step, and no skill of this standard performs one.
 
 | Step | Owner |
 | --- | --- |
-| Produce the initial `.devcontainer/` | The template — `ee-skills-incubator`, or a fresh copy of the file above |
-| Configure it for this project's stack | `project-init` |
+| Produce the `.devcontainer/` | The template — `plugins/control-register/templates/devcontainer/`, copied and substituted |
+| Choose a different image, where the template's does not fit the stack | The adopter, by hand |
 | Pin the image and features, verify pinning holds | `gate-build` (DEV-001) |
 | Confirm tools are present and authenticated | `devcontainer-check` |
 | Confirm the config still matches the register | `register-check` |
 
-So `gate-build` runs **after** `project-init`, not instead of it. `project-init`
-decides *which* image; DEV-001 insists that whichever it chose is pinned. Those
-are different questions, and neither skill should be asked the other's.
+`gate-build` **pins what it finds and never chooses**, which is why the second
+row has a person in it rather than a skill. An image is one line, and the control
+that matters is enforced either way — the gate fails a floating tag whoever left
+it there.
 
-One consequence worth stating plainly: `ee-skills-incubator` is a private
-repository and is not marked as a GitHub template. Anyone whose access lapses
-loses the ability to start a project. Making the template obtainable — a public
-template repo, or a `templates/devcontainer/` directory inside the standard
-plugin that `project-init` can fall back to — is a real dependency of this plan,
-not a nicety. It is tracked as an exit criterion in
-[`04-build-plan.md`](04-build-plan.md).
+**`project-init` was in this table until 2026-08-26**, owning the
+configure-for-the-stack row, and it is not any more
+([ADR 0037](adr/0037-the-template-is-the-whole-devcontainer-step.md)). The short
+version: it re-chooses the image, replacing the template's digest pin with a
+floating tag below the register's floor, and its precondition forces it to run
+*after* the template is copied — so the composition the row described undoes the
+control the next row deploys. The measurement is in
+[`12-phase-4-review.md`](12-phase-4-review.md).
+
+**The template's obtainability was the other reason that section existed**, and
+it is closed: `ee-skills-incubator` is private and not a GitHub template, so a
+lapsed access once meant no way to start a project. A directory inside the plugin
+is obtainable by anyone who can install the plugin, and Phase 4 obtained it that
+way with access to no private repository at all.

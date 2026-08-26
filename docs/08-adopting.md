@@ -355,12 +355,18 @@ which is exactly the partial lock DEV-001 fails:
 devcontainer up --workspace-folder . --remove-existing-container
 ```
 
-**Why it ships here rather than as a template repository.** `project-init` has
-one stated precondition: `.devcontainer/devcontainer.json` must already exist,
-and its guidance when it does not is *"clone the template repo or add the file
-manually"*. That template repo is private, so anyone whose access lapses loses
-the ability to start a project. A directory in the plugin is obtainable by
-anyone who can install the plugin.
+**Why it ships here rather than as a template repository.** The template
+repository this standard grew from is private and is not a GitHub template, so
+anyone whose access lapses loses the ability to start a project. A directory in
+the plugin is obtainable by anyone who can install the plugin, which is how the
+first repository outside this one obtained it.
+
+**There is no configure-it-for-your-stack step, and no skill that performs one.**
+The template is already configured: the image is pinned by digest, the features
+are declared, and the lock file covers them. If its image does not fit your
+stack, change the image yourself before running `/gate-build`, which pins what it
+finds and fails you if you left a floating tag
+([ADR 0037](adr/0037-the-template-is-the-whole-devcontainer-step.md)).
 
 **What the template pins**: the image by digest, and every feature by digest in
 `devcontainer-lock.json`. **What it refuses to pin**: any tool version inside
@@ -943,8 +949,8 @@ and one skill because they read the same file: BLD-001 wants a user, DEV-001
 wants two pins, and both are keys in `devcontainer.json`.
 
 **It pins what it finds; it does not choose.** Deciding *which* image and which
-features your repository uses is `project-init`'s, or your own. This gate
-insists that whichever were chosen are pinned. Inventing an image or a user here
+features your repository uses is the template's, or your own where the template
+does not fit. This gate insists that whichever were chosen are pinned. Inventing an image or a user here
 produces a container that does not start, which is a worse failure than the one
 being fixed.
 

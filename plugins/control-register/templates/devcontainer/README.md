@@ -92,10 +92,9 @@ than assumed.
 
 ## Why this exists
 
-`project-init` has one stated precondition: `.devcontainer/devcontainer.json`
-must already exist. Its guidance when it does not is *"clone the template repo
-or add the file manually"* — and that template repo is private, so anyone whose
-access lapses loses the ability to start a project.
+Until this directory existed, the only source of a conformant `.devcontainer/`
+was a private template repository, so anyone whose access lapsed lost the ability
+to start a project.
 
 This directory is the obtainable answer. It ships with the plugin, so anyone who
 can install `control-register` can start a conformant container.
@@ -187,9 +186,11 @@ both run.
 
 ## What this template does not do
 
-**Choose an image for your stack.** That is `project-init`'s, or yours.
-`gate-build` insists that whichever image was chosen is pinned; it does not pick
-one, and neither does this.
+**Choose a different image for your stack.** This template declares one, pinned
+by digest, and it is the starting point rather than a menu. If it does not fit
+your stack, replace the image yourself and run `/gate-build`, which pins what it
+finds and fails you if you left a floating tag. No skill in this standard chooses
+an image for you (ADR 0037).
 
 **Install a secret scanner, a linter or an analyser.** Those belong to the gates
 that own their controls, and each writes its own stamped region into `setup.sh`.
