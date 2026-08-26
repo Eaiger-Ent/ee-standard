@@ -240,6 +240,30 @@ unreachable, and the checker rejects it.
 
 ## Step 2 — Confirm, then apply
 
+### 2.0 — Land what is already written, first
+
+```bash
+git status --porcelain
+git log --branches --not --remotes --oneline
+```
+
+**If either says anything, stop and say so before asking to apply.** The ruleset
+requires a pull request for the default branch from the moment the call returns,
+so applying it locks that branch against every change that has not landed yet —
+including the ones the gates before this one just wrote, and including
+`register-adopt`'s own commit, which comes two steps *after* this gate runs.
+
+The result is a repository with a conformant working tree, a protected branch,
+and no route from one to the other except a pull request nobody set up. It is
+recoverable and it is nobody's idea of a good first experience of a control
+standard. Phase 4 landed its work twenty-one seconds before the ruleset applied,
+and only because the operator was told to.
+
+Say which files are outstanding and let the operator commit and push them. Then
+continue. Do not commit on their behalf: this gate writes one file and makes API
+calls, and a gate that started committing other gates' work would be the wrong
+thing to have learned from this.
+
 **Ask via AskUserQuestion before the API call, every time.** Not "shall I
 proceed with the plan" — name the change. Which of the two questions below to
 ask is decided by `RULESETS`: whether the platform already carries a ruleset of

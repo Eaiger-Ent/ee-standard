@@ -243,6 +243,20 @@ itself without the instrument it is computed with.
 | 5 | `gate-iac` | Independent; last of the file-writing gates |
 | 6 | `gate-repo` | Last, because it is the only one whose effect is not a file and cannot be reviewed before it takes effect |
 
+**`gate-repo` runs at Step 4 and the commit is at Step 6, and that order is a
+trap.** The ruleset it applies requires a pull request for the default branch,
+from the moment the API call returns. Everything the five gates before it wrote
+is still uncommitted at that point, so applying first locks the branch against
+this adoption's own commit — and the operator is left with a conformant working
+tree, a protected branch, and no way to land one on the other except a pull
+request nobody set up.
+
+So **before dispatching `gate-repo`, commit and push what the earlier gates
+wrote.** Step 6's commit then has nothing left to do for those files, which is
+the right shape: the branch is protected against everything *after* the
+adoption, not against the adoption. Phase 4 landed its work twenty-one seconds
+before the ruleset applied, and only because the operator was told to.
+
 Pass `--repo` and `--register` through to each. **Do not batch them**: run one,
 read its output, and stop the sequence if it reports a failed deployment. A gate
 that failed and a gate that ran after it are two problems reported as one.

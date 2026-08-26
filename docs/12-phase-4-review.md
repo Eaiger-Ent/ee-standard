@@ -8,7 +8,7 @@ where the evidence behind every criterion it ticks lives, and where what the
 phase found is written down whether or not a criterion covers it.
 
 **The phase's purpose, in the plan's own words:** *"The genuine risk is Phase 4
-revealing something Phases 1–3 assumed."* It revealed twenty-two such things. Three
+revealing something Phases 1–3 assumed."* It revealed twenty-five such things. Three
 of them made the published route impossible to follow rather than awkward, one
 put a wired-but-unreachable locus inside the artefact the standard itself
 deploys, and none of them could have been found from inside this repository,
@@ -506,6 +506,107 @@ comment recording that it did so and why, and SUP-001 passes.
 This is the first edit § 3.7 says an adopter makes, and the first time anybody
 has made it. It is also the moment the register stops being ours and starts
 being theirs.
+
+### 23 — The chain from a control to a refused merge, proven end to end
+
+§ 4.2 says a green report about a ruleset is a claim about a file until a merge
+is actually blocked, and that the last step is one no report can take. Taken, on
+the consumer repository, with the ruleset live and enforcing both contexts:
+
+```text
+lint-md         fail
+register-check  pass
+mergeable: MERGEABLE   state: BLOCKED
+```
+
+and the attempt itself:
+
+```text
+X Pull request #3 is not mergeable: the base branch policy prohibits the merge.
+```
+
+A pull request adding markdown DOC-001 refuses (MD026, MD034), the required
+check failing, and GitHub refusing the merge. The PR was closed afterwards; it
+had done its job.
+
+Alongside it, evidence nobody asked for: **Dependabot had already opened two
+pull requests** of its own, so SUP-002 holds in fact and not only in
+configuration.
+
+### 24 — Nothing ran the pre-commit hooks, and every gate said the locus was wired
+
+The finding of the second run, and it was found by trying to prove something
+else.
+
+The plan was to show the `pre-commit` locus refusing a bad markdown file before
+CI ever saw it. It did not refuse. It committed:
+
+```text
+[prove-the-gate 5373f04] test: a markdown file DOC-001 must refuse
+ 1 file changed, 3 insertions(+)
+```
+
+`.pre-commit-config.yaml` carried five gates' hooks, and **`pre-commit` was not a
+dependency of the repository at all** — `uv run pre-commit --version` failed, so
+`.git/hooks/pre-commit` had never been installed. The consumer had finished a
+full adoption, reported 12 controls passing, and had nothing running at a locus
+five controls declare.
+
+This is § 13 again, one layer down and worse. That fix made the template install
+the hook *when the runner is reachable*, and report when it is not — and it did
+report, on every container start. What nothing did was **make the runner
+reachable**: five gates write into that config file and none of them added
+`pre-commit` to the project, though `gate-quality` already uses
+`ecosystems.<eco>.add_dev_dependency` for ruff, mypy and pytest.
+
+The checker reported the locus wired throughout, and was right to: it reads the
+config file, which is the claim the register makes. *A hook exists* and *a hook
+runs* are different claims, and only the first is in a tracked file.
+
+**Closed** in the five gates that write hooks: before writing one, each makes
+sure `pre-commit` is a dev dependency — through the register's own
+`add_dev_dependency` spelling — and that the git hook is installed, idempotently,
+so whichever gate runs first does it and the rest find it done.
+`tests/test_plugin.py` fails a skill that writes into `.pre-commit-config.yaml`
+without doing so.
+
+**Proved by re-running the same commit.** After `uv add --dev pre-commit` and
+`pre-commit install`, the file that had sailed through was refused:
+
+```text
+markdownlint-cli2 (DOC-001)..............................................Failed
+docs-probe.md:1:38 error MD026/no-trailing-punctuation
+```
+
+Which makes the whole chain, in one repository: the pre-commit locus refuses it,
+a deliberate bypass gets it as far as CI, CI refuses it, and the merge is
+refused.
+
+**What is still not verified is step 2**, and that is a stated boundary. Whether
+`.git/hooks/pre-commit` exists cannot be a control — `.git/hooks/` is untracked
+and CI legitimately has no hooks installed. Whether the *runner* is present can
+be, being a line in a lockfile, and whether the register should say so is left
+open rather than decided here.
+
+### 25 — Applying the ruleset before committing locks the branch against the adoption
+
+`gate-repo` runs at `register-adopt`'s Step 4; the commit is Step 6. The ruleset
+requires a pull request for the default branch from the moment the call returns,
+so everything the five earlier gates wrote — still uncommitted — is locked out
+by the gate that is meant to protect it. The result would be a conformant
+working tree, a protected branch, and no route from one to the other except a
+pull request nobody set up.
+
+Phase 4 landed its work **twenty-one seconds** before the ruleset applied — the
+commit at 11:02:05 and the ruleset at 11:02:26 — and only because the operator
+was told to reorder. The skill's own step order would have produced the trap.
+
+**Closed** in both places: `register-adopt` Step 4 says to commit and push
+before dispatching `gate-repo`, and `gate-repo` gained a Step 2.0 that runs
+`git status --porcelain` and `git log --branches --not --remotes` before asking
+to apply, and stops to say what is outstanding. It does not commit on the
+operator's behalf — a gate that started committing other gates' work would be
+the wrong lesson to draw from this.
 
 ## What the two skills did when they could run
 
