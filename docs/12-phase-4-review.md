@@ -8,7 +8,9 @@ where the evidence behind every criterion it ticks lives, and where what the
 phase found is written down whether or not a criterion covers it.
 
 **The phase's purpose, in the plan's own words:** *"The genuine risk is Phase 4
-revealing something Phases 1–3 assumed."* It revealed twenty-six such things. Three
+revealing something Phases 1–3 assumed."* It revealed thirty-two such things —
+twenty-six while running the adoption, and six more while judging its last
+criterion, which is § The last criterion below. Three
 of them made the published route impossible to follow rather than awkward, one
 put a wired-but-unreachable locus inside the artefact the standard itself
 deploys, and none of them could have been found from inside this repository,
@@ -759,9 +761,10 @@ fail:
 The two that closed did so after the gates were deployed interactively, which is
 what the harness's prompt needed and what a headless run could not give it.
 [`04-build-plan.md`](04-build-plan.md) § Phase 4 carries the evidence for each.
-One criterion of the seven is open, and it is *no step required knowledge held
-only by the author* — judged after full conformance, which is why it could not be
-judged before. The composition one is retired.
+One criterion of the seven was open at that point, and it is *no step required
+knowledge held only by the author* — judged after full conformance, which is why
+it could not be judged before. It was judged on 2026-08-26 and closed with six
+further findings, in § The last criterion. The composition one is retired.
 
 ## The criteria this phase closes, and how
 
@@ -853,3 +856,116 @@ prose rather than in a field it resolves, so nothing about the re-run makes P9
 able to see it. What holds the property now is
 `tests/test_register_adopt.py` and the `README.md` note P9 itself prescribed —
 this repository's own tests, not the marketplace's check having improved.
+
+## The last criterion, and the six things judging it found
+
+*No step required knowledge held only by the author* was the one criterion that
+could not be judged until every other step had been taken, because the steps it
+judges are all of them. Judged **2026-08-26**, after full Tier-1 conformance
+closed, by re-walking [`08-adopting.md`](08-adopting.md) from the position an
+adopter is actually in — no plugin installed, no register, no container, and no
+memory of building any of it — and running every command the guide offers.
+
+**It did not pass as written.** Six steps needed something the guide does not
+carry, and the first two are the ones that matter, because they stand in front
+of everything else. Each is closed in the guide rather than answered here.
+
+### 27 — The front door is a slash command and nothing installs it
+
+§ 0's first line is `/register-adopt`. That is a skill, in a plugin, and no
+section of the guide said how to obtain the plugin — the one assumption a
+reader cannot work around, since every later step is a skill in it. Phase 4 did
+not find this because its operator installed the plugin from a local directory
+before the guide was ever opened.
+
+The route exists and needed no new artefact: `.claude-plugin/marketplace.json`
+is in this repository and this repository is public. Verified end to end on
+2026-08-26 —
+
+```text
+✔ Successfully added marketplace: ee-standard
+✔ Successfully installed plugin: control-register@ee-standard
+~/.claude/plugins/cache/ee-standard/control-register/0.1.0/templates/devcontainer
+```
+
+— which closes § 2.0's other unknown at the same time: the install-cache path it
+spelled `<marketplace>/control-register/<version>` is now a glob a reader can
+run. **Closed** as § 0.0.
+
+### 28 — § 0.1 named a tag by hand, and the hand had moved on
+
+The register fetch named `v0.4.0` while `tools.register-check.install.ref` read
+`v0.5.0`. Nothing was broken — a tag's register names that same tag, so the pair
+is consistent — and nothing could have told the reader it was a release stale
+either. Which tag is current is exactly a thing the author never has to look up.
+
+The number has one home and it is inside the file being fetched, so the guide
+now resolves the newest tag with `git ls-remote` and then reads `ref:` back out
+of what it got. `tests/test_adopter_guide.py` fails a hard-coded tag in that
+URL, which makes the drift impossible rather than watched. **Closed.**
+
+### 29 — Four placeholders, no substitution command, and one value from nowhere
+
+§ 2.0 named the four placeholders, gave commands that *extract* two values, and
+then said "the substitution below" — below which there was no substitution.
+`{{PROJECT_NAME}}` had no command at all, and `{{UV_SHA256_AARCH64}}` had no
+**source**: the register pins one checksum, for x86_64, and the other
+architecture's is in the release rather than the register.
+
+That is not a hypothetical. The consumer repository's `setup.sh` carries
+`uv_sha=9bf43b4d…` for aarch64, a value the guide never told anyone how to
+obtain, supplied by an operator who knew where uv publishes its checksums. § 2.0
+now fetches it from the release the version names, checks the x86_64 one it was
+*given* against the same source, substitutes all four, and re-runs the
+placeholder grep. Walked end to end against the shipped template on 2026-08-26,
+producing that same aarch64 digest by command rather than by recall. **Closed**,
+and `tests/test_adopter_guide.py` derives the placeholder list from the template,
+so a fifth one added without a word in the guide fails the build.
+
+### 30 — The guide reached the checker off `PATH`, in its own examples
+
+§ 2.3 states the rule — `uv run register-check`, never the bare name, ADR 0020
+case C — and two copy-and-paste blocks plus sixteen inline mentions broke it. A
+reader following commands does not reach the sentence that forbids them, so the
+guide was handing out the failure it documents. Every example now carries the
+prefix, and a test fails a fenced block that does it again. **Closed.**
+
+### 31 — The Keychain steps are macOS and the guide never said so
+
+`fetch-secrets.sh` calls `security`, and § 2.0 told every adopter to run
+`security add-generic-password` with nothing marking it as a platform
+assumption. On Linux or Windows the failure lands at `initializeCommand`, which
+is before there is a container to read the message in. The plan's own
+prerequisites table knew this; the file an adopter reads did not.
+
+Stated now, with what a replacement owes the rest of the template written as a
+**contract rather than a mechanism** — run on the host, leave `.env` (shell,
+quoted) and `.env.docker` (verbatim, derived from the first), fail on a missing
+`CLAUDE_CODE_OAUTH_TOKEN`, keep both gitignored because SEC-001 reads those
+lines. **Closed** to the extent a document can close it: no non-macOS host has
+run this, and that is stated rather than implied.
+
+### 32 — Nothing told an adopter how to see whether the hook was installed
+
+Finding 24 fixed the template so the hook gets installed, and § 2.0a describes
+the failure it prevents. Neither gives the reader the two lines that settle it
+for their own checkout — `ls -l .git/hooks/pre-commit`, and
+`uv run pre-commit install` when it is absent. A gate cannot answer this and
+never will: `.git/hooks/` is untracked and CI has no hooks installed, so the
+boundary is that the register checks the config and the operator checks the
+hook. Saying that in the guide is the whole fix. **Closed.**
+
+### What the criterion says now
+
+Six gaps, all in the guide and none in the machinery, which is the shape the
+sibling criterion predicted: *anything the operator had to ask about, work out,
+or already know is a gap in it, and the fix belongs in the guide.* Two of them —
+27 and 29 — were steps the operator performed from knowledge and the guide could
+not have produced. The criterion is closed on the repaired guide, with the
+repairs listed above rather than summarised as a tick, and three of the six are
+now held by tests rather than by this record.
+
+**What closing it does not claim.** Nobody who has never seen this repository
+has followed the repaired guide end to end; that is the test the criterion's own
+wording admits no test can perform, and Phase 6's last criterion — re-adopting
+from the marketplace copy — is the next occasion to try it.

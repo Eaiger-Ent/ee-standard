@@ -10,8 +10,9 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 
 Current status: Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
 with no re-opened criteria outstanding. **Phase 3 is complete** as of
-2026-08-24; **Phase 2 is 12/13** and **Phase 4 is 3/7** as of 2026-08-25; the
-register is at contract 30.
+2026-08-24, and **Phases 2 and 4 are both complete** as of 2026-08-26 — Phase 4
+with one criterion retired rather than met (ADR 0037). The register is at
+contract 30.
 `docs/04-build-plan.md` is the only list of outstanding work and `uv run python scripts/plan_progress.py` is its
 derived view — never keep a second copy of that status here. The slice-by-slice
 record, and the evidence behind every criterion each phase ticks, lives in

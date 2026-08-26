@@ -19,6 +19,7 @@ prevent, so the gaps are stated rather than glossed.
 
 | Part | State | Where it is |
 | --- | --- | --- |
+| The `control-register` plugin — everything below arrives in it | **Exists**; install it first | `claude plugin install control-register@ee-standard`, and § 0.0 |
 | The register — what "conformant" means | **Exists**; fetch it at a tag | `controls.yaml`, and § 0.1 |
 | `register-check` — the checker | **Exists** | `src/register_check/`, run with `uv run register-check` |
 | Platform prerequisites (this document, § 1) | **Exists**, manual | Below |
@@ -32,7 +33,8 @@ prevent, so the gaps are stated rather than glossed.
 | Reading the chain from a control to a blocked merge | **Exists**, needs a token | § 4.2 below |
 | A CI run that **fails** when a control cannot be verified | **Exists**; give CI a credential first | § 4.3 below |
 
-So today, adoption is: do § 1 by hand, copy the devcontainer, install the
+So today, adoption is: install the plugin (§ 0.0), do § 1 by hand, copy the
+devcontainer, install the
 checker (§ 2.3 — `/register-adopt` does it for you), run `/register-adopt`, and
 run the checker with a token in the environment so the
 remote blocks can be answered rather than skipped (§ 4.1). Then, in this order:
@@ -53,6 +55,38 @@ commits.
 /register-adopt --repo . --register ./controls.yaml
 ```
 
+### 0.0 — Where `/register-adopt` itself comes from
+
+That is a slash command, which means it is a skill, which means it is in a
+plugin you have to install first. This step is here because it was the one nobody
+wrote down: every instruction below assumed the plugin was already present, which
+is true of the machine the standard was written on and of no other.
+
+The repository that defines the standard is also a plugin marketplace — its
+`.claude-plugin/marketplace.json` is what makes that true — and it is public, so
+this needs no credential:
+
+```bash
+claude plugin marketplace add Eaiger-Ent/ee-standard
+claude plugin install control-register@ee-standard
+```
+
+**How you know it worked**, and it is worth knowing the path as well as the
+verdict, because § 2.0 copies a directory out of it:
+
+```bash
+claude plugin list | grep control-register
+ls ~/.claude/plugins/cache/ee-standard/control-register/*/templates/devcontainer
+```
+
+The eight skills — six gates, `register-adopt` and `register-install` — are
+reachable as slash commands in the next session. `/register-adopt` is the only
+one you invoke by hand; it dispatches the rest.
+
+**Install it on the host, before the container exists.** § 2.0a is the table of
+what runs where, and this is the first row of it in practice: the template you
+are about to copy lives in that cache, and there is nothing to copy it into yet.
+
 ### 0.1 — Where `./controls.yaml` comes from
 
 That command names a register, and until you have one there is nothing to plan
@@ -60,12 +94,16 @@ from — the skill stops and says so. The plugin does not ship one, deliberately
 the register is what a repository adopts, not what a skill installs, and yours
 becomes yours the moment you edit it (§ 3.7).
 
-Take it from the same tagged ref the checker is pinned to, so the register and
-the checker that reads it are one artefact rather than two that may disagree:
+Take it from a tag, and **resolve which tag rather than being told one**. A
+release number written into this sentence is a copy that ages the day after it
+is written, and the reader has no way to tell a current one from a stale one:
 
 ```bash
+repo=https://github.com/Eaiger-Ent/ee-standard
+tag=$(git ls-remote --tags --refs "$repo" | awk -F/ '{print $NF}' | sort -V | tail -1)
+echo "$tag"                       # non-empty, or nothing below fetches anything
 curl -fsSL -o controls.yaml \
-  https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/v0.4.0/controls.yaml
+  "https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/${tag}/controls.yaml"
 git add controls.yaml
 ```
 
@@ -73,7 +111,15 @@ git add controls.yaml
 
 ```bash
 uv run register-check --repo . --register ./controls.yaml schema
+grep -A2 '^    install:' controls.yaml     # `ref:` names the tag you just fetched
 ```
+
+The second line is the check that matters, and it is checking an invariant
+rather than your typing: **the register a tag ships names that same tag** in
+`tools.register-check.install.ref`, so the register and the checker it tells
+`register-install` to fetch are one artefact. A `ref` naming some other tag
+means you have a register from before that invariant held, and the checker you
+end up with is not the one that register describes.
 
 A tag whose register predates a field the skills need is a real failure and it
 looks like your repository's fault: Phase 4 fetched the only tag that existed
@@ -275,6 +321,24 @@ uv --version                                          # whatever your host has
 
 If the two disagree, the container is right.
 
+**And check the third one, because no gate will.** A wired locus is not an
+installed hook: `.pre-commit-config.yaml` states intent, `.git/hooks/pre-commit`
+is whether anything runs before a commit, and **every gate reads the first**.
+So a repository can have six gates reporting their `pre-commit` locus wired and
+nothing at all running at it.
+
+```bash
+ls -l .git/hooks/pre-commit          # absent means nothing runs
+uv run pre-commit install            # what puts it there
+```
+
+The template's `setup.sh` runs that install on the config's presence, so a
+container built after you have a `.pre-commit-config.yaml` has the hook. A
+container built before it does not, and rebuilding is what fixes that rather
+than re-running a gate. This cannot become a control and will not be one:
+`.git/hooks/` is untracked and CI legitimately has no hooks installed, so the
+honest boundary is that the register checks the config and you check the hook.
+
 ### 2.0 — Where the devcontainer comes from
 
 A conformant `.devcontainer/` ships with the plugin. **Where it is on your
@@ -283,13 +347,19 @@ found missing from this guide — the path below is where it lives in the
 repository that authors the standard, which is not a path an adopter has:
 
 ```bash
-# Installed from a marketplace: inside the plugin's install cache.
-cp -R ~/.claude/plugins/cache/<marketplace>/control-register/<version>/templates/devcontainer \
+# Installed from the marketplace in § 0.0: inside the plugin's install cache.
+# The version directory is the plugin's, not the register's — glob it rather
+# than typing a number that moves on every plugin release.
+cp -R ~/.claude/plugins/cache/ee-standard/control-register/*/templates/devcontainer \
       .devcontainer
 
 # From a clone of the standard instead.
 cp -R path/to/ee-standard/plugins/control-register/templates/devcontainer .devcontainer
 ```
+
+`cp -R` on a directory that does not exist yet copies the dotfiles inside it,
+which matters here: the template's own `.gitignore` is one of them, and the two
+lines it carries are read by SEC-001.
 
 Then, **in this order**:
 
@@ -308,15 +378,57 @@ There are **four** placeholders, not one. `{{PROJECT_NAME}}` twice in
 `{{UV_SHA256_AARCH64}}` in `setup.sh` — uv, which every verification in this
 standard runs through and which no gate can install, because a gate's own verify
 step is a `uv run`
-([ADR 0034](adr/0034-the-template-bootstraps-uv.md)). The first two come
-straight out of the register you fetched in § 0.1:
+([ADR 0034](adr/0034-the-template-bootstraps-uv.md)).
+
+**Three of the four have a source you can read; the fourth has a source you must
+fetch.** The register you took in § 0.1 holds uv's version and **one** checksum,
+for x86_64 — the convention `tools.gitleaks` already used. The aarch64 checksum
+is not in the register and never was, so an adopter on an arm64 host who is only
+told to "substitute the placeholders" has nowhere to get it. It comes from the
+same release, where uv publishes a `.sha256` beside every asset:
 
 ```bash
 uv_block() { sed -n '/^  uv:/,/^  [a-z-]*:$/p' controls.yaml; }
 uv_version=$(uv_block | sed -n 's/^ *version: *"\{0,1\}\([0-9][^"]*\)"\{0,1\} *$/\1/p')
-uv_sha=$(uv_block | sed -n 's/^ *sha256: *//p')
-echo "$uv_version $uv_sha"     # both non-empty, or the substitution below is a no-op
+uv_sha_x86=$(uv_block | sed -n 's/^ *sha256: *//p')
+
+# The other architecture's, from the release the two lines above name. `cut` is
+# there because the file is `<sha>  <filename>`, and the whole line would be
+# substituted into a shell assignment.
+rel="https://github.com/astral-sh/uv/releases/download/${uv_version}"
+uv_sha_arm=$(curl -fsSL "${rel}/uv-aarch64-unknown-linux-gnu.tar.gz.sha256" | cut -d' ' -f1)
+
+# All three non-empty, or the substitution below is a silent no-op.
+echo "${uv_version:?} ${uv_sha_x86:?} ${uv_sha_arm:?}"
 ```
+
+**Verify the one you fetched against the one you were given.** The x86_64
+checksum exists in two places now — the register's and the vendor's — and the
+whole point of a pinned release is that they agree:
+
+```bash
+test "$uv_sha_x86" = \
+  "$(curl -fsSL "${rel}/uv-x86_64-unknown-linux-gnu.tar.gz.sha256" | cut -d' ' -f1)"
+```
+
+Then substitute all four, and commit the result:
+
+```bash
+sed -i.bak \
+  -e "s/{{PROJECT_NAME}}/$(basename "$PWD")/g" \
+  .devcontainer/devcontainer.json
+sed -i.bak \
+  -e "s/{{UV_VERSION}}/${uv_version}/g" \
+  -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86}/g" \
+  -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm}/g" \
+  .devcontainer/setup.sh
+rm .devcontainer/*.bak
+grep -rl '{{' .devcontainer          # expect no output
+```
+
+`-i.bak` and the `rm` are there for portability rather than caution: BSD `sed`,
+which is what a macOS host has, requires an argument to `-i` where GNU `sed`
+requires its absence.
 
 **Check that echo.** The first version of these commands used `grep -A4`, which
 never reached `version:` because the register comments that block — so they
@@ -345,6 +457,33 @@ security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "ghp_..."   # opti
 Either name may be prefixed with your checkout directory in `UPPER_SNAKE_CASE`
 to scope it to one project. `check-auth.sh` reports which entry answered on
 every container start.
+
+**Those three commands are macOS**, and `security` is the reason: the shipped
+`fetch-secrets.sh` reads the macOS Keychain, so on Linux or Windows the script
+is what you adapt, not the instructions around it. Say so plainly rather than
+letting an adopter discover it at `initializeCommand` — the failure arrives
+before there is a container to read the message in, which is the worst place a
+platform assumption can surface.
+
+What a replacement owes the rest of the template is a **contract, not a
+mechanism**: run on the host, read from whatever store your platform has —
+`secret-tool` on a Linux desktop, `pass`, a cloud secret manager, an
+already-exported environment variable — and leave two files behind.
+
+| File | Read by | Shape |
+| --- | --- | --- |
+| `.devcontainer/.env` | `check-auth.sh`, with `set -a; . .env` | Shell. A value containing a space **must** be quoted, or the shell splits it |
+| `.devcontainer/.env.docker` | Docker, via `runArgs --env-file` | Verbatim after the `=`. The same quotes would land *inside* the value, so this copy has them stripped |
+
+`CLAUDE_CODE_OAUTH_TOKEN` is the one required name and the one whose absence
+should exit `1`; `GITHUB_TOKEN`, `GIT_AUTHOR_NAME` and `GIT_AUTHOR_EMAIL` are
+written only when the store answers. Derive the second file from the first
+rather than writing both — the shipped script ends with the one `sed` that does
+it, and two writers is two spellings of one secret.
+
+Both files must stay gitignored. That is not housekeeping either: the
+`.gitignore` that came with the copy names them, and **SEC-001 reads exactly
+those lines**.
 
 **Adding a feature means rebuilding, not restarting.** `devcontainer up` reuses
 an existing container and the lock file is regenerated only on a build, so the
@@ -395,8 +534,8 @@ by removing it.
 grep -rl '{{' .devcontainer          # expect no output
 devcontainer build --workspace-folder .
 devcontainer exec --workspace-folder . uv --version    # the bootstrap actually ran
-register-check run --control BLD-001 --control DEV-001
-register-check run --control SEC-001   # the .gitignore that came with the copy
+uv run register-check run --control BLD-001 --control DEV-001
+uv run register-check run --control SEC-001   # the .gitignore that came with the copy
 ```
 
 The `uv --version` line is there because Phase 4 built a container that reported
@@ -615,6 +754,12 @@ would report success against some other copy entirely
 ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)), which is the same
 failure this guide describes for `npx --no-install` in § 3.
 
+**Every command in this document obeys that**, which it did not until the rule
+was checked against the examples rather than only stated beside them: two
+copy-and-paste blocks and sixteen inline mentions spelled the bare name, so a
+reader following the guide reached for `PATH` on the guide's own instruction.
+`tests/test_adopter_guide.py` now fails a fenced block that does it again.
+
 **Two things about this are not settled**, and are worth knowing before you
 depend on them. Whether Dependabot or Renovate proposes a bump for a
 `git+https` dependency pinned to a tag is **not verified** — if neither does,
@@ -692,7 +837,7 @@ npm init -y && npm install --save-dev markdownlint-cli2   # the lockfile is the 
    by the context a job produces — rename the job and your ruleset waits forever
    for a check nothing reports.
 
-Then `register-check run --control DOC-001`, which is what makes this a
+Then `uv run register-check run --control DOC-001`, which is what makes this a
 deployment rather than a hope.
 
 What follows describes this repository's own artefacts, which are the reference
@@ -730,8 +875,8 @@ deployment and its audit cannot be pointed at different things by accident.
 
 | Prerequisite | Why | How you know it worked |
 | --- | --- | --- |
-| A register the skill can read | Every value it writes — the scanner's name, version, checksum and release repository — comes from `controls.yaml`. There is no default, because a default is a decision nobody recorded | `register-check --repo . --register <path> explain SEC-001` prints the control |
-| `tools.<scanner>.release_repo` set in your register | The skill downloads a pinned release and needs `owner/name`. Before Phase 2 this value existed only inside a `# renovate: depName=` comment, which is an annotation for a bot rather than a field anything can read | `register-check schema` accepts the register; a malformed value is rejected as *must be an owner/name repository reference* |
+| A register the skill can read | Every value it writes — the scanner's name, version, checksum and release repository — comes from `controls.yaml`. There is no default, because a default is a decision nobody recorded | `uv run register-check --repo . --register <path> explain SEC-001` prints the control |
+| `tools.<scanner>.release_repo` set in your register | The skill downloads a pinned release and needs `owner/name`. Before Phase 2 this value existed only inside a `# renovate: depName=` comment, which is an annotation for a bot rather than a field anything can read | `uv run register-check schema` accepts the register; a malformed value is rejected as *must be an owner/name repository reference* |
 | A workflow that runs on `push` or `pull_request` | A workflow triggered only by `workflow_dispatch` runs when a human clicks it, and a control reachable only that way is declared and unreachable | The verify step reports `ci locus — no gating step runs '<scanner>'` if you have none |
 
 **SEC-001's third block asks GitHub, and needs a token that can see the answer.**
@@ -844,11 +989,11 @@ wrote, which is why gates are grouped by the artefact they write.
 
 | Prerequisite | Why | How you know it worked |
 | --- | --- | --- |
-| A `stacks:` entry for every stack you are in | The linter, the type checker, their config locations, the strictness key and the editor extension all come from there. There is no default | `register-check explain LNT-001` prints the control; `register-check run --control LNT-001` names your stack in its message |
+| A `stacks:` entry for every stack you are in | The linter, the type checker, their config locations, the strictness key and the editor extension all come from there. There is no default | `uv run register-check explain LNT-001` prints the control; `uv run register-check run --control LNT-001` names your stack in its message |
 | Each gate's `invocation` reaches the artefact your lockfile pins | That string is what the skill writes at every locus. A bare tool name resolves from `PATH`, so the deployed gate runs whatever global is installed rather than the pinned version ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) | The skill stops before writing anything and says which invocation is bare |
 | A CI job that installs from the lockfile before these steps | Lint, type check and tests run the tools that install placed. A lint step before the install lints against nothing | SUP-001 passing, and the three steps sitting after the install step in the same job |
-| A test command the register accepts for your ecosystem | `ecosystems.<name>.test_commands` bounds the set; your repository picks the member. The skill asks rather than choosing | `register-check run --control TST-001` reports the command runs and its exit code is the verdict |
-| An `ecosystem:` on your stack, and an `add_dev_dependency` for the lockfile you use | The gate has to be able to create a pin that is missing. `uv add --dev` and `poetry add --group dev` are both python, so the register says which one your repository uses | The schema rejects a register whose stack names an ecosystem that does not cover every lockfile it declares — `register-check schema` names the field |
+| A test command the register accepts for your ecosystem | `ecosystems.<name>.test_commands` bounds the set; your repository picks the member. The skill asks rather than choosing | `uv run register-check run --control TST-001` reports the command runs and its exit code is the verdict |
+| An `ecosystem:` on your stack, and an `add_dev_dependency` for the lockfile you use | The gate has to be able to create a pin that is missing. `uv add --dev` and `poetry add --group dev` are both python, so the register says which one your repository uses | The schema rejects a register whose stack names an ecosystem that does not cover every lockfile it declares — `uv run register-check schema` names the field |
 
 **Expect exit `0` here, unlike `gate-secrets`.** All three controls verify from
 files and none declares a `remote` locus, so nothing is waiting on Phase 3. A
@@ -902,7 +1047,7 @@ gating workflow. Every one of them runs the tools that install places.
 
 | Prerequisite | Why | How you know it worked |
 | --- | --- | --- |
-| A tracked lockfile for every ecosystem you are in | The gate stops rather than generating one. A lockfile a skill produces pins a resolution nobody reviewed | `register-check run --control SUP-001` names the ecosystem and the lockfile it expected |
+| A tracked lockfile for every ecosystem you are in | The gate stops rather than generating one. A lockfile a skill produces pins a resolution nobody reviewed | `uv run register-check run --control SUP-001` names the ecosystem and the lockfile it expected |
 | A `frozen_install_command` for the lockfile you use | `uv sync --frozen` and `poetry install --sync` are both python. Which is right is a fact about your repository | The schema rejects a register whose command matches none of its own ecosystem's `frozen_install` patterns — so a gate cannot write a step the checker then refuses |
 | A `tools.register-check` entry with an `invocation` | SUP-003's pre-commit gate is the checker itself, and a locus running a bare name resolves from `PATH` — what answered would be auditing your repository ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) | The gate stops before writing anything and says the invocation is missing |
 | A gating workflow — one that runs on `push` or `pull_request` | A workflow only a human can trigger is not the ci locus | GOV-001 reports every blocking control reachable from a step that can fail |
@@ -920,10 +1065,10 @@ is waiting on Phase 3. A `3` means a block declared itself partial.
    pre-commit hook for it of any kind. If yours does too, the gate writes one;
    the property and the loci now fail independently, and the report says which.
 2. **Running the checker where you meant to audit with it.** A hook or step
-   invoking `register-check schema`, `meta`, `assert` or `explain` reaches no
-   control at all. This repository's own pre-commit config ran
-   `register-check schema` and would otherwise have been credited with a SUP-003
-   gate that could never have failed it.
+   invoking `uv run register-check schema`, `meta`, `assert` or `explain`
+   reaches no control at all. This repository's own pre-commit config ran
+   `uv run register-check schema` and would otherwise have been credited with
+   a SUP-003 gate that could never have failed it.
 
 **The config is not the bot.** A `.github/dependabot.yml` is inert until
 Dependabot is enabled on the repository, and a `renovate.json` is inert until
@@ -958,9 +1103,9 @@ being fixed.
 
 | Prerequisite | Why | How you know it worked |
 | --- | --- | --- |
-| A base image that defines a non-root user | The gate writes the user the image provides, not one it invents | `docker run --rm <image> id -un` names a user; `register-check run --control BLD-001` then reports it |
+| A base image that defines a non-root user | The gate writes the user the image provides, not one it invents | `docker run --rm <image> id -un` names a user; `uv run register-check run --control BLD-001` then reports it |
 | A `tools.register-check` entry with an `invocation` | Both controls' pre-commit gate is the checker, and a locus running a bare name resolves from `PATH` — what answered would be auditing your repository ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) | The gate stops before writing anything and says the invocation is missing |
-| A `tools.hadolint` entry, **if you have a Dockerfile** | BLD-001's container half runs the linter. An absent linter is `UNCLASSIFIED — cannot verify`, not a pass ([ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md)) | `register-check run --control BLD-001` stops reporting UNCLASSIFIED for that block |
+| A `tools.hadolint` entry, **if you have a Dockerfile** | BLD-001's container half runs the linter. An absent linter is `UNCLASSIFIED — cannot verify`, not a pass ([ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md)) | `uv run register-check run --control BLD-001` stops reporting UNCLASSIFIED for that block |
 
 That last row is § 3.7 in miniature — *your register records your own files*.
 This standard's register pins no `hadolint`, because this repository has no
@@ -1004,7 +1149,7 @@ control and there is nothing to deploy.
 
 **One hook runs both analysers.** IAC-001's verify blocks are
 `checkov --directory . --compact --quiet` and `tflint --recursive`, and the hook
-runs the *control* — `register-check run --control IAC-001` executes both
+runs the *control* — `uv run register-check run --control IAC-001` executes both
 through the same path the audit uses. Two hooks each invoking one analyser would
 be two statements of what "analysed" means, free to drift from each other and
 from the register.
@@ -1013,7 +1158,7 @@ from the register.
 
 | Prerequisite | Why | How you know it worked |
 | --- | --- | --- |
-| A `tools.checkov` and `tools.tflint` entry in your register | Without them the analysers are unpinned, and an absent analyser is `UNCLASSIFIED — cannot verify`, not a pass | `register-check run --control IAC-001` stops reporting UNCLASSIFIED for those blocks |
+| A `tools.checkov` and `tools.tflint` entry in your register | Without them the analysers are unpinned, and an absent analyser is `UNCLASSIFIED — cannot verify`, not a pass | `uv run register-check run --control IAC-001` stops reporting UNCLASSIFIED for those blocks |
 | A `tools.register-check` entry with an `invocation` | The pre-commit gate is the checker, and a locus running a bare name resolves from `PATH` ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) | The gate stops before writing anything and says the invocation is missing |
 
 **Expect `UNCLASSIFIED` on the first run, and do not treat it as a pass.** This
@@ -1560,16 +1705,16 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 3 | Secret scanning push protection on | `.security_and_analysis.secret_scanning_push_protection.status` is `enabled` |
 | 4 | `.github/dependabot.yml` covers every ecosystem present | A Dependabot pull request appears |
 | 5 | Renovate installed, if any version is a literal or a toolchain file | Its Dependency Dashboard lists the expected number of sites |
-| 5a | The interpreter is pinned by a toolchain file, not by a support floor | `register-check run --control SUP-001` passes, and the version your CI log reports is the one the file names |
+| 5a | The interpreter is pinned by a toolchain file, not by a support floor | `uv run register-check run --control SUP-001` passes, and the version your CI log reports is the one the file names |
 | 6 | Devcontainer image digest-pinned, lock file complete, user stated | `uv run register-check` reports DEV-001 and BLD-001 passing |
 | 7 | Gates wired at every locus the control declares | LNT-001, TYP-001, DOC-001, TST-001 passing |
-| 7b | Quality gates wired at every locus **and** stamped | `register-check run --control LNT-001 --control TYP-001 --control TST-001` exits `0` — every block ✓, nothing skipped |
-| 7a | Secrets gate wired at pre-commit **and** CI, and stamped | `register-check run --control SEC-001` shows both local blocks ✓; with an admin-scoped token the remote block is ✓ too and it exits `0` |
-| 7c | The branch protection you recorded is the one GitHub enforces | `register-check run --control CI-001` with a token — the remote block reports the rules in effect, not the file |
+| 7b | Quality gates wired at every locus **and** stamped | `uv run register-check run --control LNT-001 --control TYP-001 --control TST-001` exits `0` — every block ✓, nothing skipped |
+| 7a | Secrets gate wired at pre-commit **and** CI, and stamped | `uv run register-check run --control SEC-001` shows both local blocks ✓; with an admin-scoped token the remote block is ✓ too and it exits `0` |
+| 7c | The branch protection you recorded is the one GitHub enforces | `uv run register-check run --control CI-001` with a token — the remote block reports the rules in effect, not the file |
 | 8 | The conformance run is a required status check | `uv run register-check` with a token reports GOV-001 `PASS` — from register contract 26 it reads which checks GitHub actually enforces on your default branch, and fails one your register requires and the platform does not. Without a token it reports `SKIPPED (no credentials)` and says which half it did verify |
 | 8a | A merge has actually been refused | A pull request whose required check fails cannot be merged. Four green links and a merge that goes through anyway is what no report can rule out (§ 4.2) |
 | 9 | CI carries a credential the remote blocks can answer from | The conformance run's report shows SEC-001's and SEC-003's remote blocks ✓ rather than `SKIPPED` or `UNCLASSIFIED` — and the token is an environment secret behind a branch policy, not a repository secret (§ 4.3) |
-| 9a | That credential is named in your register before it exists | `register-check run --control SEC-003` passes rather than failing on a secret nothing names |
+| 9a | That credential is named in your register before it exists | `uv run register-check run --control SEC-003` passes rather than failing on a secret nothing names |
 | 10 | The conformance step passes `--require-complete` | A run that cannot verify a control fails the check rather than printing that it could not. Turn it on **after** row 9, not before |
 | 10a | The fork path, if you take fork pull requests | A test running the step's own script asserts it tolerates `3` and only `3` (§ 4.3). Do not write the branch if you do not need it |
 
