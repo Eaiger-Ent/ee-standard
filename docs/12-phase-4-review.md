@@ -8,7 +8,7 @@ where the evidence behind every criterion it ticks lives, and where what the
 phase found is written down whether or not a criterion covers it.
 
 **The phase's purpose, in the plan's own words:** *"The genuine risk is Phase 4
-revealing something Phases 1–3 assumed."* It revealed fifteen such things. Three
+revealing something Phases 1–3 assumed."* It revealed eighteen such things. Three
 of them made the published route impossible to follow rather than awkward, one
 put a wired-but-unreachable locus inside the artefact the standard itself
 deploys, and none of them could have been found from inside this repository,
@@ -329,6 +329,67 @@ so it silently skipped `{{UV_SHA256_X86_64}}` and `{{UV_SHA256_AARCH64}}` —
 the two placeholders most likely to be left unsubstituted were the two the check
 could not see. A one-character class fix, and the same shape as § 10: a check
 reporting a pass over something it never looked at.
+
+### 16 — `register-install` read the register with a tool the container does not have
+
+```text
+(eval):1: command not found: yq
+```
+
+The skill's pre-flight read `tools.register-check.install` with `yq`, twice.
+Nothing in the template installs one, and **nothing should**: `yq` would be a
+tool a skill needs and no control names, so no register would pin it and nothing
+would keep it in step — the second-copy problem arriving through a convenience.
+
+**Closed** — it reads through
+`uv run --no-project --with pyyaml python -c`. uv is the one tool the whole
+standard already depends on, `--with` fetches the parser for the length of one
+command, and `--no-project` reads the register without touching an environment
+the checker is not yet installed into. Verified in the consumer's own container.
+A `grep` fallback was rejected in the skill's own text, because Phase 4 had
+already written one into the adoption guide and had to correct it (§ 15).
+
+### 17 — `claude update` could not run, and the container was pinned to what the feature shipped
+
+Claude Code stuck at 2.1.241 mid-adoption. The `claude-code` feature runs
+`npm install -g` as **root**, so the package tree it writes is root-owned while
+the container's user is `vscode` — which BLD-001 requires — and `claude update`
+fails with *"Insufficient permissions to install update"* on a release cadence
+of roughly one a day.
+
+This repository's own `setup.sh` has carried the fix since Phase 0.5; the
+generalised template dropped it, which is the failure mode the build plan
+predicted for the generalisation in the first place: *"anything the
+generalisation cannot carry across is a sign the original was wired to this repo
+in a way the spec did not intend"*. Here it was the opposite — something the
+original had right and the copy lost.
+
+**Closed** — the template hands `vscode` the one package the feature owns, as a
+loop over the glob so a container without the feature is a no-op rather than an
+error.
+
+### 18 — The fix for § 13 could abort container create
+
+Found by running it, one commit after writing it. `uv run pre-commit install`
+was guarded by `uv.lock` **existing**, not by pre-commit being *in* it — and
+every adopting repository is in that state for a while, between the gate that
+writes `.pre-commit-config.yaml` and the gate that adds the dependency. Under
+`set -euo pipefail` the non-zero exit aborts `setup.sh`, so the container fails
+to build.
+
+**A devcontainer that fails to build because a hook is not installed yet is a
+worse failure than the missing hook**, and the fix that caused it was one day
+old. Each arm now asks whether the tool is reachable *that way* before using it,
+and the else-branch reports rather than failing:
+
+```text
+note: .pre-commit-config.yaml exists and pre-commit is not installed,
+      so nothing runs at the pre-commit locus.
+```
+
+`tests/test_devcontainer_template.py` reads the arms out of the script and fails
+any that installs without probing first — watched failing against the previous
+version.
 
 ## What the two skills did when they could run
 

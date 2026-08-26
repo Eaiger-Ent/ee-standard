@@ -34,6 +34,21 @@ set -euo pipefail
 # The named volume mounts root-owned on first create.
 sudo chown -R vscode:vscode /home/vscode/.claude
 
+# **`claude update` must work, or the container is pinned to whatever the feature
+# shipped.** The claude-code feature runs `npm install -g` as root, so the
+# package tree it writes is root-owned while this container's user is vscode
+# (BLD-001) — and `claude update` then fails with "Insufficient permissions to
+# install update", on a release cadence of roughly one a day. Phase 4 met this
+# stuck at 2.1.241 mid-adoption.
+#
+# Hand vscode the one package the feature owns; the surrounding node_modules and
+# bin are already group-writable. The glob is a loop rather than a `chown` on
+# the pattern so that a container without the feature is a no-op rather than an
+# error.
+for d in /usr/local/share/nvm/versions/node/*/lib/node_modules/@anthropic-ai; do
+  [ -d "$d" ] && sudo chown -R vscode:vscode "$d"
+done
+
 # **Trust the workspace, or nothing here can read git.** On a macOS host the
 # workspace is a bind mount, and git inside the container refuses it —
 # "detected dubious ownership" — even though the directory and `.git` both stat
@@ -124,15 +139,23 @@ fi
 # manager where a lockfile pins it, and only otherwise off `PATH`. An absent one
 # is reported rather than installed unpinned.
 if [ -f .pre-commit-config.yaml ]; then
-  if [ -f uv.lock ]; then
+  # Each arm asks whether the tool is *reachable that way* before using it, and
+  # never whether a lockfile merely exists. A repository can have `uv.lock` and
+  # no pre-commit in it — every repository does, between the gate that writes
+  # the config and the gate that adds the dependency — and `uv run pre-commit`
+  # then exits non-zero, which under `set -e` aborts container create. A
+  # devcontainer that fails to build because a hook is not installed yet is a
+  # worse failure than the missing hook.
+  if [ -f uv.lock ] && uv run pre-commit --version >/dev/null 2>&1; then
     uv run pre-commit install
-  elif [ -f poetry.lock ]; then
+  elif [ -f poetry.lock ] && poetry run pre-commit --version >/dev/null 2>&1; then
     poetry run pre-commit install
   elif command -v pre-commit >/dev/null 2>&1; then
     pre-commit install
   else
-    echo "note: .pre-commit-config.yaml exists and pre-commit is not installed." >&2
-    echo "      Add it to a lockfile this repository commits, or to a feature." >&2
+    echo "note: .pre-commit-config.yaml exists and pre-commit is not installed," >&2
+    echo "      so nothing runs at the pre-commit locus. Add it to a lockfile" >&2
+    echo "      this repository commits, then re-run this script." >&2
   fi
 fi
 
