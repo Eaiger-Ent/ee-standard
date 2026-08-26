@@ -285,9 +285,17 @@ step is a `uv run`
 straight out of the register you fetched in § 0.1:
 
 ```bash
-uv_version=$(grep -A4 '^  uv:' controls.yaml | sed -n 's/^ *version: *//p')
-uv_sha=$(grep -A4 '^  uv:' controls.yaml | sed -n 's/^ *sha256: *//p')
+uv_block() { sed -n '/^  uv:/,/^  [a-z-]*:$/p' controls.yaml; }
+uv_version=$(uv_block | sed -n 's/^ *version: *"\{0,1\}\([0-9][^"]*\)"\{0,1\} *$/\1/p')
+uv_sha=$(uv_block | sed -n 's/^ *sha256: *//p')
+echo "$uv_version $uv_sha"     # both non-empty, or the substitution below is a no-op
 ```
+
+**Check that echo.** The first version of these commands used `grep -A4`, which
+never reached `version:` because the register comments that block — so they
+returned empty, `sed` substituted nothing, and the placeholders survived into a
+container that then failed at `sha256sum -c`. An extraction that quietly yields
+nothing is worse than one that errors.
 
 **Substitute them unquoted.** `tool_versions_match_register` matches a tool name
 followed by a version across `@`, `=`, `:` or whitespace, so `uv_version="0.12.5"`

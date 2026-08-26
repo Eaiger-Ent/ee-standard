@@ -8,7 +8,7 @@ where the evidence behind every criterion it ticks lives, and where what the
 phase found is written down whether or not a criterion covers it.
 
 **The phase's purpose, in the plan's own words:** *"The genuine risk is Phase 4
-revealing something Phases 1–3 assumed."* It revealed thirteen such things. Three
+revealing something Phases 1–3 assumed."* It revealed fifteen such things. Three
 of them made the published route impossible to follow rather than awkward, one
 put a wired-but-unreachable locus inside the artefact the standard itself
 deploys, and none of them could have been found from inside this repository,
@@ -283,6 +283,52 @@ live consumer container, where it says:
 ✗ pre-commit hook — .pre-commit-config.yaml is present and
     .git/hooks/pre-commit is not. Nothing runs at the pre-commit locus.
 ```
+
+### 14 — git refused the workspace inside the container
+
+Found on the **second** run, which is the one that does everything inside the
+container — so the first run could not have found it, having done everything
+outside.
+
+```text
+fatal: detected dubious ownership in repository at '/workspaces/ee-standard-consumer'
+```
+
+The workspace is a bind mount from a macOS host, and git refuses it even though
+the directory and `.git` both stat as `1000:1000`, the container user.
+
+**The failure is partial, which is worse than total.** `git status` and
+`git add` work; `git commit` and `git log` do not. So the first commands an
+adopter tries are the ones that succeed, and the diagnosis arrives several steps
+after the cause. It also explains a message from the first run that had been
+written off as transient: `register-check` reporting *"is not a git repository —
+predicates are evaluated against git-visible files, so any report here would
+describe nothing"*. It was this, and it means **a repository git will not open
+reports nothing rather than reporting a violation**.
+
+**Closed** — `setup.sh` marks the workspace safe, scoped to `$PWD` and never
+`*`, because the check exists to stop hooks running out of somebody else's
+repository and the one directory the container was created for is exactly the
+one to trust. `tests/test_devcontainer_template.py` fails a missing line and a
+wildcard alike.
+
+### 15 — Two of the guide's own commands did not work
+
+Both written by Phase 4 itself, in the fixes for findings 5 and 6, and both
+found by running them rather than by reading them.
+
+The uv extraction in § 2.0 used `grep -A4 '^  uv:'`, which never reaches
+`version:` because the register comments that block — so it returned empty,
+`sed` substituted nothing, and the placeholders would have survived into a
+container that fails at `sha256sum -c`. **An extraction that quietly yields
+nothing is worse than one that errors**, and the guide now prints both values
+and says to check them.
+
+And `test_every_placeholder_is_named_in_the_readme` matched `\{\{([A-Z_]+)\}\}`,
+so it silently skipped `{{UV_SHA256_X86_64}}` and `{{UV_SHA256_AARCH64}}` —
+the two placeholders most likely to be left unsubstituted were the two the check
+could not see. A one-character class fix, and the same shape as § 10: a check
+reporting a pass over something it never looked at.
 
 ## What the two skills did when they could run
 

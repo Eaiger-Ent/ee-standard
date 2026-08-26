@@ -83,7 +83,13 @@ def test_every_placeholder_is_named_in_the_readme() -> None:
     placeholders = set()
     for path in TEMPLATE.rglob("*"):
         if path.is_file() and path.name != "README.md":
-            placeholders |= set(re.findall(r"\{\{([A-Z_]+)\}\}", path.read_text(encoding="utf-8")))
+            # `[A-Z0-9_]`, not `[A-Z_]`: the narrower class silently skipped
+            # `{{UV_SHA256_X86_64}}` and `{{UV_SHA256_AARCH64}}`, so the two
+            # placeholders most likely to be left unsubstituted were the two
+            # this check could not see.
+            placeholders |= set(
+                re.findall(r"\{\{([A-Z0-9_]+)\}\}", path.read_text(encoding="utf-8"))
+            )
     readme = (TEMPLATE / "README.md").read_text(encoding="utf-8")
     assert placeholders, "the template carries no placeholders at all"
     for name in placeholders:
@@ -362,3 +368,30 @@ def test_check_auth_reports_a_missing_hook() -> None:
     text = (TEMPLATE / "check-auth.sh").read_text(encoding="utf-8")
     assert ".git/hooks/pre-commit" in text
     assert ".pre-commit-config.yaml" in text
+
+
+def test_setup_trusts_the_workspace_git_refuses() -> None:
+    """Every assert in this standard reads what git tracks.
+
+    On a macOS host the workspace is a bind mount and git inside the container
+    refuses it as "dubious ownership" — while the directory and `.git` both stat
+    as the container user. The failure is partial, which is worse than total:
+    `git status` and `git add` work, `git commit` and `git log` do not, so the
+    first commands an adopter tries are the ones that succeed. A repository git
+    will not open makes `register-check` report nothing at all rather than
+    report a violation.
+
+    Scoped to the workspace, never `*`: the check exists to stop hooks running
+    out of somebody else's repository.
+    """
+    body = "\n".join(
+        line
+        for line in (TEMPLATE / "setup.sh").read_text(encoding="utf-8").splitlines()
+        if not line.lstrip().startswith("#")
+    )
+    match = re.search(r"git config --global --add safe\.directory (\S+)", body)
+    assert match is not None, "setup.sh never marks the workspace safe for git"
+    assert match.group(1) not in {"'*'", '"*"', "*"}, (
+        "safe.directory is set to a wildcard — trust the one directory the "
+        "container was created for, not every repository it can reach"
+    )
