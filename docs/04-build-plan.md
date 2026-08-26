@@ -961,6 +961,26 @@ Wire the mechanism that keeps deployments current.
       cases where classification declines to guess, so they cannot be judged
       before something classifies
 
+- [ ] **A version bump that leaves a checksum behind fails something.** Renovate
+      proposed uv `0.12.5` → `0.12.6` (#74) and bumped the version literal at all
+      four sites the register names, leaving all **three** sha256 digests at
+      0.12.5's values — two in `.devcontainer/setup.sh`, one in
+      `tools.uv.sha256`. Every check passed. What that PR would have merged is a
+      container that cannot build: `sha256sum -c` exits `1` on a tarball whose
+      digest names the previous release, which is the right behaviour and the
+      last line of defence rather than the first. **Added 2026-08-26**, after
+      fixing it by hand. `tool_versions_match_register` reconciles *versions*
+      across `pinned_at`, and nothing reconciles a digest with anything: the
+      register's own comment says a bump *"still needs a human"*, and no check
+      makes one. Two halves, and only the first is free: an **offline** test that
+      `.devcontainer/setup.sh`'s x86_64 `UV_SHA` equals `tools.uv.sha256` catches
+      a half-finished human edit but not a bot that moved neither; catching the
+      bot needs a **network** comparison against the release's published
+      `<asset>.sha256`, which is a decision about whether that is a control and
+      where it runs, not a test to add quietly. The aarch64 digest is compared by
+      nothing at all and is already recorded that way
+      ([`09-phase-1.5-review.md`](09-phase-1.5-review.md))
+
 - [ ] **A developer can run what CI runs, before pushing, in one wired step.**
       Today they cannot, and the gap is not evenly spread: `uv run pre-commit run
       --all-files` covers ruff, mypy, gitleaks, markdown and three controls,
