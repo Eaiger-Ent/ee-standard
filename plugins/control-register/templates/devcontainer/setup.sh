@@ -34,6 +34,23 @@ set -euo pipefail
 # The named volume mounts root-owned on first create.
 sudo chown -R vscode:vscode /home/vscode/.claude
 
+# **Trust the workspace, or nothing here can read git.** On a macOS host the
+# workspace is a bind mount, and git inside the container refuses it —
+# "detected dubious ownership" — even though the directory and `.git` both stat
+# as the container user. `git status` and `git add` may work while `git commit`
+# and `git log` do not, which is worse than a clean failure: the first commands
+# an adopter tries are the ones that succeed.
+#
+# It matters more here than in an ordinary project. **Every assert in this
+# standard reads what git tracks**, so a repository git will not open reports
+# nothing rather than reporting a violation — `register-check` says so in as
+# many words and exits without a verdict.
+#
+# Scoped to this workspace, never `*`: the check exists to stop you running
+# hooks out of a repository somebody else owns, and the one directory the
+# container was created for is exactly the one to trust.
+git config --global --add safe.directory "$PWD"
+
 # uv, from the pinned release tarball, verified against the published sha256.
 #
 # **This is the one install that cannot wait for a gate**, which is why it is
