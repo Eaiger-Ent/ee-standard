@@ -355,6 +355,18 @@ def test_the_hook_install_is_guarded_by_the_config_not_by_a_lockfile() -> None:
     assert "pre-commit install" not in outside, (
         "`pre-commit install` still hangs off a lockfile branch in setup.sh"
     )
+    # And every arm asks whether the tool is reachable *that way* first. A
+    # repository can have `uv.lock` and no pre-commit in it — every repository
+    # does, between the gate that writes the config and the gate that adds the
+    # dependency — and an unguarded `uv run pre-commit install` then exits
+    # non-zero, which under `set -e` aborts container create. A devcontainer
+    # that fails to build because a hook is not installed yet is a worse failure
+    # than the missing hook, and it happened.
+    for arm in re.findall(r"^\s*(?:el)?if (.+?); then$", guard.group(1), re.M):
+        assert "--version" in arm or "command -v" in arm, (
+            f"the `{arm}` arm runs pre-commit install without first asking "
+            "whether pre-commit is reachable that way"
+        )
 
 
 def test_check_auth_reports_a_missing_hook() -> None:

@@ -67,9 +67,26 @@ Nothing is written in this phase.
 ### Read the address from the register
 
 ```bash
-REPOSITORY=$(yq -r '.tools["register-check"].install.repository' "$REGISTER")
-REF=$(yq -r '.tools["register-check"].install.ref' "$REGISTER")
+read -r REPOSITORY REF <<<"$(uv run --no-project --with pyyaml python -c '
+import sys, yaml
+install = yaml.safe_load(open(sys.argv[1]))["tools"]["register-check"].get("install") or {}
+print(install.get("repository", ""), install.get("ref", ""))
+' "$REGISTER")"
 ```
+
+**Read through uv, not through `yq`.** This ran as `yq` until Phase 4 met a
+container that had none — nothing in the devcontainer template installs one, and
+nothing should: `yq` would be a tool this skill needs and no control names, so
+no register pins it and nothing keeps it in step. uv is the one tool the whole
+standard already depends on, `--with` fetches the parser for the length of one
+command, and `--no-project` means this reads the register without touching an
+environment the checker is not yet installed into.
+
+**Do not fall back to `grep`.** The register comments these blocks, so a
+line-offset extraction returns empty rather than failing — Phase 4 wrote exactly
+that into the adoption guide and had to correct it. An extraction that quietly
+yields nothing is worse than one that errors, which is why the check below is
+for *absence* and stops.
 
 If either is absent, **stop**. The register is older than contract 29 and does
 not say where the checker comes from; say so and name the contract, rather than
