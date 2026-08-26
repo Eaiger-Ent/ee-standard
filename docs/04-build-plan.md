@@ -851,16 +851,17 @@ published route impossible to follow rather than awkward.
       [ADR 0028](adr/0028-the-support-floor-is-what-we-run.md) raised the floor
       to stop
 
-- [ ] The consumer repo reaches full Tier-1 conformance — **open, and not known
-      to fail.** `register-adopt` computed the plan and the starting-state audit
-      against register contract 30 with remote blocks answering, then stopped at
-      `gate-build`, which writes `.devcontainer/devcontainer.json` — a file
-      Claude Code guards as sensitive, whose permission prompt a headless run has
-      nobody to answer and which a `permissions.allow` entry does not lift. That
-      is a property of the harness, not of the standard: run interactively, the
-      operator answers the prompt. The starting-state table is in the review, and
-      every FAIL in it names something absent rather than something the checker
-      got wrong
+- [x] The consumer repo reaches full Tier-1 conformance — **closed 2026-08-26**.
+      `Eaiger-Ent/ee-standard-consumer` reports **12 passed, 0 failed**, one
+      skipped by predicate (`terraform`), and 3/3 meta-controls, against register
+      contract 30. CI-001 and GOV-001 both pass, which needed a ruleset GitHub
+      actually enforces rather than one recorded in a file. The run exits `3`
+      and not `0`, for one reason and the same one this repository has locally:
+      SEC-003's remote blocks are answerable only inside a GitHub Actions job,
+      so a developer's own token settles nothing about the credential CI
+      carries. Both workflows are green on push and pull_request, and Dependabot
+      has opened two pull requests of its own, so SUP-002 holds in fact
+      ([`12-phase-4-review.md`](12-phase-4-review.md))
 - [ ] No step required knowledge held only by the author — judged after the row
       above, since the steps it would judge have not all been taken
 - [ ] `project-init` and `register-adopt` compose without fighting over
@@ -874,13 +875,16 @@ published route impossible to follow rather than awkward.
       copied first and Step 4 overwrites the two things it exists to pin. The
       box stays open because a finding is not a fix, and the fix is upstream —
       a Phase 6 submission with a measurement behind it
-- [ ] Weakening a `narrowing-only` control is **caught** — the checker fails it,
-      naming the control and what was weakened. This is the half that exists
-      today: the asserts read exclusions, thresholds and rule sets and fail a
-      loosening. Whether the *direction* is classified is Phase 5's, and § What
-      moved to Phase 5, and why records the split rather than leaving the
-      shortened sentence to be read as a quiet retreat. Open because it is
-      judged against a deployed gate, and no gate is deployed yet
+- [x] Weakening a `narrowing-only` control is **caught** — the checker fails it,
+      naming the control and what was weakened. **Closed 2026-08-26** in three
+      shapes rather than one, each weakening made in the consumer repository and
+      watched being caught, then reverted: a threshold raised above the
+      register's (`line length ceiling is 400, above the register's 250`), an
+      exemption hiding a tracked file (`'README.md' excludes 1 tracked file(s)
+      the repository authors`), and a pin removed (`image reference is not
+      digest-pinned`). Whether the *direction* is classified is Phase 5's, and
+      § What moved to Phase 5, and why records the split rather than leaving the
+      shortened sentence to be read as a quiet retreat
 - [x] **The devcontainer template is obtainable without access to a private
       repo.** `ee-skills-incubator` is private and not a GitHub template; if that
       is the only source, the plan has an access-shaped single point of failure.

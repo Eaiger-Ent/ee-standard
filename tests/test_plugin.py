@@ -260,3 +260,26 @@ def test_the_skill_says_what_each_write_is_for(skill: Path) -> None:
     )
     for required in ("what it does:", "why now:", "verified by:"):
         assert required in text, f"{skill.name}: the narration shape is missing `{required}`"
+
+
+@pytest.mark.parametrize("skill", SKILLS, ids=lambda p: p.name)
+def test_a_gate_that_writes_a_hook_makes_sure_something_runs_it(skill: Path) -> None:
+    """A hook in the config is intent; the runner is whether anything happens.
+
+    Five gates write into `.pre-commit-config.yaml`. Until Phase 4 none of them
+    installed the thing that reads it, so the consumer repository finished its
+    adoption with every gate reporting its `pre-commit` locus wired, no
+    `pre-commit` in the project, no `.git/hooks/pre-commit`, and a deliberately
+    malformed commit sailing through. The checker reported the locus wired the
+    whole time, because it reads the config file — which is the right thing for
+    it to read and not the same claim.
+    """
+    text = (skill / "SKILL.md").read_text(encoding="utf-8")
+    if ".pre-commit-config" not in text:
+        return
+    if skill.name == "register-adopt":
+        return
+    assert "make sure something runs it" in text, (
+        f"{skill.name} writes a pre-commit hook without making sure the runner "
+        "is a dependency and the git hook is installed"
+    )
