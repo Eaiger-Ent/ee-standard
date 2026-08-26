@@ -830,9 +830,10 @@ Each was decided on 2026-08-24.
 ### Exit criteria — phase 4
 
 The evidence for every row below is in
-[`12-phase-4-review.md`](12-phase-4-review.md), which also records the nine
+[`12-phase-4-review.md`](12-phase-4-review.md), which also records the fifteen
 things the phase found that no criterion asked about — three of which made the
-published route impossible to follow rather than awkward.
+published route impossible to follow rather than awkward, and six of which came
+out of judging the last row below rather than out of running the adoption.
 
 **One criterion was retired rather than met, on 2026-08-26.** It read
 *`project-init` and `register-adopt` compose without fighting over
@@ -894,8 +895,28 @@ criterion that silently disappears is indistinguishable from one nobody noticed.
       carries. Both workflows are green on push and pull_request, and Dependabot
       has opened two pull requests of its own, so SUP-002 holds in fact
       ([`12-phase-4-review.md`](12-phase-4-review.md))
-- [ ] No step required knowledge held only by the author — judged after the row
-      above, since the steps it would judge have not all been taken
+- [x] No step required knowledge held only by the author — judged after the row
+      above, since the steps it would judge have not all been taken.
+      **Closed 2026-08-26, and it did not pass as written**: re-walking
+      [`08-adopting.md`](08-adopting.md) from the adopter's position — no
+      plugin, no register, no container — found **six** steps carrying
+      knowledge the guide does not. Two of them stand in front of everything
+      else: § 0's first line is a slash command and nothing said how to install
+      the plugin it lives in, and § 2.0 named four template placeholders,
+      offered no substitution command, and gave no source at all for
+      `{{UV_SHA256_AARCH64}}` — a value the consumer repository carries because
+      the operator knew where uv publishes its checksums. The other four are a
+      hand-written release tag one release stale, eighteen examples reaching
+      the checker off `PATH` against § 2.3's own rule, `security
+      add-generic-password` unmarked as macOS, and no way to see whether the
+      pre-commit hook is installed. All six are closed in the guide and three
+      are held by `tests/test_adopter_guide.py`, so they cannot silently
+      return; the route itself needed no new artefact. What this does **not**
+      claim is that someone who has never seen this repository has followed the
+      repaired guide — the criterion's own wording admits no test can perform
+      that, and Phase 6's re-adoption from the marketplace copy is the next
+      occasion to try it ([`12-phase-4-review.md`](12-phase-4-review.md)
+      § The last criterion)
 - [x] Weakening a `narrowing-only` control is **caught** — the checker fails it,
       naming the control and what was weakened. **Closed 2026-08-26** in three
       shapes rather than one, each weakening made in the consumer repository and

@@ -128,3 +128,68 @@ def test_no_yaml_example_hands_ci_a_secret_without_a_branch_policy() -> None:
         assert "environment:" in block, (
             f"this example reaches {', '.join(sorted(reached))} with no environment gate:\n{block}"
         )
+
+
+_FENCED_BASH = re.compile(r"```bash\n(.*?)```", re.DOTALL)
+
+#: The directory the shipped template is copied out of. Its placeholders are
+#: derived from it rather than listed here, so a fifth one fails this file.
+TEMPLATE = REPO_ROOT / "plugins/control-register/templates/devcontainer"
+
+_PLACEHOLDER = re.compile(r"\{\{[A-Z0-9_]+\}\}")
+
+
+def test_no_example_reaches_the_checker_off_path() -> None:
+    """§ 2.3 states the rule; until Phase 4's last criterion, the examples broke it.
+
+    Two copy-and-paste blocks spelled `register-check run --control …` with no
+    `uv run` in front, which is ADR 0020 case C offered to a reader as an
+    instruction — a bare name resolves against `PATH`, so what answered would be
+    some other copy auditing their repository. A rule stated in one section and
+    contradicted in another is worse than an unstated one, because the reader
+    following the commands never reaches the sentence.
+    """
+    for block in _FENCED_BASH.findall(GUIDE_TEXT):
+        for line in block.splitlines():
+            command = line.split("#", 1)[0].strip()
+            assert not command.startswith("register-check "), (
+                f"this example reaches the checker off PATH: {command}"
+            )
+
+
+def test_the_guide_names_every_placeholder_the_template_ships() -> None:
+    """A placeholder nobody is told to substitute survives into a built container.
+
+    Derived from the template rather than listed, because the failure mode is a
+    placeholder being *added* and the guide not hearing about it: Phase 4 met
+    the same shape from the other direction, with `{{UV_SHA256_AARCH64}}` named
+    in § 2.0 and sourced nowhere, so the value the consumer repository carries
+    came out of the operator's head rather than out of any instruction.
+    """
+    shipped = {
+        placeholder
+        for path in TEMPLATE.rglob("*")
+        if path.is_file() and path.name != "README.md"
+        for placeholder in _PLACEHOLDER.findall(path.read_text(encoding="utf-8"))
+    }
+    assert shipped, "the template ships no placeholders — this test is now vacuous"
+    missing = sorted(p for p in shipped if p not in GUIDE_TEXT)
+    assert not missing, f"the template ships {', '.join(missing)} and § 2.0 does not name them"
+
+
+def test_the_guide_does_not_hard_code_a_release_tag() -> None:
+    """Which tag is current is the one thing an adopter cannot check and the author never has to.
+
+    § 0.1's fetch named `v0.4.0` while the register pinned the checker at
+    `v0.5.0` — internally consistent, one release stale, and unfalsifiable from
+    the reader's side. The number has one home, `tools.register-check.install.ref`,
+    which is inside the file being fetched; so the guide resolves the tag instead
+    of naming it, and this holds it to that.
+    """
+    pattern = r"raw\.githubusercontent\.com/Eaiger-Ent/ee-standard/([^/\s\"']+)/"
+    urls = re.findall(pattern, GUIDE_TEXT)
+    assert urls, "§ 0.1 no longer fetches the register — this test is now vacuous"
+    hard_coded = sorted({ref for ref in urls if not ref.startswith("$")})
+    assert not hard_coded, (
+        f"§ 0.1 names {', '.join(hard_coded)} by hand; resolve the tag rather than writing one"
+    )
