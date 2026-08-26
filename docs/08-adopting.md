@@ -1354,6 +1354,15 @@ is reported and nothing reads it.
         run: uv run register-check --require-complete
 ```
 
+**That snippet is the shape, not the whole answer.** Where the flag can be
+passed depends on where the credential can be read, and under the arrangement
+below a pull request cannot read it at all — see § The strict run is the one on
+your default branch. The decision that arrangement rests on is recorded as owed
+rather than taken: it narrows *a run that cannot verify fails* to the default
+branch, which is a weakening of what
+[ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) states, and this
+guide does not get to make that decision on its own.
+
 **So the token has to come first.** Turn on `--require-complete` while CI has no
 credential and every run fails on a control that holds — and a check that fails
 for reasons nobody can act on gets ignored, which is worse than the tolerance it
@@ -1375,19 +1384,93 @@ it, including one a pull request added a trigger for. An environment carries a
 repository settings rather than in the workflow file, so it is a guard the pull
 request cannot edit. A guard written in the file being changed is not a guard.
 
+**And that branch policy is why a pull request can never carry this credential.**
+A `pull_request` run's ref is `refs/pull/N/merge`, which no policy naming your
+default branch can match. GitHub does not quietly withhold the secret — it
+refuses the job outright, in about a second, before any step runs:
+
+```text
+Branch "refs/pull/5/merge" is not allowed to deploy to conformance
+due to environment protection rules.
+```
+
+Loosening the policy until that ref matches is not the answer: a fork's pull
+request produces the same ref in *your* repository, so the pattern that admits
+your contributors admits everyone. That is the exfiltration path Option 3 exists
+to close.
+
+**So take the environment only on the default branch**, and key it on the branch
+rather than on the event — pushing a *branch* is a `push` too, and asks for the
+environment just as a pull request does:
+
 ```yaml
   register-check:
     runs-on: ubuntu-latest
-    environment: conformance          # its branch policy is the guard
+    environment: >-
+      ${{ github.ref == format('refs/heads/{0}',
+          github.event.repository.default_branch) && 'conformance' || '' }}
+```
+
+An empty string means no environment. Read the branch name from the repository
+rather than typing it, or renaming your default branch silently moves which run
+is the strict one.
+
+#### The strict run is the one on your default branch
+
+This is the consequence, and it is a real narrowing rather than a detail.
+
+**Exit `3` is non-zero, so a bare `run:` fails on it whether or not you pass
+`--require-complete`.** A pull request has no platform credential — by the
+design above, not by oversight — so SEC-001's and SEC-003's remote blocks cannot
+answer, the run exits `3`, and the step fails. Every pull request, for a reason
+no contributor can act on, which is the failure this whole section warns about.
+
+So a pull request runs the same audit with the job token and tolerates exit `3`,
+**and only `3`**. A verified violation still fails it:
+
+```yaml
+  register-check:
+    runs-on: ubuntu-latest
+    # Repeated from above on purpose: the line that reaches the secret and the
+    # line that gates it belong in front of the same reader.
+    environment: >-
+      ${{ github.ref == format('refs/heads/{0}',
+          github.event.repository.default_branch) && 'conformance' || '' }}
     steps:
       - name: Conformance
         env:
-          # Actions does not put a token in a step's environment; a workflow has
-          # to hand one over. The fallback is for a pull request from a fork,
-          # which receives no secret at all — the job token still answers CI-001.
           GITHUB_TOKEN: ${{ secrets.PLATFORM_READ_TOKEN || github.token }}
-        run: uv run register-check --require-complete
+          REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ "$REF" = "refs/heads/$DEFAULT_BRANCH" ]; then
+            uv run register-check --require-complete
+          else
+            uv run register-check && status=0 || status=$?
+            if [ "$status" -ne 0 ] && [ "$status" -ne 3 ]; then
+              exit "$status"
+            fi
+          fi
 ```
+
+**What this costs you, stated rather than buried.** A pull request is gated by
+the audit that *can* run, and the strict one lands after the merge. So a change
+that leaves a control unverifiable can be merged, and your default branch goes
+red immediately afterwards rather than the pull request going red before. That
+is a consequence of holding the credential where a pull request cannot reach it,
+not a preference — and if it is not a trade you want, the alternative is not
+loosening the branch policy but deciding that your repository can hold the token
+as an ordinary repository secret, which
+[ADR 0022](adr/0022-a-platform-token-ci-carries.md) permits only where every
+account that could read it already holds admin.
+
+A fork's pull request needs no separate treatment here: it takes the same path
+as any other pull request, for the same reason, which is why the fallback to
+`github.token` is written into the `env:` block above.
+
+**Test both branches**, in a test that runs the step's own script rather than a
+copy of it. A carve-out nobody exercises is one that quietly becomes general —
+which is exactly what happened to the tolerance it replaces.
 
 #### Name it in your register before you create it
 

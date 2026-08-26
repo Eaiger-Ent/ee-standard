@@ -8,7 +8,7 @@ where the evidence behind every criterion it ticks lives, and where what the
 phase found is written down whether or not a criterion covers it.
 
 **The phase's purpose, in the plan's own words:** *"The genuine risk is Phase 4
-revealing something Phases 1–3 assumed."* It revealed twenty-five such things. Three
+revealing something Phases 1–3 assumed."* It revealed twenty-six such things. Three
 of them made the published route impossible to follow rather than awkward, one
 put a wired-but-unreachable locus inside the artefact the standard itself
 deploys, and none of them could have been found from inside this repository,
@@ -607,6 +607,68 @@ before dispatching `gate-repo`, and `gate-repo` gained a Step 2.0 that runs
 to apply, and stops to say what is outstanding. It does not commit on the
 operator's behalf — a gate that started committing other gates' work would be
 the wrong lesson to draw from this.
+
+### 26 — § 4.3's own arrangement fails every pull request
+
+Preparing § 4.3 for the consumer found that the section does not work as
+written, in three layers, each uncovered by fixing the one before it.
+
+**The environment refuses the job.** `environment: conformance` on the gating
+job, with the branch policy § 4.3 prescribes:
+
+```text
+Branch "refs/pull/5/merge" is not allowed to deploy to conformance
+due to environment protection rules.
+```
+
+In about a second, before any step runs. A `pull_request` ref cannot match a
+policy naming the default branch — and a policy loose enough to match would
+admit a **fork's** pull request too, since that produces the same ref in the
+base repository. So the guard cannot be relaxed; it is doing its job.
+
+**Keying on the event is not enough.** Taking the environment only when
+`github.event_name == 'push'` still asks for it on a *branch* push, which the
+same policy refuses. It has to be keyed on the ref being the default branch,
+read from `github.event.repository.default_branch` rather than typed.
+
+**And then the real one.** With the job finally running, the step failed with
+**exit 3**. `--require-complete` was not even passed: exit `3` is non-zero, so a
+bare `run:` fails on it regardless. A pull request has no platform credential by
+design, so SEC-001's and SEC-003's remote blocks cannot answer, and every pull
+request fails for a reason no contributor can act on — which is the exact
+failure § 4.3 was written to prevent.
+
+**So under Option 3 the fork carve-out is not an edge case; it is the normal
+path.** § 4.3 said the opposite — *"If your repository takes no fork pull
+requests, do not write this"* — and it said so because **this repository has
+never met any of it**: Option 1 puts the secret where same-repo pull request
+runs can read it, and ADR 0022's requirement 6 is precisely that this
+repository's posture must not be read as the standard's.
+
+The arrangement that works, measured green on both events with the pull request
+reporting `CLEAN`: the environment is taken only on the default branch, the
+strict `--require-complete` run is the default-branch run, and a pull request
+runs the same audit with the job token and tolerates exit `3` and only `3`.
+
+**The cost is real and is now stated in the guide rather than buried**: an
+adopter's pull request is gated by the audit that *can* run, so a change leaving
+a control unverifiable merges and the default branch goes red afterwards, rather
+than the pull request going red before.
+
+**A decision is owed, and the guide says so rather than making it.** This
+narrows *a run that cannot verify fails* — [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md)'s
+property — to the default branch for every adopter. That is a choice with
+alternatives (loosen the policy; take Option 1; require reviewers; run the
+strict audit on a schedule), it weakens a stated guarantee, and it crosses two
+ADRs, so amending either alone would leave the other's reader with a wrong
+picture. It needs its own ADR, plus a numbered revision to ADR 0016, whose
+revision 5 bounds the exit-3 tolerance to fork pull requests — right that the
+bound is a fact about the platform, wrong that the fact stops at forks.
+
+`tests/test_adopter_guide.py` caught the first draft of the fix, which split the
+secret and its `environment:` line into two fenced blocks: a reader copies an
+example, not a section, so the line that reaches the secret and the line that
+gates it have to be in front of the same reader.
 
 ## What the two skills did when they could run
 
