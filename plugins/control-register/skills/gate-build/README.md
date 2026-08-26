@@ -29,17 +29,17 @@ pre-commit locus unrecorded even though the same command enforces it.
 
 ## It pins what it finds; it does not choose
 
-`project-init` decides *which* image and which features a repository uses.
+The shipped **template** decides which image and which features a repository
+starts from, and an adopter whose stack it does not fit chooses for themselves.
 DEV-001 insists that whichever were chosen are pinned, and BLD-001 that the
-container does not end as root. Those are different questions and neither skill
-should be asked the other's
-([`03-devcontainer.md`](../../../../docs/03-devcontainer.md) § How this composes
-with `project-init`). Inventing an image or a user here produces a container
-that does not start, which is a worse failure than the one being fixed.
+container does not end as root. Those are different questions, and this gate is
+only ever asked the second
+([`0037`](../../../../docs/adr/0037-the-template-is-the-whole-devcontainer-step.md)).
+Inventing an image or a user here produces a container that does not start,
+which is a worse failure than the one being fixed.
 
-The same line divides this gate from the shipped **template**, which lives at
-`plugins/control-register/templates/devcontainer/`. The template produces the initial
-`.devcontainer/`; this gate pins it afterwards.
+The template lives at `plugins/control-register/templates/devcontainer/`. It
+produces the initial `.devcontainer/`; this gate pins it afterwards.
 
 ## The two half-states it exists to catch
 

@@ -30,8 +30,11 @@ had no uv, while its own `setup.sh` called `uv sync --frozen`
 ([ADR 0034](docs/adr/0034-the-template-bootstraps-uv.md)); and `devcontainer up`
 on an existing container left the lock file covering one feature of two.
 
-The Phase 2 criterion still open is a **different** one, re-opened by Phase 4:
-*every SKILL.md passes preflight P1–P11*. See ADR 0035 below.
+**Phase 2 is closed.** Its last criterion — *every SKILL.md passes preflight
+P1–P11*, re-opened by Phase 4 — was re-closed 2026-08-26 on a re-run over all
+eight skills. It did not pass first time: `gate-quality` failed P1 at 510 lines,
+and the 56 lines over the ceiling were two sections pasted into every skill they
+governed, so the fix was ADR 0036 below and not an edit to the longest file.
 
 **Work in the container, not on the host.** Phase 4's first deployment run was
 driven from the macOS host and cost three things no verdict showed: the host's
@@ -328,10 +331,30 @@ that quietly becomes general.
   of the exit criteria in `docs/04-build-plan.md`, which stays the single source.
   It stores nothing and infers no gating; it exits non-zero if a criterion is
   marked re-opened while still ticked. Never maintain a second list of this work.
-- Lint markdown: `markdownlint-cli2 "**/*.md"` — also runs via a PostToolUse
-  auto-fix hook on every file you write, a pre-commit hook, and
-  `.github/workflows/lint.yml`.
+- Lint markdown: `node_modules/.bin/markdownlint-cli2 "**/*.md"` — also runs via
+  a PostToolUse auto-fix hook on every file you write, a pre-commit hook, and
+  `.github/workflows/lint.yml`. **The path is the command.** There is no
+  `markdownlint-cli2` on `PATH` in this container, and a bare one falls through
+  to `npx`, which downloads a version rather than using the one
+  `package-lock.json` pins — ADR 0020 case C, in this file's own instructions.
+  `.pre-commit-config.yaml` and `.github/workflows/lint.yml` both spell the path.
 - Run all pre-commit hooks: `uv run pre-commit run --all-files`
+- **Before you push**, run what CI runs. Four commands, because no single one
+  covers it and inventing a fifth that wrapped them would be a second copy of
+  the CI definition:
+
+  ```bash
+  uv run pre-commit run --all-files   # ruff, mypy, gitleaks, markdown, 3 controls
+  uv run pytest                       # TST-001 — ci is its only declared locus
+  uv run register-check               # the whole register; pre-commit runs three
+  uv sync --frozen                    # SUP-001 — the lockfile is current
+  ```
+
+  The middle two have **no** pre-commit equivalent, so a green commit says
+  nothing about them. `register-check` exiting `3` locally is expected and not a
+  failure: SEC-003's remote blocks answer only inside a GitHub Actions job.
+  Whether this becomes a wired `pre-push` locus rather than a remembered routine
+  is Phase 5's, and it is a register change before it is a config one.
 - Verify container auth/tools: `.devcontainer/check-auth.sh`
 - `gh` for repos in the Eaiger-Ent org (ambient `GITHUB_TOKEN`); `gh-ee-skills`
   for repos in the EqualExperts org (ee-skills, ee-skills-incubator) — the
@@ -504,7 +527,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
 | `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the twenty-six things it found |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **34** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0035 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **36** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0037 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fourteen Tier-1 controls, with
@@ -665,6 +688,34 @@ contract before `tools.register-check.install` existed, so the only obtainable
 register could not install the checker it describes. `install.ref` and
 `pyproject.toml`'s version are now set in the commit the tag names, which makes
 the checker and the register one artefact rather than two that can disagree.
+
+Per [ADR 0036](docs/adr/0036-shared-skill-prose-has-one-home.md)
+(**Accepted** and implemented 2026-08-26) **prose more than one skill must
+follow is shipped once**, under `plugins/control-register/reference/`, and read
+at runtime through `${CLAUDE_PLUGIN_ROOT}`; the skill carries a pointer and
+nothing more. Two files exist — `pre-commit-runner.md` and
+`write-narration.md` — and they were twelve pasted copies of two rules until a
+preflight line count found them. Do not paste a shared section back into a
+SKILL.md: `tests/test_shared_reference.py` fails that, and fails a pointer to a
+file the plugin does not ship. The reference files cite ADR 0036 in prose rather
+than by link, because `docs/` is not shipped and a relative link out of the
+plugin resolves here and dangles in every installation.
+
+Per [ADR 0037](docs/adr/0037-the-template-is-the-whole-devcontainer-step.md)
+(**Accepted** and implemented 2026-08-26) **`project-init` is not part of this
+standard's adoption route.** The shipped template produces a *configured*
+`.devcontainer/` — image pinned by digest, features declared, lock file covering
+them — so there is no configure-it-for-the-stack step and no skill that performs
+one. Where the template's image does not fit, **the adopter changes it by hand**
+and `gate-build` pins what it finds; the gate still never chooses. The decision
+was forced by measurement rather than taste: `project-init` Step 4 replaces the
+digest pin with a floating tag below the register's floor and adds a second,
+conflicting node feature, and its precondition makes it run *after* the template
+is copied. `docs/08-adopting.md` § 2.0 had already dropped it in Phase 2 while
+eight other places still described a division of labour with it — two of them
+shipped. **The composition exit criterion is retired, not met**, and
+`docs/04-build-plan.md` § Phase 4 records why. Do not re-add `project-init` to a
+prior-art table: each of the four that lost it says in one line that it did.
 
 Gate skills live in `plugins/control-register/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,

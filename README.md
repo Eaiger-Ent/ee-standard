@@ -58,7 +58,7 @@ twice. Every step carries the evidence that shows it worked.
 | [`docs/00-concepts.md`](docs/00-concepts.md) | The vocabulary. Read first. |
 | [`docs/01-register-schema.md`](docs/01-register-schema.md) | Field-by-field spec for `controls.yaml`. |
 | [`docs/02-skill-family.md`](docs/02-skill-family.md) | The plugin: dispatcher, gates, checker, staleness. |
-| [`docs/03-devcontainer.md`](docs/03-devcontainer.md) | The clean devcontainer, and how it composes with `project-init`. |
+| [`docs/03-devcontainer.md`](docs/03-devcontainer.md) | The clean devcontainer, what it ships, and who owns each step. |
 | [`docs/04-build-plan.md`](docs/04-build-plan.md) | Seven phases with checkable exit criteria. |
 | [`docs/05-promotion.md`](docs/05-promotion.md) | The route to the `ee-skills` marketplace. |
 | [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md) | **Start here if you are working on this repo.** Standing up its container, and the macOS values it needs. |
@@ -134,6 +134,11 @@ This composes with prior art rather than replacing it:
 | Plugin | Relationship |
 | --- | --- |
 | `lint-md` | Owns DOC-001 outright. Also the reference shape every gate copies. |
-| `project-init` | Configures the devcontainer. This repo insists the result is pinned. |
 | `devcontainer-check` | Checks the environment. This repo checks the configuration. |
 | `ee-skills-manage` | `skill-update` gains the owed-deployment report. |
+
+`project-init` was in this table, deferred to for the choice of image. The
+shipped devcontainer template now produces a configured `.devcontainer/`, and
+`project-init` replaces its digest pin with a floating tag, so the standard no
+longer composes with it
+([ADR 0037](docs/adr/0037-the-template-is-the-whole-devcontainer-step.md)).

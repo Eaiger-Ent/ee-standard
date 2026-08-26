@@ -153,59 +153,26 @@ change to report before making, not after.
 
 ## Before you write a pre-commit hook, make sure something runs it
 
-**A hook in `.pre-commit-config.yaml` is a statement of intent; the runner and
-the installed git hook are whether anything happens.** Five gates write into
-that file and, until Phase 4, none of them installed the thing that reads it —
-so the consumer repository finished its adoption with every gate reporting its
-`pre-commit` locus wired, `pre-commit` absent from the project, no
-`.git/hooks/pre-commit`, and a deliberately malformed commit sailing straight
-through. The checker reported the locus wired throughout, because it reads the
-config file, which is the right thing for it to read and not the same claim.
-
-So before writing your hook, and idempotently — whichever gate runs first does
-it and the rest find it done:
-
-1. **Is `pre-commit` a dev dependency of this repository?** Reach it the way its
-   locus will: `uv run pre-commit --version`, or the equivalent for the lockfile
-   present. If it is not there, add it with
-   `ecosystems.<eco>.add_dev_dependency` — the register's spelling, never one
-   you compose yourself.
-2. **Is the git hook installed?** `test -x .git/hooks/pre-commit`. If not, run
-   `pre-commit install` through the same package manager. `.git/hooks/` is
-   untracked, so this is per clone and per container, and the devcontainer
-   template's `setup.sh` does it at container-create for anyone who starts fresh.
-3. **Say what you found**, in the write narration above. "pre-commit was absent
-   and has been added" is a different fact from "already present", and the
-   second is worth one line rather than none.
-
-No control verifies step 2, and that is a stated boundary rather than an
-oversight: `.git/hooks/` is untracked and CI legitimately has no hooks
-installed. Step 1 *is* tracked — it is a line in a lockfile — and the template's
-`check-auth.sh` reports a missing hook on every container start.
+**Read `${CLAUDE_PLUGIN_ROOT}/reference/pre-commit-runner.md` and do what it
+says, before your first write into `.pre-commit-config.yaml`.** A hook in that
+file is a statement of intent; the runner and the installed git hook are whether
+anything happens, and this gate is one of five writing into it. The steps are
+held there rather than here because five copies of a rule is the drift this
+standard exists to prevent — see ADR 0036. If `${CLAUDE_PLUGIN_ROOT}` is unset,
+the skill was reached as a project skill rather than through the plugin, and the
+file is at `plugins/control-register/reference/` in the standard's repository.
 
 ## Say what each write is for, before you make it
 
-**One line before every file write, and no write without one.** The person
-approving it sees a diff and nothing else: not which control it serves, not
-which step of how many, not what will check it. The provenance stamp names the
-control, but it arrives buried in the middle of the change it is explaining.
-Nothing has failed at that point and nothing has passed — this gate deploys
-first and verifies last, which is right, and it means the approver is being
-asked to accept a change on trust unless you give them the reason first.
-
-Use exactly this shape:
-
-```text
-<CONTROL-ID> · step <n>/<total> · <path>
-  what it does:  <one clause>
-  why now:       <what is absent or wrong without it>
-  verified by:   register-check run --control <CONTROL-ID>, at the verify step
-```
-
-If a write serves more than one control, name them all. If it is a re-run and
-the file already carries this gate's region, say that instead — *"already
-deployed at contract N, replacing this gate's own block"* — because
-"idempotent" is a claim the approver cannot check from a diff either.
+**Read `${CLAUDE_PLUGIN_ROOT}/reference/write-narration.md` and use the shape it
+gives, before your first write.** One line before every file write, and no write
+without one: the person approving it sees a diff and nothing else, and this
+skill deploys first and verifies last, so nothing has failed or passed yet. The
+shape is held there rather than here because seven copies of a rule is the drift
+this standard exists to prevent — see ADR 0036. If `${CLAUDE_PLUGIN_ROOT}` is
+unset, the skill was reached as a project skill rather than through the plugin,
+and the file is at `plugins/control-register/reference/` in the standard's
+repository.
 
 ## Step 1 — Wire the frozen install (SUP-001)
 

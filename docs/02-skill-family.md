@@ -7,16 +7,24 @@ boundary, which is the constraint this whole design bends around.
 
 ## What already exists
 
-Before designing anything, the `ee-skills` marketplace was surveyed. Three
-existing plugins already own parts of this problem, and the family below
-**composes with them rather than replacing them**. Rebuilding any of these would
+Before designing anything, the `ee-skills` marketplace was surveyed. Two
+existing plugins own parts of this problem, and the family below **composes with
+them rather than replacing them**. Rebuilding any of these would
 create exactly the duplicate-definition drift the register exists to prevent.
 
 | Existing plugin | What it owns | Consequence for us |
 | --- | --- | --- |
 | `lint-md` | The entire DOC-001 lifecycle — installs `markdownlint-cli2`, writes the config, wires the editor hook, pre-commit hook and CI step, migrates from `pymarkdownlnt` | DOC-001 carries `deployed_by: lint-md`. We do not write a markdown gate. |
-| `project-init` | Interactive devcontainer + README + `CLAUDE.md` + `gh repo edit` setup, and the commit | We do not write devcontainer content. We add the *pinning* discipline it does not cover (DEV-001). |
 | `devcontainer-check` | Health-check that declared CLI tools are installed and authenticated | Complementary: it checks the *environment*, we check the *configuration*. Neither subsumes the other. |
+
+**A third was here and is not any more.** `project-init` owned interactive
+devcontainer configuration, and this family deferred to it for the choice of
+image. The shipped template now produces a configured `.devcontainer/`, and
+`project-init` re-chooses the image in a way that fails DEV-001, so the standard
+does not compose with it
+([ADR 0037](adr/0037-the-template-is-the-whole-devcontainer-step.md)). Saying so
+rather than dropping the row: a table that quietly loses an entry reads as a
+survey nobody finished.
 
 `lint-md` is also the shape everything here copies: pre-flight state detection →
 install tool → write config → wire every locus → migrate predecessor → verify
@@ -286,6 +294,17 @@ The 500-line limit is the binding constraint on `register-adopt`. The dispatcher
 must stay a dispatcher: plan, confirm, delegate, verify, report. Every table of
 per-control detail belongs in the register or a `templates/` file the skill
 reads, not inline in the SKILL.md.
+
+It bound `gate-quality` first, and for a different reason
+([ADR 0036](adr/0036-shared-skill-prose-has-one-home.md)). Two of Phase 4's
+fixes were written as a section pasted into every skill they governed — twelve
+copies of two rules — and the count reached 510 before anything noticed. So
+**prose more than one skill must follow is shipped once**, under
+`plugins/control-register/reference/`, and read at runtime through
+`${CLAUDE_PLUGIN_ROOT}`; the skill carries a pointer and nothing more. Two files
+exist: `pre-commit-runner.md` and `write-narration.md`.
+`tests/test_shared_reference.py` fails a pointer to a file the plugin does not
+ship, and a skill that takes the section back.
 
 ## Category
 
