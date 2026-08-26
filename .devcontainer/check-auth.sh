@@ -74,7 +74,30 @@ check_tool claude claude
 # `uv run python` is the question the loci actually ask.
 check_tool python uv run python
 check_tool node node
-check_tool markdownlint-cli2 npx --no-install markdownlint-cli2
+# `node_modules/.bin/...`, not `npx --no-install`: ADR 0020 measured that
+# spelling falling through to `PATH`, so a probe using it can report a global
+# copy as though it were the pinned one — the opposite of what this script is
+# for. The register's `tools.markdownlint-cli2.invocation` is the authority.
+check_tool markdownlint-cli2 node_modules/.bin/markdownlint-cli2
+# The one tool `setup.sh` installs itself, and the one every verification here
+# runs through.
+check_tool uv uv
+
+# **A wired locus with no installed hook.** `.pre-commit-config.yaml` states
+# intent and `.git/hooks/pre-commit` is whether anything runs, and every control
+# that declares a pre-commit locus reads the first. Reported, never repaired: a
+# start-up hook that silently fixed state would hide which locus stopped working
+# and when. It cannot be a control either — `.git/hooks/` is untracked, and CI
+# has no hooks installed and should not.
+if [ -f "$REPO_DIR/.pre-commit-config.yaml" ]; then
+  if [ -x "$REPO_DIR/.git/hooks/pre-commit" ]; then
+    echo "  ✓ pre-commit hook — installed"
+  else
+    echo "  ✗ pre-commit hook — .pre-commit-config.yaml is present and"
+    echo "      .git/hooks/pre-commit is not. Nothing runs at the pre-commit"
+    echo "      locus. Fix: bash .devcontainer/setup.sh"
+  fi
+fi
 
 # Identity may come from git config or from GIT_AUTHOR_* in the environment
 # (fetch-secrets.sh supplies the latter). `git var` is the question actually

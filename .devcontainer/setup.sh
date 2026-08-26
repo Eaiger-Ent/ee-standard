@@ -9,6 +9,21 @@ set -euo pipefail
 # The named volume mounts root-owned on first create.
 sudo chown -R vscode:vscode /home/vscode/.claude
 
+# **Trust the workspace, or nothing here can read git.** On a macOS host the
+# workspace is a bind mount and git inside the container refuses it — "detected
+# dubious ownership" — even though the directory and `.git` both stat as the
+# container user. The failure is partial, which is worse than total: `git status`
+# and `git add` work while `git commit` and `git log` do not.
+#
+# Every assert in this register reads what git tracks, so a repository git will
+# not open makes `register-check` report nothing rather than report a violation.
+# Back-ported from the shipped template, which met this in Phase 4's consumer
+# repository; the rule is that a fix belongs in both.
+#
+# Scoped to this workspace, never `*`: the check exists to stop hooks running out
+# of a repository somebody else owns.
+git config --global --add safe.directory "$PWD"
+
 # The claude-code feature runs `npm install -g` as root, so the package tree it
 # writes is root-owned while the container's user is vscode (BLD-001) — and
 # `claude update` then fails with "Insufficient permissions to install update"
@@ -81,7 +96,22 @@ rm /tmp/uv.tgz /tmp/uv /tmp/uvx
 # Downloads the interpreter `.python-version` names on a fresh container, since
 # nothing else installs one now. `--frozen` still refuses to re-resolve.
 uv sync --frozen
-uv run pre-commit install
+
+# **The hook is installed on the config's own terms.** It used to hang off this
+# lockfile branch, which is fine here — this repository has always had both
+# `uv.lock` and `pre-commit` — and was not fine in the consumer repository,
+# where `.pre-commit-config.yaml` was deployed, every gate reported the locus
+# wired, and nothing ran at it. Each arm asks whether the tool is reachable
+# *that way* before using it, because an unguarded `uv run pre-commit` exits
+# non-zero and, under `set -e`, aborts container create.
+if [ -f .pre-commit-config.yaml ]; then
+  if uv run pre-commit --version >/dev/null 2>&1; then
+    uv run pre-commit install
+  else
+    echo "note: .pre-commit-config.yaml exists and pre-commit is not installed," >&2
+    echo "      so nothing runs at the pre-commit locus." >&2
+  fi
+fi
 
 # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  register: v0.15.0  register-contract: 15
 #
