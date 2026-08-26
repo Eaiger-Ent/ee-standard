@@ -955,6 +955,25 @@ Wire the mechanism that keeps deployments current.
       cases where classification declines to guess, so they cannot be judged
       before something classifies
 
+- [ ] **A developer can run what CI runs, before pushing, in one wired step.**
+      Today they cannot, and the gap is not evenly spread: `uv run pre-commit run
+      --all-files` covers ruff, mypy, gitleaks, markdown and three controls,
+      while `uv run pytest` and a full `uv run register-check` have **no**
+      pre-commit equivalent at all — `ci` is TST-001's only declared locus, and
+      the pre-commit hooks run three controls of fourteen. So a green commit is
+      silent about the two checks most likely to fail a pull request, and
+      `CLAUDE.md` § Commands closes it by asking a person to remember four
+      commands. **Added 2026-08-26**, after a PR's failures turned out to be
+      hosted-runner acquisition rather than the change — which is a different
+      problem, and made the absence of a local equivalent the expensive part.
+      The shape is a **`pre-push` locus**, and it is a register change before it
+      is a config one: `locus:` gains a fourth value, the controls that want it
+      declare it, the contract bumps, and `gate-quality` writes and stamps the
+      hook like any other. What must not happen is a script in `scripts/` that
+      lists CI's steps — that is a second copy of the CI definition, free to
+      drift from the workflow it mirrors. Judge it by deleting a passing test
+      and watching the push refuse
+
 The first two criteria are the whole noise argument, expressed as a test. If a
 documentation-only release triggers a recommendation, the mechanism will be
 ignored within a month and the phase has failed regardless of what else passes.

@@ -331,10 +331,30 @@ that quietly becomes general.
   of the exit criteria in `docs/04-build-plan.md`, which stays the single source.
   It stores nothing and infers no gating; it exits non-zero if a criterion is
   marked re-opened while still ticked. Never maintain a second list of this work.
-- Lint markdown: `markdownlint-cli2 "**/*.md"` — also runs via a PostToolUse
-  auto-fix hook on every file you write, a pre-commit hook, and
-  `.github/workflows/lint.yml`.
+- Lint markdown: `node_modules/.bin/markdownlint-cli2 "**/*.md"` — also runs via
+  a PostToolUse auto-fix hook on every file you write, a pre-commit hook, and
+  `.github/workflows/lint.yml`. **The path is the command.** There is no
+  `markdownlint-cli2` on `PATH` in this container, and a bare one falls through
+  to `npx`, which downloads a version rather than using the one
+  `package-lock.json` pins — ADR 0020 case C, in this file's own instructions.
+  `.pre-commit-config.yaml` and `.github/workflows/lint.yml` both spell the path.
 - Run all pre-commit hooks: `uv run pre-commit run --all-files`
+- **Before you push**, run what CI runs. Four commands, because no single one
+  covers it and inventing a fifth that wrapped them would be a second copy of
+  the CI definition:
+
+  ```bash
+  uv run pre-commit run --all-files   # ruff, mypy, gitleaks, markdown, 3 controls
+  uv run pytest                       # TST-001 — ci is its only declared locus
+  uv run register-check               # the whole register; pre-commit runs three
+  uv sync --frozen                    # SUP-001 — the lockfile is current
+  ```
+
+  The middle two have **no** pre-commit equivalent, so a green commit says
+  nothing about them. `register-check` exiting `3` locally is expected and not a
+  failure: SEC-003's remote blocks answer only inside a GitHub Actions job.
+  Whether this becomes a wired `pre-push` locus rather than a remembered routine
+  is Phase 5's, and it is a register change before it is a config one.
 - Verify container auth/tools: `.devcontainer/check-auth.sh`
 - `gh` for repos in the Eaiger-Ent org (ambient `GITHUB_TOKEN`); `gh-ee-skills`
   for repos in the EqualExperts org (ee-skills, ee-skills-incubator) — the
