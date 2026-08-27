@@ -579,6 +579,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
 | `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the twenty-six things it found |
 | `docs/13-phase-5-review.md` | Record of Phase 5 slice by slice, and what each one deliberately left open |
+| `docs/14-file-map.md` | **Where everything is.** Which file to open, and why `controls.yaml`, `deployment-decisions.yaml` and `.claude/skill-config.yaml` are three files rather than one. Held true by `tests/test_file_map.py`, in both directions at the top level |
 | `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **41** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0042 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
