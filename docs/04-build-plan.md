@@ -1119,6 +1119,20 @@ authors under `.claude/` — which is what
 [ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md) forbids and
 `markdown_gate_wired_at_all_loci` fails.
 
+**The route out is a contract, not an argument** — [ADR 0042](adr/0042-a-deploying-skill-reads-local-configuration.md),
+accepted 2026-08-27 and proposed rather than implemented. Both rows above are
+about **values**, and arguing values one at a time resolves two of them and
+leaves the mechanism that produced them in place: the next release picks a value
+this register disagrees with somewhere else. So a deploying skill should take the
+values it writes as *input* — read from a repository-local file keyed by skill
+name, absent file meaning today's behaviour. Rows 1 and 2 become one line of
+local configuration each.
+
+That does not retire rows 2 and 3 as things to raise. `ignores: []` set locally
+stops `.claude/**` reaching *this* repository and not anyone else's, and
+ADR 0019's argument is about any repository — a mechanism for expressing
+disagreement is not a substitute for saying the thing is wrong.
+
 The general rule this phase owes a mechanism to: **an exclusion is scoped by
 what it is for, not by where it sits.** A path outside the repository is out of
 scope by location and needs no exemption; a path inside it is in scope and an

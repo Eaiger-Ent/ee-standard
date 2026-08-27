@@ -494,6 +494,18 @@ lifecycle — this repo does not write its own markdown gate, and `lint-md`'s
 shape (pre-flight → install → write config → wire every locus → migrate →
 verify) is the template every future gate skill copies (`docs/02-skill-family.md`).
 
+Per [ADR 0042](docs/adr/0042-a-deploying-skill-reads-local-configuration.md)
+(**Accepted** 2026-08-27, **proposed upstream, not implemented**) the route out
+of the `lint-md` impasse is a contract rather than an argument: **a skill that
+deploys artefacts takes the values it writes as input**, reading them from a
+repository-local `.claude/skill-config.yaml` keyed by skill name, with an absent
+file meaning today's behaviour. The two disputed rows are about *values*, and
+arguing values one at a time is a standing tax that does not generalise. It is a
+**proposal until it ships**; until then the 1.0.6 stamp is a decision with a
+reason rather than a chore nobody got to. The two rows still need raising
+anyway — `ignores: []` set locally stops `.claude/**` reaching this repository
+and not anyone else's, and ADR 0019's argument is about any repository.
+
 **Do not re-run `/lint-md` here.** The stamps read `lint-md@1.0.6` and the
 installed skill is 1.0.7, so the deployment is stale — which is reported and
 never enforced. 1.0.7 shipped most of the amend at
@@ -538,7 +550,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
 | `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the twenty-six things it found |
 | `docs/13-phase-5-review.md` | Record of Phase 5 slice by slice, and what each one deliberately left open |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **40** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0041 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **41** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0042 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fifteen Tier-1 controls, with

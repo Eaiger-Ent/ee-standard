@@ -455,3 +455,57 @@ it shows the mechanism runs, not that it bites. What shows that is the test.
 - **The register still needs a human to fetch a new digest on a bump.** The
   comment beside `tools.uv.sha256` saying so stays true. What changed is that
   forgetting is no longer silent.
+
+## The sixth slice — the route out of the lint-md impasse
+
+Landed 2026-08-27. It closes no criterion and is not meant to: it fixes a
+contract so that the issue raised upstream and the amendment submitted after it
+describe the same thing, and so a future release can be judged against something
+citable rather than against whatever anyone remembered wanting.
+
+### What was found
+
+The plan's four rows are right about what `lint-md@1.0.7` does — re-measured
+against the installed skill: `npx --no-install markdownlint-cli2` at **eight**
+sites, and `.claude/**` appended to `ignores` at Step 2b. What the plan gets
+wrong is the response.
+
+Arguing both rows upstream resolves two values and leaves the mechanism that
+produced them in place. The next release picks a value this register disagrees
+with somewhere else, and the skill is unrunnable again. Every disagreement then
+looks like a defect in the skill, when most of them are legitimate differences
+between repositories.
+
+[ADR 0042](adr/0042-a-deploying-skill-reads-local-configuration.md) proposes the
+generalisation: a skill that deploys artefacts takes the values it writes as
+**input**, read from a repository-local file keyed by skill name, with an absent
+file meaning exactly today's behaviour. Both rows become one line of local
+configuration each.
+
+### The one thing that made this worth an ADR rather than an issue
+
+The local file is a **second statement** of two values `controls.yaml` already
+holds, which is the duplication this repository exists to prevent. Accepting it
+needed a reason, and the reason is that the alternative is worse: generating the
+file from the register at deploy time would put a `controls.yaml` reader inside a
+plugin that must work for repositories with no register at all.
+
+What keeps the copy honest is that `markdown_gate_wired_at_all_loci` already
+reads the deployed artefacts against `tools.markdownlint-cli2.invocation`, so a
+local config that drifted from the register fails the build on the next run. The
+copy is **checked**, which is the condition this repository has always put on the
+ones it keeps.
+
+### What the slice deliberately left open
+
+- **It is a proposal.** Nothing ships until `ee-skills` takes it, and the
+  working amendment against `lint-md` is the next step rather than part of this
+  one.
+- **The two rows still need raising**, and the contract does not retire them.
+  Setting `ignores: []` locally stops `.claude/**` reaching this repository and
+  not anyone else's; ADR 0019's argument is about any repository.
+- **Neither of the phase's two upstream-release criteria closes here.** Taking a
+  release with a recorded outcome, and distinguishing *nobody redeployed* from
+  *the release would revert a narrowing*, both need a mechanism that records the
+  declination and a report that reads it. What this slice gives them is the
+  reason to record — which was previously an argument in prose.
