@@ -590,3 +590,95 @@ that way.
   ADR 0026 would have made this a new ADR. It was folded in because it is the
   same decision's other half and the ADR was a day old; the revision history
   says so rather than leaving the choice implicit.
+
+## The eighth slice — the sweep
+
+Landed 2026-08-27. It closes the phase's headline criterion and the standing
+adopter-facing one that was waiting on it, and it closes them as **two**
+scheduled runs rather than the one the plan describes.
+
+### What was found
+
+The plan says *"a scheduled sweep running `register-check` across repos"*. The
+across-repos half was already settled — this repository manages itself and does
+not reach into another — but the remaining question was what a per-repository
+sweep should actually run, and the answer turned out to be *not one thing*.
+
+**A full conformance run needs tools.** gitleaks, markdownlint and the frozen
+node install all have to be present or the report is a wall of `UNCLASSIFIED`.
+Installing them in a sweep workflow is a **second copy of
+`register-check.yml`'s setup**, free to drift from it — the duplication this
+repository exists to prevent, arriving through the back door of a new workflow.
+
+So the conformance half was solved by not writing it: `register-check.yml`
+gained a `schedule:` trigger. The run that already knows how to install its
+tools is the run that should do it, and the change is one line rather than a
+file. A schedule run has no pull request, so `FROM_A_FORK` is empty and the step
+takes the `--require-complete` branch — correct, because it runs on the default
+branch carrying the repository secret.
+
+**That leaves the report with no other home.** `register-check deployments`
+reads the sidecar, the stamps and the declination record — files, no external
+tool — so the sweep needs uv and nothing else.
+
+### Why any of this is worth a schedule
+
+Several controls can start failing with **no commit at all**, and that is the
+argument for the whole slice rather than a detail of it:
+
+- **SUP-004** reads what a project published, and a release can be re-cut.
+- **GOV-003** expires on a date.
+- **SEC-001's and SEC-003's remote blocks** read platform state an
+  administrator can change — push protection turned off is exactly the drift no
+  diff would ever show.
+
+Without a schedule the first person to know is whoever opens the next pull
+request, which in a quiet month is nobody.
+
+### The report has two homes, because they answer different questions
+
+The **job summary** is the record of this run, written whether or not anything
+is owed — so a green sweep is visible rather than silent. The **issue** is the
+record of the *condition*: opened when something is owed, edited while it
+persists, closed when it clears. One issue, never one per run, or the sweep
+becomes the noise it exists to prevent.
+
+**The job does not fail on findings**, and that is the design rather than a
+softness. A red scheduled workflow is a notification people learn to dismiss,
+and staleness is reported and never enforced. It fails only when the sweep
+itself could not run — exit `2` from the report, or no summary line to parse.
+
+### One register change the sweep forced
+
+`PLATFORM_READ_TOKEN` permitted `[push, pull_request]`. A scheduled run
+referencing it would have failed SEC-003 — a secret under an event the register
+does not permit — so `schedule` joined them. It is also the *safest* of the
+three: a schedule fires only on the default branch, where a `pull_request` run
+can be proposed by anyone.
+
+### Two things caught by the checks rather than by review
+
+**`|| true` in a comment is `|| true`.** The findings step carried a comment
+explaining why the idiom was avoided, and `no-failure-suppression` scans the
+whole `run:` block — so LNT-001 and TST-001 both failed on prose. Correct
+behaviour: a comment is a place a real suppression could hide.
+
+That is the second time in one day a scanner has caught a marker in prose — the
+declination record's header carried a literal `ee-control:` and was read as a
+malformed stamp. Both are the same shape, and both were found by a check rather
+than by a reader.
+
+### What the slice deliberately left open
+
+- **Nothing compares against what is available upstream.** The sweep reports
+  what this repository has and has decided; it cannot see that a newer `lint-md`
+  exists. That comparison is `skill-update`'s, whose criterion is still open.
+- **The sweep has never fired.** It is scheduled weekly and carries
+  `workflow_dispatch` so it need not be discovered by waiting for a cron, but
+  the first real run is ahead of this record rather than behind it. What is
+  demonstrated here is that the workflow parses, that the report it runs exits
+  `0` with five gates owed, and that the summary line it parses says `5`.
+- **The tracking issue's title is the join key.** A renamed issue orphans the
+  record and the next run opens a second. A label would be sturdier and needs a
+  label to exist first; this is the smaller assumption, recorded rather than
+  hidden.

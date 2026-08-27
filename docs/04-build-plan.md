@@ -946,16 +946,41 @@ Wire the mechanism that keeps deployments current.
 
 ### Exit criteria — phase 5
 
-- [ ] Every adopter-facing step this phase introduces is in
+- [x] Every adopter-facing step this phase introduces is in
       [`08-adopting.md`](08-adopting.md) with its evidence — how a repository
-      opts into the sweep, and how its owner reads a staleness report
+      opts into the sweep, and how its owner reads a staleness report.
+      **Closed 2026-08-27** with the sweep itself: § 4.4 is how the report is
+      read, § 3.0 the pre-push locus, § 3.1 SEC-002's wiring, § 4.1 SUP-004's
+      credential (it needs none, which is the surprising row), § 4.4 the
+      declination record, and § 4.5 how a repository opts in — a `schedule:`
+      line, a template to copy, and the two register edits that go with it.
+      Checklist rows 7d, 7e, 11a and 11b carry the evidence
 
 - [x] Bumping a gate's version *without* changing its output produces **no**
       redeployment recommendation
 - [x] Bumping its contract version *does*
 - [ ] `skill-update` reports an owed deployment where every plugin is current,
       and does not print *Already done* over it
-- [ ] The sweep runs unattended and produces a report nobody has to ask for
+- [x] The sweep runs unattended and produces a report nobody has to ask for.
+      **Closed 2026-08-27**, and as **two** scheduled runs rather than one.
+      `register-check.yml` gained a `schedule:` trigger, because several
+      controls can start failing with no commit — SUP-004 reads what a project
+      published, GOV-003 expires on a date, and SEC-001's and SEC-003's remote
+      blocks read platform state an administrator can change. The sweep itself,
+      `.github/workflows/conformance-sweep.yml`, runs `register-check
+      deployments` — the report with no other home — writes it to the job
+      summary on every run, and keeps **one** tracking issue: opened when
+      something is owed, edited while it persists, closed when it clears.
+
+      It runs `deployments` and not the full audit **on purpose**: the audit
+      needs gitleaks, markdownlint and the rest, and installing them here would
+      be a second copy of the conformance workflow's setup, free to drift from
+      it. The run that already knows how to install its tools is the run that
+      got the schedule.
+
+      It does not fail on findings — a red scheduled workflow is a notification
+      people learn to dismiss, and staleness is reported and never enforced. It
+      fails only when the sweep could not run
 - [x] A repo that has never deployed is distinguishable from one deployed and
       current, and from one deployed and stale
 - [x] Taking an upstream skill release is a supported operation with a recorded
