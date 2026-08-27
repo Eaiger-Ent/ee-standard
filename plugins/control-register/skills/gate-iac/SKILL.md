@@ -81,6 +81,14 @@ the authority for anything, and every step below reads it.
 | `SUPPRESSION` | `suppression:` — the idioms nothing this gate writes may contain |
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
+| `SKILL_VERSION` | the plugin's `.claude-plugin/plugin.json`, `version` |
+| `GATE_CONTRACT` | the plugin's `.claude-plugin/deploys.json`, `gates.gate-iac.contractVersion` |
+
+The last two rows are the **plugin's** numbers rather than the register's,
+read from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/`. `GATE_CONTRACT` is what a
+stamp records as `gate-contract`, and it moves only when what this gate writes
+changes, so a documentation release of the plugin recommends nothing
+(ADR 0038). If `${CLAUDE_PLUGIN_ROOT}` is unset, stop and say so.
 
 **`ANALYSERS` is read, not run, and not rewritten.** The arguments in each
 `run:` string are the register's — `--compact --quiet`, `--recursive`. A repo
@@ -185,7 +193,7 @@ about what "analysed" means.
 
 **The pre-commit locus.** Read
 `${CLAUDE_SKILL_DIR}/templates/precommit-hook.yaml` and substitute `{{TOOL}}`,
-`{{TOOL_INVOCATION}}`, `{{SKILL_VERSION}}`, `{{REGISTER_VERSION}}` and
+`{{TOOL_INVOCATION}}`, `{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and
 `{{REGISTER_CONTRACT}}`.
 
 - **`PRECOMMIT_STATE` is `ABSENT`:** create `.pre-commit-config.yaml` with a

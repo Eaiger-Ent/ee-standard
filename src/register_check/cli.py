@@ -7,6 +7,7 @@
     register-check meta GOV-001    # one meta-control
     register-check assert <name>   # one command assert
     register-check explain SEC-001 # what it checks, why, and the standard it cites
+    register-check deployments     # which gates are deployed here, and which are owed
 
 Exit codes for a run, per ADR 0016:
 
@@ -28,6 +29,9 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
+from register_check.deployments import NoPlugin, find_plugin
+from register_check.deployments import build as build_deployments
+from register_check.deployments import render as render_deployments
 from register_check.meta import META_CHECKS
 from register_check.register import Control, Register, load_register
 from register_check.remote import resolve as resolve_remote
@@ -96,6 +100,19 @@ def _parser() -> argparse.ArgumentParser:
     check.add_argument("name")
     explain = sub.add_parser("explain", help="what a control checks, and why")
     explain.add_argument("id", metavar="ID")
+    deployments = sub.add_parser(
+        "deployments", help="which gates are deployed here, and which are owed a re-run"
+    )
+    deployments.add_argument(
+        "--plugin",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help=(
+            "the plugin root whose .claude-plugin/deploys.json declares the gates "
+            "(default: $CLAUDE_PLUGIN_ROOT, then <repo>/plugins/control-register)"
+        ),
+    )
     return parser
 
 
@@ -249,6 +266,29 @@ def _cmd_explain(repo_path: Path, register_path: Path | None, control_id: str) -
     return 0
 
 
+def _cmd_deployments(repo_path: Path, register_path: Path | None, plugin: Path | None) -> int:
+    """Report deployment currency, gate by gate.
+
+    Exit `0` over any number of stale or undeployed gates: staleness is
+    reported and never enforced (`docs/00-concepts.md` § Notify, never
+    redeploy), and a command that failed over one would be enforcing
+    redeployment through the back door. Exit `1` only for a defect — a stamp
+    claiming a contract the installed gate has not reached — which is the same
+    thing `provenance_stamp_present` already fails a register contract for.
+    """
+    register, code = _load(repo_path, register_path)
+    if register is None:
+        return code
+    try:
+        root = find_plugin(Repo(repo_path), plugin)
+        report = build_deployments(Repo(repo_path), root, register)
+    except NoPlugin as exc:
+        print(f"deployments: {exc}", file=sys.stderr)
+        return 2
+    print(render_deployments(report, register))
+    return 1 if report.defective else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     repo_path: Path = args.repo.resolve()
@@ -256,7 +296,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         # Only the commands that evaluate the repository need it to be one;
         # `schema` and `explain` read the register and nothing else.
-        if args.command in (None, "run", "assert", "meta"):
+        if args.command in (None, "run", "assert", "meta", "deployments"):
             require_git_repo(repo_path)
         return _dispatch(args, repo_path, register_path)
     except NotAGitRepository as exc:
@@ -289,6 +329,8 @@ def _dispatch(args: argparse.Namespace, repo_path: Path, register_path: Path | N
             return _cmd_assert(repo_path, register_path, args.name)
         case "explain":
             return _cmd_explain(repo_path, register_path, args.id)
+        case "deployments":
+            return _cmd_deployments(repo_path, register_path, args.plugin)
     raise AssertionError(f"unhandled command {args.command!r}")
 
 

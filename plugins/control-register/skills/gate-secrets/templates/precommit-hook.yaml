@@ -7,7 +7,7 @@
 # `.pre-commit-config.yaml` holds hooks for several controls, and a whole-file
 # stamp would claim the ones this gate does not own
 # (docs/00-concepts.md § The provenance stamp).
-      # ee-control: SEC-001  ee-skill: gate-secrets@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: SEC-001  ee-skill: gate-secrets@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       - id: {{TOOL}}
         name: {{TOOL}} (SEC-001)
         entry: {{TOOL}} protect --staged --no-banner --redact

@@ -15,18 +15,18 @@
 # suppression idiom from the register's `suppression:` list. LNT-001 and TST-001
 # both verify through `no-failure-suppression`, and a suppressed step is a gate
 # that reports rather than blocks.
-      # ee-control: LNT-001  ee-skill: gate-quality@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: LNT-001  ee-skill: gate-quality@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       - name: Lint ({{STACK}})
         run: {{LINT_INVOCATION}} .
 
-      # ee-control: TYP-001  ee-skill: gate-quality@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: TYP-001  ee-skill: gate-quality@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       #
       # No path argument: the type checker reads the roots {{COVERAGE_KEY}}
       # names, so the coverage CI runs is the coverage the register reads back.
       - name: Type check ({{STACK}})
         run: {{TYPECHECK_INVOCATION}}
 
-      # ee-control: TST-001  ee-skill: gate-quality@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: TST-001  ee-skill: gate-quality@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       #
       # The command is one of the spellings the register accepts for this
       # ecosystem, confirmed by whoever ran the gate — the register bounds the

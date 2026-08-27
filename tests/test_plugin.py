@@ -139,6 +139,10 @@ def test_the_templates_stamp_what_they_write(skill: Path) -> None:
     register = a_register()
     substitutions = {
         "{{SKILL_VERSION}}": "0.1.0",
+        # Read from the sidecar rather than written here: a template that
+        # stamped a literal would be the second copy ADR 0038 exists to avoid,
+        # and this test would keep passing over it.
+        "{{GATE_CONTRACT}}": _sidecar()["gates"].get(skill.name, {}).get("contractVersion", 0),
         "{{REGISTER_VERSION}}": register.version,
         "{{REGISTER_CONTRACT}}": str(register.register_contract),
     }
@@ -161,7 +165,7 @@ def test_the_templates_stamp_what_they_write(skill: Path) -> None:
         text = template.read_text(encoding="utf-8")
         assert MARKER in text, f"{template.name} writes an artefact it does not stamp"
         for placeholder, value in substitutions.items():
-            text = text.replace(placeholder, value)
+            text = text.replace(placeholder, str(value))
         # Whatever else a template parameterises — a tool name, a version, an
         # invocation — is a value only the register supplies at deploy time.
         # Filling the rest generically keeps this test about the stamp rather

@@ -91,6 +91,14 @@ verify block names in `args.tool`:
 | `PINNED_AT` | `tools.<TOOL>.pinned_at` — the paths that must repeat the version |
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
+| `SKILL_VERSION` | the plugin's `.claude-plugin/plugin.json`, `version` |
+| `GATE_CONTRACT` | the plugin's `.claude-plugin/deploys.json`, `gates.gate-secrets.contractVersion` |
+
+The last two rows are the **plugin's** numbers rather than the register's,
+read from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/`. `GATE_CONTRACT` is what a
+stamp records as `gate-contract`, and it moves only when what this gate writes
+changes, so a documentation release of the plugin recommends nothing
+(ADR 0038). If `${CLAUDE_PLUGIN_ROOT}` is unset, stop and say so.
 
 A `tools:` entry with `source: lockfile` carries an `invocation` instead of a
 version: the locus must reach the pinned artefact by that path, not by the bare
@@ -188,7 +196,7 @@ failing: an unverified secret scanner is a gate in name only.
 ## Step 2 — Write the pre-commit hook
 
 Read `${CLAUDE_SKILL_DIR}/templates/precommit-hook.yaml` and substitute
-`{{TOOL}}`, `{{SKILL_VERSION}}`, `{{REGISTER_VERSION}}` and
+`{{TOOL}}`, `{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and
 `{{REGISTER_CONTRACT}}` from the values stored in pre-flight.
 
 - **`PRECOMMIT_STATE` is `ABSENT`:** create `.pre-commit-config.yaml` with a

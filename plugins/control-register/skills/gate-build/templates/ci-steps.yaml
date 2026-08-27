@@ -11,7 +11,7 @@
 # One step, two controls, two stamps — the same shape as the pre-commit hook,
 # and for the same reason: the read-back matches on the control being
 # evaluated, so one stamp would leave the other control's ci locus unrecorded.
-      # ee-control: BLD-001  ee-skill: gate-build@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
-      # ee-control: DEV-001  ee-skill: gate-build@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: BLD-001  ee-skill: gate-build@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: DEV-001  ee-skill: gate-build@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       - name: Build and environment
         run: {{TOOL_INVOCATION}} run --control BLD-001 --control DEV-001

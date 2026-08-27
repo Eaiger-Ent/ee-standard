@@ -20,14 +20,14 @@ about, and they are checked independently of it.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, make_repo
+from conftest import REPO_ROOT, gate_contract, make_repo
 from register_check.cli import main
+from register_check.provenance import stamps_in
 from register_check.register import Register, load_register
 
 SKILL = REPO_ROOT / "plugins/control-register/skills/gate-iac"
@@ -40,8 +40,7 @@ SKILL_VERSION = "0.1.0"
 # every test below would pass vacuously on a skip.
 _ADOPTER = {
     "infra/main.tf": (
-        'terraform {\n  required_version = ">= 1.6"\n}\n\n'
-        'resource "null_resource" "example" {}\n'
+        'terraform {\n  required_version = ">= 1.6"\n}\n\nresource "null_resource" "example" {}\n'
     ),
     ".github/workflows/ci.yml": (
         "name: CI\n\non:\n  push:\n    branches: [main]\n  pull_request:\n\n"
@@ -64,6 +63,7 @@ def _render(template: str, register: Register) -> str:
         "{{TOOL}}": tool,
         "{{TOOL_INVOCATION}}": register.tools[tool].invocation or "",
         "{{SKILL_VERSION}}": SKILL_VERSION,
+        "{{GATE_CONTRACT}}": gate_contract("gate-iac"),
         "{{REGISTER_VERSION}}": register.version,
         "{{REGISTER_CONTRACT}}": str(register.register_contract),
     }.items():
@@ -161,15 +161,13 @@ def test_the_deployed_stamps_record_the_register_they_came_from(deployed: Path) 
     register = _register()
     for path in (".pre-commit-config.yaml", ".github/workflows/ci.yml"):
         text = (deployed / path).read_text(encoding="utf-8")
-        found = re.findall(
-            r"ee-control: (\S+)\s+ee-skill: (\S+)\s+register: v(\S+)\s+register-contract: (\d+)",
-            text,
-        )
-        assert {control for control, _, _, _ in found} == {"IAC-001"}, path
-        for _, skill, version, contract in found:
-            assert skill == f"gate-iac@{SKILL_VERSION}"
-            assert version == register.version
-            assert contract == str(register.register_contract)
+        found = stamps_in(text)
+        assert {stamp.control for stamp in found} == {"IAC-001"}, path
+        for stamp in found:
+            assert (stamp.skill, stamp.skill_version) == ("gate-iac", SKILL_VERSION)
+            assert stamp.register_version == register.version
+            assert stamp.register_contract == register.register_contract
+            assert stamp.gate_contract == int(gate_contract("gate-iac"))
 
 
 def test_the_deployed_workflow_is_valid_yaml_that_still_gates(deployed: Path) -> None:
@@ -230,9 +228,7 @@ def test_deleting_the_pre_commit_hook_is_caught(
     assert "pre-commit locus" in out
 
 
-def test_deleting_the_ci_step_is_caught(
-    deployed: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_deleting_the_ci_step_is_caught(deployed: Path, capsys: pytest.CaptureFixture[str]) -> None:
     workflow = deployed / ".github/workflows/ci.yml"
     text = workflow.read_text(encoding="utf-8")
     workflow.write_text(text[: text.index("      # ee-control: IAC-001")], encoding="utf-8")
@@ -260,9 +256,7 @@ def test_a_suppressed_ci_step_is_not_a_gate(
     assert "ci locus" in out
 
 
-def test_removing_the_stamps_is_caught(
-    deployed: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_removing_the_stamps_is_caught(deployed: Path, capsys: pytest.CaptureFixture[str]) -> None:
     for name in (".pre-commit-config.yaml", ".github/workflows/ci.yml"):
         path = deployed / name
         kept = [

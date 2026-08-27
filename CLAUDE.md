@@ -8,7 +8,8 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 "conformant" means, a family of Claude skills deploys the gates, and a checker
 (`register-check`, in `src/register_check/`) audits them.
 
-Current status: Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
+Current status: **Phase 5 is in progress** as of 2026-08-26 — its first slice,
+ADR 0038, is described below. Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
 with no re-opened criteria outstanding. **Phase 3 is complete** as of
 2026-08-24, and **Phases 2 and 4 are both complete** as of 2026-08-26 — Phase 4
 with one criterion retired rather than met (ADR 0037). The register is at
@@ -326,6 +327,11 @@ that quietly becomes general.
 - Full conformance run: `uv run register-check` (also: `schema`, `run --tier 1`,
   `meta GOV-001`, `assert <name>`, `explain <ID>`). CI runs it in
   `.github/workflows/register-check.yml`.
+- Which gates are deployed and current: `uv run register-check deployments`. It
+  is **not** part of a conformance run and never fails a build over staleness —
+  exit `0` over any number of stale gates, non-zero only for a stamp ahead of
+  the installed gate. Every gate here reads `UNRECORDED` until it is re-run,
+  which is ADR 0038 reporting itself rather than a defect.
 - Quality gates: `uv run ruff check .`, `uv run mypy`, `uv run pytest` — all
   configured in `pyproject.toml`, the single definition every locus reads.
 - Build-plan progress: `uv run python scripts/plan_progress.py` — a derived view
@@ -528,7 +534,8 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
 | `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the twenty-six things it found |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **36** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0037 because 0015 is archived. There are no open decisions |
+| `docs/13-phase-5-review.md` | Record of Phase 5 slice by slice, and what each one deliberately left open |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **37** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0038 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fourteen Tier-1 controls, with
@@ -717,6 +724,26 @@ eight other places still described a division of labour with it — two of them
 shipped. **The composition exit criterion is retired, not met**, and
 `docs/04-build-plan.md` § Phase 4 records why. Do not re-add `project-init` to a
 prior-art table: each of the four that lost it says in one line that it did.
+
+Per [ADR 0038](docs/adr/0038-the-stamp-records-the-deployment-contract.md)
+(**Accepted** and implemented 2026-08-26) a provenance stamp carries a fifth
+field, **`gate-contract`** — `gates.<gate>.contractVersion` from the plugin's
+`deploys.json`, read by the gate as it writes. Until then the sidecar declared a
+number nothing compared: `02-skill-family.md` said redeployment is recommended
+*"when the installed contract version is ahead of the one stamped in the repo"*,
+and no stamp held one. **The skill version cannot stand in for it** — eight
+skills share `plugin.json`'s version, so a rule keyed to it moves six gates
+whenever one ships, which is the plugin-wide contract the per-gate sidecar
+exists to avoid. The field is **optional in the parser and its absence is a
+state**: every stamp in this repository predates it and reports `UNRECORDED`,
+neither current nor stale, until each gate is re-run. **Do not fill one in by
+hand** — that records a redeployment that did not happen, which Phase 5's exit
+criteria name specifically as not one of the outcomes. Adding the field bumped
+**every** gate's `contractVersion`, because a stamp is output and every gate's
+output moved. `register-check deployments` is the reader; six states, and two
+the plan did not name are `UNRECORDED` and `NOT APPLICABLE` — a gate none of
+whose controls' predicates hold is owed nothing, or the report invents work in
+the name of preventing noise.
 
 Gate skills live in `plugins/control-register/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,

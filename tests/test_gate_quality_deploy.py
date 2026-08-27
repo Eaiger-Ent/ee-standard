@@ -32,8 +32,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, make_repo
+from conftest import REPO_ROOT, gate_contract, make_repo
 from register_check.cli import main
+from register_check.provenance import stamps_in
 from register_check.register import Gate, Register, load_register
 
 SKILL = REPO_ROOT / "plugins/control-register/skills/gate-quality"
@@ -104,15 +105,14 @@ def _render(template: str, register: Register) -> str:
         "{{LINT_HOOK_ID}}": lint.pre_commit or "",
         "{{EDITOR_EXTENSION}}": lint.editor_extension or "",
         "{{EDITOR_LANGUAGE}}": lint.editor_binding.language if lint.editor_binding else "",
-        "{{EDITOR_BINDING_SETTING}}": (
-            lint.editor_binding.setting if lint.editor_binding else ""
-        ),
+        "{{EDITOR_BINDING_SETTING}}": (lint.editor_binding.setting if lint.editor_binding else ""),
         "{{TYPECHECK_TOOL}}": typecheck.tool,
         "{{TYPECHECK_INVOCATION}}": typecheck.invocation,
         "{{TYPECHECK_HOOK_ID}}": typecheck.pre_commit or "",
         "{{COVERAGE_KEY}}": typecheck.coverage_key or "",
         "{{TEST_COMMAND}}": TEST_COMMAND,
         "{{SKILL_VERSION}}": SKILL_VERSION,
+        "{{GATE_CONTRACT}}": gate_contract("gate-quality"),
         "{{REGISTER_VERSION}}": register.version,
         "{{REGISTER_CONTRACT}}": str(register.register_contract),
     }.items():
@@ -308,15 +308,13 @@ def test_the_deployed_stamps_record_the_register_they_came_from(deployed: Path) 
     }
     for path, controls in stamped.items():
         text = (deployed / path).read_text(encoding="utf-8")
-        found = re.findall(
-            r"ee-control: (\S+)\s+ee-skill: (\S+)\s+register: v(\S+)\s+register-contract: (\d+)",
-            text,
-        )
-        assert {control for control, _, _, _ in found} == controls, path
-        for _, skill, version, contract in found:
-            assert skill == f"gate-quality@{SKILL_VERSION}"
-            assert version == register.version
-            assert contract == str(register.register_contract)
+        found = stamps_in(text)
+        assert {stamp.control for stamp in found} == controls, path
+        for stamp in found:
+            assert (stamp.skill, stamp.skill_version) == ("gate-quality", SKILL_VERSION)
+            assert stamp.register_version == register.version
+            assert stamp.register_contract == register.register_contract
+            assert stamp.gate_contract == int(gate_contract("gate-quality"))
 
 
 def test_the_deployed_workflow_is_valid_yaml_that_still_gates(deployed: Path) -> None:
@@ -421,9 +419,7 @@ def test_removing_an_artefact_is_caught(
     assert locus in out
 
 
-def test_removing_the_pin_is_caught(
-    deployed: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_removing_the_pin_is_caught(deployed: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """ADR 0020 case C, on a fully deployed repository.
 
     Every artefact is in place and every locus still reads `uv run ruff check`.
@@ -533,9 +529,7 @@ def test_stamping_one_locus_and_forgetting_the_others_is_caught(
     assert "TST-001  PASS" in out
 
 
-def test_removing_the_stamps_is_caught(
-    deployed: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_removing_the_stamps_is_caught(deployed: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """The artefacts stay; only the record of who wrote them goes.
 
     A stamp nothing reads back records a claim rather than establishing one, and

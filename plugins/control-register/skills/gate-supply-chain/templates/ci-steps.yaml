@@ -13,11 +13,11 @@
 # repository has, written verbatim. The register also holds the patterns the
 # checker credits, and the schema requires each command to match one of them —
 # so this gate cannot write an install step its own verify step will refuse.
-      # ee-control: SUP-001  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: SUP-001  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       - name: Install dependencies (frozen)
         run: {{FROZEN_INSTALL}}
 
-      # ee-control: SUP-003  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: SUP-003  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       #
       # The ci half of SUP-003's two loci. A full audit reaches every applicable
       # control including this one, so a repository whose gating workflow

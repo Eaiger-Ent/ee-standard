@@ -119,6 +119,14 @@ And once, not per stack:
 | `SUPPRESSION` | `suppression:` — the idioms nothing this gate writes may contain |
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
+| `SKILL_VERSION` | the plugin's `.claude-plugin/plugin.json`, `version` |
+| `GATE_CONTRACT` | the plugin's `.claude-plugin/deploys.json`, `gates.gate-quality.contractVersion` |
+
+The last two rows are the **plugin's** numbers rather than the register's,
+read from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/`. `GATE_CONTRACT` is what a
+stamp records as `gate-contract`, and it moves only when what this gate writes
+changes, so a documentation release of the plugin recommends nothing
+(ADR 0038). If `${CLAUDE_PLUGIN_ROOT}` is unset, stop and say so.
 
 **`SOURCE_PATTERN` is derived, not chosen.** `source_globs` is the set of
 tracked files the stack's gates are claimed to cover; turn those globs into one
@@ -278,7 +286,7 @@ step writes one stamp and it names LNT-001.
 
 Read `${CLAUDE_SKILL_DIR}/templates/editor-extensions.json` and substitute
 `{{EDITOR_EXTENSION}}`, `{{STACK}}`, `{{SKILL_VERSION}}`,
-`{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`.
+`{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`.
 
 - **The repository has a devcontainer:** merge the extension into
   `customizations.vscode.extensions`, preserving every other entry.
@@ -301,7 +309,7 @@ formatter.
 
 Otherwise read `${CLAUDE_SKILL_DIR}/templates/editor-settings.json`, substitute
 `{{EDITOR_LANGUAGE}}`, `{{EDITOR_BINDING_SETTING}}`, `{{EDITOR_EXTENSION}}`,
-`{{STACK}}`, `{{SKILL_VERSION}}`, `{{REGISTER_VERSION}}` and
+`{{STACK}}`, `{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and
 `{{REGISTER_CONTRACT}}`, and merge it into **`.vscode/settings.json`**,
 preserving every other setting. Create the file where it does not exist.
 

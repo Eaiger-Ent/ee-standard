@@ -1693,6 +1693,48 @@ issue it. SEC-003 reads the **instrument** — `X-OAuth-Scopes` present means a
 classic token, and that fails — and the **expiry**, and neither is a check that
 your token is minimal. Do not read a green SEC-003 as one.
 
+### 4.4 — Which gates are current, and which are owed a re-run
+
+A conformance run tells you whether a control **holds**. It does not tell you
+whether the artefacts satisfying it are what the gate would write today. Those
+are different questions, and the second has its own command:
+
+```bash
+uv run register-check deployments
+```
+
+It reads the plugin's `.claude-plugin/deploys.json` — which gate writes what, at
+which **deployment contract** — and the `ee-control:` stamps in your repository,
+and it gives each gate one of six states:
+
+| State | What it means | What you owe |
+| --- | --- | --- |
+| `NOT APPLICABLE` | no control this gate carries applies to your repository | nothing — a predicate skip is not a gap |
+| `NEVER DEPLOYED` | no stamp names this gate | run the gate |
+| `UNRECORDED` | deployed before the stamp carried a `gate-contract` | re-run the gate; whether it is current cannot be known |
+| `STALE` | the gate's stamps are behind the installed contract | re-run the gate |
+| `CURRENT` | stamped at the installed contract | nothing |
+| `AHEAD` | a stamp claims a contract the installed gate has not reached | investigate — that is a defect, not staleness |
+
+**A gate's version is not in that list.** The plugin's version moves for
+documentation fixes and trigger-phrase releases, and all eight skills share it,
+so nothing here reads it. What moves is the per-gate `contractVersion`, and it
+moves only when what that gate writes changes — which is the whole reason you
+can leave this command in a routine without it becoming noise
+([ADR 0038](adr/0038-the-stamp-records-the-deployment-contract.md)).
+
+**Nothing here fails a build.** The command exits `0` over any number of stale
+or undeployed gates: staleness is *reported, never enforced*, and a re-run is a
+recommendation you accept or decline. It exits non-zero only for the `AHEAD`
+defect. If your plugin is installed somewhere the command cannot guess, pass
+`--plugin <plugin root>` or set `CLAUDE_PLUGIN_ROOT`.
+
+**How you know it worked:** run it before deploying anything and every gate
+reads `NEVER DEPLOYED` or `NOT APPLICABLE`; run it after `/register-adopt` and
+every gate you deployed reads `CURRENT`. If one still reads `NEVER DEPLOYED`
+after its gate ran, the gate wrote an artefact and did not stamp it — report
+that, do not add the stamp by hand.
+
 ## 5 — Checklist
 
 Each row is done when its evidence exists, not when the step has been performed.
@@ -1717,6 +1759,7 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 9a | That credential is named in your register before it exists | `uv run register-check run --control SEC-003` passes rather than failing on a secret nothing names |
 | 10 | The conformance step passes `--require-complete` | A run that cannot verify a control fails the check rather than printing that it could not. Turn it on **after** row 9, not before |
 | 10a | The fork path, if you take fork pull requests | A test running the step's own script asserts it tolerates `3` and only `3` (§ 4.3). Do not write the branch if you do not need it |
+| 11 | Every gate you deployed is current, and you can see which are not | `uv run register-check deployments` reports `CURRENT` for each gate you ran and `NOT APPLICABLE` or `NEVER DEPLOYED` for the rest — never `UNRECORDED` or `AHEAD` in a fresh adoption (§ 4.4) |
 
 ## When something is wrong with the standard itself
 

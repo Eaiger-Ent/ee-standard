@@ -21,15 +21,15 @@ gate writes is deleted in turn below and the verdict checked.
 
 from __future__ import annotations
 
-import re
 import subprocess
 from pathlib import Path
 
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, make_repo, requires_tool
+from conftest import REPO_ROOT, gate_contract, make_repo, requires_tool
 from register_check.cli import main
+from register_check.provenance import Stamp, stamps_in
 from register_check.register import Register, load_register
 
 SKILL = REPO_ROOT / "plugins/control-register/skills/gate-secrets"
@@ -71,6 +71,7 @@ def _render(template: str, register: Register, tool: str) -> str:
         "{{TOOL_SHA256}}": pinned.sha256 or "",
         "{{TOOL_REPO}}": pinned.release_repo or "",
         "{{SKILL_VERSION}}": SKILL_VERSION,
+        "{{GATE_CONTRACT}}": gate_contract("gate-secrets"),
         "{{REGISTER_VERSION}}": register.version,
         "{{REGISTER_CONTRACT}}": str(register.register_contract),
     }.items():
@@ -184,15 +185,15 @@ def test_after_deploying_both_local_loci_verify(
 def test_the_deployed_stamp_records_the_register_it_came_from(deployed: Path) -> None:
     register = _register()
     text = (deployed / ".pre-commit-config.yaml").read_text(encoding="utf-8")
-    stamp = re.search(
-        r"ee-control: (\S+)\s+ee-skill: (\S+)\s+register: v(\S+)\s+register-contract: (\d+)", text
-    )
-    assert stamp is not None
-    assert stamp.groups() == (
-        "SEC-001",
-        f"gate-secrets@{SKILL_VERSION}",
-        register.version,
-        str(register.register_contract),
+    found = stamps_in(text)
+    assert len(found) == 1, found
+    assert found[0] == Stamp(
+        control="SEC-001",
+        skill="gate-secrets",
+        skill_version=SKILL_VERSION,
+        register_version=register.version,
+        register_contract=register.register_contract,
+        gate_contract=int(gate_contract("gate-secrets")),
     )
 
 
@@ -281,9 +282,7 @@ def test_a_suppressed_ci_step_is_not_the_ci_locus(
     assert "ci locus" in out
 
 
-def test_removing_the_stamps_is_caught(
-    deployed: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_removing_the_stamps_is_caught(deployed: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """A deployment whose provenance was stripped is not a deployment on record.
 
     Three files, not two: register contract 18 added the ignore rule, and this

@@ -15,7 +15,7 @@
 # updates is a pin that rots at a known version, which is a different failure
 # from an unpinned one but not a better one.
 # --- .github/dependabot.yml ---
-# ee-control: SUP-002  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+# ee-control: SUP-002  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
 version: 2
 updates:
   - package-ecosystem: {{ECOSYSTEM_SPELLING}}

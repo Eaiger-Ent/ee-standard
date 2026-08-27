@@ -113,6 +113,14 @@ If this fails, stop and show the error.
 | `STRICT_CHECKS` | the same block's `args.require_branches_up_to_date` |
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
+| `SKILL_VERSION` | the plugin's `.claude-plugin/plugin.json`, `version` |
+| `GATE_CONTRACT` | the plugin's `.claude-plugin/deploys.json`, `gates.gate-repo.contractVersion` |
+
+The last two rows are the **plugin's** numbers rather than the register's,
+read from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/`. `GATE_CONTRACT` is what a
+stamp records as `gate-contract`, and it moves only when what this gate writes
+changes, so a documentation release of the plugin recommends nothing
+(ADR 0038). If `${CLAUDE_PLUGIN_ROOT}` is unset, stop and say so.
 
 `REQUIREMENTS` and the `kind: remote` block's `args:` are the **same** values,
 and that is deliberate: two blocks would be two definitions of "protected", free
@@ -174,7 +182,7 @@ repository.
 
 Read `${CLAUDE_SKILL_DIR}/templates/default-branch.json` and substitute
 `{{RULESET_NAME}}`, `{{REQUIRED_CHECKS}}`, `{{REQUIRE_BRANCHES_UP_TO_DATE}}`,
-`{{SKILL_VERSION}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`. Write it
+`{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`. Write it
 to `RULESET_PATH` and **git-add it**; a ruleset git does not carry is not one
 anybody can review.
 
