@@ -28,5 +28,11 @@ node_modules/
 # Editors and OS
 .DS_Store
 
+# Claude Code's per-developer settings. `.claude/settings.json` beside it is the
+# shared file and is tracked; this one holds one person's output style, model
+# and permission grants, and tracking it would make a teammate's own edits show
+# up as a diff against someone else's preferences.
+.claude/settings.local.json
+
 # Local folders to be ignored
 temp/
