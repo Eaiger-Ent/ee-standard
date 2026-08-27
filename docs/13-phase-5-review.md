@@ -95,3 +95,103 @@ as designed, and also the reason the change was seven edits rather than one.
 They now call `stamps_in` from `provenance.py`, the parser its own docstring
 says is defined once for all four readers. The eighth copy, in
 `tests/test_provenance_stamps.py`, already did.
+
+## The second slice — a push is a locus
+
+Landed 2026-08-27, at register contract 31. It closes no criterion outright and
+that is recorded rather than worked around: half of the criterion it addresses
+is unreachable as written, and § What the slice deliberately left open says why.
+
+### What was found
+
+`CLAUDE.md` § Commands asked a person to remember four commands before pushing,
+because only one of them was wired. The pre-commit hooks reach ruff, mypy,
+gitleaks, markdownlint and three controls of fourteen; `uv run pytest` and a
+full `uv run register-check` had no local moment at all. That is a second copy
+of the CI definition held in prose — free to drift from
+`.github/workflows/register-check.yml` the moment a step is added there, with
+nothing comparing them.
+
+The repair the exit criterion rules out by name is a script in `scripts/` that
+lists CI's steps, which is the same second copy with a shebang on it. The repair
+it prescribes is a register change: `locus:` gains `pre-push`, the controls that
+want it declare it, and a gate writes the hook like any other.
+
+**Two things were found on the way that the criterion did not predict.**
+
+The first is a latent hole in the checker. `_precommit_hooks` returned every
+hook in `.pre-commit-config.yaml` and no caller asked which stage it ran at —
+harmless while `pre-commit` was the only local locus, and not harmless with a
+second: a hook staged `[pre-push]` would have satisfied a `pre-commit` locus,
+so a control enforced only before a push would have reported itself enforced
+before every commit. Stages are now resolved the way pre-commit resolves them —
+the hook's own `stages`, else the file's `default_stages`, else every stage.
+That last clause matters in the other direction: an absent `stages` genuinely
+does run at every installed stage, so reading the absence as `pre-commit` would
+have failed a repository that was in fact wired.
+
+The second decided the shape of the hook. **A full `uv run register-check` on a
+developer's machine exits `3`, permanently and by design**: SEC-003's two
+`kind: remote` blocks answer only inside a GitHub Actions job, so outside one
+they are `UNCLASSIFIED` and the run is incomplete. A hook running the full audit
+would refuse every push. Both ways out are worse than the problem — a shell
+wrapper mapping `3` to `0` is a tolerance nobody reads, and a flag that skipped
+`kind: remote` blocks would report SEC-003 as `PASS` on its file block alone,
+which is the substitution ADR 0016 exists to refuse. So the locus asks each
+control its own question, which is what a locus has always been.
+
+### What landed, and what the evidence is
+
+| Claim | Evidence |
+| --- | --- |
+| A deleted test refuses the push | Measured, and recorded below this table — the hook is installed here and a failing assertion makes `pre-commit run --hook-stage pre-push` exit non-zero |
+| A hook staged for a push does not serve the commit locus | `tests/test_pre_push_locus.py::test_a_hook_staged_for_a_push_does_not_serve_the_commit_locus` |
+| A hook naming no stage serves both | `::test_a_hook_that_names_no_stage_serves_both`, with `::test_default_stages_narrows_a_hook_that_names_none` as its other half |
+| The loci come from the register, not from the assert | `::test_the_locus_comes_from_the_register_and_not_from_this_module` — one repository, two registers one `locus:` entry apart, opposite verdicts |
+| A suppressed hook is not a gate | `::test_a_hook_whose_exit_code_is_absorbed_is_not_a_gate` — the same `suppression:` list the ci locus refuses |
+| Both hook types are installed and a missing one is reported | `::test_this_repository_wires_the_locus_it_declares`, over `setup.sh`, the shipped template and `check-auth.sh` |
+
+**The judge, run rather than reasoned about.** A deliberately failing assertion
+was added, committed with `--no-verify`, and pushed to a throwaway bare
+repository: the hook ran the suite, reported `1 failed, 938 passed`, and git
+refused the push with exit 1. Both were then reverted.
+
+Measured the same way before the tests were written: with `|| true` appended to
+the test hook's entry, TST-001 fails *"pre-push locus — the hook's exit code is
+absorbed: tests"*; with both pre-push hooks removed, all three controls fail
+naming the locus and none of the ci blocks moves.
+
+### One control's ci locus was strengthened on the way
+
+Giving SUP-001 and SUP-002 a `gate_wired_at_declared_loci` block reads **every**
+locus they declare, not only the new one — and the `ci` half was not satisfied
+by the gate's own template, which wrote one step naming SUP-003 alone. Until
+now each of those two was verified by its *property*: a lockfile exists, a
+dependency-update config covers every ecosystem. That is contract 14's finding
+in two more controls, six contracts later, and the fix is contract 14's: the
+gate's CI step now names all three controls and carries three stamps.
+
+### What the slice deliberately left open
+
+- **The criterion is not ticked.** `uv run pytest` is wired and the full
+  `register-check` is not, for the reason above. Closing the row means either
+  giving the remaining locally-verifiable controls the locus — SEC-002 needs a
+  gate to write its hook before it can have one — or amending the row to say
+  *what CI runs that this machine can answer*. `docs/04-build-plan.md` records
+  the choice rather than making it.
+- **`uv sync --frozen` stays a remembered command**, and deliberately. At this
+  locus it would verify the wrong thing: every hook above it invokes `uv run`,
+  which re-locks on disk before `--frozen` is reached, so it would pass on a
+  machine whose `uv.lock` has been rewritten and not committed — the exact state
+  that fails CI.
+- **No control checks that the hook is installed**, and none can: `.git/hooks/`
+  is untracked and CI has no hooks. `setup.sh` installs both types and
+  `check-auth.sh` reports either missing — reported, never repaired, the same
+  boundary the `pre-commit` locus already had.
+- **The three meta-controls declare no locus** and so can never run at one. That
+  is the schema's rule rather than an omission, and it is half of why *what CI
+  runs* is not a reachable target locally.
+- **Every gate here is still `UNRECORDED`.** This slice bumped `gate-quality`'s
+  and `gate-supply-chain`'s `contractVersion`, which is the sidecar working as
+  designed — what they write changed — and neither gate was re-run, because
+  re-running six gates in this repository is a decision rather than a chore.

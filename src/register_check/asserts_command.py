@@ -32,6 +32,7 @@ from register_check.rulesets import by_rule_type, required_checks, requirement_p
 if TYPE_CHECKING:  # `register` imports the assert registries — importing it
     from register_check.register import (  # at runtime would be circular
         ConfigLocation,
+        Control,
         Gate,
         Register,
         Stack,
@@ -401,19 +402,64 @@ def actions_pinned_to_sha(
     return _ok("every third-party action reference is pinned by SHA or digest")
 
 
-def _precommit_hooks(repo: Repo) -> list[dict[str, Any]]:
+def _precommit_hooks(repo: Repo, stage: str | None = None) -> list[dict[str, Any]]:
+    """The hooks in `.pre-commit-config.yaml`, optionally only those at `stage`.
+
+    Stages are resolved the way pre-commit resolves them — the hook's own
+    `stages`, else the file's `default_stages`, else every stage — because the
+    question a locus asks is *does anything run here*, and answering it from the
+    file's structure rather than from its semantics would credit a locus to a
+    hook that never runs at it.
+
+    `stage=None` returns every hook, which is what the readers that ask about a
+    file's contents rather than about a moment want: `_hook_mentions` reports
+    whether a tool is configured at all, and a tool configured for one stage is
+    still configured.
+
+    Before ADR 0039 there was one local locus and no caller asked. That was
+    harmless while `pre-commit` was the only answer and stopped being harmless
+    when `pre-push` became a second: a hook staged `[pre-push]` would have
+    satisfied a `pre-commit` locus, so a control enforced only before a push
+    would have reported itself enforced before every commit.
+    """
     if not repo.exists(".pre-commit-config.yaml"):
         return []
     config = yaml.safe_load(repo.read(".pre-commit-config.yaml"))
     if not isinstance(config, dict):
         return []
-    return [
+    default_stages = config.get("default_stages")
+    hooks = [
         hook
         for repo_block in config.get("repos") or []
         if isinstance(repo_block, dict)
         for hook in repo_block.get("hooks") or []
         if isinstance(hook, dict)
     ]
+    if stage is None:
+        return hooks
+    return [hook for hook in hooks if stage in _hook_stages(hook, default_stages)]
+
+
+def _hook_stages(hook: dict[str, Any], default_stages: object) -> frozenset[str]:
+    """Which stages a hook runs at, by pre-commit's own resolution order.
+
+    An absent `stages` means *every* stage rather than *the pre-commit stage*.
+    That is pre-commit's rule and not a convenience: a repository that installs
+    the pre-push hook type without naming stages genuinely runs every hook at
+    both moments, and a checker that read the absence as `pre-commit` would fail
+    a locus that was in fact wired.
+    """
+    for candidate in (hook.get("stages"), default_stages):
+        if isinstance(candidate, list) and candidate:
+            return frozenset(str(x) for x in candidate)
+    return frozenset(LOCAL_STAGES)
+
+
+#: The git stages a hook with no declared `stages` runs at. Only the two this
+#: register has locus names for are listed: pre-commit models more (`commit-msg`,
+#: `pre-merge-commit`, `post-checkout`), and a stage no control can declare is a
+#: stage no assert can ask about.
+LOCAL_STAGES = ("pre-commit", "pre-push")
 
 
 def _hook_mentions(repo: Repo, token: str) -> bool:
@@ -950,9 +996,48 @@ def _runs_tests(run: str, commands: tuple[str, ...]) -> bool:
 def tests_run_and_block(
     repo: Repo,
     register: Register,
-    _args: Mapping[str, object],
+    args: Mapping[str, object],
 ) -> AssertResult:
+    """The test command runs at every locus the control declares, and blocks.
+
+    Every locus, rather than `ci` alone, from ADR 0039. The name still describes
+    it: *run and block* is the same property asked at each declared moment, and
+    a second assert for the second moment would be the near-copy contract 15
+    replaced three of.
+
+    A `pre-push` locus is answered by `.pre-commit-config.yaml` and a `ci` locus
+    by the workflows, because that is where each moment is configured — but the
+    question is one question, and so is the suppression check underneath it: a
+    hook whose entry ends `|| true` runs the tests and gates on nothing, exactly
+    as a step carrying `continue-on-error` does.
+    """
     commands = _test_commands(register)
+    control = _control_of(register, args)
+    loci = control.locus if control is not None else ("ci",)
+    checked: list[str] = []
+    problems: list[str] = []
+    for locus in loci:
+        if locus in ("pre-commit", "pre-push"):
+            problem = _tests_block_at_hook(repo, register, commands, locus)
+        elif locus == "ci":
+            problem = _tests_block_in_ci(repo, register, commands)
+        else:  # pragma: no cover — TST-001 declares no editor or remote locus
+            return _fail(f"locus '{locus}' is declared and this assert cannot read it")
+        # Every locus, rather than the first that fails. A repository that has
+        # wired neither should be told both, or fixing one reveals the other and
+        # the report reads as a second regression.
+        (problems if problem is not None else checked).append(problem or locus)
+    if problems:
+        return _fail("; ".join(problems))
+    return _ok(
+        f"the test command runs at the {' and '.join(checked)} "
+        f"{'locus' if len(checked) == 1 else 'loci'} and its exit code is the verdict"
+    )
+
+
+def _tests_block_in_ci(
+    repo: Repo, register: Register, commands: tuple[str, ...]
+) -> str | None:
     # A step in a workflow that never runs on push or pull_request is not a
     # gate, however good its command (§ D, theme T-3).
     test_steps = [
@@ -960,19 +1045,52 @@ def tests_run_and_block(
     ]
     if not test_steps:
         if any(_runs_tests(s.run, commands) for s in _workflow_steps(repo)):
-            return _fail(
+            return (
                 "the only step running the test command is in a workflow that does not "
                 "run on push or pull_request, so it gates nothing"
             )
-        return _fail("no CI step runs the test command")
+        return "no CI step runs the test command"
     absorbed = [
         f"{s.path} ({s.job})"
         for s in test_steps
         if s.suppressed or _suppression_match(register, s.run)
     ]
     if absorbed:
-        return _fail("the test step's exit code is absorbed: " + "; ".join(absorbed))
-    return _ok("the test command runs in CI and its exit code is the verdict")
+        return "the test step's exit code is absorbed: " + "; ".join(absorbed)
+    return None
+
+
+def _tests_block_at_hook(
+    repo: Repo, register: Register, commands: tuple[str, ...], locus: str
+) -> str | None:
+    hooks = [
+        hook
+        for hook in _precommit_hooks(repo, stage=locus)
+        if _runs_tests(str(hook.get("entry", "")), commands)
+    ]
+    if not hooks:
+        return f"{locus} locus — no hook runs the test command"
+    absorbed = [
+        str(hook.get("id", "?"))
+        for hook in hooks
+        if _suppression_match(register, str(hook.get("entry", "")))
+    ]
+    if absorbed:
+        return (
+            f"{locus} locus — the hook's exit code is absorbed: " + "; ".join(absorbed)
+        )
+    return None
+
+
+def _control_of(register: Register, args: Mapping[str, object]) -> Control | None:
+    """The control being evaluated, from the id the runner supplies.
+
+    `register.controls` rather than `register.control()`, which also resolves
+    meta-controls: a meta-control checks the register and declares no loci, so
+    there would be nothing here for it to be wired at.
+    """
+    control_id = str(args.get(CONTROL_ARG, ""))
+    return next((c for c in register.controls if c.id == control_id), None)
 
 
 _MARKDOWNLINT_CONFIGS = (
@@ -1277,6 +1395,11 @@ def gate_wired_at_declared_loci(
     `remote` is skipped deliberately and named as skipped. Verifying platform
     state is Phase 3's, and a locus quietly dropped here is the silence this
     assert exists to remove.
+
+    `pre-push` is read exactly as `pre-commit` is, differing only in which
+    hooks answer (ADR 0039). Both moments live in `.pre-commit-config.yaml` and
+    the stage a hook declares is what separates them, so a second branch here
+    would be the same code asking the same file a differently spelled question.
     """
     tool = str(args.get("tool", ""))
     if not tool:
@@ -1286,11 +1409,7 @@ def gate_wired_at_declared_loci(
         return _fail(f"the register mandates '{tool}' at these loci and pins no such tool")
     invocation = pinned.invocation or tool
     control_id = str(args.get(CONTROL_ARG, ""))
-    # `register.controls` rather than `register.control()`, which also resolves
-    # meta-controls: a meta-control checks the register rather than the
-    # repository and declares no loci, so there would be nothing here for it to
-    # be wired at.
-    control = next((c for c in register.controls if c.id == control_id), None)
+    control = _control_of(register, args)
     if control is None:  # pragma: no cover — the runner supplies a real control
         return _fail(f"no control with a declared locus named '{control_id}'")
 
@@ -1301,10 +1420,10 @@ def gate_wired_at_declared_loci(
         if locus == "remote":
             deferred.append(locus)
             continue
-        if locus == "pre-commit":
+        if locus in ("pre-commit", "pre-push"):
             found = any(
                 _reaches(str(hook.get("entry", "")), tool, invocation, control_id)
-                for hook in _precommit_hooks(repo)
+                for hook in _precommit_hooks(repo, stage=locus)
             )
         elif locus == "ci":
             # `suppressed` for the same reason `gating` is here: a step carrying

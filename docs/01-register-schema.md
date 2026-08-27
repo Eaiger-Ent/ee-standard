@@ -57,7 +57,7 @@ ignore the recommendation, which costs more than the edit saved.
 | `also_see` | no | list | Further `name`/`url` pairs — tool docs, internal playbooks. |
 | `tier` | yes | 1-3 | See § Tiering in concepts. |
 | `rung` | yes | enum | `advisory` / `warn` / `blocking`. |
-| `locus` | yes | list | `editor` / `pre-commit` / `ci` / `remote`. |
+| `locus` | yes | list | `editor` / `pre-commit` / `pre-push` / `ci` / `remote`. |
 | `applies_to` | yes | list | Predicate names. Unsatisfied predicate → control is **skipped**, not failed. |
 | `deployed_by` | no | string | The gate skill that writes this control's artefacts. |
 | `verify` | yes | list | One or more verification blocks. See below. |
@@ -92,6 +92,29 @@ this working tree, so a renamed or archived ADR still fails a build — just not
 an adopter's. That is a test rather than a control because it governs how this
 repository keeps its own records, not what a conformant repository contains
 ([ADR 0022](adr/0022-a-platform-token-ci-carries.md) requirement 6).
+
+### `locus`
+
+Where the control runs. `pre-commit` and `pre-push` are two moments in one
+file: both are hooks in `.pre-commit-config.yaml`, and a hook's `stages:` key
+says which it belongs to. A hook naming no stage runs at every stage the
+repository has installed — pre-commit's own rule — so the checker resolves a
+hook's stages the way pre-commit does: the hook's `stages`, else the file's
+`default_stages`, else every stage.
+
+**Declaring `pre-push` obliges the control to be verified there.** Adding the
+value to a `locus:` list without a verify block that reads it is a locus
+declared and unverifiable, which is theme T-3 in the file that exists to stop
+it. Two asserts read the list today: `gate_wired_at_declared_loci`, for a
+control whose gate is a tool, and `tests-run-and-block`, for TST-001, whose
+subject is the suite rather than a tool the register pins.
+
+**A control can only declare it if its own machine can answer it.** A control
+carrying a `kind: remote` block that needs platform credentials cannot be
+verified at a developer's keyboard, so the hook that serves this locus names the
+controls it runs rather than auditing everything — a full local run exits `3`
+for the ones that could not be reached
+([ADR 0039](adr/0039-a-push-is-a-locus.md)).
 
 ### `id`
 

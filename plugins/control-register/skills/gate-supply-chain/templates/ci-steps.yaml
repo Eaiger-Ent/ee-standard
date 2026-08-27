@@ -17,11 +17,26 @@
       - name: Install dependencies (frozen)
         run: {{FROZEN_INSTALL}}
 
+      # ee-control: SUP-001  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: SUP-002  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       # ee-control: SUP-003  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       #
-      # The ci half of SUP-003's two loci. A full audit reaches every applicable
-      # control including this one, so a repository whose gating workflow
-      # already runs {{TOOL_INVOCATION}} with no `--control` needs no step here
-      # — check before writing one, and say that you did not.
+      # The ci half of the three controls' loci. Named controls rather than a
+      # full audit, so a failing step names what a developer has to fix — and
+      # one step rather than three, because the same command answers all three
+      # and a second invocation of one binary buys no extra verdict. Three
+      # stamps, because the read-back matches on the control being evaluated and
+      # one stamp would leave the other two loci unrecorded.
+      #
+      # SUP-001 and SUP-002 joined SUP-003 here at register contract 31, with
+      # the `pre-push` locus that made their wiring readable at all: until then
+      # each was verified only by its *property* — a lockfile exists, a
+      # dependency-update config covers every ecosystem — which is a different
+      # claim from something enforcing it before a merge.
+      #
+      # A full audit reaches every applicable control including these three, so
+      # a repository whose gating workflow already runs {{TOOL_INVOCATION}} with
+      # no `--control` needs no step here — check before writing one, and say
+      # that you did not.
       - name: Supply chain
-        run: {{TOOL_INVOCATION}} run --control SUP-003
+        run: {{TOOL_INVOCATION}} run --control SUP-001 --control SUP-002 --control SUP-003

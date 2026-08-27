@@ -15,7 +15,7 @@
       ]
     },
     "gate-supply-chain": {
-      "contractVersion": 4,
+      "contractVersion": 5,
       "controls": [
         "SUP-001",
         "SUP-002",
@@ -25,6 +25,7 @@
         ".github/workflows/register-check.yml#frozen-install",
         ".github/dependabot.yml",
         ".pre-commit-config.yaml#supply-chain",
+        ".pre-commit-config.yaml#supply-chain-pre-push",
         ".github/workflows/register-check.yml#conformance",
         ".devcontainer/setup.sh#package-manager"
       ]
@@ -62,7 +63,7 @@
       ]
     },
     "gate-quality": {
-      "contractVersion": 5,
+      "contractVersion": 6,
       "controls": [
         "LNT-001",
         "TYP-001",
@@ -73,6 +74,7 @@
         ".vscode/settings.json#editor-binding",
         ".pre-commit-config.yaml#lint",
         ".pre-commit-config.yaml#typecheck",
+        ".pre-commit-config.yaml#tests",
         ".github/workflows/register-check.yml#lint",
         ".github/workflows/register-check.yml#type-check",
         ".github/workflows/register-check.yml#tests"

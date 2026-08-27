@@ -44,12 +44,22 @@ because no one had decided to promote them, and no mechanism ever asked.
 
 ## Locus discipline
 
-A control's **locus** is where it runs: `editor`, `pre-commit`, `ci`, `remote`.
+A control's **locus** is where it runs: `editor`, `pre-commit`, `pre-push`,
+`ci`, `remote`.
 
 The rule is *pin once, reference many*. The same version of the same tool
 reading the same configuration at every locus. When the editor and CI disagree,
 engineers learn to distrust the editor, and the fast feedback loop — the one
 that is actually cheap — stops being used.
+
+`pre-push` is the third moment and arrived last, at register contract 31
+([ADR 0039](adr/0039-a-push-is-a-locus.md)). It is where a check too slow for
+every commit is still cheap enough to run before a reviewer's time is spent —
+the test suite is the worked example. It shares a file with `pre-commit`:
+both are hooks in `.pre-commit-config.yaml`, and a hook's `stages:` key is what
+says which moment it belongs to. A hook naming no stage runs at every stage the
+repository has installed, which is pre-commit's own rule and the reason
+`default_stages` is worth setting.
 
 `remote` is the locus most often forgotten. It covers platform state that no
 file in the repository can express: branch protection, push protection,

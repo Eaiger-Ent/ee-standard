@@ -15,6 +15,13 @@ so the consumer repository finished its adoption with every gate reporting its
 through. The checker reported the locus wired throughout, because it reads the
 config file, which is the right thing for it to read and not the same claim.
 
+**Two of the register's loci live in that file** — `pre-commit` and, from
+register contract 31, `pre-push` — and a hook says which moment it belongs to
+with `stages:`. A hook that says nothing runs at every stage the repository has
+installed, which is pre-commit's own rule. So write the `stages:` your template
+carries and do not drop it: a hook staged for one moment does not serve the
+other, and the checker reads the file the way pre-commit does.
+
 So before writing your hook, and idempotently — whichever gate runs first does
 it and the rest find it done:
 
@@ -23,10 +30,15 @@ it and the rest find it done:
    present. If it is not there, add it with
    `ecosystems.<eco>.add_dev_dependency` — the register's spelling, never one
    you compose yourself.
-2. **Is the git hook installed?** `test -x .git/hooks/pre-commit`. If not, run
-   `pre-commit install` through the same package manager. `.git/hooks/` is
-   untracked, so this is per clone and per container, and the devcontainer
-   template's `setup.sh` does it at container-create for anyone who starts fresh.
+2. **Are the git hooks installed?** `test -x .git/hooks/pre-commit`, and
+   `test -x .git/hooks/pre-push` if any control you are deploying declares a
+   `pre-push` locus. If either is missing, run
+   `pre-commit install --hook-type pre-commit --hook-type pre-push` through the
+   same package manager — both types in one call, because `pre-commit install`
+   on its own writes the first and silently leaves the second locus wired in the
+   config and running nothing. `.git/hooks/` is untracked, so this is per clone
+   and per container, and the devcontainer template's `setup.sh` does it at
+   container-create for anyone who starts fresh.
 3. **Say what you found**, in the write narration `write-narration.md`
    prescribes. "pre-commit was absent and has been added" is a different fact
    from "already present", and the second is worth one line rather than none.

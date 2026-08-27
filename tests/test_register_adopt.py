@@ -543,14 +543,30 @@ def test_four_gates_share_one_pre_commit_config_without_overwriting_each_other(
     "grouped by the artefact they write" is either true or discovered not to be.
     """
     hooks = yaml.safe_load((adopted / ".pre-commit-config.yaml").read_text(encoding="utf-8"))
-    ids = {hook["id"] for block in hooks["repos"] for hook in block["hooks"]}
-    assert ids == {
+    every = [hook for block in hooks["repos"] for hook in block["hooks"]]
+    assert {hook["id"] for hook in every} == {
         "register-check-build",
         "register-check-supply-chain",
+        "register-check-supply-chain-pre-push",
         "gitleaks",
         "ruff",
         "mypy",
-    }, ids
+        "tests",
+    }, {hook["id"] for hook in every}
+    # Two loci in one file, and which moment a hook belongs to is the `stages:`
+    # key rather than where it sits (register contract 31, ADR 0039). Asserted
+    # in both directions: a pre-push hook that lost its stages would run on every
+    # commit, and a pre-commit hook that gained them would stop running at all.
+    staged = {hook["id"]: hook.get("stages") for hook in every}
+    assert staged == {
+        "register-check-build": None,
+        "register-check-supply-chain": None,
+        "register-check-supply-chain-pre-push": ["pre-push"],
+        "gitleaks": None,
+        "ruff": None,
+        "mypy": None,
+        "tests": ["pre-push"],
+    }, staged
 
 
 def test_every_deployed_control_carries_its_own_stamp(adopted: Path) -> None:

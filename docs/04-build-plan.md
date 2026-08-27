@@ -1019,7 +1019,23 @@ Wire the mechanism that keeps deployments current.
       hook like any other. What must not happen is a script in `scripts/` that
       lists CI's steps — that is a second copy of the CI definition, free to
       drift from the workflow it mirrors. Judge it by deleting a passing test
-      and watching the push refuse
+      and watching the push refuse.
+
+      **Half landed 2026-08-27** at register contract 31
+      ([ADR 0039](adr/0039-a-push-is-a-locus.md)): the locus exists, TST-001,
+      SUP-001 and SUP-002 declare it, two gates write and stamp the hooks, and
+      the judge above passes — a deleted test refuses the push. What is left is
+      the other check the criterion names, the **full** `register-check`, and it
+      cannot be wired as written. A full local run exits `3` for as long as any
+      control carries a `kind: remote` block a developer's machine cannot
+      answer, so the hook names its controls instead; the three meta-controls
+      declare no locus at all by construction, and SEC-002 declares none because
+      no gate deploys it. So *what CI runs* is not reachable locally in the
+      literal sense, and closing this row means either giving the remaining
+      locally-verifiable controls the locus — SEC-002 needs a gate to write its
+      hook first — or amending the row to say *what CI runs that this machine
+      can answer*. That is a decision, not a chore, and it is why the box is
+      still empty
 
 The first two criteria are the whole noise argument, expressed as a test. If a
 documentation-only release triggers a recommendation, the mechanism will be

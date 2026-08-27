@@ -25,7 +25,7 @@ from register_check.asserts_file import (
 from register_check.predicates import PredicateSyntaxError, compile_predicate
 
 RUNGS = ("advisory", "warn", "blocking", "blocking (baselined)")
-LOCI = ("editor", "pre-commit", "ci", "remote")
+LOCI = ("editor", "pre-commit", "pre-push", "ci", "remote")
 # `justified` and `free` were removed at contract 3. `justified` was
 # unimplementable as specified: 00-concepts.md says a justified weakening *is* a
 # baseline entry, and the validator rejects any Tier-1 baseline, so the

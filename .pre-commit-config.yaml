@@ -1,5 +1,17 @@
-# Pre-commit locus. Local hooks run through `uv run`, so every tool executes
-# at the version uv.lock pins — the same version the ci locus installs.
+# The local loci. Hooks run through `uv run`, so every tool executes at the
+# version uv.lock pins — the same version the ci locus installs.
+#
+# Two moments live in this file from register contract 31 (ADR 0039), and
+# `default_stages` is what keeps them apart. pre-commit's own default is *every
+# stage*, so without this line a hook written for the pre-commit locus would
+# also run before a push, and the register's `locus:` list would stop being a
+# description of what happens. A hook that means something at a later moment
+# says so with `stages:`; a hook that says nothing is a pre-commit hook.
+#
+# It carries no provenance stamp because it belongs to no control, like the
+# `repos:` and `repo: local` lines under it.
+default_stages: [pre-commit]
+
 repos:
   - repo: local
     hooks:
@@ -100,3 +112,54 @@ repos:
         language: system
         pass_filenames: false
         files: ^controls\.yaml$
+
+      # --- The pre-push locus (ADR 0039) -------------------------------------
+      #
+      # Checks too slow for every commit and too expensive to discover in CI.
+      # `.git/hooks/pre-push` is what makes them run, and `setup.sh` installs it
+      # — a wired locus is not an installed hook, here as at the locus above.
+
+      # ee-control: TST-001  ee-skill: gate-quality@0.1.0  gate-contract: 6  register: v0.25.0  register-contract: 31
+      #
+      # Hand-written, not deployed — as the two Phase 0.5 hooks above were. The
+      # gate's template carries this block and the gate was not re-run, so the
+      # stamp records the contract the template would have written and this line
+      # records that a person wrote it. `register-check deployments` still reads
+      # `gate-quality` as UNRECORDED, because its older stamps carry no contract
+      # at all, which is the report being right rather than this being wrong.
+      #
+      # TST-001's pre-push locus. `always_run` with `pass_filenames: false`
+      # because the suite is not a function of which files a push touches: a
+      # change to one module breaks a test that imports it, and a hook given
+      # filenames would run the tests belonging to the wrong files.
+      - id: tests
+        name: uv run pytest (TST-001)
+        entry: uv run pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      # ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  gate-contract: 5  register: v0.25.0  register-contract: 31
+      # ee-control: SUP-002  ee-skill: gate-supply-chain@0.1.0  gate-contract: 5  register: v0.25.0  register-contract: 31
+      #
+      # Hand-written, not deployed, as the hook above it is and for the same
+      # reason: the gate's template carries this block and the gate was not
+      # re-run.
+      #
+      # One hook, two controls, two stamps — the shape the build gate's hook
+      # already uses, and for the same two reasons: the same command answers
+      # both, and the stamp read-back matches on the control being evaluated, so
+      # one stamp would leave the other control's locus unrecorded.
+      #
+      # Named controls rather than a full audit, and that is forced. A bare
+      # `uv run register-check` exits 3 on a developer's machine for as long as
+      # SEC-003 has remote blocks that only a GitHub Actions job can answer, so
+      # a full run here would refuse every push (ADR 0039 § Decision, point 4).
+      - id: register-check-supply-chain-pre-push
+        name: register-check (SUP-001, SUP-002)
+        entry: uv run register-check run --control SUP-001 --control SUP-002
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

@@ -104,12 +104,17 @@ uv sync --frozen
 # wired, and nothing ran at it. Each arm asks whether the tool is reachable
 # *that way* before using it, because an unguarded `uv run pre-commit` exits
 # non-zero and, under `set -e`, aborts container create.
+#
+# Both hook types, from register contract 31 (ADR 0039). `pre-commit install`
+# alone writes `.git/hooks/pre-commit` and nothing else, so a repository whose
+# register declares a `pre-push` locus would have had that locus wired in the
+# config, reported as wired by every gate, and running nothing.
 if [ -f .pre-commit-config.yaml ]; then
   if uv run pre-commit --version >/dev/null 2>&1; then
-    uv run pre-commit install
+    uv run pre-commit install --hook-type pre-commit --hook-type pre-push
   else
     echo "note: .pre-commit-config.yaml exists and pre-commit is not installed," >&2
-    echo "      so nothing runs at the pre-commit locus." >&2
+    echo "      so nothing runs at the pre-commit or pre-push loci." >&2
   fi
 fi
 

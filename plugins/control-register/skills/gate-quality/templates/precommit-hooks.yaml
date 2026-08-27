@@ -38,3 +38,35 @@
         language: system
         pass_filenames: false
         files: '{{SOURCE_PATTERN}}'
+
+      # ee-control: TST-001  ee-skill: gate-quality@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      #
+      # TST-001's pre-push locus, written only when the register gives that
+      # control a `pre-push` locus — a hook for a locus the register does not
+      # declare is a check nobody asked for, and the checker would not read it.
+      #
+      # `stages: [pre-push]` is the whole difference between the two moments in
+      # this file, and it is not optional. Without it pre-commit runs the suite
+      # on every commit, which is the fast feedback loop spent to save a line.
+      #
+      # `always_run` with `pass_filenames: false` because the suite is not a
+      # function of which files a push touches: a change to one module breaks a
+      # test that imports it, and a hook given filenames would run the tests
+      # belonging to the wrong ones.
+      #
+      # `id: tests` is a literal rather than a placeholder because TST-001 is
+      # one control with one hook — there is no role, no stack and nothing to
+      # disambiguate, so a register value to name it would be a field invented
+      # for a template.
+      #
+      # {{TEST_COMMAND}} is the register's — `ecosystems.<eco>.test_commands`
+      # resolved for this repository — written verbatim, as the ci locus writes
+      # it. A spelling composed here would be a second answer to a question the
+      # register has already answered.
+      - id: tests
+        name: {{TEST_COMMAND}} (TST-001)
+        entry: {{TEST_COMMAND}}
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

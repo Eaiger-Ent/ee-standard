@@ -144,6 +144,12 @@ register-check meta GOV-001    # the meta-controls
 register-check schema          # validate controls.yaml itself
 ```
 
+A selective run — `register-check run --control X --control Y` — is what a
+`pre-push` hook invokes, because a full audit on a developer's machine cannot
+complete: a `kind: remote` block with no platform credential is `UNCLASSIFIED`,
+the run exits `3`, and a hook doing that would refuse every push
+([ADR 0039](adr/0039-a-push-is-a-locus.md)).
+
 Verdicts are `PASS`, `FAIL`, `SKIPPED (predicate)`, `SKIPPED (no credentials)`,
 and `UNCLASSIFIED`. The two skip reasons are distinct on purpose: a control
 skipped because the repo has no Terraform is fine; a remote control skipped
