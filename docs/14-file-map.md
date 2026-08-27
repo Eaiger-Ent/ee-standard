@@ -1,0 +1,92 @@
+# Where everything is
+
+The map for someone who knows what they need and not where it lives. Every
+other document here explains a *decision*; this one only answers *which file*.
+
+**It is checked, not maintained by hope.** `tests/test_file_map.py` fails the
+build if this file names a path that does not exist, and — for the repository
+root and its top-level directories — if a tracked entry exists that this file
+does not name. The second half is the one that matters: a map is an allow-list,
+and what an allow-list leaves out is invisible
+([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md) is the same
+argument about exemptions). Below the top level the check is existence only, so
+a new file inside `src/` does not fail a build over documentation.
+
+## The three files people look for first
+
+| File | What it is | Do not confuse it with |
+| --- | --- | --- |
+| `controls.yaml` | **The register.** A control entry *is* the control, not documentation of one. Everything else derives from it | Anything below. If a rule could reasonably differ between Equal Experts repositories, it belongs here |
+| `deployment-decisions.yaml` | What this repository has deliberately **not** deployed, and why, and until when. Read by `register-check deployments` | The register. This is *posture* — it must never reach `controls.yaml` or `plugins/` ([ADR 0022](adr/0022-a-platform-token-ci-carries.md) requirement 6) |
+| `.claude/skill-config.yaml` | *(proposed, not yet real)* What a third-party skill should write here, keyed by skill name ([ADR 0042](adr/0042-a-deploying-skill-reads-local-configuration.md)) | The two above. It is read by a **skill**, at deploy time, and its format belongs to `ee-skills` rather than to us |
+
+Those three are separate on purpose, and the sharpest reason is that two of them
+fail in opposite directions: a malformed `deployment-decisions.yaml` **exits 2**,
+because reading it as empty would report every declined deployment as a chore
+nobody got to; a malformed `.claude/skill-config.yaml` falls back to defaults and
+**continues**, because a broken preference file should not stop a deployment.
+One file cannot hold both policies.
+
+## The repository root
+
+| Path | What it is |
+| --- | --- |
+| `controls.yaml` | The register — see above |
+| `deployment-decisions.yaml` | Declined deployments — see above |
+| `README.md` | What this repository is, for a person arriving cold |
+| `CLAUDE.md` | The same ground for an agent, plus every decision in force |
+| `LICENSE` | Held byte-identical with `plugins/control-register/LICENSE` |
+| `pyproject.toml` | The single definition of ruff, mypy and pytest that every locus reads, plus the package's support floor |
+| `uv.lock` | The Python pin. `package-lock.json` is the node one |
+| `package.json`, `package-lock.json` | `markdownlint-cli2`, and the path every locus invokes it by |
+| `.python-version` | The interpreter the gates run on ([ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md)). A *pin*, not the support floor |
+| `.markdownlint.yaml` | DOC-001's rule set |
+| `.markdownlint-cli2.yaml` | DOC-001's runner config — `gitignore: true`, `ignores: []` |
+| `.pre-commit-config.yaml` | Both local loci. A hook's `stages:` says which ([ADR 0039](adr/0039-a-push-is-a-locus.md)) |
+| `.gitignore` | Two of its lines are a stamped SEC-001 artefact |
+| `renovate.json` | Update proposals for what Dependabot cannot see |
+
+## The directories
+
+| Path | What is in it |
+| --- | --- |
+| `docs/` | Every explanation. `docs/00-concepts.md` first, then the numbered files; `docs/adr/` holds the decisions |
+| `src/` | `src/register_check/` — the checker. One assert implementation, read by every locus |
+| `tests/` | The suite. Several tests hold rules that govern *this* repository rather than a conformant one |
+| `plugins/` | `plugins/control-register/` — what an adopter installs: nine skills, the templates they write from, and the shared prose |
+| `scripts/` | `scripts/plan_progress.py`, the derived view of the build plan's exit criteria |
+| `.github/` | `.github/workflows/` (four), `.github/dependabot.yml`, and `.github/rulesets/default-branch.json` — the record of what the platform is asked to enforce |
+| `.devcontainer/` | The container this repository is developed in. `.devcontainer/setup.sh` installs the tools; `.devcontainer/check-auth.sh` reports what is missing |
+| `.claude/` | `.claude/hooks/md-lint.py`, `.claude/settings.json`, and `.claude/skills/` — tracked symlinks into the plugin ([ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md)) |
+| `.claude-plugin/` | `.claude-plugin/marketplace.json` — this repository as a marketplace |
+| `.vscode/` | `.vscode/settings.json` — which extension holds a gated file type ([ADR 0029](adr/0029-the-editor-locus-is-configured-by-the-repository.md)) |
+
+## The four workflows, and which one gates
+
+Only one of them decides whether a change can merge.
+
+| Workflow | Runs on | Gates a merge? |
+| --- | --- | --- |
+| `.github/workflows/register-check.yml` | push, pull_request, schedule | **Yes** — its job id is the status check CI-001 requires |
+| `.github/workflows/lint.yml` | push, pull_request | No |
+| `.github/workflows/support-floor.yml` | push, pull_request | **No, deliberately** — a support claim failing is a thing to know, not a reason a conformant change cannot merge |
+| `.github/workflows/conformance-sweep.yml` | schedule, workflow_dispatch | **No** — it reports and never fixes, and does not fail on findings |
+
+Neither of the last two may enter CI-001's
+`required_checks:`.
+
+## Inside the plugin
+
+`plugins/control-register/` is what an adopter installs, and nothing in it may
+carry a value the register pins or a fact about this repository's own posture.
+
+| Path | What is in it |
+| --- | --- |
+| `plugins/control-register/skills/gate-*/` | Six gates. Each deploys the controls that name it in `deployed_by` |
+| `plugins/control-register/skills/register-adopt/` | The front door. Dispatches the others and writes nothing itself |
+| `plugins/control-register/skills/register-install/` | Puts the checker where the loci can reach it. Writes no provenance stamp — a stamp names a control, and there is none to name |
+| `plugins/control-register/skills/register-variance/` | Reports which way a config change moved ([ADR 0040](adr/0040-a-declined-classification-is-a-verdict.md)) |
+| `plugins/control-register/reference/` | Prose more than one skill must follow, shipped once ([ADR 0036](adr/0036-shared-skill-prose-has-one-home.md)) |
+| `plugins/control-register/templates/devcontainer/` | The devcontainer an adopter copies |
+| `plugins/control-register/templates/sweep/` | The scheduled sweep an adopter copies |
+| `plugins/control-register/.claude-plugin/deploys.json` | One deployment contract **per gate**, not per plugin |

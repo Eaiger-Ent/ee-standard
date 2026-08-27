@@ -52,8 +52,14 @@ twice. Every step carries the evidence that shows it worked.
 
 **Working on this repository** → [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md).
 
+**Looking for a particular file** → [`docs/14-file-map.md`](docs/14-file-map.md).
+It answers *which file* and nothing else — including why `controls.yaml`,
+`deployment-decisions.yaml` and `.claude/skill-config.yaml` are three separate
+files.
+
 | Document | What it covers |
 | --- | --- |
+| [`docs/14-file-map.md`](docs/14-file-map.md) | Where everything is. Which file to open, which of the four workflows gates a merge, and what is inside the plugin |
 | [`docs/08-adopting.md`](docs/08-adopting.md) | **Start here if you are adopting.** The platform state, the gates, and reading a verdict. |
 | [`docs/00-concepts.md`](docs/00-concepts.md) | The vocabulary. Read first. |
 | [`docs/01-register-schema.md`](docs/01-register-schema.md) | Field-by-field spec for `controls.yaml`. |
