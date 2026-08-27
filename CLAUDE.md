@@ -567,8 +567,12 @@ so the two halves fail each other. It is a test rather than a control because it
 governs how this repository records its own decisions, not what a conformant
 repository contains (ADR 0022 requirement 6). It does **not** check that a
 summary is accurate; that is recorded as the residual risk, not covered.
-`adr-toolkit@0.1.11` models no revision or approver at all, so `/adr-check` and
-`/adr-consistency` neither check these fields nor object to them.
+`adr-toolkit@0.1.13` models no revision or approver at all, so `/adr-check` and
+`/adr-consistency` neither check these fields nor object to them — re-checked on
+2026-08-27 against the release itself, whose rule files are byte-identical to
+0.1.11's. The version here moves with the installed plugin and the claim is
+re-read when it does; the `@0.1.11` in ADRs 0025 and 0026 stays, because an ADR
+is a dated record of what was true when it was written.
 
 An ADR reaching a terminal status moves to `docs/adr/archive/` **keeping its
 number**, which is never reused — only its path changes. The same test checks
