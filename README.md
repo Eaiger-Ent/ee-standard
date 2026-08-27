@@ -68,7 +68,7 @@ twice. Every step carries the evidence that shows it worked.
 
 ## The register at a glance
 
-Fourteen Tier-1 controls — birth conditions, true from the first commit, never
+Fifteen Tier-1 controls — birth conditions, true from the first commit, never
 baselined:
 
 | ID | Property |
@@ -79,6 +79,7 @@ baselined:
 | SUP-001 | Dependencies resolve from a frozen lockfile |
 | SUP-002 | Dependency updates arrive as reviewable proposals |
 | SUP-003 | CI actions are pinned to an immutable SHA |
+| SUP-004 | A pinned release digest is the one the project published |
 | BLD-001 | The container's final user is not root |
 | DEV-001 | The devcontainer's image and features are pinned |
 | CI-001 | The default branch requires review and passing checks |

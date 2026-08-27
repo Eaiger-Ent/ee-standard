@@ -20,13 +20,18 @@
       # ee-control: SUP-001  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       # ee-control: SUP-002  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       # ee-control: SUP-003  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: SUP-004  ee-skill: gate-supply-chain@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       #
-      # The ci half of the three controls' loci. Named controls rather than a
+      # The ci half of the four controls' loci. Named controls rather than a
       # full audit, so a failing step names what a developer has to fix — and
       # one step rather than three, because the same command answers all three
       # and a second invocation of one binary buys no extra verdict. Three
       # stamps, because the read-back matches on the control being evaluated and
       # one stamp would leave the other two loci unrecorded.
+      #
+      # SUP-004 is the only one of the four with no local locus, and that is
+      # deliberate: its remote block needs a network, and a network fetch in
+      # front of every push would refuse one taken offline (ADR 0041 point 3).
       #
       # SUP-001 and SUP-002 joined SUP-003 here at register contract 31, with
       # the `pre-push` locus that made their wiring readable at all: until then
@@ -39,4 +44,4 @@
       # no `--control` needs no step here — check before writing one, and say
       # that you did not.
       - name: Supply chain
-        run: {{TOOL_INVOCATION}} run --control SUP-001 --control SUP-002 --control SUP-003
+        run: {{TOOL_INVOCATION}} run --control SUP-001 --control SUP-002 --control SUP-003 --control SUP-004

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import datetime
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any
 
 from register_check.asserts_file import AssertResult
@@ -30,6 +30,7 @@ from register_check.remote import (
     TOKEN_EXPIRY_HEADER,
     GitHub,
     Unreadable,
+    fetch_text,
     runs_in_github_actions,
 )
 from register_check.rulesets import by_rule_type, required_checks, requirement_problems
@@ -272,7 +273,89 @@ def default_branch_ruleset_satisfies(
 #: The closed set of `kind: remote` assert names, and their implementations. The
 #: schema validates remote blocks against these keys, so a typo is a schema
 #: error rather than a check that silently never runs.
-REMOTE_ASSERTS = {
+def release_checksums_match_register(
+    _target: Any,
+    register: Register,
+    _args: Mapping[str, object],
+) -> AssertResult:
+    """Every pinned digest equals the one the project published for that release.
+
+    SUP-004 (ADR 0041). Renovate's uv bump moved the version at all four sites
+    the register names and left all three digests at the previous release's
+    values, and every check passed. This is the check that would not have.
+
+    **It presents no credential and must not**, which is why it ignores the
+    target the runner resolves: a release manifest is public, and a check that
+    can answer without a token reporting SKIPPED for want of one would be
+    declining to answer a question it could have answered.
+
+    A tool that publishes no manifest **passes**, saying so. Whether a project
+    publishes checksums is a fact about that project, and failing a repository
+    for someone else's release process would make the conformance run
+    unpassable for a reason nobody in it could fix.
+    """
+    checked: list[str] = []
+    silent: list[str] = []
+    problems: list[str] = []
+    for name, tool in sorted(register.tools.items()):
+        if tool.checksums is None:
+            if tool.sha256 is not None:
+                silent.append(name)
+            continue
+        if tool.version is None:  # pragma: no cover — the schema requires one
+            continue
+        url = tool.checksums.manifest_url(tool.release_repo or "", tool.version)
+        published = _published_digests(url)
+        for asset, pinned in tool.checksums.digests(tool.version, tool.sha256).items():
+            actual = published.get(asset)
+            if actual is None:
+                problems.append(
+                    f"{name}: the release publishes no digest for '{asset}' — the register "
+                    "names an asset this release does not have"
+                )
+            elif actual != pinned:
+                problems.append(
+                    f"{name}: {asset} is pinned at {pinned[:12]}… and the release published "
+                    f"{actual[:12]}… — the pin names a different artefact"
+                )
+            else:
+                checked.append(f"{name}/{asset}")
+    if problems:
+        return _fail("; ".join(problems))
+    note = f"; {len(silent)} tool(s) publish no manifest and were not compared" if silent else ""
+    return _ok(f"{len(checked)} pinned digest(s) match what the project published{note}")
+
+
+def _published_digests(url: str) -> dict[str, str]:
+    """A `sha256sum`-style manifest, as asset name to digest.
+
+    Both spellings, because both pinned tools use one: gitleaks writes
+    `<digest>  <file>` and uv writes `<digest> *<file>`, the second being
+    `sha256sum`'s binary marker. Reading only one would have covered one tool.
+    """
+    found: dict[str, str] = {}
+    for line in fetch_text(url).splitlines():
+        parts = line.split()
+        if len(parts) != 2 or not _DIGEST.fullmatch(parts[0]):
+            continue
+        found[parts[1].lstrip("*")] = parts[0]
+    return found
+
+
+_DIGEST = re.compile(r"[0-9a-f]{64}")
+
+#: Remote asserts that answer without a credential, so the runner must not
+#: short-circuit them to SKIPPED (no credentials). A release manifest is public;
+#: everything else here reads a repository's own platform state and cannot be.
+PUBLIC_REMOTE_ASSERTS = frozenset({"release_checksums_match_register"})
+
+#: The signature every remote assert shares. `GitHub | None` rather than
+#: `GitHub`, because a public assert is handed `None`: it reads something the
+#: platform serves to anyone, so there is no credential to give it.
+RemoteAssertFn = Callable[[Any, "Register", Mapping[str, object]], AssertResult]
+
+REMOTE_ASSERTS: dict[str, RemoteAssertFn] = {
+    "release_checksums_match_register": release_checksums_match_register,
     "github_push_protection_enabled": github_push_protection_enabled,
     "default_branch_ruleset_satisfies": default_branch_ruleset_satisfies,
     "platform_token_expires_within": platform_token_expires_within,

@@ -1687,6 +1687,67 @@ def _unproduced_checks(required: list[str], repo: Repo) -> list[str]:
     return problems
 
 
+
+
+def tool_digests_match_register(
+    repo: Repo,
+    register: Register,
+    _args: Mapping[str, object],
+) -> AssertResult:
+    """Every digest the register pins is repeated correctly, and no other is.
+
+    Both directions, because they catch opposite mistakes (ADR 0041). A digest
+    the register names and no locus repeats is a register edited without its
+    loci; a 64-hex literal in a locus that the register does not name is a locus
+    edited without the register — and the second is the half that catches a bot.
+
+    Renovate's uv bump (#74) moved the version at all four sites the register
+    names and left all three digests at the previous release's values. Every
+    check passed, and what would have merged is a container that cannot build.
+    """
+    pinned: dict[str, set[str]] = {}
+    for name, tool in register.tools.items():
+        if tool.checksums is None or tool.version is None:
+            continue
+        for digest in tool.checksums.digests(tool.version, tool.sha256).values():
+            pinned.setdefault(digest, set()).add(name)
+    if not pinned:
+        return _ok("no tool declares a checksum manifest — no digest to reconcile")
+    files = sorted({path for tool in register.tools.values() for path in tool.pinned_at})
+    seen: set[str] = set()
+    strays: list[tuple[str, str]] = []
+    for path in files:
+        if not repo.exists(path):
+            continue
+        found = set(_SHA256_LITERAL.findall(repo.read(path)))
+        seen |= found & set(pinned)
+        strays.extend((path, digest) for digest in sorted(found - set(pinned)))
+    problems: list[str] = []
+    missing = sorted(set(pinned) - seen)
+    if missing:
+        problems.append(
+            "the register pins digest(s) no locus repeats: "
+            + "; ".join(f"{d[:12]}… ({', '.join(sorted(pinned[d]))})" for d in missing)
+        )
+    if strays:
+        problems.append(
+            "a locus repeats digest(s) the register does not name: "
+            + "; ".join(f"{path}: {digest[:12]}…" for path, digest in strays)
+        )
+    if problems:
+        return _fail("; ".join(problems))
+    return _ok(
+        f"{len(pinned)} pinned digest(s) reconcile across {len(files)} locus/loci, "
+        "and those loci repeat no digest the register does not name"
+    )
+
+
+#: A digest as it appears in a shell script or workflow — the same shape the
+#: register validates, matched loosely so a locus writing it uppercase or beside
+#: a filename is still found.
+_SHA256_LITERAL = re.compile(r"\b[0-9a-f]{64}\b")
+
+
 COMMAND_ASSERTS: dict[str, AssertFn] = {
     "no-static-cloud-keys": no_static_cloud_keys,
     "ci-installs-frozen": ci_installs_frozen,
@@ -1700,4 +1761,5 @@ COMMAND_ASSERTS: dict[str, AssertFn] = {
     "gate_wired_at_declared_loci": gate_wired_at_declared_loci,
     "ruleset_recorded_matches_register": ruleset_recorded_matches_register,
     "no_unregistered_workflow_secrets": no_unregistered_workflow_secrets,
+    "tool_digests_match_register": tool_digests_match_register,
 }

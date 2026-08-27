@@ -360,3 +360,98 @@ it declined on, so the gap is visible and closable rather than silent.
 - **Nothing classifies a `kind: command` gate's behaviour**, only its
   configuration. A tool whose defaults changed between two pinned versions moves
   no config key and this reports `UNCHANGED`, correctly and unhelpfully.
+
+## The fifth slice — a pinned digest is checked against what was published
+
+Landed 2026-08-27, at register contract 34. It closes the checksum row, which
+was added to the plan on 2026-08-26 after fixing Renovate's uv bump by hand.
+
+### What was found, and what the row did not anticipate
+
+The row is right about the failure: #74 moved the version literal at all four
+sites the register names and left **all three** sha256 digests at 0.12.5's
+values, and every check passed. What it would have merged is a container that
+cannot build.
+
+It is also right that two halves are needed, and for a sharper reason than it
+gives. **#74's two sites agreed with each other**, so the offline reconciliation
+passes it — measured, not assumed. Only the comparison against what the project
+published fails it. The offline half earns its place on the opposite mistake:
+one site edited and not the other, which the network half passes whenever the
+edited site happens to be right.
+
+Two things the row got wrong, both in the same direction:
+
+**The per-asset `.sha256` it names covers one pinned tool of two.** uv publishes
+`<asset>.sha256`; gitleaks does not — measured, `404`. Both publish a
+**manifest**: uv `sha256.sum`, gitleaks `gitleaks_<version>_checksums.txt`, each
+a list of `<digest>  <filename>` lines. One shape reads both, so the register
+names a manifest.
+
+**The aarch64 digest is no longer compared by nothing.**
+`09-phase-1.5-review.md` recorded it as unverifiable and the row repeats that. A
+manifest lists every architecture, so the register names the second digest in
+`checksums.also` and the same fetch checks it. Four digests are now compared
+where the row expected one.
+
+### Why it is a control of its own
+
+SUP-001 was the natural home — it already carries `tool_versions_match_register`
+— and it is the wrong one. SUP-001 declares a `pre-push` locus from contract 31,
+so `register-check run --control SUP-001` runs in a git hook, and a `kind: remote`
+block on it puts a network fetch in front of every push. Offline that is
+`UNCLASSIFIED`, exit `3`, and the hook refuses: a developer on a train could not
+push a documentation fix.
+
+So the property gets a control and the control gets the locus its verification
+can answer at — `ci` alone. That is ADR 0039's test applied in the other
+direction: there, SEC-003 was kept *out* of a local locus because its remote
+blocks need an Actions job; here, a new control is given a `ci`-only locus
+because its remote block needs a network.
+
+### One thing the runner had to learn
+
+Every remote block until now reads a repository's own platform state, so the
+runner resolves a credential first and reports `SKIPPED (no credentials)` when
+there is none. A release manifest is **public**, and a check that can answer
+without a token reporting `SKIPPED` for want of one is the checker declining a
+question it could have answered. `PUBLIC_REMOTE_ASSERTS` names the exception and
+the runner skips credential resolution for it.
+
+### What closed, and what the evidence is
+
+| Criterion | Evidence |
+| --- | --- |
+| A version bump that leaves a checksum behind fails something | `tests/test_checksums.py::test_the_renovate_case_fails` reproduces #74's exact shape — version moved, digest left, both sites agreeing — and the offline half passes it while the network half fails it |
+
+Measured against this repository before the tests were written: with `0.12.5`'s
+digest at both sites and the version at `0.12.6`, SUP-004 reports
+*"uv-x86_64-unknown-linux-gnu.tar.gz is pinned at 68a509da24b0… and the release
+published 8681d8921e7d…"*. With `setup.sh`'s aarch64 digest altered, the offline
+half reports both directions in one verdict — the digest no locus repeats, and
+the digest the register does not name.
+
+All four digests were checked against upstream while this was written and all
+four match, so the control lands green. That is the honest but weaker position:
+it shows the mechanism runs, not that it bites. What shows that is the test.
+
+### What the slice deliberately left open
+
+- **The conformance run now depends on a release endpoint.** Under
+  `--require-complete` an unreachable network is exit `1`, because
+  `UNCLASSIFIED` is what an unanswerable check reports and the flag promotes it.
+  That is the accepted cost of this being a control rather than a test, and the
+  `ci`-only locus is what confines the fragility to the one place that always
+  has a network.
+- **A tool that publishes no manifest passes**, saying so in the report. Whether
+  a project publishes checksums is a fact about that project, and failing a
+  repository for someone else's release process would make its conformance run
+  unpassable for a reason nobody in it could fix.
+- **Nothing verifies the artefact itself.** The comparison is register against
+  published manifest; if a project's own manifest disagrees with its own
+  tarball, that is the project's defect and this does not see it. Downloading
+  two release tarballs on every run to learn what a 200-byte manifest already
+  says was rejected as cost without assurance.
+- **The register still needs a human to fetch a new digest on a bump.** The
+  comment beside `tools.uv.sha256` saying so stays true. What changed is that
+  forgetting is no longer silent.

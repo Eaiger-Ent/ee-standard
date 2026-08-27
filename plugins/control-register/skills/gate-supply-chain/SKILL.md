@@ -1,8 +1,9 @@
 ---
 name: gate-supply-chain
 description: >
-  Deploy SUP-001, SUP-002 and SUP-003: frozen install from the lockfile,
-  update proposals for every ecosystem, every CI action pinned to a SHA.
+  Deploy SUP-001 to SUP-004: frozen install from the lockfile, update
+  proposals for every ecosystem, every CI action pinned to a SHA, and every
+  pinned release digest checked against what the project published.
   Triggers: 'deploy gate-supply-chain', 'pin CI actions', '/gate-supply-chain'.
 argument-hint: "[--repo <path>] [--register <path>]"
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
@@ -12,12 +13,14 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 
 You are running the **gate-supply-chain** skill. It deploys SUP-001
 (*dependencies resolve from a committed lockfile*), SUP-002 (*dependency updates
-are proposed automatically*) and SUP-003 (*third-party CI actions are pinned to
-a commit SHA*) in a target repository, then verifies its own work with the same
-checker that audits it.
+are proposed automatically*), SUP-003 (*third-party CI actions are pinned to
+a commit SHA*) and SUP-004 (*a pinned release artefact's digest is the one the
+project published*) in a target repository, then verifies its own work with the
+same checker that audits it.
 
-Three controls, one skill, because they are one property split three ways: what
-a build resolves, how it stays current, and what it is allowed to fetch. Two of
+Four controls, one skill, because they are one property split four ways: what a
+build resolves, how it stays current, what it is allowed to fetch, and whether
+what it fetched is what was released. Two of
 them write into the same gating workflow, and SUP-001's install step has to come
 *before* every other gate's steps in it — an ordering no separate skill could
 guarantee.
@@ -64,7 +67,7 @@ never be pointed at different things by accident.
    pre-commit **and** ci for SUP-003.
 3. Each artefact written carries a provenance stamp naming the control whose
    locus it is, this skill and version, and the register's version and contract.
-4. `register-check run --control SUP-001 --control SUP-002 --control SUP-003`
+4. `register-check run --control SUP-001 --control SUP-002 --control SUP-003 --control SUP-004`
    was run afterwards, its output shown, and its verdict reported as given —
    including a failure.
 5. Nothing was written outside the target repository.
@@ -317,7 +320,7 @@ SUP-003 gate that could never have failed it.
 
 ```bash
 register-check --repo "$REPO" --register "$REGISTER" \
-  run --control SUP-001 --control SUP-002 --control SUP-003
+  run --control SUP-001 --control SUP-002 --control SUP-003 --control SUP-004
 ```
 
 This is the only verification step. It runs the controls' own verify blocks
@@ -347,7 +350,7 @@ declared itself partial — read which, rather than rounding up.
 **Deployed:**
 
 ```text
-gate-supply-chain deployed SUP-001, SUP-002, SUP-003 in <repo>.
+gate-supply-chain deployed SUP-001, SUP-002, SUP-003, SUP-004 in <repo>.
   ci          .github/workflows/<file> — frozen install (stamped)
   ci          .github/dependabot.yml — <n> ecosystems (stamped)
   pre-commit  .pre-commit-config.yaml — hook '<tool>-supply-chain' (stamped)
@@ -357,7 +360,7 @@ gate-supply-chain deployed SUP-001, SUP-002, SUP-003 in <repo>.
   pinned      <n> action references rewritten to SHAs; <n> owner-owned skipped
 Needs a human: <Dependabot enabled | the Renovate app installed> (§ 1.1)
 Verified: register-check run --control SUP-001 --control SUP-002 \
-  --control SUP-003 → exit 0
+  --control SUP-003 --control SUP-004 → exit 0
 ```
 
 **Failed verification:**
