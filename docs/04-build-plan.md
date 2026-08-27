@@ -958,11 +958,29 @@ Wire the mechanism that keeps deployments current.
 - [ ] The sweep runs unattended and produces a report nobody has to ask for
 - [x] A repo that has never deployed is distinguishable from one deployed and
       current, and from one deployed and stale
-- [ ] Taking an upstream skill release is a supported operation with a recorded
+- [x] Taking an upstream skill release is a supported operation with a recorded
       outcome: **redeployed**, or **declined with the disagreement named**.
       Refreshing a provenance stamp by hand — recording a redeployment that did
-      not happen — is not one of the outcomes
-- [ ] A deployment behind because nobody has redeployed is distinguishable from
+      not happen — is not one of the outcomes.
+
+      **Closed 2026-08-27.** `deployment-decisions.yaml` at the repository root
+      records a declination — the skill, the version, the reason, the ADR and an
+      expiry — and `register-check deployments` reads it back
+      ([ADR 0042](adr/0042-a-deploying-skill-reads-local-configuration.md)
+      revision 2). The `lint-md@1.0.7` entry is the first, so the 1.0.6 stamp is
+      now a decision with a reason on record rather than a chore nobody got to,
+      and refreshing the stamp by hand is still not one of the outcomes.
+
+      Two rules keep it a record rather than an opt-out, and both are checked:
+      an entry covers **the version it names and no later one**, so a new
+      release re-opens the question; and it **expires**, because one that never
+      does is the `variance: justified` loophole contract 3 removed. Three ways
+      the record can stop being true — expired, superseded by a deployment, or
+      naming a skill nothing stamps — each **fail** the command, where a stale
+      *deployment* only recommends. A malformed file exits `2` rather than
+      reading as no declinations, which would report every declined deployment
+      as a chore
+- [x] A deployment behind because nobody has redeployed is distinguishable from
       one behind because the release would revert a narrowing this register
       holds. The first is a chore; the second is a decision, and reporting them
       the same way trains everyone to ignore both

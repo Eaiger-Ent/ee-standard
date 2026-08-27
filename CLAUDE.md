@@ -506,6 +506,19 @@ reason rather than a chore nobody got to. The two rows still need raising
 anyway — `ignores: []` set locally stops `.claude/**` reaching this repository
 and not anyone else's, and ADR 0019's argument is about any repository.
 
+**Revision 2 (same day) adds where a declination is recorded:
+`deployment-decisions.yaml`, at the repository root beside `controls.yaml`** —
+the counterpart to the provenance stamps, since a stamp records what *was*
+deployed and this records what deliberately was not. It is **not** the register
+(posture, ADR 0022 requirement 6), not `deploys.json` (the plugin's), and not
+`.claude/skill-config.yaml` (ee-skills' to name). Two rules keep it a record
+rather than an opt-out and both are checked: an entry covers **the version it
+names and no later one**, and it **expires**. `register-check deployments` reads
+it, and the asymmetry matters — a stale *deployment* is a recommendation and
+exits `0`; a stale *record* (expired, superseded, or naming a skill nothing
+stamps) exits `1`, and a malformed file exits `2` rather than reading as no
+declinations.
+
 **Do not re-run `/lint-md` here.** The stamps read `lint-md@1.0.6` and the
 installed skill is 1.0.7, so the deployment is stale — which is reported and
 never enforced. 1.0.7 shipped most of the amend at

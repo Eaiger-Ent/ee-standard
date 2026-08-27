@@ -1,0 +1,40 @@
+# Deployment decisions — what this repository has deliberately not deployed.
+#
+# The counterpart to the provenance stamps a deployment writes. A stamp records
+# what *was* deployed; this records what was not, and why. Read by
+# `register-check deployments`, which without it cannot tell a deployment behind
+# because nobody got to it from one behind because taking the release would
+# revert something this register holds. Reporting those two the same way trains
+# everyone to ignore both.
+#
+# It is **not** part of the register. A declination is this repository's posture,
+# and ADR 0022 requirement 6 keeps posture out of `controls.yaml` and out of
+# anything under `plugins/` — which is what an adopter installs. It sits at the
+# root beside `controls.yaml` rather than inside either
+# (ADR 0042 revision 2, § Extended in revision 2).
+#
+# Two rules make an entry a record rather than an opt-out:
+#
+#   `version` names the release being declined, and covers **that release only**.
+#   A later one re-opens the question, which is the whole point — a declination
+#   that covered every future version would be a permanent exemption wearing a
+#   reason.
+#
+#   `review_by` expires it. One without an expiry becomes permanent by neglect,
+#   which is why `variance: justified` was removed at register contract 3: the
+#   mechanism meant to stop it becoming a loophole was unreachable. An expired
+#   entry fails this command.
+
+declined:
+  - skill: lint-md
+    version: "1.0.7"
+    reason: >
+      1.0.7 writes `npx --no-install markdownlint-cli2` at every locus, which
+      ADR 0020 measured falling through to PATH rather than reaching the
+      artefact package-lock.json pins; and it writes `.claude/**` into
+      `ignores`, which ADR 0019 forbids because an exemption may not hide a
+      file git tracks. Re-running it would replace conforming artefacts with
+      non-conforming ones, so the stamp would claim 1.0.7 wrote what 1.0.7 is
+      not allowed to write.
+    adr: docs/adr/0042-a-deploying-skill-reads-local-configuration.md
+    review_by: 2026-11-27

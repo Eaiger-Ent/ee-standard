@@ -1782,7 +1782,46 @@ can leave this command in a routine without it becoming noise
 **Nothing here fails a build.** The command exits `0` over any number of stale
 or undeployed gates: staleness is *reported, never enforced*, and a re-run is a
 recommendation you accept or decline. It exits non-zero only for the `AHEAD`
-defect. If your plugin is installed somewhere the command cannot guess, pass
+defect — and for a **stale record**, described next.
+
+**Declining a release is an outcome, and it has to be written down.** A skill
+you did not deploy is behind for one of two reasons: nobody got to it, or taking
+it would revert something your register holds. Those are a chore and a decision,
+and a report that shows them the same way trains everyone to ignore both. Record
+the second in **`deployment-decisions.yaml`**, at your repository root beside
+`controls.yaml`:
+
+```yaml
+declined:
+  - skill: lint-md
+    version: "1.0.7"
+    reason: >
+      It writes an invocation that resolves from PATH rather than from the
+      artefact the lockfile pins, and an exemption that hides a tracked file.
+    adr: docs/adr/00NN-....md
+    review_by: 2026-11-27
+```
+
+It is **not** part of your register. A declination is your repository's posture,
+and the register is what everyone installs
+([ADR 0022](adr/0022-a-platform-token-ci-carries.md) requirement 6).
+
+Two rules make it a record rather than a permanent opt-out, and the command
+enforces both:
+
+- **`version` covers the release it names and no later one.** Declining 1.0.7
+  does not decline 1.0.8 — a new release re-opens the question, which is the
+  whole point.
+- **`review_by` expires it.** An entry past its date **fails** the command, the
+  way GOV-003 fails a control past its review date. A declination nobody
+  revisits is a permanent exemption wearing a reason.
+
+Two more failures, both about the record rather than about a deployment: an
+entry for a version you have **already deployed** (the decision no longer
+applies), and one naming a skill **nothing in your repository stamps**. And a
+file that will not parse exits `2` rather than reading as no declinations —
+which would report every declined deployment as a chore nobody got to, in a
+report that looked entirely ordinary. If your plugin is installed somewhere the command cannot guess, pass
 `--plugin <plugin root>` or set `CLAUDE_PLUGIN_ROOT`.
 
 **How you know it worked:** run it before deploying anything and every gate
@@ -1817,6 +1856,7 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 9a | That credential is named in your register before it exists | `uv run register-check run --control SEC-003` passes rather than failing on a secret nothing names |
 | 10 | The conformance step passes `--require-complete` | A run that cannot verify a control fails the check rather than printing that it could not. Turn it on **after** row 9, not before |
 | 10a | The fork path, if you take fork pull requests | A test running the step's own script asserts it tolerates `3` and only `3` (§ 4.3). Do not write the branch if you do not need it |
+| 11a | A release you decided not to take is recorded rather than remembered | `uv run register-check deployments` shows it under *Deliberately not deployed* with a live `review_by`, and exits `0`. An expired or superseded entry exits `1` (§ 4.4) |
 | 11 | Every gate you deployed is current, and you can see which are not | `uv run register-check deployments` reports `CURRENT` for each gate you ran and `NOT APPLICABLE` or `NEVER DEPLOYED` for the rest — never `UNRECORDED` or `AHEAD` in a fresh adoption (§ 4.4) |
 
 ## When something is wrong with the standard itself
