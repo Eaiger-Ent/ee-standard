@@ -35,9 +35,15 @@ from register_check.deployments import render as render_deployments
 from register_check.meta import META_CHECKS
 from register_check.register import Control, Register, load_register
 from register_check.remote import resolve as resolve_remote
-from register_check.repo import NotAGitRepository, Repo, require_git_repo
+from register_check.repo import NotAGitRepository, Repo, git, require_git_repo
 from register_check.report import render
 from register_check.runner import Verdict, exit_code, run_command_assert, run_control
+from register_check.variance import (
+    Direction,
+    build_variance,
+    gated_configs,
+    render_variance,
+)
 from register_check.verify_meta import run_meta_control
 
 
@@ -100,6 +106,28 @@ def _parser() -> argparse.ArgumentParser:
     check.add_argument("name")
     explain = sub.add_parser("explain", help="what a control checks, and why")
     explain.add_argument("id", metavar="ID")
+    variance = sub.add_parser(
+        "variance", help="which way a change to a gated config moved"
+    )
+    variance.add_argument(
+        "--against",
+        default=None,
+        metavar="REF",
+        help=(
+            "the revision to compare the working tree against "
+            "(default: the merge base with origin's default branch, else HEAD)"
+        ),
+    )
+    variance.add_argument(
+        "--path",
+        action="append",
+        default=None,
+        metavar="FILE",
+        help=(
+            "an extra config file to classify, for gated config the register's "
+            "`stacks:` does not name — repeatable"
+        ),
+    )
     deployments = sub.add_parser(
         "deployments", help="which gates are deployed here, and which are owed a re-run"
     )
@@ -289,6 +317,82 @@ def _cmd_deployments(repo_path: Path, register_path: Path | None, plugin: Path |
     return 1 if report.defective else 0
 
 
+def _cmd_variance(
+    repo_path: Path,
+    register_path: Path | None,
+    against: str | None,
+    extra: list[str] | None,
+) -> int:
+    """Report which way each gated config moved between a revision and now.
+
+    Exit codes are ADR 0016's vocabulary rather than a third one: `1` for a
+    loosening, `3` where something could not be classified, `0` otherwise. It is
+    **not** part of a conformance run — a run reports whether the repository is
+    conformant now, and a direction is a fact about a change (ADR 0040).
+    """
+    register, code = _load(repo_path, register_path)
+    if register is None:
+        return code
+    base = against or _default_base(repo_path)
+    if not _revision_exists(repo_path, base):
+        print(
+            f"variance: '{base}' is not a revision in this repository — with no "
+            "baseline there is no delta to classify, which is a different answer "
+            "from 'nothing moved'",
+            file=sys.stderr,
+        )
+        return 2
+    repo = Repo(repo_path)
+    paths = gated_configs(register, repo.present) + [(p, None) for p in extra or []]
+    report = build_variance(
+        lambda p: _read_at(repo_path, base, p),
+        lambda p: _read_now(repo_path, p),
+        register,
+        paths,
+    )
+    print(render_variance(report, base))
+    if report.direction is Direction.LOOSENING:
+        return 1
+    return 3 if report.direction is Direction.UNCLASSIFIED else 0
+
+
+def _default_base(repo_path: Path) -> str:
+    """The merge base with the remote default branch, else `HEAD`.
+
+    `HEAD` is the fallback rather than `HEAD~1` because a repository with one
+    commit has no `HEAD~1`, and a command that crashed on a fresh clone would be
+    reporting on the clone rather than on the change.
+    """
+    for candidate in ("origin/HEAD", "origin/main", "main"):
+        merge_base = git(repo_path, "merge-base", "HEAD", candidate)
+        if merge_base.returncode == 0 and merge_base.stdout.strip():
+            return merge_base.stdout.strip()
+    return "HEAD"
+
+
+def _revision_exists(repo_path: Path, ref: str) -> bool:
+    return git(repo_path, "rev-parse", "--verify", f"{ref}^{{commit}}").returncode == 0
+
+
+def _read_at(repo_path: Path, ref: str, rel: str) -> str | None:
+    """A file's text at `ref`, or `None` if it was not a file there.
+
+    `cat-file blob` rather than `show`: `git show <ref>:<missing>` does not
+    fail, it resolves the argument as a revision and prints the commit, so a
+    path that was absent came back as a commit message and got classified.
+    """
+    result = git(repo_path, "cat-file", "blob", f"{ref}:{rel}")
+    return result.stdout if result.returncode == 0 else None
+
+
+def _read_now(repo_path: Path, rel: str) -> str | None:
+    path = repo_path / rel
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     repo_path: Path = args.repo.resolve()
@@ -296,7 +400,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         # Only the commands that evaluate the repository need it to be one;
         # `schema` and `explain` read the register and nothing else.
-        if args.command in (None, "run", "assert", "meta", "deployments"):
+        if args.command in (None, "run", "assert", "meta", "deployments", "variance"):
             require_git_repo(repo_path)
         return _dispatch(args, repo_path, register_path)
     except NotAGitRepository as exc:
@@ -331,6 +435,8 @@ def _dispatch(args: argparse.Namespace, repo_path: Path, register_path: Path | N
             return _cmd_explain(repo_path, register_path, args.id)
         case "deployments":
             return _cmd_deployments(repo_path, register_path, args.plugin)
+        case "variance":
+            return _cmd_variance(repo_path, register_path, args.against, args.path)
     raise AssertionError(f"unhandled command {args.command!r}")
 
 

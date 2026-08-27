@@ -63,6 +63,7 @@ _DOCUMENT_ALLOWED = (
     "ecosystems",
     "stacks",
     "suppression",
+    "variance",
     "cloud_credentials",
     "platform_credentials",
     "predicates",
@@ -478,6 +479,14 @@ class Register:
     ecosystems: dict[str, Ecosystem] = field(default_factory=dict)
     stacks: dict[str, Stack] = field(default_factory=dict)
     suppression: tuple[str, ...] = ()
+    # Which end of a config setting is the stricter one, keyed by the setting's
+    # leaf name. A register fact from contract 33 (ADR 0040): a reasonable Equal
+    # Experts repository could gate a tool this checker has never heard of, so a
+    # table of key polarities inside the checker would be a coverage limit
+    # nobody could see or extend. A key absent here is one the classifier
+    # declines to judge, which is the mechanism for the schema's second
+    # declining case rather than an omission in it.
+    variance_polarity: dict[str, str] = field(default_factory=dict)
     # Static cloud credentials SEC-002 forbids. A register fact from contract 8
     # (ADR 0018's fourth pass): the ratified decision classified these as a
     # register fact in the first place, and the move was never made (§ H4).
@@ -1180,6 +1189,7 @@ class _Validator:
                 predicates[str(name)] = expr
         stacks = self._stacks(raw["stacks"], predicates, ecosystems) if "stacks" in raw else {}
         suppression = self._suppression(raw["suppression"]) if "suppression" in raw else ()
+        variance_polarity = self._variance(raw["variance"]) if "variance" in raw else {}
         cloud_credentials = (
             self._cloud_credentials(raw["cloud_credentials"])
             if "cloud_credentials" in raw
@@ -1229,6 +1239,7 @@ class _Validator:
             ecosystems=ecosystems,
             stacks=stacks,
             suppression=suppression,
+            variance_polarity=variance_polarity,
             cloud_credentials=cloud_credentials,
             platform_credentials=platform_credentials,
         )
@@ -1675,6 +1686,46 @@ class _Validator:
                 continue
             events.append(event.strip())
         return tuple(events)
+
+    #: The ends a setting can be stricter at. Numeric settings move toward
+    #: `lower` or `higher`; boolean ones toward `true` or `false`. A fifth value
+    #: would be a direction the classifier could not act on.
+    _POLARITIES: ClassVar[tuple[str, ...]] = ("lower", "higher", "true", "false")
+
+    def _variance(self, raw: object) -> dict[str, str]:
+        """`variance.polarity` — which end of each config setting is stricter.
+
+        Validated here rather than at first use for `suppression`'s reason: a
+        polarity the classifier cannot act on would surface as a wrong
+        *direction* rather than as an error, and a loosening reported as a
+        narrowing is the one failure ADR 0040 exists to prevent.
+        """
+        if not isinstance(raw, dict):
+            self.error("variance", "must be a mapping with a 'polarity' key")
+            return {}
+        unknown = sorted(set(raw) - {"polarity"})
+        if unknown:
+            self.error("variance", f"unknown key(s): {', '.join(unknown)}")
+        polarity = raw.get("polarity")
+        if not isinstance(polarity, dict) or not polarity:
+            self.error("variance.polarity", "must be a non-empty mapping of setting to end")
+            return {}
+        found: dict[str, str] = {}
+        for key, value in polarity.items():
+            at = f"variance.polarity.{key}"
+            if not isinstance(key, str) or not key.strip():
+                self.error(at, "must be a non-empty setting name")
+                continue
+            # `true` and `false` are YAML booleans unless quoted, and an
+            # unquoted one here means the register says a setting is stricter
+            # at `True` — which is the value it meant, spelled a way the schema
+            # would otherwise reject. Accept both and normalise.
+            spelled = str(value).lower() if isinstance(value, bool) else value
+            if spelled not in self._POLARITIES:
+                self.error(at, f"must be one of {', '.join(self._POLARITIES)}")
+                continue
+            found[key] = str(spelled)
+        return found
 
     def _suppression(self, raw: object) -> tuple[str, ...]:
         """Patterns that count as swallowing a failure.

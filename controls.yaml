@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.26.0
+version: 0.27.0
 
 meta:
   owner: platform-engineering
@@ -328,7 +328,15 @@ meta:
   #     deliberately not given one: its remote blocks answer only inside a
   #     GitHub Actions job, so a hook running them would exit 3 and refuse every
   #     push.
-  register_contract: 32
+  # 33: `variance.polarity` — which end of a config setting is the stricter one
+  #     (ADR 0040). It is what turns a delta into a *direction* rather than
+  #     something merely caught, and a setting absent from it is one the
+  #     classifier declines to judge, which is the mechanism for the second of
+  #     the schema's three declining cases. A skill reading the register must
+  #     understand it: `register-variance` reports which keys it declined on,
+  #     and closing that gap is an edit to this block rather than to the
+  #     checker.
+  register_contract: 33
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -887,6 +895,47 @@ platform_credentials:
     # checker, as `cloud_credentials:` spelling equivalence does.
     triggers: any
     max_lifetime_hours: 24
+
+# ---------------------------------------------------------------------------
+# Which end of a config setting is the stricter one, so a change to a
+# `narrowing-only` control's config can be given a direction rather than merely
+# caught (ADR 0040, contract 33). Read by `register-check variance`.
+#
+# Keyed by the setting's **leaf name**, not by a path into the file: a tool's
+# `line_length` is that tool's setting wherever it is nested, and requiring the
+# path would make this block a second copy of every config file's shape.
+#
+# **A setting absent from here is one the classifier declines to judge**, and
+# that is the mechanism rather than a hole in it: `01-register-schema.md`
+# § `variance` names *a threshold whose direction depends on the metric's
+# polarity* as one of three cases where classification must report
+# UNCLASSIFIED, and this is where a repository stops that being true for a
+# setting it knows about.
+#
+# It lives here rather than in the checker by ADR 0018's test: a reasonable
+# Equal Experts repository could gate a tool this checker has never heard of,
+# and a polarity table inside `src/` would be a coverage limit nobody could see
+# or extend. Guessing from the name — `max_*` is a ceiling, `min_*` is a floor —
+# was considered and rejected in ADR 0040: it is wrong the first time a tool
+# spells a ceiling `limit`, and a wrong polarity reports a loosening as a
+# narrowing.
+#
+# Short by design. These are the settings this repository can demonstrate a
+# direction for; an adopter names their own, and the report says which keys it
+# declined on so the gap is visible rather than silent.
+# ---------------------------------------------------------------------------
+variance:
+  polarity:
+    # markdownlint MD013. A ceiling, so a smaller number is stricter — the same
+    # direction DOC-001's `max_line_length` assert already enforces against the
+    # register's 250, stated here so the classifier can read it too. Both
+    # spellings, because markdownlint accepts either and a config using the one
+    # this block missed would be declined rather than judged.
+    line_length: lower
+    line-length: lower
+    # mypy. `strict = true` is the control TYP-001 asserts, so `true` is the
+    # stricter end and turning it off is a loosening.
+    strict: "true"
 
 # ---------------------------------------------------------------------------
 # What counts as swallowing a failure. ADR 0018: a house idiom this list does

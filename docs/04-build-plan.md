@@ -967,20 +967,29 @@ Wire the mechanism that keeps deployments current.
       holds. The first is a chore; the second is a decision, and reporting them
       the same way trains everyone to ignore both
 
-- [ ] A weakening of a `narrowing-only` control is **classified by direction**,
+- [x] A weakening of a `narrowing-only` control is **classified by direction**,
       not merely caught. Moved here from Phase 4 on 2026-08-24 with the skill
       that performs it — `register-variance`, named by
       [ADR 0031](adr/0031-the-plugin-is-named-for-the-register.md) — because
       neither it nor the classifier behind it exists, and a phase cannot test
       machinery a later phase builds (Phase 4 § What moved to Phase 5, and why)
-- [ ] The three known `UNCLASSIFIED` cases report as `UNCLASSIFIED`, not as a
+- [x] The three known `UNCLASSIFIED` cases report as `UNCLASSIFIED`, not as a
       guess in either direction — a rule replaced by a differently named rule
       covering overlapping ground, a threshold whose direction depends on the
       metric's polarity, and a config expressed as executable code rather than
       declarative data ([`01-register-schema.md`](01-register-schema.md)
       § `variance`). Moved from Phase 4 with the criterion above: these are the
       cases where classification declines to guess, so they cannot be judged
-      before something classifies
+      before something classifies.
+
+      **Both closed 2026-08-27** at register contract 33
+      ([ADR 0040](adr/0040-a-declined-classification-is-a-verdict.md)), by
+      `register-check variance` and the `register-variance` skill that reports
+      it. The three cases fall out of the mechanism rather than being handled
+      specially, which is what makes declining a verdict rather than a
+      fallthrough — and `variance.polarity` is what makes the second of them
+      *fixable in one line of register* rather than a permanent shrug.
+      `tests/test_variance.py` holds each case by name
 
 - [ ] **A version bump that leaves a checksum behind fails something.** Renovate
       proposed uv `0.12.5` → `0.12.6` (#74) and bumped the version literal at all
