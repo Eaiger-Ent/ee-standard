@@ -222,12 +222,25 @@ def test_the_register_does_not_carry_the_declination() -> None:
     the same boundary for the platform-token choice; this holds it for the one
     Phase 5 introduced, because the file sits beside `controls.yaml` and the
     obvious wrong move is to put it inside.
+
+    **What may not ship is the decision, not the mechanism.** An earlier version
+    of this test banned the *filename* from everything under `plugins/`, and the
+    sweep template broke it by telling an adopter where to record a declination
+    of their own — which is the mechanism working rather than posture leaking.
+    A rule that fires on the shipped instructions is a rule aimed at the wrong
+    thing.
     """
     register = (REPO_ROOT / "controls.yaml").read_text(encoding="utf-8")
     assert "declined:" not in register
+    ours = read_decisions(Repo(REPO_ROOT))
+    assert ours, "this test is vacuous unless something is declined"
     for path in (REPO_ROOT / "plugins").rglob("*"):
-        if path.is_file() and path.suffix in {".yaml", ".yml", ".json", ".md"}:
-            assert "deployment-decisions" not in path.read_text(encoding="utf-8"), path
+        if not path.is_file() or path.suffix not in {".yaml", ".yml", ".json", ".md"}:
+            continue
+        text = path.read_text(encoding="utf-8")
+        for entry in ours:
+            assert f"{entry.skill}@{entry.version}" not in text, path
+            assert entry.reason[:40] not in text, path
 
 
 def test_the_file_lives_beside_the_register() -> None:

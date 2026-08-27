@@ -7,6 +7,23 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Unattended, from Phase 5's sweep. Several controls here can start failing
+  # with **no commit at all**: SUP-004 reads what a project published and a
+  # release can be re-cut, GOV-003 expires on a date, and SEC-001's and
+  # SEC-003's remote blocks read platform state an administrator can change.
+  # Without this they are noticed by the next pull request, which in a quiet
+  # month is nobody.
+  #
+  # A schedule run has no pull request, so `FROM_A_FORK` is empty and the step
+  # below takes the `--require-complete` branch — which is right: the run is on
+  # the default branch and carries the repository secret, so there is no
+  # credential it should be excused for lacking.
+  #
+  # It stays out of CI-001's `required_checks:`. A required check is evaluated
+  # on a pull request; adding a trigger changes when this workflow runs, never
+  # what gates a merge.
+  schedule:
+    - cron: "23 5 * * 1"
 
 # Declared rather than defaulted, because the Conformance step below hands this
 # token to `register-check` so its `kind: remote` blocks can read platform state

@@ -180,6 +180,22 @@ defence rather than one of two.
 from `PATH` is wrong wherever it happens — including on a host where a tracked
 script is run outside this container entirely.
 
+**The sweep is two scheduled runs, not one** (Phase 5).
+`.github/workflows/register-check.yml` gained a `schedule:` trigger because
+several controls can start failing with **no commit**: SUP-004 reads what a
+project published, GOV-003 expires on a date, and SEC-001's and SEC-003's remote
+blocks read platform state an administrator can change.
+`.github/workflows/conformance-sweep.yml` runs `register-check deployments` —
+the report with no other home — writes the job summary every run, and keeps
+**one** tracking issue, opened/edited/closed as the condition changes. It runs
+`deployments` and **not** the full audit on purpose: the audit needs gitleaks
+and markdownlint, and installing them there is a second copy of the conformance
+workflow's setup. It **does not fail on findings** — a red scheduled workflow is
+a notification people learn to dismiss — only when the sweep could not run.
+`PLATFORM_READ_TOKEN` gained `schedule` in its `triggers:` for it, which is the
+safest of its three events: a schedule fires only on the default branch. Neither
+workflow may enter CI-001's `required_checks:`.
+
 `.github/workflows/support-floor.yml` verifies the floor when it differs from
 the pin, and today it does not, so the job reads both files and **skips itself**
 rather than running the suite twice on one interpreter. It is kept because the

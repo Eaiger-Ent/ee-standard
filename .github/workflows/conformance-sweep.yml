@@ -1,0 +1,142 @@
+# The sweep. Phase 5's *"a report nobody has to ask for"*.
+#
+# **It reports and never fixes.** Nothing here re-runs a gate, edits a config or
+# opens a pull request — a deployment is always a reviewable change a person
+# makes (`docs/00-concepts.md` § Notify, never redeploy). What this adds is that
+# *"a deployment is owed"* becomes knowable at the moment it becomes true rather
+# than the next time somebody thinks to look.
+#
+# **It runs one command, and deliberately not the other.** `register-check
+# deployments` reads the sidecar, the stamps and the declination record — files,
+# with no external tool involved — so this job needs uv and nothing else.
+# Running the full conformance audit here would mean installing gitleaks,
+# markdownlint and the rest, which is a second copy of `register-check.yml`'s
+# setup free to drift from it. Conformance drift is caught instead by that
+# workflow's own `schedule:` trigger, added with this one: the run that already
+# knows how to install its tools is the run that should do it.
+#
+# **The report has two homes, because they answer different questions.** The job
+# summary is the record of this run — always written, whether or not anything is
+# owed, so a green sweep is visible rather than silent. The issue is the record
+# of the *condition*: opened when something is owed, edited while it persists,
+# and closed when it clears. One issue, never a new one per run, or the sweep
+# becomes the noise it exists to prevent.
+#
+# **The job does not fail on findings**, and that is the point rather than a
+# softness: a red scheduled workflow is a notification people learn to dismiss,
+# and the whole design of the deployment report is that staleness is reported
+# and never enforced. It fails only when the sweep itself could not run.
+#
+# No provenance stamp: no gate deploys this, and a stamp naming one would claim
+# a deployment that never happened. It is deliberately not in CI-001's
+# `required_checks:` — an owed deployment is a thing to know about, not a reason
+# a conformant change cannot merge.
+name: Conformance sweep
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  # So the sweep can be run on demand without waiting a week for it, and so its
+  # first run does not have to be discovered by a cron firing.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # To open, edit and close the one tracking issue. The narrowest grant that
+  # lets the report reach somebody without an email nobody reads.
+  issues: write
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      # SUP-003 — pinned to a commit SHA. Full history: GOV-002 compares
+      # baselines against main, and the report resolves the register.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        run: |
+          # renovate: datasource=pypi depName=uv
+          pip install uv==0.12.6
+
+      # SUP-001 — install from the committed lockfile, never re-resolve.
+      - name: Install dependencies (frozen)
+        run: uv sync --frozen
+
+      - name: Which gates are owed a re-run, and which decisions have gone stale
+        id: report
+        # `&& status=0 || status=$?` captures the exit code without suppressing
+        # it — none of the register's `suppression:` idioms, and the same shape
+        # the conformance workflow's fork branch uses. Exit 1 here is a *record*
+        # that has stopped being true (an expired or superseded declination);
+        # exit 2 is the sweep failing to run, which is the one case this job
+        # lets through as a failure.
+        run: |
+          uv run register-check deployments > report.txt && status=0 || status=$?
+          cat report.txt
+          if [ "${status}" -ge 2 ]; then
+            echo "the sweep could not run" >&2
+            exit "${status}"
+          fi
+          {
+            echo "## Conformance sweep"
+            echo
+            echo '```text'
+            cat report.txt
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+          # The report's own summary line is the source, so this step never
+          # re-derives what is owed from the rows above it. An empty parse is an
+          # error rather than a zero: no summary line means the report did not
+          # say, and reading that as "nothing owed" is the silence this whole
+          # workflow exists to remove.
+          owed=$(sed -n 's/^Summary: .*, \([0-9]*\) owed a deployment.*/\1/p' report.txt)
+          test -n "${owed}" || { echo "no summary line in the report" >&2; exit 2; }
+          if [ "${owed}" -gt 0 ] || [ "${status}" -ne 0 ]; then
+            echo "findings=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "findings=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Open, update or close the one tracking issue
+        env:
+          # `github.token` rather than the standing credential: this step writes
+          # an issue and reads nothing about platform configuration, so the job
+          # token is both sufficient and the shorter-lived of the two.
+          GH_TOKEN: ${{ github.token }}
+          FINDINGS: ${{ steps.report.outputs.findings }}
+          TITLE: "Conformance sweep: a deployment is owed"
+        run: |
+          number=$(gh issue list --state open --json number,title \
+            --jq "[.[] | select(.title == env.TITLE) | .number][0] // empty")
+          if [ "${FINDINGS}" = "true" ]; then
+            {
+              echo "The scheduled sweep found something owed. It is a"
+              echo "recommendation, not a failure: staleness is reported and"
+              echo "never enforced."
+              echo
+              echo '```text'
+              cat report.txt
+              echo '```'
+              echo
+              echo "Re-run the gate named above, or record a decision not to in"
+              echo "\`deployment-decisions.yaml\`. Refreshing a provenance stamp"
+              echo "by hand is not one of the outcomes."
+              echo
+              echo "_Opened and maintained by \`.github/workflows/conformance-sweep.yml\`._"
+            } > body.md
+            if [ -n "${number}" ]; then
+              gh issue edit "${number}" --body-file body.md
+              echo "updated issue #${number}"
+            else
+              gh issue create --title "${TITLE}" --body-file body.md
+            fi
+          elif [ -n "${number}" ]; then
+            gh issue close "${number}" \
+              --comment "The sweep found nothing owed. Closing; it will reopen if that changes."
+            echo "closed issue #${number}"
+          else
+            echo "nothing owed, and no issue open — nothing to do"
+          fi

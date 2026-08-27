@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.28.0
+version: 0.29.0
 
 meta:
   owner: platform-engineering
@@ -510,6 +510,9 @@ tools:
       # that installs a pinned tool is a site that can drift from the register,
       # whether or not a verdict depends on it.
       - .github/workflows/support-floor.yml
+      # The sweep installs uv to run the deployment report unattended. Another
+      # site that repeats the version, so another site that can drift from it.
+      - .github/workflows/conformance-sweep.yml
   # The interpreter every other Python tool runs inside, and until contract 20
   # the only tool here that no locus pinned and nothing compared. `source:
   # toolchain` is neither of the other two and both would be false: the value
@@ -917,8 +920,15 @@ platform_credentials:
   # Both events are named because both need the answer: a push run and a pull
   # request run each verify the same controls, and the flip that ends ADR 0016's
   # tolerance has to hold on the runs that gate a merge.
+  #
+  # `schedule` joined them for the sweep (Phase 5). A scheduled run asks the
+  # same questions of the same repository and needs the same answer — and it is
+  # the run that catches an administrator turning push protection off, which no
+  # commit would reveal. It is also the *safest* of the three events: a schedule
+  # fires only on the default branch, where a `pull_request` run can be proposed
+  # by anyone.
   - name: PLATFORM_READ_TOKEN
-    triggers: [push, pull_request]
+    triggers: [push, pull_request, schedule]
     max_lifetime_hours: 2184
   - name: GITHUB_TOKEN
     # Created by GitHub at the start of each job and expired when that job

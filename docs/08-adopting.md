@@ -1830,6 +1830,59 @@ every gate you deployed reads `CURRENT`. If one still reads `NEVER DEPLOYED`
 after its gate ran, the gate wrote an artefact and did not stamp it — report
 that, do not add the stamp by hand.
 
+### 4.5 — The sweep: a report nobody has to ask for
+
+Everything in § 4.4 answers when you run it. **Several controls can start
+failing with no commit at all**: SUP-004 reads what a project published and a
+release can be re-cut; GOV-003 expires on a date; SEC-001's and SEC-003's remote
+blocks read platform state an administrator can change. In a quiet month the
+next person to notice is whoever opens the next pull request.
+
+Two scheduled runs close that, and they are deliberately separate.
+
+**Add `schedule:` to your conformance workflow.** One line, no new file, and the
+run that already knows how to install its tools is the run that should do it. A
+schedule run has no pull request, so any fork carve-out you wrote does not apply
+— which is right, because it runs on your default branch with your own secrets.
+
+```yaml
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "23 5 * * 1"
+```
+
+**Then copy the sweep**, from
+`plugins/control-register/templates/sweep/conformance-sweep.yml`. It runs
+`register-check deployments` — the report with no other home, since conformance
+already runs on every pull request — writes it to the job summary, and keeps
+**one** tracking issue: opened when something is owed, edited while it persists,
+closed when it clears. One issue and never one per run, or the sweep becomes the
+noise it exists to prevent.
+
+Three things about it are decisions rather than details:
+
+- **It reports and never fixes.** Nothing re-runs a gate or opens a pull
+  request. A deployment stays a reviewable change a person makes.
+- **It does not fail on findings.** A red scheduled workflow is a notification
+  people learn to dismiss, and staleness is *reported, never enforced*. It fails
+  only when the sweep itself could not run.
+- **It runs `deployments` and not the full audit.** Running the audit here would
+  mean installing your scanner, your markdown linter and the rest a second time
+  — a copy of your conformance workflow's setup, free to drift from it.
+
+**Two register edits go with it.** Add the sweep's path to `tools.<uv>.pinned_at`,
+because it repeats a pinned version. And if your conformance workflow reaches a
+standing secret, add `schedule` to that credential's `triggers:` in
+`platform_credentials:` — otherwise SEC-003 fails the moment the scheduled run
+references a secret under an event the register does not permit.
+
+**It needs `issues: write`**, and nothing more. The job token is enough; do not
+hand the sweep your standing platform credential, which it has no question to
+ask with.
+
 ## 5 — Checklist
 
 Each row is done when its evidence exists, not when the step has been performed.
@@ -1856,6 +1909,7 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 9a | That credential is named in your register before it exists | `uv run register-check run --control SEC-003` passes rather than failing on a secret nothing names |
 | 10 | The conformance step passes `--require-complete` | A run that cannot verify a control fails the check rather than printing that it could not. Turn it on **after** row 9, not before |
 | 10a | The fork path, if you take fork pull requests | A test running the step's own script asserts it tolerates `3` and only `3` (§ 4.3). Do not write the branch if you do not need it |
+| 11b | Conformance and deployments are both checked when nothing has changed | Your conformance workflow has a `schedule:` trigger, and a sweep run appears in Actions with a job summary. A control that expires or a release that is re-cut is found by a cron rather than by the next pull request (§ 4.5) |
 | 11a | A release you decided not to take is recorded rather than remembered | `uv run register-check deployments` shows it under *Deliberately not deployed* with a live `review_by`, and exits `0`. An expired or superseded entry exits `1` (§ 4.4) |
 | 11 | Every gate you deployed is current, and you can see which are not | `uv run register-check deployments` reports `CURRENT` for each gate you ran and `NOT APPLICABLE` or `NEVER DEPLOYED` for the rest — never `UNRECORDED` or `AHEAD` in a fresh adoption (§ 4.4) |
 
