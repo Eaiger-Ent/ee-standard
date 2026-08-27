@@ -773,6 +773,43 @@ named rule covering overlapping ground; a threshold whose direction depends on
 the metric's polarity; and a config expressed as executable code rather than
 declarative data.
 
+**`register-check variance` is what computes it**, from register contract 33
+([ADR 0040](adr/0040-a-declined-classification-is-a-verdict.md)). It compares
+each gated config between a revision and the working tree, and its exit codes
+are this document's usual vocabulary: `1` for a loosening, `3` where something
+could not be classified, `0` otherwise. It is **not** part of a conformance run
+— a run reports whether the repository is conformant now, and a direction is a
+fact about a change.
+
+Each of the three cases falls out of the mechanism rather than being handled
+specially: the first is a membership delta with both additions and removals; the
+second is a scalar whose key `variance.polarity` does not name; the third is a
+file that is not declarative data. Only the second has a fix, and it is one line
+of register — which is why the report says which of the three it hit.
+
+### `variance.polarity`
+
+Which end of a config setting is the stricter one, keyed by the setting's
+**leaf name** rather than by a path into the file: a tool's `line_length` is
+that tool's setting wherever it is nested, and requiring the path would make the
+block a second copy of every config file's shape.
+
+| Value | For | Meaning |
+| --- | --- | --- |
+| `lower` | numbers | a ceiling — a smaller value is stricter |
+| `higher` | numbers | a floor — a larger value is stricter |
+| `true` / `false` | booleans | the value that is stricter. Quote them, or YAML reads a boolean — both spellings are accepted |
+
+**A setting absent from this block is one the classifier declines to judge.**
+That is the mechanism for the second declining case rather than a hole in it,
+and it is why the block may be short: coverage is honestly small rather than
+quietly small, and the report names the keys it declined on.
+
+A value outside the four is a **schema error**, not a skipped setting. Every
+other failure here is loud; a polarity the classifier cannot act on would
+surface as a wrong *direction*, and a loosening reported as a narrowing is the
+one outcome the design exists to prevent.
+
 ### `baseline`
 
 `null` means no exemptions are possible — the control passes everywhere or fails.

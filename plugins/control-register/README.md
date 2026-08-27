@@ -21,11 +21,11 @@ them carries a pinned version, a tool name or a rule of its own.
 | `gate-repo` | CI-001 | **Built** — the only gate whose effect is not a file. Records the ruleset, then applies it |
 | `register-adopt` | dispatcher | **Built** — the front door. Writes no gate configuration of its own |
 | `register-check` | installs and wraps the checker | Phase 3 |
-| `register-variance` | classifies local deltas | Phase 5 |
+| `register-variance` | classifies local deltas | **Built** — reports a direction, and says why when it declines to |
 
-All six gates and the dispatcher shipped in Phase 2. The two unbuilt rows are
-later phases' by the build plan, not leftovers from this one: `register-check`
-waits on `kind: remote`, and `register-variance` on the staleness sweep.
+All six gates and the dispatcher shipped in Phase 2, and `register-variance` in
+Phase 5. The one unbuilt row is a later phase's by the build plan rather than a
+leftover from this one: `register-check` waits on `kind: remote`.
 
 Gates are grouped by the artefact they write, not one per control:
 `gate-quality` writes one pre-commit config and one CI workflow covering three

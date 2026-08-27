@@ -538,7 +538,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
 | `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the twenty-six things it found |
 | `docs/13-phase-5-review.md` | Record of Phase 5 slice by slice, and what each one deliberately left open |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **38** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0039 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **39** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0040 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fourteen Tier-1 controls, with
@@ -785,6 +785,26 @@ verification this machine can finish now has a local locus*. SEC-001's and
 SEC-003's remote blocks, CI-001 and the three meta-controls stay CI's alone. **A
 green push is a promise about the controls that name a local locus, not that the
 conformance job will pass.**
+
+Per [ADR 0040](docs/adr/0040-a-declined-classification-is-a-verdict.md)
+(**Accepted** and implemented 2026-08-27, register contract 33) a config delta
+gets a **direction** — `register-check variance`, reported by the
+`register-variance` skill. **Declining is a verdict the mechanism produces, not
+a case it falls through**: three shapes are classifiable — membership of a
+mapping or list, a scalar whose key `variance.polarity` names, and nothing else
+— and `01-register-schema.md`'s three `UNCLASSIFIED` cases each fall out of one
+of them. Only the second is fixable, in one line of register, and the report
+says which case it hit so the two are not confused. **A mixed delta is a
+loosening**, never a wash. **It is not a gate** — the asserts that fail a build
+over a weakening still do, and moving one here would trade a build failure for a
+remembered command. The delta is read between two git revisions rather than
+against a rendered template, because rendering one inside the checker would be a
+second copy of the gate's substitution living in the auditor. Exit codes are ADR
+0016's: `1` loosening, `3` declined, `0` otherwise; it is **not** part of a
+conformance run. Two bugs the tests caught before it shipped are worth
+remembering: `git show <ref>:<glob>` prints the *commit* rather than failing, and
+`isinstance(False, int)` is `True` in Python — a ceiling turned `off` compared as
+`False < 100` and reported a narrowing.
 
 Gate skills live in `plugins/control-register/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,

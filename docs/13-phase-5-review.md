@@ -265,3 +265,98 @@ made the substitution this register spends most of its asserts refusing.
 - **Nothing verifies that the second git hook is installed**, here as at the
   first locus. `.git/hooks/` is untracked, CI has no hooks, and `check-auth.sh`
   reports rather than repairs.
+
+## The fourth slice — a declined classification is a verdict
+
+Landed 2026-08-27, at register contract 33. It closes the two criteria Phase 4
+handed over on 2026-08-24, and the second of them is the reason the slice needed
+a decision rather than an afternoon.
+
+### What was found
+
+The standard has promised a **direction** since Phase 0 and never computed one.
+`00-concepts.md` § Variance says a delta usually has a knowable one;
+`01-register-schema.md` says the checker *"classifies the delta's direction and
+fails on any weakening"* and names three cases where it declines instead.
+
+What existed was a set of asserts that **catch** particular weakenings — an
+exemption hiding a tracked file, a markdown ceiling above the register's, a
+coverage allow-list leaving a tracked module out. Each answers *is this
+repository conformant now*. None answers *which way did this change move*, and
+nothing in `src/` read a delta at all.
+
+The hard half is the second criterion. **A classifier that answers *narrowing*
+when it does not know is worse than no classifier**: it launders a guess into a
+verdict, and the reader cannot tell the two apart. So the design had to make
+declining something the mechanism produces rather than something it falls
+through to, and [ADR 0040](adr/0040-a-declined-classification-is-a-verdict.md)
+records it: three shapes are classifiable — membership, a scalar whose key the
+register gives a polarity, and nothing else — and the schema's three cases each
+fall out of one of them rather than being handled specially.
+
+### What closed, and what the evidence is
+
+| Criterion | Evidence |
+| --- | --- |
+| A weakening is **classified by direction**, not merely caught | `tests/test_variance.py::test_a_rule_removed_is_a_loosening` and `::test_a_scalar_moves_the_way_the_register_says`, the second parameterised over both polarities and both value kinds — a sign error would pass one half |
+| The three `UNCLASSIFIED` cases report as `UNCLASSIFIED` | `::test_case_one_a_member_replaced_by_a_differently_named_one`, `::test_case_two_a_threshold_whose_polarity_the_register_does_not_give`, `::test_case_three_a_config_that_is_executable_code` — one test per case, each asserting the *reason* and not only the verdict |
+
+Demonstrated against this repository, not only in fixtures: `strict = false` in
+`[tool.mypy]` reports `LOOSENING — True → False (stricter is true)` and exits
+`1`; adding `ARG` to ruff's `select` reports `NARROWING — added ARG`; renaming
+`I` to `ISORT` reports the first declining case with both members named.
+
+### Two bugs the tests found before anything shipped
+
+**A glob is not a path.** `stacks.typescript.gates.lint.config` names
+`.eslintrc*`, because eslint accepts several spellings. Passed through as a
+filename, `git show <ref>:.eslintrc*` **does not fail** — it resolves the
+argument as a revision and prints the commit — so the first run of the command
+classified two commit messages as configuration. Patterns are now expanded
+against the files git can see, and the read uses `cat-file blob`, which errors
+on a path that is not a blob.
+
+**A boolean is an integer in Python.** `isinstance(False, int)` is `True`, so a
+ceiling changed from `100` to `off` — which YAML reads as `False` — compared as
+`False < 100` and reported a **narrowing**. A relaxation dressed as a tightening
+is the single outcome ADR 0040 exists to prevent, and it arrived through the
+language rather than through the design. `::test_a_boolean_is_not_a_number_however_python_feels_about_it`
+keeps it out.
+
+### Where the direction comes from, and why not from the checker
+
+`variance.polarity` in the register, keyed by a setting's leaf name. ADR 0018's
+boundary test decides it: a reasonable Equal Experts repository could gate a tool
+this checker has never heard of, so a polarity table in `src/` would be a
+coverage limit nobody could see or extend.
+
+Guessing from the key's name — `max_*` is a ceiling, `min_*` is a floor — was
+considered and rejected. It looks principled and is wrong the first time a tool
+spells a ceiling `limit`, and a wrong polarity is exactly the failure above.
+
+The block is **short by design and honestly so**: three settings, which are the
+ones this repository can demonstrate a direction for. The report names every key
+it declined on, so the gap is visible and closable rather than silent.
+
+### What the slice deliberately left open
+
+- **It is not a gate, and must not become one.** The command runs on demand and
+  a report that runs on demand is not a gate. The controls that fail on a
+  weakening still do, through their own asserts. Moving one of those checks here
+  would trade a build failure for a command somebody has to remember.
+- **The delta is between two git revisions, not against what the gate would
+  write.** `02-skill-family.md` § The three moments describes the sweep as
+  noticing that *"the deployed artefact has been edited away from what the skill
+  would write"*, and that is right about the moment and wrong about the
+  instrument: rendering a gate's template inside the checker re-implements that
+  gate's substitution, which is a second copy of the gate living in the auditor.
+  What the sweep can still ask — *is this gate owed a re-run* —
+  `register-check deployments` already answers from the stamp.
+- **`--path` exists because DOC-001's config is not in `stacks:`.** It is
+  `lint-md`'s control in another plugin, so no gate's `config` entry names its
+  file. That is a gap in what the register knows about, not in the classifier,
+  and closing it means the register naming the markdown config location — which
+  is a decision about a control this repository does not own.
+- **Nothing classifies a `kind: command` gate's behaviour**, only its
+  configuration. A tool whose defaults changed between two pinned versions moves
+  no config key and this reports `UNCHANGED`, correctly and unhelpfully.
