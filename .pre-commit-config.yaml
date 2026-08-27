@@ -140,6 +140,27 @@ repos:
         always_run: true
         stages: [pre-push]
 
+      # ee-control: SEC-002  ee-skill: gate-secrets@0.1.0  gate-contract: 6  register: v0.26.0  register-contract: 32
+      #
+      # Hand-written, not deployed — the gate's template carries this block and
+      # the gate was not re-run.
+      #
+      # SEC-002's pre-push locus, and a hook of its own rather than a control
+      # added to the one below: `gate-secrets` owns this control and
+      # `gate-supply-chain` owns that hook, and a gate editing another gate's
+      # artefact is how two skills come to disagree about one file.
+      #
+      # SEC-003 is **not** here. Its remote blocks answer only inside a GitHub
+      # Actions job, so `register-check run --control SEC-003` exits 3 on this
+      # machine and the hook would refuse every push (ADR 0039).
+      - id: register-check-secrets-pre-push
+        name: register-check (SEC-002)
+        entry: uv run register-check run --control SEC-002
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
       # ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  gate-contract: 5  register: v0.25.0  register-contract: 31
       # ee-control: SUP-002  ee-skill: gate-supply-chain@0.1.0  gate-contract: 5  register: v0.25.0  register-contract: 31
       #

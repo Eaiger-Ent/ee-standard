@@ -195,3 +195,73 @@ gate's CI step now names all three controls and carries three stamps.
   and `gate-supply-chain`'s `contractVersion`, which is the sidecar working as
   designed — what they write changed — and neither gate was re-run, because
   re-running six gates in this repository is a decision rather than a chore.
+
+## The third slice — the last control that could take the locus
+
+Landed 2026-08-27, at register contract 32. It closes the criterion the second
+slice deliberately left open, and the way it closes it is worth stating plainly,
+because the row as written names a target that does not exist.
+
+### What was found
+
+SEC-002 was the one control whose verification a developer's machine can finish
+and which had no local locus at all. It also had **no `deployed_by`** — it had
+sat in `register-adopt`'s *checked, not deployed* row since Phase 0, on the
+reasoning that a control satisfied by an absence has no artefact to write.
+
+That reasoning was right about the property and wrong about the locus. An
+absence still needs something that notices when it stops being true, and a locus
+is something a gate installs — so giving SEC-002 a locus gives `gate-secrets`
+its first SEC-002 artefact, and `deployed_by` follows from that rather than from
+a change of mind about what the control asserts. The plan row moved with it, and
+the lesson recorded in `register-adopt`'s SKILL.md is the general one: which row
+a control belongs in is read from the register at plan time and never
+remembered, because a control can move between rows.
+
+**SEC-003 stays in that row**, and the boundary was measured rather than
+assumed: `register-check run --control SEC-003` exits `3` on this machine,
+because its two remote blocks answer only inside a GitHub Actions job. A hook
+running it would refuse every push. The test for whether a control can take this
+locus is whether the machine at that locus can *finish* verifying it — which is
+ADR 0039 § Decision point 4 applied to one more control.
+
+### What closed, and what the evidence is
+
+| Criterion | Evidence |
+| --- | --- |
+| A developer can run what CI runs, before pushing, in one wired step | `tests/test_pre_push_locus.py` for the mechanism; `tests/test_gate_secrets_deploy.py::test_the_pre_push_hook_is_staged_and_sec_003_is_not_in_it` for the boundary; the second slice's measured push refusal for the judge |
+
+Measured against this repository: with the hook's entry pointed at SEC-003
+instead, SEC-002 fails *"pre-push locus — nothing runs 'uv run register-check'
+for SEC-002"* while its property block still passes — the two claims failing
+independently, which is the whole point of the locus assert.
+
+### What "what CI runs" had to be narrowed to
+
+The row's literal reading is unreachable and this is the honest record of that.
+Three things remain CI's alone:
+
+- **SEC-001's and SEC-003's `kind: remote` blocks** answer only where the
+  credential is.
+- **CI-001** is `locus: [remote]` outright — there is no file to run.
+- **The three meta-controls** declare no locus at all, because the schema
+  forbids one on a control that checks the register rather than the repository.
+
+So the criterion is closed as *every control whose verification this machine can
+finish now has a local locus*, and a green push is a promise about those. It is
+not a promise that the conformance job will pass. Anyone reading it as one has
+made the substitution this register spends most of its asserts refusing.
+
+### What the slice deliberately left open
+
+- **The pre-commit hooks do not run again at push.** `default_stages:
+  [pre-commit]` means a hook without `stages:` runs at commit time only, so the
+  union of the two moments is what covers CI rather than the push alone. A
+  developer who commits with `--no-verify` and then pushes gets the pre-push
+  hooks and nothing else. Making the push re-run everything was considered and
+  not done: it would run the markdown, lint and type gates a second time on
+  files that had not changed since they passed, and `gitleaks protect --staged`
+  would scan an empty stage — a check that cannot fail is worse than no check.
+- **Nothing verifies that the second git hook is installed**, here as at the
+  first locus. `.git/hooks/` is untracked, CI has no hooks, and `check-auth.sh`
+  reports rather than repairs.

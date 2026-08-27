@@ -868,9 +868,17 @@ the honest answer, rather than a pass earned by a binary nobody pinned.
 
 From register contract 31 the register has a fourth locus, `pre-push`
 ([ADR 0039](adr/0039-a-push-is-a-locus.md)), and in the register this
-repository ships it is declared by TST-001, SUP-001 and SUP-002 — the three
-whose only locus was `ci`, so the test suite and two supply-chain controls were
-verified nowhere you could reach before opening a pull request.
+repository ships it is declared by TST-001, SUP-001, SUP-002 and — from
+contract 32 — SEC-002. Those four had `ci` as their only locus, so the test
+suite, two supply-chain controls and the one that forbids a static cloud key in
+a workflow were all verified nowhere you could reach before opening a pull
+request.
+
+**SEC-003 does not declare it, and the omission is the rule rather than an
+oversight.** Its `kind: remote` blocks answer only inside a GitHub Actions job,
+so `register-check run --control SEC-003` exits `3` on your machine — a hook
+running it would refuse every push. The test for whether a control can take this
+locus is whether your own machine can *finish* verifying it.
 
 **It lives in `.pre-commit-config.yaml`, beside the `pre-commit` locus.** Both
 moments are hooks in that one file and a hook's `stages:` key says which it
@@ -906,10 +914,17 @@ and watch the push refuse.
 
 ### 3.1 — `gate-secrets`, and what it needs from you first
 
-`/gate-secrets` wires SEC-001 at both its local loci and checks SEC-002 and
-SEC-003. It
+`/gate-secrets` wires SEC-001 at both its local loci, wires SEC-002 at its
+pre-push and ci loci from register contract 32, and checks SEC-003. It
 takes `--repo` and `--register`, the same two flags as `register-check`, so a
 deployment and its audit cannot be pointed at different things by accident.
+
+**SEC-002 used to be checked and never deployed, and that changed.** It is still
+satisfied by an *absence* — no workflow naming a static cloud key — but an
+absence still needs something that notices when it stops being true, and until
+contract 32 nothing local did. The gate now writes one hook and one CI step for
+it and stamps both. If your plan still shows SEC-002 as *verify only*, the plan
+was built from an older register.
 
 **Three prerequisites, and how you know each is met.**
 
@@ -1793,6 +1808,7 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 7d | Both git hook types are installed, not just `pre-commit` | `test -x .git/hooks/pre-push`, and a push with a failing test is refused. No control checks this — `.git/hooks/` is untracked — so it is your evidence or nobody's (§ 3.0) |
 | 7b | Quality gates wired at every locus **and** stamped | `uv run register-check run --control LNT-001 --control TYP-001 --control TST-001` exits `0` — every block ✓, nothing skipped |
 | 7a | Secrets gate wired at pre-commit **and** CI, and stamped | `uv run register-check run --control SEC-001` shows both local blocks ✓; with an admin-scoped token the remote block is ✓ too and it exits `0` |
+| 7e | SEC-002 is wired, not merely passing | `uv run register-check run --control SEC-002` exits `0` with its locus block ✓ — a repository with no workflow naming a cloud key passes the *property* whether or not anything enforces it (§ 3.1) |
 | 7c | The branch protection you recorded is the one GitHub enforces | `uv run register-check run --control CI-001` with a token — the remote block reports the rules in effect, not the file |
 | 8 | The conformance run is a required status check | `uv run register-check` with a token reports GOV-001 `PASS` — from register contract 26 it reads which checks GitHub actually enforces on your default branch, and fails one your register requires and the platform does not. Without a token it reports `SKIPPED (no credentials)` and says which half it did verify |
 | 8a | A merge has actually been refused | A pull request whose required check fails cannot be merged. Four green links and a merge that goes through anyway is what no report can rule out (§ 4.2) |

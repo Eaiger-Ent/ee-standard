@@ -165,14 +165,20 @@ the plan reads as a control that does not apply.
 | **checked, not deployed** | `deploys.json` lists the control under a gate, and the control has no `deployed_by` | the gate that verifies it, and that nothing is written for it |
 | **manual** | neither | a pointer to `docs/08-adopting.md` |
 
-**The third row is not a gap in the register.** SEC-002 — *CI authenticates
-without a long-lived cloud credential* — is satisfied by a workflow **not**
-referencing a static credential. There is no artefact to write and so no
-`deployed_by` to name; `gate-secrets` verifies it and writes nothing for it.
-SEC-003 is the same shape one step further out: it is satisfied by a workflow
-referencing no secret the register does not name, and what it reads —
-`platform_credentials:` — is a register fact rather than an artefact a gate
-writes.
+**The third row is not a gap in the register.** SEC-003 — *CI carries no
+platform credential the register does not name* — is satisfied by a workflow
+referencing no secret the register does not name, and what it reads,
+`platform_credentials:`, is a register fact rather than an artefact a gate
+writes. There is nothing to write and so no `deployed_by` to name;
+`gate-secrets` verifies it and writes nothing for it.
+
+**SEC-002 sat in that row until register contract 32 and no longer does.** It
+is still satisfied by an absence — a workflow **not** referencing a static
+credential — but from ADR 0039 it declares a `pre-push` locus, and a locus is
+something a gate installs. So `gate-secrets` now writes one artefact for it, a
+hook, and stamps it. The lesson is worth keeping: which row a control belongs in
+is read from the register at plan time and never remembered, because a control
+can move between them.
 
 A control satisfied by an absence still has to appear in the plan, and has to be
 distinguishable from one nobody has got to yet. Planning it as **manual** would
@@ -187,7 +193,7 @@ Show one table. One row per control, in register order:
 ```text
 Control  Applies  Now                Gate               Action
 SEC-001  yes      FAIL               gate-secrets       deploy
-SEC-002  yes      PASS               gate-secrets       verify only
+SEC-002  yes      FAIL               gate-secrets       deploy
 SEC-003  yes      PASS               gate-secrets       verify only
 SUP-001  yes      FAIL               gate-supply-chain  deploy
 …

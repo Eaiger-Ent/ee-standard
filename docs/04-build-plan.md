@@ -1002,7 +1002,7 @@ Wire the mechanism that keeps deployments current.
       nothing at all and is already recorded that way
       ([`09-phase-1.5-review.md`](09-phase-1.5-review.md))
 
-- [ ] **A developer can run what CI runs, before pushing, in one wired step.**
+- [x] **A developer can run what CI runs, before pushing, in one wired step.**
       Today they cannot, and the gap is not evenly spread: `uv run pre-commit run
       --all-files` covers ruff, mypy, gitleaks, markdown and three controls,
       while `uv run pytest` and a full `uv run register-check` have **no**
@@ -1021,21 +1021,23 @@ Wire the mechanism that keeps deployments current.
       drift from the workflow it mirrors. Judge it by deleting a passing test
       and watching the push refuse.
 
-      **Half landed 2026-08-27** at register contract 31
-      ([ADR 0039](adr/0039-a-push-is-a-locus.md)): the locus exists, TST-001,
-      SUP-001 and SUP-002 declare it, two gates write and stamp the hooks, and
-      the judge above passes — a deleted test refuses the push. What is left is
-      the other check the criterion names, the **full** `register-check`, and it
-      cannot be wired as written. A full local run exits `3` for as long as any
-      control carries a `kind: remote` block a developer's machine cannot
-      answer, so the hook names its controls instead; the three meta-controls
-      declare no locus at all by construction, and SEC-002 declares none because
-      no gate deploys it. So *what CI runs* is not reachable locally in the
-      literal sense, and closing this row means either giving the remaining
-      locally-verifiable controls the locus — SEC-002 needs a gate to write its
-      hook first — or amending the row to say *what CI runs that this machine
-      can answer*. That is a decision, not a chore, and it is why the box is
-      still empty
+      **Closed 2026-08-27** over two slices, at register contracts 31 and 32
+      ([ADR 0039](adr/0039-a-push-is-a-locus.md)). The judge passes: a deleted
+      test refuses the push, measured rather than reasoned about.
+
+      **What "what CI runs" means here, stated because the literal reading is
+      unreachable.** Every control whose verification a developer's machine can
+      *finish* now declares a local locus — TST-001, SUP-001, SUP-002 and
+      SEC-002 gained `pre-push`; the rest already had `pre-commit`. Three things
+      remain CI's alone and none of them is a gap this row can close: SEC-003
+      and SEC-001 carry `kind: remote` blocks that answer only where the
+      credential is, CI-001 is `locus: [remote]` outright, and the three
+      meta-controls declare no locus at all because the schema forbids it. A
+      hook that ran the full audit would exit `3` on every one of those and
+      refuse every push, which is why the hooks name their controls. So a green
+      push is a promise about the controls that name a local locus, and reading
+      it as *CI will pass* is the substitution this register spends most of its
+      asserts refusing
 
 The first two criteria are the whole noise argument, expressed as a test. If a
 documentation-only release triggers a recommendation, the mechanism will be

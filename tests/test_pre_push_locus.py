@@ -181,7 +181,7 @@ def test_this_repository_wires_the_locus_it_declares() -> None:
     """
     config = (REPO_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
     assert "default_stages: [pre-commit]" in config
-    assert config.count("stages: [pre-push]") == 2
+    assert config.count("stages: [pre-push]") == 3
 
     for script in (
         REPO_ROOT / ".devcontainer/setup.sh",

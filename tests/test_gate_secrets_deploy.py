@@ -70,6 +70,12 @@ def _render(template: str, register: Register, tool: str) -> str:
         "{{TOOL_VERSION}}": pinned.version or "",
         "{{TOOL_SHA256}}": pinned.sha256 or "",
         "{{TOOL_REPO}}": pinned.release_repo or "",
+        # The checker, not the scanner. SEC-002's locus assert names it, and the
+        # gate reaches it by `invocation` rather than by name — a bare name
+        # resolves from PATH, and what answered would be auditing the repository
+        # (ADR 0020).
+        "{{CHECKER}}": _checker(register),
+        "{{CHECKER_INVOCATION}}": register.tools[_checker(register)].invocation or "",
         "{{SKILL_VERSION}}": SKILL_VERSION,
         "{{GATE_CONTRACT}}": gate_contract("gate-secrets"),
         "{{REGISTER_VERSION}}": register.version,
@@ -78,6 +84,17 @@ def _render(template: str, register: Register, tool: str) -> str:
         text = text.replace(placeholder, value)
     assert "{{" not in text, f"a placeholder was not filled: {text}"
     return text
+
+
+def _checker(register: Register) -> str:
+    """SEC-002's `gate_wired_at_declared_loci` block, `args.tool`.
+
+    Read from the register rather than spelled here, for the reason the skill
+    reads it there: which tool gates SEC-002 is a register fact.
+    """
+    control = next(c for c in register.controls if c.id == "SEC-002")
+    block = next(b for b in control.verify if b.assert_name == "gate_wired_at_declared_loci")
+    return str(block.args["tool"])
 
 
 def _body(template: str) -> str:
@@ -182,19 +199,46 @@ def test_after_deploying_both_local_loci_verify(
     assert "incomplete" in out
 
 
-def test_the_deployed_stamp_records_the_register_it_came_from(deployed: Path) -> None:
+def test_the_deployed_stamps_record_the_register_they_came_from(deployed: Path) -> None:
+    """One stamp per control, not one per file.
+
+    Two hooks live here from register contract 32 — SEC-001's at pre-commit and
+    SEC-002's at pre-push — and each carries its own stamp. A single stamp would
+    credit `gate-secrets` for a control whose artefact it had not written, which
+    is contract 12's finding and the reason `provenance_stamp_present` matches
+    on the control being evaluated.
+    """
     register = _register()
     text = (deployed / ".pre-commit-config.yaml").read_text(encoding="utf-8")
-    found = stamps_in(text)
-    assert len(found) == 1, found
-    assert found[0] == Stamp(
-        control="SEC-001",
-        skill="gate-secrets",
-        skill_version=SKILL_VERSION,
-        register_version=register.version,
-        register_contract=register.register_contract,
-        gate_contract=int(gate_contract("gate-secrets")),
-    )
+    expected = [
+        Stamp(
+            control=control,
+            skill="gate-secrets",
+            skill_version=SKILL_VERSION,
+            register_version=register.version,
+            register_contract=register.register_contract,
+            gate_contract=int(gate_contract("gate-secrets")),
+        )
+        for control in ("SEC-001", "SEC-002")
+    ]
+    assert stamps_in(text) == expected
+
+
+def test_the_pre_push_hook_is_staged_and_sec_003_is_not_in_it(deployed: Path) -> None:
+    """The boundary ADR 0039 draws, held where the gate writes it.
+
+    SEC-003 looks like SEC-002 and must not join it: its remote blocks answer
+    only inside a GitHub Actions job, so a hook running them exits 3 on a
+    developer's machine and refuses every push. And the `stages:` key is what
+    makes this a pre-push hook at all — without it pre-commit runs the checker
+    on every commit.
+    """
+    config = yaml.safe_load((deployed / ".pre-commit-config.yaml").read_text(encoding="utf-8"))
+    hooks = {hook["id"]: hook for block in config["repos"] for hook in block["hooks"]}
+    pre_push = next(h for h in hooks.values() if h.get("stages") == ["pre-push"])
+    assert "SEC-002" in pre_push["entry"]
+    assert "SEC-003" not in pre_push["entry"]
+    assert hooks["gitleaks"].get("stages") is None
 
 
 def test_the_deployed_workflow_is_valid_yaml_that_still_gates(deployed: Path) -> None:

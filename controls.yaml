@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.25.0
+version: 0.26.0
 
 meta:
   owner: platform-engineering
@@ -320,7 +320,15 @@ meta:
   #     prose. A skill reading the register must understand the value, because a
   #     gate writes the hook that serves it and a hook staged for one moment
   #     does not serve the other.
-  register_contract: 31
+  # 32: SEC-002 declares the `pre-push` locus too, which completes the set: it
+  #     was the last control whose verification a developer's machine can finish
+  #     and which had no local locus at all. It gains `deployed_by` with it —
+  #     the gate checked this control and wrote nothing for it, so there was no
+  #     artefact to stamp, and a locus is something a gate installs. SEC-003 is
+  #     deliberately not given one: its remote blocks answer only inside a
+  #     GitHub Actions job, so a hook running them would exit 3 and refuse every
+  #     push.
+  register_contract: 32
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -990,12 +998,36 @@ controls:
         url: https://cloud.google.com/iam/docs/workload-identity-federation
     tier: 1
     rung: blocking
-    locus: [ci]
+    # `pre-push` from contract 32 (ADR 0039, applied to the last control that
+    # could take it). SEC-002 reads what a workflow carries, and the moment that
+    # matters is the last one before the workflow can run: a static cloud key
+    # added to `.github/workflows/` is a credential in a git object the instant
+    # it is pushed, and until now nothing local looked. It is the fourth locus
+    # rather than `pre-commit` because the control's subject is CI's
+    # credentials, not the file as it is edited.
+    locus: [pre-push, ci]
     applies_to: [github-actions]
     verify:
       - kind: file
         assert: no-static-cloud-keys
+      # Contract 32. The block above reads the *property* — no workflow names a
+      # credential `cloud_credentials:` forbids — which is a different claim
+      # from something enforcing it before a push leaves the machine and before
+      # a merge does. Contract 11's finding, in the last control still making
+      # only the first claim.
+      - kind: file
+        assert: gate_wired_at_declared_loci
+        args: { tool: register-check }
+      # SEC-002 gains a `deployed_by` here, having had none since Phase 0: the
+      # gate checked this control and wrote nothing for it, so there was no
+      # artefact to stamp. A locus is something a gate installs, so giving
+      # SEC-002 one gives `gate-secrets` its first SEC-002 artefact — and a
+      # stamp naming SEC-001 must not be credited for it.
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-secrets }
     owner: platform-engineering
+    deployed_by: gate-secrets
     variance: forbidden
     baseline: null
     review_by: 2027-08-16
