@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.27.0
+version: 0.28.0
 
 meta:
   owner: platform-engineering
@@ -336,7 +336,15 @@ meta:
   #     understand it: `register-variance` reports which keys it declined on,
   #     and closing that gap is an edit to this block rather than to the
   #     checker.
-  register_contract: 33
+  # 34: SUP-004 — a pinned release artefact's digest is the one the project
+  #     published (ADR 0041). `tools.<tool>.checksums` names the published
+  #     manifest, the release tag form, the asset the tool's `sha256` belongs
+  #     to, and every other architecture a locus pins. A manifest rather than a
+  #     per-asset `.sha256` because that is the form both pinned tools publish;
+  #     measured, gitleaks' per-asset URL 404s. The `also:` map closes the
+  #     aarch64 digests, which lived only in `setup.sh` and were compared by
+  #     nothing.
+  register_contract: 34
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -405,6 +413,15 @@ tools:
     # proposal carries that instruction in its body (renovate.json), and an
     # unrevised digest fails the install rather than passing it.
     sha256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    # gitleaks tags its releases `v{version}` where uv's tag is the bare number,
+    # which is why the tag form is a register fact rather than a rule in the
+    # checker — it is a property of each project's release process.
+    checksums:
+      tag: "v{version}"
+      manifest: "gitleaks_{version}_checksums.txt"
+      asset: "gitleaks_{version}_linux_x64.tar.gz"
+      also:
+        "gitleaks_{version}_linux_arm64.tar.gz": e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080
     pinned_at:
       - .devcontainer/setup.sh
       - .github/workflows/register-check.yml
@@ -468,6 +485,23 @@ tools:
     # fetch and compare it rather than deriving it, but still needs a human to
     # do so, and an unrevised digest fails the install rather than passing it.
     sha256: 8681d8921e7d520fb368991dcf5f9c1905b80f5bf2a265a0ed085c8d8e342477
+    # Where the project publishes its digests, so the pin above can be compared
+    # against what was actually released (SUP-004, ADR 0041). A **manifest**
+    # rather than a per-asset `.sha256`: uv publishes both forms and gitleaks
+    # publishes only the manifest, so the per-asset form would have covered one
+    # pinned tool of two.
+    #
+    # `also:` carries the digests for every other architecture a locus pins. The
+    # aarch64 one lived only in `.devcontainer/setup.sh` and was compared by
+    # nothing at all — recorded that way in `docs/09-phase-1.5-review.md`, and
+    # closed here because a manifest lists every architecture and one fetch
+    # checks them all.
+    checksums:
+      tag: "{version}"
+      manifest: sha256.sum
+      asset: uv-x86_64-unknown-linux-gnu.tar.gz
+      also:
+        uv-aarch64-unknown-linux-gnu.tar.gz: d58030acd26159499ac82f32da12d1b3c12a3a1bfc414232d9082070c03e128d
     pinned_at:
       - .devcontainer/setup.sh
       - .github/workflows/register-check.yml
@@ -1244,6 +1278,68 @@ controls:
     baseline: null
     review_by: 2027-08-16
     rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0004-automated-dependency-proposals.md
+
+  - id: SUP-004
+    title: A pinned release artefact's digest is the one the project published
+    enforces: >
+      Every sha256 digest the register pins is repeated at each locus that
+      installs the tool, no locus repeats a digest the register does not name,
+      and each pinned digest equals the one the project published for that
+      release.
+    standard:
+      name: SLSA v1.0 Build levels
+      url: https://slsa.dev/spec/v1.0/levels
+    also_see:
+      - name: OpenSSF Baseline
+        url: https://baseline.openssf.org/
+    tier: 1
+    rung: blocking
+    # `ci` alone, and that is forced rather than chosen (ADR 0041 point 3). The
+    # remote block below needs a network, and every other supply-chain control
+    # now declares a `pre-push` locus — so putting this property on one of them
+    # would have put a network fetch in front of every push, and reported
+    # UNCLASSIFIED offline, and refused the push. A developer on a train could
+    # not push a documentation fix. The property gets a control, and the control
+    # gets the locus its verification can actually answer at.
+    locus: [ci]
+    applies_to: [always]
+    verify:
+      # The offline half. Both directions, because they catch opposite
+      # mistakes: a digest the register names and no locus repeats is a register
+      # edited without its loci, and a digest in a locus the register does not
+      # name is a locus edited without the register. The second is the half that
+      # catches a bot.
+      - kind: file
+        assert: tool_digests_match_register
+      # The network half, and the only check that would have failed Renovate's
+      # uv bump (#74): it moved the version at all four sites and left all three
+      # digests at the previous release's values, and everything passed.
+      #
+      # No credential is presented and none is needed — a release manifest is
+      # public — so the runner does not short-circuit this to
+      # SKIPPED (no credentials). A tool publishing no manifest passes and says
+      # so, because whether a project publishes checksums is a fact about that
+      # project rather than about this repository.
+      - kind: remote
+        assert: release_checksums_match_register
+      # The locus, read rather than declared. Without this `locus: [ci]` is a
+      # claim nothing checks — the two blocks above read the *property* out of
+      # the files and the network, which is a different claim from something
+      # enforcing it before a merge. That is theme T-3, and this control would
+      # have shipped with it had the composition test not caught the control
+      # falling into `register-adopt`'s "manual" row.
+      - kind: file
+        assert: gate_wired_at_declared_loci
+        args: { tool: register-check }
+      - kind: file
+        assert: provenance_stamp_present
+        args: { skill: gate-supply-chain }
+    owner: platform-engineering
+    deployed_by: gate-supply-chain
+    variance: forbidden
+    baseline: null
+    review_by: 2027-08-27
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0041-a-pinned-digest-is-checked-against-what-was-published.md
 
   - id: SUP-003
     title: Third-party CI actions are pinned to a commit SHA

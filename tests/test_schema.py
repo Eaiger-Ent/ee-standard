@@ -13,7 +13,7 @@ def test_real_register_passes_schema() -> None:
     register, errors = load_register(REPO_ROOT / "controls.yaml")
     assert errors == []
     assert register is not None
-    assert len(register.controls) == 14
+    assert len(register.controls) == 15
     assert len(register.meta_controls) == 3
 
 

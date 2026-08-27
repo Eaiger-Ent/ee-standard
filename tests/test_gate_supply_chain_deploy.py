@@ -235,7 +235,7 @@ def test_the_deployed_stamps_record_the_register_they_came_from(deployed: Path) 
     """One stamp per control per artefact, each naming the control whose locus it is."""
     register = _register()
     stamped = {
-        ".github/workflows/ci.yml": {"SUP-001", "SUP-002", "SUP-003"},
+        ".github/workflows/ci.yml": {"SUP-001", "SUP-002", "SUP-003", "SUP-004"},
         ".github/dependabot.yml": {"SUP-002"},
         ".pre-commit-config.yaml": {"SUP-001", "SUP-002", "SUP-003"},
     }

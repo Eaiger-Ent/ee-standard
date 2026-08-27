@@ -1432,6 +1432,7 @@ surprises people:
 | SEC-003 | The `github-authentication-token-expiration` header on `GET /rate_limit` | Nothing beyond a valid token — the question is about the credential, not about the repository. **Answers only inside a GitHub Actions job**: the token in your shell is a different credential, so anywhere else it is `UNCLASSIFIED` |
 | SEC-003 | The `X-OAuth-Scopes` header on the same call | Nothing beyond a valid token. Its presence means a **classic** token, which fails: a classic token grants its readers every repository its owner can reach |
 | GOV-001 | `GET /repos/{owner}/{repo}/rules/branches/{branch}` | Read access to the repository. From register contract 26 the meta-control reads which checks GitHub enforces, so the chain from a control to a blocked merge is read end to end (§ 4.2) |
+| SUP-004 | The release's published checksum manifest, e.g. `.../releases/download/{tag}/sha256.sum` | **Nothing.** It is the one remote check that presents no credential, because a release manifest is public — and it must not, or a run without a token would report `SKIPPED` over a question it could have answered. What it needs instead is a *network*: unreachable is `UNCLASSIFIED`, which `--require-complete` promotes to a failure ([ADR 0041](adr/0041-a-pinned-digest-is-checked-against-what-was-published.md)) |
 
 The middle row is the one to plan for. A token that cannot see
 `security_and_analysis` gets an answer with the setting simply absent — not

@@ -16,7 +16,7 @@ from enum import Enum
 
 from register_check.asserts import ASSERTS
 from register_check.asserts_file import CONTROL_ARG, AssertFn
-from register_check.asserts_remote import REMOTE_ASSERTS
+from register_check.asserts_remote import PUBLIC_REMOTE_ASSERTS, REMOTE_ASSERTS
 from register_check.predicates import compile_predicate
 from register_check.register import Control, MetaControl, Register, VerifyBlock
 from register_check.remote import GitHub, NoCredentials, Unreadable, Unresolvable
@@ -146,6 +146,15 @@ def _run_remote_block(
     """
     assert block.assert_name is not None
     try:
+        # A block that answers without a credential must not be short-circuited
+        # for want of one. A release checksum manifest is public, and reporting
+        # SKIPPED (no credentials) over it would be the checker declining to
+        # answer a question it could have answered (ADR 0041).
+        if block.assert_name in PUBLIC_REMOTE_ASSERTS:
+            result = REMOTE_ASSERTS[block.assert_name](None, register, block.args)
+            return BlockResult(
+                block, Verdict.PASS if result.passed else Verdict.FAIL, result.message
+            )
         target = resolve_remote(repo) if remote is None else remote
         if isinstance(target, NoCredentials):
             return BlockResult(block, Verdict.SKIPPED_NO_CREDENTIALS, target.message)

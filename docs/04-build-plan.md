@@ -991,7 +991,7 @@ Wire the mechanism that keeps deployments current.
       *fixable in one line of register* rather than a permanent shrug.
       `tests/test_variance.py` holds each case by name
 
-- [ ] **A version bump that leaves a checksum behind fails something.** Renovate
+- [x] **A version bump that leaves a checksum behind fails something.** Renovate
       proposed uv `0.12.5` → `0.12.6` (#74) and bumped the version literal at all
       four sites the register names, leaving all **three** sha256 digests at
       0.12.5's values — two in `.devcontainer/setup.sh`, one in
@@ -1009,7 +1009,28 @@ Wire the mechanism that keeps deployments current.
       `<asset>.sha256`, which is a decision about whether that is a control and
       where it runs, not a test to add quietly. The aarch64 digest is compared by
       nothing at all and is already recorded that way
-      ([`09-phase-1.5-review.md`](09-phase-1.5-review.md))
+      ([`09-phase-1.5-review.md`](09-phase-1.5-review.md)).
+
+      **Closed 2026-08-27** at register contract 34, with **both** halves and a
+      control of their own, SUP-004
+      ([ADR 0041](adr/0041-a-pinned-digest-is-checked-against-what-was-published.md)).
+      The network half is what the row said was not free, and it is the only one
+      that fails #74's actual shape: that bump left the register and `setup.sh`
+      agreeing *with each other*, so the offline reconciliation passes it.
+      Measured both ways before either was written.
+
+      Two things the row did not anticipate. Both projects publish a **checksum
+      manifest** — uv `sha256.sum`, gitleaks `gitleaks_<version>_checksums.txt` —
+      so one mechanism reads both, where the per-asset `.sha256` the row names
+      404s for gitleaks and would have covered one pinned tool of two. And a
+      manifest lists every architecture, so **the aarch64 digest this row records
+      as compared by nothing is now compared** — the register names it in
+      `checksums.also` and the same fetch checks it.
+
+      It is a new control rather than a block on SUP-001, and that is forced:
+      SUP-001 declares a `pre-push` locus from contract 31, so a remote block on
+      it would put a network fetch in front of every push and refuse one taken
+      offline
 
 - [x] **A developer can run what CI runs, before pushing, in one wired step.**
       Today they cannot, and the gap is not evenly spread: `uv run pre-commit run

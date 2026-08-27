@@ -91,11 +91,17 @@ jobs:
         run: gitleaks detect --no-banner --redact
 
       # ee-control: SUP-003  ee-skill: gate-supply-chain@0.1.0  register: v0.14.0  register-contract: 14
+      # ee-control: SUP-004  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.28.0  register-contract: 34
       #
-      # SUP-003's ci locus. No step of its own: this full audit runs the checker
-      # with no `--control`, so it reaches every applicable control including
-      # SUP-003, and a second step would be the same check twice. The gate
-      # checks for exactly this before writing one.
+      # SUP-003's ci locus, and SUP-004's. No step of its own: this full audit
+      # runs the checker with no `--control`, so it reaches every applicable
+      # control including both, and a second step would be the same check twice.
+      # The gate checks for exactly this before writing one.
+      #
+      # SUP-004's stamp is hand-written, not deployed — the gate's template
+      # carries it and the gate was not re-run. It is here rather than on a step
+      # of its own because this control's ci locus *is* this step, and a stamp
+      # names the artefact that serves the control's locus.
       - name: Conformance
         # Actions does not put GITHUB_TOKEN in a step's environment; a workflow
         # has to hand it over. Without this the remote blocks would report

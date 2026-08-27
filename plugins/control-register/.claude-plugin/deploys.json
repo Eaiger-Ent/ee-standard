@@ -17,11 +17,12 @@
       ]
     },
     "gate-supply-chain": {
-      "contractVersion": 5,
+      "contractVersion": 6,
       "controls": [
         "SUP-001",
         "SUP-002",
-        "SUP-003"
+        "SUP-003",
+        "SUP-004"
       ],
       "artifacts": [
         ".github/workflows/register-check.yml#frozen-install",

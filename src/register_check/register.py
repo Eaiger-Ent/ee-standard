@@ -12,7 +12,7 @@ import datetime
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 
 import yaml
 
@@ -23,6 +23,11 @@ from register_check.asserts_file import (
     substitute_package,
 )
 from register_check.predicates import PredicateSyntaxError, compile_predicate
+
+#: A sha256 digest as every tool writes one. Defined once because three places
+#: now compare against it: the tool's own `sha256`, every `checksums.also`
+#: entry, and the digests SUP-004 reads back out of the loci that repeat them.
+_SHA256 = re.compile(r"[0-9a-f]{64}")
 
 RUNGS = ("advisory", "warn", "blocking", "blocking (baselined)")
 LOCI = ("editor", "pre-commit", "pre-push", "ci", "remote")
@@ -79,6 +84,7 @@ _TOOL_ALLOWED = (
     "pinned_at",
     "invocation",
     "release_repo",
+    "checksums",
     "install",
 )
 _TOOL_SOURCES = ("lockfile", "literal", "toolchain")
@@ -263,6 +269,50 @@ class Tool:
     # is a thing a fork or an internal mirror changes without the checker
     # changing.
     install: Install | None = None
+    # Where the project publishes the digests for this release, so the pin above
+    # can be compared with what was actually released (contract 34, ADR 0041).
+    # Omitting it asserts the project publishes no manifest — which is a fact
+    # about that project, and reported rather than failed.
+    checksums: Checksums | None = None
+
+
+@dataclass(frozen=True)
+class Checksums:
+    """The published digest manifest for a release, and which asset is pinned.
+
+    A **manifest** rather than a per-asset `.sha256` because that is the form
+    both pinned tools publish: uv publishes both and gitleaks only the manifest,
+    so the per-asset shape would have covered one tool of two (measured — the
+    per-asset URL 404s for gitleaks).
+
+    `tag` is a register fact rather than a rule in the checker because release
+    tag forms differ per project: uv's is the bare version, gitleaks' is
+    `v<version>`.
+    """
+
+    #: The release tag, with `{version}` substituted.
+    tag: str
+    #: The manifest asset's name, with `{version}` substituted.
+    manifest: str
+    #: The asset whose digest is `Tool.sha256`, with `{version}` substituted.
+    asset: str
+    #: Every other architecture a locus pins, as asset name to digest. The
+    #: aarch64 digests lived only in `setup.sh` and were compared by nothing;
+    #: a manifest lists every architecture, so one fetch checks them all.
+    also: dict[str, str] = field(default_factory=dict)
+
+    def digests(self, version: str, primary: str | None) -> dict[str, str]:
+        """Every asset this release pins, keyed by its resolved filename."""
+        found = {} if primary is None else {self.asset.format(version=version): primary}
+        for name, digest in self.also.items():
+            found[name.format(version=version)] = digest
+        return found
+
+    def manifest_url(self, repo: str, version: str) -> str:
+        return (
+            f"https://github.com/{repo}/releases/download/"
+            f"{self.tag.format(version=version)}/{self.manifest.format(version=version)}"
+        )
 
 
 @dataclass(frozen=True)
@@ -1009,7 +1059,7 @@ class _Validator:
                     continue
                 sha = entry.get("sha256")
                 if sha is not None and (
-                    not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha)
+                    not isinstance(sha, str) or not _SHA256.fullmatch(sha)
                 ):
                     self.error(f"{at}.sha256", "must be 64 lowercase hex characters")
                     continue
@@ -1078,6 +1128,9 @@ class _Validator:
                         )
                         continue
                     install = Install(repository=repository, ref=ref)
+                checksums = self._checksums(entry.get("checksums"), at, release_repo)
+                if checksums is False:
+                    continue
                 tools[str(name)] = Tool(
                     name=str(name),
                     source=str(source),
@@ -1089,6 +1142,7 @@ class _Validator:
                     invocation=invocation.strip() if isinstance(invocation, str) else None,
                     release_repo=release_repo,
                     install=install,
+                    checksums=checksums or None,
                 )
         ecosystems: dict[str, Ecosystem] = {}
         ecosystems_raw = raw.get("ecosystems") or {}
@@ -1691,6 +1745,50 @@ class _Validator:
     #: `lower` or `higher`; boolean ones toward `true` or `false`. A fifth value
     #: would be a direction the classifier could not act on.
     _POLARITIES: ClassVar[tuple[str, ...]] = ("lower", "higher", "true", "false")
+
+    def _checksums(
+        self, raw: object, at: str, release_repo: str | None
+    ) -> Checksums | Literal[False] | None:
+        """`tools.<tool>.checksums` — the published manifest for this release.
+
+        Returns `False` for an invalid block, which the caller reads as *skip
+        this tool*: a half-parsed checksum block would leave SUP-004 comparing
+        against a URL nobody meant.
+        """
+        if raw is None:
+            return None
+        if not isinstance(raw, dict):
+            self.error(f"{at}.checksums", "must be a mapping of tag, manifest, asset and also")
+            return False
+        self._unknown_keys(raw, ("tag", "manifest", "asset", "also"), f"{at}.checksums")
+        if release_repo is None:
+            self.error(
+                f"{at}.checksums",
+                "needs 'release_repo' beside it — a manifest is fetched from the release, and "
+                "without the repository there is nowhere to fetch it from",
+            )
+            return False
+        fields: dict[str, str] = {}
+        for key in ("tag", "manifest", "asset"):
+            value = raw.get(key)
+            if not isinstance(value, str) or not value.strip():
+                self.error(f"{at}.checksums.{key}", "must be a non-empty string")
+                return False
+            fields[key] = value.strip()
+        also_raw = raw.get("also") or {}
+        if not isinstance(also_raw, dict):
+            self.error(f"{at}.checksums.also", "must be a mapping of asset name to digest")
+            return False
+        also: dict[str, str] = {}
+        for name, digest in also_raw.items():
+            where = f"{at}.checksums.also.{name}"
+            if not isinstance(digest, str) or not _SHA256.fullmatch(digest.strip()):
+                self.error(where, "must be a 64-character hex sha256 digest")
+                return False
+            also[str(name)] = digest.strip()
+        return Checksums(
+            tag=fields["tag"], manifest=fields["manifest"], asset=fields["asset"], also=also
+        )
 
     def _variance(self, raw: object) -> dict[str, str]:
         """`variance.polarity` — which end of each config setting is stricter.

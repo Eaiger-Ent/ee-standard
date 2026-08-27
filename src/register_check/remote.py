@@ -169,6 +169,32 @@ class GitHub:
             raise Unreadable(f"{path} returned a body that is not JSON: {exc}") from exc
 
 
+def fetch_text(url: str) -> str:
+    """A public URL's body, or `Unreadable` if it does not answer.
+
+    No `Authorization` header, because the thing this reads is public: a
+    project's release checksum manifest (ADR 0041). Presenting a credential to
+    fetch it would make the answer depend on whether one was available, which is
+    exactly the distinction `NoCredentials` exists to keep — a check that *can*
+    answer without a token must not report SKIPPED for want of one.
+
+    Failure is `Unreadable` rather than an empty string for the reason every
+    other reader here uses it: not reaching the network teaches nothing about
+    the repository, and a verdict from it would be invented.
+    """
+    request = urllib.request.Request(url, headers={"User-Agent": "register-check"})
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+            body: str = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        raise Unreadable(f"{url} answered {exc.code}") from exc
+    except urllib.error.URLError as exc:
+        raise Unreadable(f"could not reach {url}: {exc.reason}") from exc
+    except TimeoutError as exc:
+        raise Unreadable(f"{url} did not answer within {TIMEOUT_SECONDS}s") from exc
+    return body
+
+
 def _http_explanation(code: int, path: str, slug: str) -> str:
     """What an operator has to do about this status, not merely what it was.
 

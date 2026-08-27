@@ -538,10 +538,10 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
 | `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the twenty-six things it found |
 | `docs/13-phase-5-review.md` | Record of Phase 5 slice by slice, and what each one deliberately left open |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **39** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0040 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **40** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0041 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
-`README.md` § "The register at a glance" lists the fourteen Tier-1 controls, with
+`README.md` § "The register at a glance" lists the fifteen Tier-1 controls, with
 the three meta-controls described below the table.
 
 **An ADR is written once and stands on its own** ([ADR 0026](docs/adr/0026-an-adr-stands-on-its-own.md)).
@@ -805,6 +805,29 @@ conformance run. Two bugs the tests caught before it shipped are worth
 remembering: `git show <ref>:<glob>` prints the *commit* rather than failing, and
 `isinstance(False, int)` is `True` in Python — a ceiling turned `off` compared as
 `False < 100` and reported a narrowing.
+
+Per [ADR 0041](docs/adr/0041-a-pinned-digest-is-checked-against-what-was-published.md)
+(**Accepted** and implemented 2026-08-27, register contract 34) **SUP-004**
+checks that every pinned sha256 is the one the project published. Renovate's uv
+bump ([#74](https://github.com/Eaiger-Ent/ee-standard/pull/74)) moved the version
+at all four sites and left all three digests behind, and everything passed. Two
+halves: an offline reconciliation across `pinned_at` in **both** directions, and
+a comparison against the release's published manifest. **Only the second fails
+the actual shape of #74** — that bump left the register and `setup.sh` agreeing
+with each other. `tools.<tool>.checksums` names a **manifest**, not a per-asset
+`.sha256`, because gitleaks publishes only the first (measured: the per-asset URL
+404s) — and a manifest lists every architecture, so **the aarch64 digests are now
+compared too**, closing a gap `09-phase-1.5-review.md` recorded as permanent.
+**It is a control of its own with `locus: [ci]`, and that is forced**: every
+other supply-chain control declares `pre-push`, so a remote block on one would
+put a network fetch in front of every push and refuse one taken offline. The
+runner learned one thing for it — `PUBLIC_REMOTE_ASSERTS`, remote blocks that
+answer without a credential, because reporting `SKIPPED (no credentials)` over a
+public manifest is declining a question it could have answered. **A tool
+publishing no manifest passes and says so**; failing a repository for someone
+else's release process would make its run unpassable. The cost, accepted: a
+conformance run now depends on a release endpoint, and under
+`--require-complete` an unreachable network is exit `1`.
 
 Gate skills live in `plugins/control-register/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,
