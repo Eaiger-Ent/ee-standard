@@ -23,3 +23,18 @@
 
       - name: Secret scan
         run: {{TOOL}} detect --no-banner --redact
+
+      # ee-control: SEC-002  ee-skill: gate-secrets@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      #
+      # SEC-002's ci locus. Until contract 32 this control was verified by its
+      # *property* alone — no workflow names a forbidden credential — read out
+      # of the files on disk, which is a different claim from something
+      # enforcing it before a merge. The gate is the checker itself, because no
+      # third-party tool shares this register's `cloud_credentials:` list.
+      #
+      # A full audit reaches every applicable control including this one, so a
+      # repository whose gating workflow already runs {{CHECKER_INVOCATION}} with
+      # no `--control` needs no step here — check before writing one, and say
+      # that you did not.
+      - name: Credentials
+        run: {{CHECKER_INVOCATION}} run --control SEC-002

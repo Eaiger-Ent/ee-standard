@@ -753,10 +753,17 @@ whose controls' predicates hold is owed nothing, or the report invents work in
 the name of preventing noise.
 
 Per [ADR 0039](docs/adr/0039-a-push-is-a-locus.md) (**Accepted** and
-implemented 2026-08-27, register contract 31) `locus:` has a fourth value,
-**`pre-push`**, and TST-001, SUP-001 and SUP-002 declare it. Each had `ci` as
-its only locus, so the test suite and two supply-chain controls were verified
-nowhere a developer could reach. **It shares a file with `pre-commit`** — both
+implemented 2026-08-27 over contracts 31 and 32) `locus:` has a fourth value,
+**`pre-push`**, and TST-001, SUP-001, SUP-002 and SEC-002 declare it. Each had
+`ci` as its only locus, so the test suite, two supply-chain controls and the one
+forbidding a static cloud key in a workflow were verified nowhere a developer
+could reach. **SEC-002 gained `deployed_by` with the locus**, leaving
+`register-adopt`'s *checked, not deployed* row after two phases in it: a locus is
+something a gate installs, so it is now `gate-secrets`' first SEC-002 artefact.
+SEC-003 stays in that row — `register-check run --control SEC-003` exits `3`
+here, measured, so a hook running it would refuse every push. **The test for
+whether a control can take this locus is whether the machine at that locus can
+*finish* verifying it.** **It shares a file with `pre-commit`** — both
 are hooks in `.pre-commit-config.yaml` — and a hook's `stages:` key is what says
 which moment it serves. The checker resolves stages the way pre-commit does
 (the hook's own, else `default_stages`, else every stage), which closed a latent
@@ -772,9 +779,12 @@ deliberately **not** wired: every `uv run` above it re-locks on disk before
 `--frozen` is reached, so at that locus it would pass on a machine whose
 `uv.lock` is rewritten and uncommitted. **A wired locus is still not an
 installed hook** — `setup.sh` installs both types, `check-auth.sh` reports
-either missing, and no control can check `.git/hooks/`. The criterion that
-prompted it is **not ticked**: `docs/04-build-plan.md` records why the full
-`register-check` half is unreachable as written.
+either missing, and no control can check `.git/hooks/`. The criterion that prompted it **is ticked**, and narrowed on the way:
+*what CI runs* is unreachable literally, so it closed as *every control whose
+verification this machine can finish now has a local locus*. SEC-001's and
+SEC-003's remote blocks, CI-001 and the three meta-controls stay CI's alone. **A
+green push is a promise about the controls that name a local locus, not that the
+conformance job will pass.**
 
 Gate skills live in `plugins/control-register/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,

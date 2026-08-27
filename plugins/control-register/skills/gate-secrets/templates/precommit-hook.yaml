@@ -13,3 +13,28 @@
         entry: {{TOOL}} protect --staged --no-banner --redact
         language: system
         pass_filenames: false
+
+      # ee-control: SEC-002  ee-skill: gate-secrets@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      #
+      # SEC-002's pre-push locus, written only when the register gives that
+      # control one — a hook for a locus the register does not declare is a
+      # check nobody asked for, and the checker would not read it.
+      #
+      # A hook of its own rather than a control appended to another gate's: a
+      # gate editing another gate's artefact is how two skills come to disagree
+      # about one file. Two hooks running one binary is the cheaper mistake.
+      #
+      # **SEC-003 must not be added here**, however alike the two look. Its
+      # remote blocks answer only inside a GitHub Actions job, so
+      # {{CHECKER_INVOCATION}} for SEC-003 exits 3 on a developer's machine and the
+      # hook would refuse every push (ADR 0039).
+      #
+      # `stages: [pre-push]` is not optional. Without it pre-commit runs this on
+      # every commit, at whichever stages the repository has installed.
+      - id: {{CHECKER}}-secrets-pre-push
+        name: {{CHECKER}} (SEC-002)
+        entry: {{CHECKER_INVOCATION}} run --control SEC-002
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

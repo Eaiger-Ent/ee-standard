@@ -141,6 +141,11 @@ def _fill(text: str, register: Register, gate: str, **extra: str) -> str:
     values = {
         "{{TOOL}}": "register-check",
         "{{TOOL_INVOCATION}}": register.tools["register-check"].invocation or "",
+        # `gate-secrets` is the one gate whose `{{TOOL}}` is not the checker —
+        # it is the scanner — so the checker it also needs has a name of its own
+        # rather than an override that would collide (register contract 32).
+        "{{CHECKER}}": "register-check",
+        "{{CHECKER_INVOCATION}}": register.tools["register-check"].invocation or "",
         "{{ECOSYSTEM}}": "python",
         "{{ECOSYSTEM_SPELLING}}": ecosystem.dependabot[0],
         "{{FROZEN_INSTALL}}": ecosystem.frozen_install_command["uv.lock"],
@@ -449,9 +454,13 @@ def test_the_plan_can_name_every_control_in_the_register() -> None:
             checked.add(control.id)
         else:
             manual.add(control.id)
-    assert deploy == set(_DEPLOYED) - {"SEC-002"} | {"IAC-001"}, deploy
+    # SEC-002 left the "checked, not deployed" row at register contract 32: it
+    # gained a `pre-push` locus, and a locus is something a gate installs, so
+    # `gate-secrets` now writes and stamps one artefact for it. SEC-003 stays,
+    # and is the row's only member.
+    assert deploy == set(_DEPLOYED) | {"IAC-001"}, deploy
     assert elsewhere == {"DOC-001"}, elsewhere
-    assert checked == {"SEC-002", "SEC-003"}, checked
+    assert checked == {"SEC-003"}, checked
     assert not manual, f"controls in no plan row at all: {sorted(manual)}"
     # And the skill names all four rows, so none of this is a category the
     # implementation invented.
@@ -548,6 +557,7 @@ def test_four_gates_share_one_pre_commit_config_without_overwriting_each_other(
         "register-check-build",
         "register-check-supply-chain",
         "register-check-supply-chain-pre-push",
+        "register-check-secrets-pre-push",
         "gitleaks",
         "ruff",
         "mypy",
@@ -562,6 +572,7 @@ def test_four_gates_share_one_pre_commit_config_without_overwriting_each_other(
         "register-check-build": None,
         "register-check-supply-chain": None,
         "register-check-supply-chain-pre-push": ["pre-push"],
+        "register-check-secrets-pre-push": ["pre-push"],
         "gitleaks": None,
         "ruff": None,
         "mypy": None,
@@ -588,9 +599,10 @@ def test_every_deployed_control_carries_its_own_stamp(adopted: Path) -> None:
             # `lint-md` is another plugin's and carries none.
             if stamp.skill.startswith("gate-"):
                 assert stamp.gate_contract == int(gate_contract(stamp.skill)), path
-    # SEC-002 has no artefact of its own — it is verified from the workflows
-    # SEC-001's gate writes — and IAC-001 does not apply here.
-    assert stamped == set(_DEPLOYED) - {"SEC-002"}, stamped
+    # Every deployed control carries its own stamp. SEC-002 joined them at
+    # register contract 32, when its `pre-push` locus gave `gate-secrets` an
+    # artefact to write for it. IAC-001 does not apply here.
+    assert stamped == set(_DEPLOYED), stamped
 
 
 def test_the_verify_step_can_genuinely_fail(

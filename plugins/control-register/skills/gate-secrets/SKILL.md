@@ -89,6 +89,8 @@ verify block names in `args.tool`:
 | `TOOL_SHA256` | `tools.<TOOL>.sha256` |
 | `TOOL_REPO` | `tools.<TOOL>.release_repo` — `owner/name`, where the release is fetched from |
 | `PINNED_AT` | `tools.<TOOL>.pinned_at` — the paths that must repeat the version |
+| `CHECKER` | SEC-002's `gate_wired_at_declared_loci` block, `args.tool` — the checker, not the scanner |
+| `CHECKER_INVOCATION` | `tools.<CHECKER>.invocation` — how a locus reaches it; a bare name resolves from `PATH` (ADR 0020) |
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
 | `SKILL_VERSION` | the plugin's `.claude-plugin/plugin.json`, `version` |
@@ -116,6 +118,8 @@ register to fix there, not to paper over here.
 | `TOOL_STATE` | `command -v "$TOOL" >/dev/null && echo INSTALLED \|\| echo NEEDS_INSTALL` |
 | `PRECOMMIT_STATE` | `test -f .pre-commit-config.yaml && echo EXISTS \|\| echo ABSENT` |
 | `HOOK_STATE` | `grep -q "id: $TOOL" .pre-commit-config.yaml 2>/dev/null && echo WIRED \|\| echo ABSENT` |
+| `PREPUSH_STATE` | whether a hook staged `pre-push` runs `CHECKER_INVOCATION` for SEC-002 |
+| `AUDIT_STATE` | whether a gating CI step already runs `CHECKER_INVOCATION` with no `--control` |
 | `WORKFLOWS` | `ls .github/workflows/ 2>/dev/null \|\| echo NONE` |
 | `IGNORE_STATE` | `test -f "$IGNORE_FILE" && echo EXISTS \|\| echo ABSENT` |
 | `IGNORED_STATE` | for each `SECRET_PATHS` entry: `git check-ignore --no-index -v -- "$p"` — record the matching rule's **source file**, or `UNIGNORED` |
@@ -193,11 +197,15 @@ failing: an unverified secret scanner is a gate in name only.
 
 ---
 
-## Step 2 — Write the pre-commit hook
+## Step 2 — Write the local hooks
 
 Read `${CLAUDE_SKILL_DIR}/templates/precommit-hook.yaml` and substitute
-`{{TOOL}}`, `{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and
-`{{REGISTER_CONTRACT}}` from the values stored in pre-flight.
+`{{TOOL}}`, `{{CHECKER}}`, `{{CHECKER_INVOCATION}}`, `{{SKILL_VERSION}}`,
+`{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}` from the
+values stored in pre-flight. Two blocks: SEC-001's pre-commit hook, and SEC-002's
+pre-push hook where the register gives that control a `pre-push` locus. Keep the
+second block's `stages:` key — without it the hook runs at every stage the
+repository has installed.
 
 - **`PRECOMMIT_STATE` is `ABSENT`:** create `.pre-commit-config.yaml` with a
   single `repos: - repo: local` entry holding the block.
@@ -208,7 +216,8 @@ Read `${CLAUDE_SKILL_DIR}/templates/precommit-hook.yaml` and substitute
 - **`HOOK_STATE` is `WIRED`:** replace only the hook's own lines and its stamp,
   and record in the stamp comment that an existing hook was adopted.
 
-The stamp goes at the hook, never at the top of the file.
+One stamp per hook and per control, never one at the top of the file. A stamp
+naming SEC-001 must not be credited for SEC-002's artefact.
 
 ---
 
@@ -217,7 +226,11 @@ The stamp goes at the hook, never at the top of the file.
 Read `${CLAUDE_SKILL_DIR}/templates/ci-steps.yaml` and substitute the same
 values plus `{{TOOL_VERSION}}`, `{{TOOL_SHA256}}` and `{{TOOL_REPO}}`.
 
-- **A gating workflow exists:** add the two steps to a job that already runs on
+Write the `Credentials` step only if `AUDIT_STATE` shows no gating step already
+running the checker with no `--control`: a full audit reaches SEC-002 already, a
+second step is the same check twice, and **say that you did not add one**.
+
+- **A gating workflow exists:** add the steps to a job that already runs on
   `push` or `pull_request`, after any checkout step. The checkout must fetch
   full history — `fetch-depth: 0` — because the scanner reads commits, and a
   shallow clone scans a fraction of them while reporting success.
