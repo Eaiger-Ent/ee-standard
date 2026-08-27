@@ -268,6 +268,10 @@ def test_before_deploying_all_three_controls_fail(
     code, out = _verdict(tmp_path, capsys)
     assert code == 1
     assert "editor locus" in out and "pre-commit locus" in out and "ci locus" in out
+    # Both of TST-001's loci, in one verdict. The assert reports every locus it
+    # could not find rather than the first, so fixing one does not reveal the
+    # other as though it were a new regression.
+    assert "pre-push locus — no hook runs the test command" in out
     assert "no CI step runs the test command" in out
     assert "no tracked file carries a provenance stamp" in out
     # The adopter's lockfile pins neither tool, so the invocations the gate is
@@ -302,7 +306,7 @@ def test_the_deployed_stamps_record_the_register_they_came_from(deployed: Path) 
     """One stamp per control per locus, each naming the control whose locus it is."""
     register = _register()
     stamped = {
-        ".pre-commit-config.yaml": {"LNT-001", "TYP-001"},
+        ".pre-commit-config.yaml": {"LNT-001", "TYP-001", "TST-001"},
         ".github/workflows/ci.yml": {"LNT-001", "TYP-001", "TST-001"},
         ".devcontainer/devcontainer.json": {"LNT-001"},
     }
@@ -337,8 +341,17 @@ def test_the_deployed_hooks_cover_the_files_the_register_names(deployed: Path) -
     register = _register()
     config = yaml.safe_load((deployed / ".pre-commit-config.yaml").read_text(encoding="utf-8"))
     hooks = config["repos"][0]["hooks"]
-    assert len(hooks) == 2
+    assert len(hooks) == 3
+    # The test hook carries no `files:` and that is not an omission: TST-001's
+    # subject is the suite, not a file set, and a hook given the staged
+    # filenames would run the tests belonging to the wrong ones. It says so with
+    # `always_run`, which is the assertion this test makes about it.
+    tests = next(hook for hook in hooks if hook["id"] == "tests")
+    assert tests["always_run"] is True and "files" not in tests
+    assert tests["stages"] == ["pre-push"]
     for hook in hooks:
+        if hook["id"] == "tests":
+            continue
         assert hook["files"] == _source_pattern(register)
         assert re.match(hook["files"], "src/app.py")
         assert not re.match(hook["files"], "README.md")

@@ -138,6 +138,11 @@ fi
 # `pre-commit` is reached the way its locus reaches it — through the package
 # manager where a lockfile pins it, and only otherwise off `PATH`. An absent one
 # is reported rather than installed unpinned.
+#
+# Both hook types, from register contract 31 (ADR 0039). `pre-commit install`
+# alone writes `.git/hooks/pre-commit` and nothing else, so a repository whose
+# register declares a `pre-push` locus would have it wired in the config,
+# reported as wired by every gate, and running nothing.
 if [ -f .pre-commit-config.yaml ]; then
   # Each arm asks whether the tool is *reachable that way* before using it, and
   # never whether a lockfile merely exists. A repository can have `uv.lock` and
@@ -147,15 +152,15 @@ if [ -f .pre-commit-config.yaml ]; then
   # devcontainer that fails to build because a hook is not installed yet is a
   # worse failure than the missing hook.
   if [ -f uv.lock ] && uv run pre-commit --version >/dev/null 2>&1; then
-    uv run pre-commit install
+    uv run pre-commit install --hook-type pre-commit --hook-type pre-push
   elif [ -f poetry.lock ] && poetry run pre-commit --version >/dev/null 2>&1; then
-    poetry run pre-commit install
+    poetry run pre-commit install --hook-type pre-commit --hook-type pre-push
   elif command -v pre-commit >/dev/null 2>&1; then
-    pre-commit install
+    pre-commit install --hook-type pre-commit --hook-type pre-push
   else
     echo "note: .pre-commit-config.yaml exists and pre-commit is not installed," >&2
-    echo "      so nothing runs at the pre-commit locus. Add it to a lockfile" >&2
-    echo "      this repository commits, then re-run this script." >&2
+    echo "      so nothing runs at the pre-commit or pre-push loci. Add it to" >&2
+    echo "      a lockfile this repository commits, then re-run this script." >&2
   fi
 fi
 

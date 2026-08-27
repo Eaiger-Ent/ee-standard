@@ -864,6 +864,46 @@ records that path as `tools.<tool>.invocation` and the checker holds every locus
 to it. A missing local install is then `UNCLASSIFIED — cannot verify`, which is
 the honest answer, rather than a pass earned by a binary nobody pinned.
 
+### 3.0 — Two local loci, one file, and the hook type nobody installs
+
+From register contract 31 the register has a fourth locus, `pre-push`
+([ADR 0039](adr/0039-a-push-is-a-locus.md)), and in the register this
+repository ships it is declared by TST-001, SUP-001 and SUP-002 — the three
+whose only locus was `ci`, so the test suite and two supply-chain controls were
+verified nowhere you could reach before opening a pull request.
+
+**It lives in `.pre-commit-config.yaml`, beside the `pre-commit` locus.** Both
+moments are hooks in that one file and a hook's `stages:` key says which it
+belongs to. Three things follow, and each of them has bitten:
+
+1. **Install both hook types.** `pre-commit install` writes
+   `.git/hooks/pre-commit` and nothing else, so a repository can have the locus
+   wired in the config, reported as wired by every gate, and running nothing —
+   the half-state § 2.0a already records for the first hook, one moment later.
+   Run `pre-commit install --hook-type pre-commit --hook-type pre-push` through
+   whichever package manager your lockfile pins `pre-commit` in. The shipped
+   `setup.sh` does it at container-create, and `check-auth.sh` reports either
+   one missing on every container start. **No control checks this**, and cannot:
+   `.git/hooks/` is untracked and CI has no hooks installed.
+2. **Keep the `stages:` key your gate writes.** A hook naming no stage runs at
+   every stage you have installed — pre-commit's own rule — so dropping it from
+   the test hook runs your whole suite on every commit, and adding it to a
+   pre-commit hook stops that hook running at commit time. Setting
+   `default_stages: [pre-commit]` at the top of the file is worth the one line:
+   it makes *a hook that says nothing is a pre-commit hook* true, which is what
+   the register's `locus:` list already claims.
+3. **The pre-push hook names its controls.** It runs
+   `register-check run --control …` rather than a full audit, and that is forced
+   rather than tidy: if any control in your register carries a `kind: remote`
+   block, a full local run exits `3` because your machine holds no platform
+   credential — so a hook auditing everything would refuse every push. Do not
+   "fix" that by tolerating `3` in the hook; a locus that accepts an incomplete
+   run accepts one that verified nothing.
+
+**What you get for it.** `git push` runs what would otherwise fail in CI half an
+hour later. Judge it the way this repository did: delete a passing test, commit,
+and watch the push refuse.
+
 ### 3.1 — `gate-secrets`, and what it needs from you first
 
 `/gate-secrets` wires SEC-001 at both its local loci and checks SEC-002 and
@@ -1750,6 +1790,7 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 5a | The interpreter is pinned by a toolchain file, not by a support floor | `uv run register-check run --control SUP-001` passes, and the version your CI log reports is the one the file names |
 | 6 | Devcontainer image digest-pinned, lock file complete, user stated | `uv run register-check` reports DEV-001 and BLD-001 passing |
 | 7 | Gates wired at every locus the control declares | LNT-001, TYP-001, DOC-001, TST-001 passing |
+| 7d | Both git hook types are installed, not just `pre-commit` | `test -x .git/hooks/pre-push`, and a push with a failing test is refused. No control checks this — `.git/hooks/` is untracked — so it is your evidence or nobody's (§ 3.0) |
 | 7b | Quality gates wired at every locus **and** stamped | `uv run register-check run --control LNT-001 --control TYP-001 --control TST-001` exits `0` — every block ✓, nothing skipped |
 | 7a | Secrets gate wired at pre-commit **and** CI, and stamped | `uv run register-check run --control SEC-001` shows both local blocks ✓; with an admin-scoped token the remote block is ✓ too and it exits `0` |
 | 7c | The branch protection you recorded is the one GitHub enforces | `uv run register-check run --control CI-001` with a token — the remote block reports the rules in effect, not the file |

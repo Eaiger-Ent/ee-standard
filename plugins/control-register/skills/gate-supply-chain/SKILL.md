@@ -132,7 +132,7 @@ fix there.
 | `INSTALL_STATE` | whether a gating job already installs from the lockfile, and which step it is |
 | `UPDATE_STATE` | `.github/dependabot.yml`, `renovate.json` or another Renovate config — which exists, and which ecosystems it covers |
 | `PRECOMMIT_STATE` | `test -f .pre-commit-config.yaml && echo EXISTS \|\| echo ABSENT` |
-| `HOOK_STATE` | whether a hook's `entry` runs `TOOL_INVOCATION` for SUP-003 |
+| `HOOK_STATE` | whether a hook's `entry` runs `TOOL_INVOCATION` for SUP-003, and whether one staged `pre-push` runs it for SUP-001 and SUP-002 |
 | `AUDIT_STATE` | whether a gating step already runs `TOOL_INVOCATION` with no `--control` — a full audit reaches SUP-003 and needs no step of its own |
 | `UNPINNED` | every `uses:` in every workflow that is not a 40-character SHA, excluding those owned by this repository's owner |
 
@@ -276,17 +276,21 @@ Three cases need care:
 
 ---
 
-## Step 4 — Wire SUP-003's two loci
+## Step 4 — Wire the three controls' local and ci loci
 
 SUP-003 declares `locus: [pre-commit, ci]`, and until register contract 14
 neither was verified. `actions-pinned-to-sha` reads the *property* — every
 `uses:` is a SHA — out of the files on disk, which is a different claim from
 *something enforces this before a commit lands and before a merge does*. Both
-are now checked, so both are now written.
+are now checked, so both are now written. From contract 31 SUP-001 and SUP-002
+declare a `pre-push` locus for the same reason, and the template's second block
+serves both.
 
-**The pre-commit locus.** Read
+**The local loci.** Read
 `${CLAUDE_SKILL_DIR}/templates/precommit-hook.yaml` and substitute the same
-values.
+values. Write the second block only for the controls whose register entry
+declares `pre-push`, dropping the stamp of any that does not, and keep its
+`stages:` key — a hook staged for one moment does not serve the other.
 
 - **`PRECOMMIT_STATE` is `ABSENT`:** create `.pre-commit-config.yaml` with a
   single `repos: - repo: local` entry holding the block.
@@ -347,6 +351,8 @@ gate-supply-chain deployed SUP-001, SUP-002, SUP-003 in <repo>.
   ci          .github/workflows/<file> — frozen install (stamped)
   ci          .github/dependabot.yml — <n> ecosystems (stamped)
   pre-commit  .pre-commit-config.yaml — hook '<tool>-supply-chain' (stamped)
+  pre-push    .pre-commit-config.yaml — hook '<tool>-supply-chain-pre-push'
+              (stamped, SUP-001 and SUP-002)
   ci          SUP-003 reached by the existing full audit — no step added
   pinned      <n> action references rewritten to SHAs; <n> owner-owned skipped
 Needs a human: <Dependabot enabled | the Renovate app installed> (§ 1.1)

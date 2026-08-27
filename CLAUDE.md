@@ -346,22 +346,25 @@ that quietly becomes general.
   `package-lock.json` pins — ADR 0020 case C, in this file's own instructions.
   `.pre-commit-config.yaml` and `.github/workflows/lint.yml` both spell the path.
 - Run all pre-commit hooks: `uv run pre-commit run --all-files`
-- **Before you push**, run what CI runs. Four commands, because no single one
-  covers it and inventing a fifth that wrapped them would be a second copy of
-  the CI definition:
+- **Before you push**, most of what CI runs now runs itself. Register contract
+  31 added a `pre-push` locus ([ADR 0039](docs/adr/0039-a-push-is-a-locus.md)),
+  and `git push` runs `uv run pytest` (TST-001) and
+  `register-check run --control SUP-001 --control SUP-002` — provided
+  `.git/hooks/pre-push` is installed, which `setup.sh` does and `check-auth.sh`
+  reports. Two commands are still yours to remember, and neither can be wired:
 
   ```bash
-  uv run pre-commit run --all-files   # ruff, mypy, gitleaks, markdown, 3 controls
-  uv run pytest                       # TST-001 — ci is its only declared locus
-  uv run register-check               # the whole register; pre-commit runs three
-  uv sync --frozen                    # SUP-001 — the lockfile is current
+  uv run register-check   # the whole register; the hooks run five controls
+  uv sync --frozen        # SUP-001 — the lockfile is current
   ```
 
-  The middle two have **no** pre-commit equivalent, so a green commit says
-  nothing about them. `register-check` exiting `3` locally is expected and not a
-  failure: SEC-003's remote blocks answer only inside a GitHub Actions job.
-  Whether this becomes a wired `pre-push` locus rather than a remembered routine
-  is Phase 5's, and it is a register change before it is a config one.
+  The first exits `3` locally and that is expected rather than a failure —
+  SEC-003's remote blocks answer only inside a GitHub Actions job — which is
+  exactly why a hook cannot run it: a hook that tolerated `3` would accept a run
+  that verified nothing. The second would verify the wrong thing at that locus,
+  because every `uv run` above it re-locks on disk before `--frozen` is reached.
+  **Never wrap these in a script under `scripts/`** — that is a second copy of
+  the CI definition, free to drift from the workflow it mirrors.
 - Verify container auth/tools: `.devcontainer/check-auth.sh`
 - `gh` for repos in the Eaiger-Ent org (ambient `GITHUB_TOKEN`); `gh-ee-skills`
   for repos in the EqualExperts org (ee-skills, ee-skills-incubator) — the
@@ -535,7 +538,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
 | `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the twenty-six things it found |
 | `docs/13-phase-5-review.md` | Record of Phase 5 slice by slice, and what each one deliberately left open |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **37** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0038 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **38** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0039 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fourteen Tier-1 controls, with
@@ -744,6 +747,30 @@ output moved. `register-check deployments` is the reader; six states, and two
 the plan did not name are `UNRECORDED` and `NOT APPLICABLE` — a gate none of
 whose controls' predicates hold is owed nothing, or the report invents work in
 the name of preventing noise.
+
+Per [ADR 0039](docs/adr/0039-a-push-is-a-locus.md) (**Accepted** and
+implemented 2026-08-27, register contract 31) `locus:` has a fourth value,
+**`pre-push`**, and TST-001, SUP-001 and SUP-002 declare it. Each had `ci` as
+its only locus, so the test suite and two supply-chain controls were verified
+nowhere a developer could reach. **It shares a file with `pre-commit`** — both
+are hooks in `.pre-commit-config.yaml` — and a hook's `stages:` key is what says
+which moment it serves. The checker resolves stages the way pre-commit does
+(the hook's own, else `default_stages`, else every stage), which closed a latent
+hole: until then every hook in the file answered every local locus, so a
+pre-push-only hook would have satisfied a `pre-commit` claim. This repository
+sets `default_stages: [pre-commit]` so a hook that says nothing is a pre-commit
+hook. **The pre-push hook names its controls and must not be a full audit**: a
+full local run exits `3` for SEC-003's remote blocks — permanently, since they
+answer only inside an Actions job — so a hook running it would refuse every
+push, and both escapes (a wrapper mapping `3` to `0`, a flag skipping
+`kind: remote`) are the substitutions ADR 0016 refuses. `uv sync --frozen` is
+deliberately **not** wired: every `uv run` above it re-locks on disk before
+`--frozen` is reached, so at that locus it would pass on a machine whose
+`uv.lock` is rewritten and uncommitted. **A wired locus is still not an
+installed hook** — `setup.sh` installs both types, `check-auth.sh` reports
+either missing, and no control can check `.git/hooks/`. The criterion that
+prompted it is **not ticked**: `docs/04-build-plan.md` records why the full
+`register-check` half is unreachable as written.
 
 Gate skills live in `plugins/control-register/skills/` — `gate-secrets`,
 `gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,

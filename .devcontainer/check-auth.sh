@@ -84,19 +84,26 @@ check_tool markdownlint-cli2 node_modules/.bin/markdownlint-cli2
 check_tool uv uv
 
 # **A wired locus with no installed hook.** `.pre-commit-config.yaml` states
-# intent and `.git/hooks/pre-commit` is whether anything runs, and every control
-# that declares a pre-commit locus reads the first. Reported, never repaired: a
+# intent and `.git/hooks/<type>` is whether anything runs, and every control
+# that declares a local locus reads the first. Reported, never repaired: a
 # start-up hook that silently fixed state would hide which locus stopped working
 # and when. It cannot be a control either — `.git/hooks/` is untracked, and CI
 # has no hooks installed and should not.
+#
+# Two hook types since register contract 31 (ADR 0039), asked separately because
+# they fail separately: `pre-commit install` without `--hook-type pre-push`
+# leaves the second locus wired in the config and running nothing, which is
+# exactly the half-state this block exists to name.
 if [ -f "$REPO_DIR/.pre-commit-config.yaml" ]; then
-  if [ -x "$REPO_DIR/.git/hooks/pre-commit" ]; then
-    echo "  ✓ pre-commit hook — installed"
-  else
-    echo "  ✗ pre-commit hook — .pre-commit-config.yaml is present and"
-    echo "      .git/hooks/pre-commit is not. Nothing runs at the pre-commit"
-    echo "      locus. Fix: bash .devcontainer/setup.sh"
-  fi
+  for hook_type in pre-commit pre-push; do
+    if [ -x "$REPO_DIR/.git/hooks/$hook_type" ]; then
+      echo "  ✓ $hook_type hook — installed"
+    else
+      echo "  ✗ $hook_type hook — .pre-commit-config.yaml is present and"
+      echo "      .git/hooks/$hook_type is not. Nothing runs at the $hook_type"
+      echo "      locus. Fix: bash .devcontainer/setup.sh"
+    fi
+  done
 fi
 
 # Identity may come from git config or from GIT_AUTHOR_* in the environment

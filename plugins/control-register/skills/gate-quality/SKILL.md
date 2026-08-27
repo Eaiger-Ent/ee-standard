@@ -152,7 +152,7 @@ pins. This is the failure ADR 0020 measured for DOC-001. Offer via
 | `EDITOR_STATE` | `EDITOR_EXTENSION` present in `.devcontainer/devcontainer.json` or `.vscode/extensions.json` |
 | `BINDING_STATE` | what holds `"[EDITOR_LANGUAGE]".EDITOR_BINDING_SETTING` in `.vscode/settings.json`, and whether `.devcontainer/devcontainer.json` sets it too |
 | `PRECOMMIT_STATE` | `test -f .pre-commit-config.yaml && echo EXISTS \|\| echo ABSENT` |
-| `HOOK_STATE` | whether a hook's `id` or `entry` mentions `LINT_HOOK_ID`, and the same for `TYPECHECK_HOOK_ID` |
+| `HOOK_STATE` | whether a hook's `id` or `entry` mentions `LINT_HOOK_ID`, and the same for `TYPECHECK_HOOK_ID`, and whether a hook staged `pre-push` runs one of `TEST_COMMANDS` |
 | `WORKFLOWS` | `ls .github/workflows/ 2>/dev/null \|\| echo NONE` |
 | `TEST_STATE` | whether a gating step already invokes one of `TEST_COMMANDS` |
 | `PIN_STATE` | which of `LINT_PACKAGE` and `TYPECHECK_PACKAGE` a tracked `STACK_ECOSYSTEM` lockfile pins, and which lockfile it is |
@@ -332,10 +332,12 @@ this standard exists to prevent.
 
 ---
 
-## Step 4 — Wire the pre-commit locus
+## Step 4 — Wire the local loci
 
 Read `${CLAUDE_SKILL_DIR}/templates/precommit-hooks.yaml` and substitute the
-stack's values. One pair of hooks per applicable stack.
+stack's values. One pair of hooks per applicable stack, plus the test hook once
+if TST-001 declares a `pre-push` locus — the template carries its `stages:` key
+and dropping that would run the suite on every commit instead.
 
 - **`PRECOMMIT_STATE` is `ABSENT`:** create `.pre-commit-config.yaml` with a
   single `repos: - repo: local` entry holding the blocks.
@@ -432,6 +434,7 @@ treating it as a pass.
 gate-quality deployed LNT-001, TYP-001 and TST-001 in <repo>.
   editor      <file> — <extension> (stamped, LNT-001)
   pre-commit  .pre-commit-config.yaml — hooks '<lint>', '<typecheck>' (stamped)
+  pre-push    .pre-commit-config.yaml — hook 'tests' (stamped, TST-001)
   ci          .github/workflows/<file> — lint, type check, tests (stamped)
 Coverage: <n> tracked file(s) added to <coverage key>, previously unchecked.
 Verified: register-check run --control LNT-001 --control TYP-001

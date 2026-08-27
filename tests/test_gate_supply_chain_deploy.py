@@ -235,9 +235,9 @@ def test_the_deployed_stamps_record_the_register_they_came_from(deployed: Path) 
     """One stamp per control per artefact, each naming the control whose locus it is."""
     register = _register()
     stamped = {
-        ".github/workflows/ci.yml": {"SUP-001", "SUP-003"},
+        ".github/workflows/ci.yml": {"SUP-001", "SUP-002", "SUP-003"},
         ".github/dependabot.yml": {"SUP-002"},
-        ".pre-commit-config.yaml": {"SUP-003"},
+        ".pre-commit-config.yaml": {"SUP-001", "SUP-002", "SUP-003"},
     }
     for path, controls in stamped.items():
         text = (deployed / path).read_text(encoding="utf-8")
@@ -402,14 +402,22 @@ def test_stamping_one_control_and_forgetting_the_others_is_caught(
 
     A gate owning three controls that stamped only one would otherwise be
     credited for all three: the read-back matches on the control being
-    evaluated, so SUP-002's artefact going unstamped fails SUP-002 while the
+    evaluated, so SUP-002's artefacts going unstamped fails SUP-002 while the
     other two still pass.
+
+    Every artefact of that control, not one of them. From register contract 31
+    SUP-002 has three — its dependabot config, a CI step and a pre-push hook —
+    and a stamp on any one of them is a deployment on record, so stripping one
+    would prove nothing about the other two.
     """
-    path = deployed / ".github/dependabot.yml"
-    kept = [
-        line for line in path.read_text(encoding="utf-8").splitlines() if "ee-control:" not in line
-    ]
-    path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    for name in (".github/dependabot.yml", ".github/workflows/ci.yml", ".pre-commit-config.yaml"):
+        path = deployed / name
+        kept = [
+            line
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if not ("ee-control:" in line and "SUP-002" in line)
+        ]
+        path.write_text("\n".join(kept) + "\n", encoding="utf-8")
     make_repo(deployed, {})
     code, out = _verdict(deployed, capsys)
     assert code == 1

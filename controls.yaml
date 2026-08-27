@@ -7,7 +7,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.24.0
+version: 0.25.0
 
 meta:
   owner: platform-engineering
@@ -305,7 +305,22 @@ meta:
   #     thing `register-adopt` dispatches. Split across two sections
   #     deliberately: the address is a fact about this project, and the
   #     spelling is a fact about the ecosystem.
-  register_contract: 30
+  # 30: A control's `rationale_adr` may be an `http(s)` citation as well as a
+  #     path, resolved against the register's own directory. A register fetched
+  #     into a repository that did not author it failed every control on a
+  #     `docs/` tree it was never going to have, which is where the first real
+  #     adoption stopped. Recorded here late: contract 30 shipped without an
+  #     entry in this list, and a contract log with a hole in it is the drift
+  #     the list exists to prevent.
+  # 31: `locus:` gains a fourth value, `pre-push`, and TST-001, SUP-001 and
+  #     SUP-002 declare it (ADR 0039). Each had `ci` as its only locus, so the
+  #     test suite and two supply-chain controls were verified nowhere a
+  #     developer could reach, and `CLAUDE.md` closed the gap by asking a person
+  #     to remember four commands — a second copy of the CI definition held in
+  #     prose. A skill reading the register must understand the value, because a
+  #     gate writes the hook that serves it and a hook staged for one moment
+  #     does not serve the other.
+  register_contract: 31
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -1067,7 +1082,15 @@ controls:
       url: https://baseline.openssf.org/
     tier: 1
     rung: blocking
-    locus: [ci]
+    # `pre-push` from contract 31 (ADR 0039), for the reason recorded at
+    # TST-001: this control was verified in CI and nowhere a developer could
+    # reach. The locus is the checker asking this control's own question —
+    # `register-check run --control SUP-001` — and not `uv sync --frozen`, which
+    # `CLAUDE.md` still asks a person to run. At this locus that command would
+    # verify the wrong thing: every hook above it invokes `uv run`, which
+    # re-locks on disk before `--frozen` is reached, so it would pass on a
+    # machine whose `uv.lock` has been rewritten and not committed.
+    locus: [pre-push, ci]
     # `always`, not `[python, typescript]`. Naming two stacks re-created inside
     # the register the exemption ADR 0018 moved out of the checker: the register
     # defines six ecosystems, and a Go, Rust, Java or Ruby repository skipped
@@ -1083,6 +1106,15 @@ controls:
         assert: ci-installs-frozen
       - kind: file
         assert: tool_versions_match_register
+      # Contract 31. The three blocks above read the *property* — a lockfile
+      # exists, CI installs frozen, the pins agree — which is a different claim
+      # from something enforcing it before a push leaves the machine and before
+      # a merge does. Same shape as SEC-001 at contract 11 and the four the
+      # contract-14 survey listed, found again in a control whose second locus
+      # is a day old.
+      - kind: file
+        assert: gate_wired_at_declared_loci
+        args: { tool: register-check }
       # The gate's own deployment, read back by the gate that wrote it. Per
       # control rather than per gate: `gate-supply-chain` owns three, so a stamp
       # naming SUP-002 satisfying SUP-001 would let the frozen-install step go
@@ -1110,11 +1142,18 @@ controls:
         url: https://docs.github.com/en/code-security/dependabot/working-with-dependabot
     tier: 1
     rung: blocking
-    locus: [ci]
+    # `pre-push` from contract 31 (ADR 0039), with SUP-001 and for the same
+    # reason. One hook serves both: they are the same gate's controls, read by
+    # the same command, and a second hook would run the same binary twice for
+    # no extra verdict.
+    locus: [pre-push, ci]
     applies_to: [always]
     verify:
       - kind: file
         assert: dependency_update_config_covers_all_ecosystems
+      - kind: file
+        assert: gate_wired_at_declared_loci
+        args: { tool: register-check }
       - kind: file
         assert: provenance_stamp_present
         args: { skill: gate-supply-chain }
@@ -1422,8 +1461,8 @@ controls:
   - id: TST-001
     title: A failing test fails the build
     enforces: >
-      The test command runs in CI, its exit code is the job's verdict, and no
-      step in the chain swallows a non-zero status.
+      The test command runs before a push and in CI, its exit code is the
+      verdict at each, and no step in the chain swallows a non-zero status.
     standard:
       name: NIST SP 800-218 (SSDF) PW.8
       url: https://csrc.nist.gov/pubs/sp/800/218/final
@@ -1432,7 +1471,14 @@ controls:
         url: https://martinfowler.com/articles/practical-test-pyramid.html
     tier: 1
     rung: blocking
-    locus: [ci]
+    # `pre-push` from contract 31 (ADR 0039). `ci` was the only locus, so the
+    # test suite — the check most likely to fail a pull request — had no local
+    # moment at all, and `CLAUDE.md` closed the gap by asking a person to
+    # remember `uv run pytest`. A remembered command is a second copy of the CI
+    # definition held in prose. `tests-run-and-block` reads both loci: at `ci` a
+    # gating workflow step, at `pre-push` a hook staged for that moment, and the
+    # same suppression check under each.
+    locus: [pre-push, ci]
     applies_to: [always]
     verify:
       - kind: file
