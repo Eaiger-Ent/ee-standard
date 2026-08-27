@@ -29,7 +29,7 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
-from register_check.deployments import NoPlugin, find_plugin
+from register_check.deployments import BadDecisions, NoPlugin, find_plugin, read_decisions
 from register_check.deployments import build as build_deployments
 from register_check.deployments import render as render_deployments
 from register_check.meta import META_CHECKS
@@ -139,6 +139,16 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "the plugin root whose .claude-plugin/deploys.json declares the gates "
             "(default: $CLAUDE_PLUGIN_ROOT, then <repo>/plugins/control-register)"
+        ),
+    )
+    deployments.add_argument(
+        "--decisions",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help=(
+            "what this repository has deliberately not deployed "
+            "(default: <repo>/deployment-decisions.yaml)"
         ),
     )
     return parser
@@ -294,7 +304,12 @@ def _cmd_explain(repo_path: Path, register_path: Path | None, control_id: str) -
     return 0
 
 
-def _cmd_deployments(repo_path: Path, register_path: Path | None, plugin: Path | None) -> int:
+def _cmd_deployments(
+    repo_path: Path,
+    register_path: Path | None,
+    plugin: Path | None,
+    decisions: Path | None = None,
+) -> int:
     """Report deployment currency, gate by gate.
 
     Exit `0` over any number of stale or undeployed gates: staleness is
@@ -308,13 +323,24 @@ def _cmd_deployments(repo_path: Path, register_path: Path | None, plugin: Path |
     if register is None:
         return code
     try:
-        root = find_plugin(Repo(repo_path), plugin)
-        report = build_deployments(Repo(repo_path), root, register)
+        repo = Repo(repo_path)
+        root = find_plugin(repo, plugin)
+        report = build_deployments(repo, root, register, read_decisions(repo, decisions))
     except NoPlugin as exc:
         print(f"deployments: {exc}", file=sys.stderr)
         return 2
+    except BadDecisions as exc:
+        # Louder than a missing file, because a record that cannot be read is
+        # not a record of nothing: reading it that way reports every declined
+        # deployment as a chore nobody got to (ADR 0042 rev 2).
+        print(f"deployments: {exc}", file=sys.stderr)
+        return 2
     print(render_deployments(report, register))
-    return 1 if report.defective else 0
+    # A stale *record* fails where a stale *deployment* does not. The second is
+    # a recommendation; the first is a claim that has stopped being true — an
+    # expired declination is a permanent exemption wearing a reason, which is
+    # what GOV-003 fails a control past its review date for.
+    return 1 if report.defective or report.stale_decisions else 0
 
 
 def _cmd_variance(
@@ -434,7 +460,9 @@ def _dispatch(args: argparse.Namespace, repo_path: Path, register_path: Path | N
         case "explain":
             return _cmd_explain(repo_path, register_path, args.id)
         case "deployments":
-            return _cmd_deployments(repo_path, register_path, args.plugin)
+            return _cmd_deployments(
+                repo_path, register_path, args.plugin, args.decisions
+            )
         case "variance":
             return _cmd_variance(repo_path, register_path, args.against, args.path)
     raise AssertionError(f"unhandled command {args.command!r}")

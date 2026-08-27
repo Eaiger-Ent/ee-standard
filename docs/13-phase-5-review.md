@@ -509,3 +509,84 @@ ones it keeps.
   *the release would revert a narrowing*, both need a mechanism that records the
   declination and a report that reads it. What this slice gives them is the
   reason to record — which was previously an argument in prose.
+
+## The seventh slice — a declination is a record, not a memory
+
+Landed 2026-08-27. It closes the two upstream-release criteria, and the location
+question that had been the phase's last open design decision.
+
+### Where it went, and the three places it could not go
+
+`deployment-decisions.yaml`, at the repository root beside `controls.yaml`.
+Excluded first, each by a rule already in force:
+
+- **`controls.yaml` and anything under `plugins/`** — a declination is this
+  repository's posture, and ADR 0022 requirement 6 keeps posture out of what an
+  adopter installs. `tests/test_deployment_decisions.py` holds that boundary for
+  this file as `tests/test_posture.py` holds it for the platform-token choice.
+- **`.claude-plugin/deploys.json`** — the *plugin's* sidecar, declaring what a
+  gate writes. This is the consuming repository's record about a skill it did
+  not run.
+- **`.claude/skill-config.yaml`**, the file ADR 0042 revision 1 proposes — its
+  name and location belong to `ee-skills`, and writing our records into someone
+  else's contract is how that contract stops being one.
+
+The root is right rather than merely available: this is the counterpart to the
+provenance stamps. A stamp records what *was* deployed; this records what
+deliberately was not. They belong at the same level of the tree.
+
+### What makes it a record rather than an opt-out
+
+Two rules, both checked:
+
+**An entry covers the version it names and no later one.** Declining
+`lint-md@1.0.7` does not decline 1.0.8. A new release re-opens the question, and
+that re-opening *is* the criterion about distinguishing a chore from a decision.
+
+**An entry expires.** One that never does is the `variance: justified` loophole
+register contract 3 removed — a weakening permitted by a recorded reason, with
+the mechanism meant to stop it becoming permanent structurally unreachable.
+
+Three ways the record can stop describing reality, and each **fails** the
+command: expired, superseded by a deployment the repository has since made, or
+naming a skill nothing here stamps. That is the asymmetry the command now turns
+on — a stale *deployment* is a recommendation and exits `0`; a stale *record* is
+a claim that has stopped being true and exits `1`. A file that will not parse
+exits `2` rather than reading as no declinations, which would report every
+declined deployment as a chore nobody got to, in a report that looked entirely
+ordinary.
+
+### What closed, and what the evidence is
+
+| Criterion | Evidence |
+| --- | --- |
+| Taking an upstream release has a recorded outcome — redeployed, or declined with the disagreement named | The `lint-md@1.0.7` entry, read back by `register-check deployments` under *Deliberately not deployed* with the reason, the ADR and the expiry. `::test_the_command_reports_this_repository_s_declination` |
+| A deployment behind because nobody redeployed is distinguishable from one behind because the release would revert a narrowing | The same report shows five gates `UNRECORDED` (chores) and one skill `DECLINED` (a decision), from two different mechanisms. `::test_a_stale_record_fails_where_a_stale_deployment_does_not` holds the exit codes apart |
+
+Measured by hand against this repository before the tests were written: with the
+expiry moved into the past, the superseded version, and an unknown skill name,
+each reports its own line and exits `1`; a truncated file exits `2`.
+
+### One bug the tests caught
+
+`_version_key` returned a *partial* parse for an unreadable version, so an empty
+key sorted below every deployed version and the record was reported as
+superseded — telling someone to delete a live declination. Both sides must parse
+before the comparison is made at all, and
+`::test_a_version_that_does_not_parse_never_claims_to_be_superseded` keeps it
+that way.
+
+### What the slice deliberately left open
+
+- **Nothing here knows what version is available.** The checker reads the
+  record and the stamps; it cannot see that `lint-md@1.0.8` exists, so it cannot
+  tell you a declination has been overtaken by a newer release. That comparison
+  belongs to `skill-update`, which reads installed plugins — and whose own
+  criterion is still open.
+- **A declination is not a variance.** It says a release was not taken. It says
+  nothing about whether the deployed artefacts still satisfy the control, which
+  is the register's own asserts' job and unaffected.
+- **ADR 0042 was amended rather than superseded**, and a stricter reading of
+  ADR 0026 would have made this a new ADR. It was folded in because it is the
+  same decision's other half and the ADR was a day old; the revision history
+  says so rather than leaving the choice implicit.

@@ -21,11 +21,14 @@ ahead of the thing it deploys.
 
 from __future__ import annotations
 
+import datetime
 import json
 import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+
+import yaml
 
 from register_check.provenance import stamps_by_file
 from register_check.register import Control, Register
@@ -69,6 +72,145 @@ class State(Enum):
 
     def __str__(self) -> str:
         return self.value
+
+
+#: Where a repository records what it deliberately has not deployed. Beside
+#: `controls.yaml` rather than inside it: a declination is posture, and ADR 0022
+#: requirement 6 keeps posture out of what an adopter installs (ADR 0042 rev 2).
+DECISIONS = "deployment-decisions.yaml"
+
+
+@dataclass(frozen=True)
+class Declination:
+    """One release this repository has decided not to take, and until when."""
+
+    skill: str
+    version: str
+    reason: str
+    review_by: datetime.date
+    adr: str | None = None
+
+    def expired(self, today: datetime.date) -> bool:
+        return self.review_by < today
+
+
+def _version_key(version: str) -> tuple[int, ...]:
+    """A dotted version as integers, for the one comparison this module makes.
+
+    Not a semver implementation: the only question asked is whether a declined
+    release is one this repository has already moved past, and a version that
+    does not parse simply never answers yes — which reports nothing rather than
+    reporting something invented.
+    """
+    pieces = version.split(".")
+    if not all(piece.isdigit() for piece in pieces):
+        return ()
+    return tuple(int(piece) for piece in pieces)
+
+
+def read_decisions(repo: Repo, path: Path | None = None) -> tuple[Declination, ...]:
+    """The declinations on record, or an error if the file cannot be read.
+
+    A malformed file raises rather than returning nothing. Silently reading it
+    as "no declinations" reports every declined deployment as a chore nobody got
+    to, which is the exact opposite of what the record says — and the failure
+    would be invisible, because the report would look ordinary.
+    """
+    target = path or repo.root / DECISIONS
+    if not target.exists():
+        return ()
+    try:
+        document = yaml.safe_load(target.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise BadDecisions(f"{target} is not valid YAML: {exc}") from exc
+    if document is None:
+        return ()
+    if not isinstance(document, dict):
+        raise BadDecisions(f"{target} must be a mapping with a 'declined' key")
+    entries = document.get("declined") or []
+    if not isinstance(entries, list):
+        raise BadDecisions(f"{target}: 'declined' must be a list")
+    found: list[Declination] = []
+    for i, entry in enumerate(entries):
+        at = f"{target}: declined[{i}]"
+        if not isinstance(entry, dict):
+            raise BadDecisions(f"{at} must be a mapping")
+        missing = [k for k in ("skill", "version", "reason", "review_by") if k not in entry]
+        if missing:
+            raise BadDecisions(f"{at} is missing: {', '.join(missing)}")
+        review_by = entry["review_by"]
+        if isinstance(review_by, str):
+            try:
+                review_by = datetime.date.fromisoformat(review_by)
+            except ValueError as exc:
+                raise BadDecisions(f"{at}.review_by is not an ISO date") from exc
+        if not isinstance(review_by, datetime.date):
+            raise BadDecisions(f"{at}.review_by must be an ISO date")
+        found.append(
+            Declination(
+                skill=str(entry["skill"]),
+                version=str(entry["version"]),
+                reason=" ".join(str(entry["reason"]).split()),
+                review_by=review_by,
+                adr=str(entry["adr"]) if entry.get("adr") else None,
+            )
+        )
+    return tuple(found)
+
+
+def decision_problems(
+    declined: tuple[Declination, ...],
+    deployed: dict[str, str],
+    today: datetime.date,
+) -> list[str]:
+    """What is wrong with the record itself, as opposed to with a deployment.
+
+    Three things, and each is a record that has stopped describing reality
+    rather than a deployment anyone owes:
+
+    An **expired** entry is a decision nobody has revisited. GOV-003 fails a
+    control past its review date for the same reason, and a declination is a
+    stronger claim than a control: it says a release should not be taken.
+
+    A declination for a version this repository has **already deployed** is a
+    record of a decision that no longer applies — the stamp moved past it.
+
+    A declination naming a skill **nothing here stamps** describes a deployment
+    that does not exist, which is a record nobody could act on.
+    """
+    problems: list[str] = []
+    for entry in declined:
+        if entry.expired(today):
+            problems.append(
+                f"{entry.skill}@{entry.version}: declined until {entry.review_by} and that "
+                "date has passed — a declination nobody has revisited is a permanent "
+                "exemption wearing a reason"
+            )
+        stamped = deployed.get(entry.skill)
+        if stamped is None:
+            problems.append(
+                f"{entry.skill}@{entry.version}: nothing in this repository carries a stamp "
+                f"naming '{entry.skill}', so the record describes a deployment that does "
+                "not exist"
+            )
+        elif _both_parse_and_stamp_is_newer(stamped, entry.version):
+            problems.append(
+                f"{entry.skill}@{entry.version}: already deployed at {stamped}, so the "
+                "decision no longer applies and the entry should go"
+            )
+    return problems
+
+
+def _both_parse_and_stamp_is_newer(stamped: str, declined: str) -> bool:
+    """Whether the repository has demonstrably moved past the declined release.
+
+    **Both** sides must parse. Requiring only one was a bug the tests caught
+    before it shipped: an unreadable declined version returned an empty key,
+    every deployed version sorted above it, and the record was reported as
+    superseded — telling someone to delete a live declination.
+    """
+    stamped_key, declined_key = _version_key(stamped), _version_key(declined)
+    return bool(stamped_key) and bool(declined_key) and stamped_key >= declined_key
 
 
 #: The states that mean somebody is owed an act. `UNRECORDED` is in the list
@@ -120,6 +262,14 @@ class Report:
     #: silently dropping them would report a repository as less deployed than
     #: it is.
     foreign: tuple[tuple[str, str], ...]
+    #: What this repository has decided not to deploy, and why. Read from
+    #: `deployment-decisions.yaml` (ADR 0042 rev 2). An empty tuple means the
+    #: file is absent — never that it could not be read, which raises.
+    declined: tuple[Declination, ...] = ()
+    #: Records that have stopped describing reality: expired, superseded by a
+    #: deployment, or naming a skill nothing stamps. Distinct from `owed`,
+    #: which is about deployments rather than about the record.
+    stale_decisions: tuple[str, ...] = ()
 
     @property
     def owed(self) -> list[GateReport]:
@@ -132,6 +282,10 @@ class Report:
 
 class NoPlugin(Exception):
     """No plugin to read a deployment contract from, so nothing can be said."""
+
+
+class BadDecisions(Exception):
+    """The declination record cannot be read, so its absence cannot be trusted."""
 
 
 def find_plugin(repo: Repo, explicit: Path | None = None) -> Path:
@@ -213,7 +367,13 @@ def _classify(gate: Gate, deployed: list[int | None], applicable: bool) -> State
     return State.CURRENT
 
 
-def build(repo: Repo, plugin: Path, register: Register) -> Report:
+def build(
+    repo: Repo,
+    plugin: Path,
+    register: Register,
+    declined: tuple[Declination, ...] = (),
+    today: datetime.date | None = None,
+) -> Report:
     """Read the sidecar and the repository's stamps, and join them.
 
     The register is the third input, and it is here for the same reason the
@@ -253,7 +413,22 @@ def build(repo: Repo, plugin: Path, register: Register) -> Report:
             }
         )
     )
-    return Report(plugin=plugin, gates=tuple(reports), foreign=foreign)
+    # The skill version each skill was last deployed at, for the one comparison
+    # a declination admits: whether the repository has already moved past the
+    # release it declines.
+    deployed_versions = {
+        stamp.skill: stamp.skill_version for in_file in stamps.values() for stamp in in_file
+    }
+    problems = decision_problems(
+        declined, deployed_versions, today or datetime.date.today()
+    )
+    return Report(
+        plugin=plugin,
+        gates=tuple(reports),
+        foreign=foreign,
+        declined=declined,
+        stale_decisions=tuple(problems),
+    )
 
 
 _RUNG_ORDER = {"blocking": 0, "blocking (baselined)": 1, "warn": 2, "advisory": 3}
@@ -301,11 +476,30 @@ def render(report: Report, register: Register) -> str:
         lines.append("")
         lines.append("  Deployed by a skill this plugin does not ship:")
         lines.extend(f"    {skill:<20} {control}" for skill, control in report.foreign)
+    if report.declined:
+        lines.append("")
+        lines.append("  Deliberately not deployed:")
+        for entry in report.declined:
+            where = f" ({entry.adr})" if entry.adr else ""
+            lines.append(
+                f"    {entry.skill}@{entry.version:<10} DECLINED until "
+                f"{entry.review_by}{where}"
+            )
+            lines.append(f"        {entry.reason}")
+        lines.append(
+            "    A declination covers the version it names and no later one: a "
+            "new release re-opens the question."
+        )
+    if report.stale_decisions:
+        lines.append("")
+        lines.append("  The record itself has stopped describing reality:")
+        lines.extend(f"    ✗ {problem}" for problem in report.stale_decisions)
     owed, defective = report.owed, report.defective
     lines += [
         "",
         f"Summary: {len(report.gates) - len(owed) - len(defective)} current or "
-        f"not applicable, {len(owed)} owed a deployment, {len(defective)} defective",
+        f"not applicable, {len(owed)} owed a deployment, {len(defective)} defective, "
+        f"{len(report.declined)} declined",
     ]
     if owed:
         lines.append(

@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-27
-**Revision:** 1
+**Revision:** 2
 
 ## Background
 
@@ -73,6 +73,49 @@ repositories with no register at all. What keeps the copy honest is that
 the register fails the build on the next run. The copy is checked, which is the
 condition this repository has always put on the ones it keeps.
 
+**Extended in revision 2: where a declination is recorded.** Revision 1 said
+this ADR did not close the question of distinguishing *nobody redeployed* from
+*the release would revert a narrowing*, and named it as the next criterion's.
+The mechanism is the other half of this decision rather than a separate one, so
+it is recorded here: **`deployment-decisions.yaml`, at the repository root.**
+
+Three places it cannot go, and each exclusion is a rule already in force:
+
+- **`controls.yaml`, or anything under `plugins/`.** A declination is this
+  repository's posture, and [ADR 0022](0022-a-platform-token-ci-carries.md)
+  requirement 6 keeps posture out of what an adopter installs.
+  `tests/test_posture.py` enforces it.
+- **`.claude-plugin/deploys.json`.** That is the *plugin's* sidecar, declaring
+  what a gate writes. A declination is the consuming repository's record about a
+  skill it did not run.
+- **`.claude/skill-config.yaml`, the file this ADR proposes above.** Its name and
+  location belong to `ee-skills` rather than to us, and writing our own records
+  into someone else's contract is how that contract stops being one.
+
+The root is right rather than merely available. This file is the counterpart to
+the provenance stamps: a stamp is the repository-side record of what *was*
+deployed, and this is the repository-side record of what deliberately was not.
+Those belong at the same level of the tree. An adopter gets the same path, and
+`register-check deployments` takes `--decisions` as it already takes `--plugin`.
+
+Two properties matter more than the path, and both are decisions rather than
+details:
+
+**A declination names the version it declines.** Declining `lint-md@1.0.7` must
+not silently cover 1.0.8. A new release re-opens the question, and that
+re-opening *is* what distinguishes a chore from a decision — without it the file
+is a permanent opt-out wearing a reason.
+
+**A declination expires.** One with no `review_by` becomes permanent by neglect,
+which is why `variance: justified` was removed at register contract 3: the
+mechanism that was supposed to stop it becoming a loophole was unreachable. An
+expired declination is reported as expired, the way GOV-003 reports a control
+past its review date.
+
+A malformed file **fails** rather than being ignored. Silently reverting to
+*chore* reports the opposite of the truth, which is the one outcome this row
+exists to prevent.
+
 ## Alternatives considered
 
 **Argue the two rows upstream and take 1.0.8.** This is what the plan said, and
@@ -102,9 +145,9 @@ future release can be judged against something citable rather than against
 whatever we remembered wanting.
 
 **Until it ships, `lint-md` stays at the 1.0.6 stamp**, and that state is now a
-*decision with a reason* rather than a chore nobody got to. Distinguishing those
-two in the deployment report is Phase 5's next criterion and is not closed by
-this ADR — what this gives it is the reason to record.
+*decision with a reason* rather than a chore nobody got to — recorded in
+`deployment-decisions.yaml` per revision 2, and read back by
+`register-check deployments`.
 
 **The two rows still need raising.** This contract would let us set `ignores: []`
 locally, which stops `.claude/**` reaching this repository — it does not stop it
@@ -116,3 +159,10 @@ the thing is wrong.
 artefacts it writes must be byte-identical to what is deployed here today, with
 the stamp moving to the new version. Anything else is the contract not being
 honoured, and it is checkable rather than arguable.
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-27 | Original decision: a skill that deploys artefacts takes the values it writes as input, read from a repository-local file keyed by skill name, with an absent file meaning today's behaviour. | Nathan Carney |
+| 2 | 2026-08-27 | § Decision extended with where a declination is recorded — `deployment-decisions.yaml` at the repository root — and the two properties that make it a record rather than an opt-out: it names the version it declines, and it expires. Revision 1 named this as the next criterion's; it is the other half of this decision. A stricter reading of ADR 0026 would have made it a new ADR. | Nathan Carney |
