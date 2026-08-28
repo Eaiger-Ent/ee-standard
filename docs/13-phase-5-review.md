@@ -879,17 +879,21 @@ the signal.
 
 - **The stamps stay at contract 34.** They record the deployment that happened,
   and staleness is reported and never enforced. Rewriting them would claim a
-  redeployment nobody ran.
+  redeployment nobody ran. *(They moved to 35 later the same day, on a
+  `lint-md@1.0.9` run that did happen — which is the difference this bullet was
+  drawing, not a change of mind.)*
 - **Only DOC-001 gained this.** Whether other controls have a second artefact at
   a locus verified through the first is not something this slice surveyed, and
   the shape — presence of one artefact standing in for another — is general
   enough to be worth a sweep.
-- **The upstream half is unfixed.** `lint-md` 1.0.8 still writes npx into a
-  fresh hook, so an adopter deploying today fails this check on the artefact the
-  skill just wrote them. That is
-  [ee-skills-incubator#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627),
-  and until it ships the pinned invocation here is a hand-edit rather than
-  configuration.
+- **The upstream half was unfixed at the time.** `lint-md` 1.0.8 still wrote npx
+  into a fresh hook, so an adopter deploying then failed this check on the
+  artefact the skill had just written them. That was
+  [ee-skills-incubator#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627).
+  **It shipped in 1.0.9 later the same day** and was taken here immediately: the
+  pinned invocation is now substituted by Step 3a rather than hand-edited, and
+  the five DOC-001 stamps moved to `lint-md@1.0.9` at contract 35 on a run that
+  actually happened.
 
 ## Where Phase 5 finished
 
@@ -917,14 +921,35 @@ particular state — because the instinct is to keep re-running and hope.
   against what is *published*; ADR 0043 closed the comparison against what is
   installed, which is a different question. `skill-update` is where the first
   belongs, and it answers it for plugins rather than for deployments.
+- **ADR 0043's rule is enforced nowhere automated, and that was not noticed when
+  it shipped.** Added 2026-08-28, after the phase closed, on a dispatched sweep.
+  `register-check deployments` is not part of a conformance run, so
+  `conformance-sweep.yml` is the **only** automated reader of
+  `deployment-decisions.yaml` — and it runs on a GitHub runner, which has no
+  plugin inventory, which is exactly the state ADR 0043 part 2 reports as *not
+  known* rather than acting on. Measured on one declination whose version is
+  ahead of the stamps: exit `1` in this container, exit `0` on the runner, from
+  the same record. So the guard against a declination going stale **with no
+  commit** is absent from the workflow built to catch things that go stale with
+  no commit, which is the composition rather than either decision being wrong.
+  Three things bound it and are why this is a note rather than a defect: the
+  sweep prints a `?` line saying which question it did not answer, so it does
+  not report agreement it has not established; `review_by` expiry and the stamp
+  comparison need no inventory and still run everywhere, so an entry rots for at
+  most its review-by horizon; and `declined: []` today, so nothing is currently
+  unchecked. There is no cheap fix — a runner cannot be given an inventory, and
+  installing plugins in CI to read a version number is worse than the gap. The
+  route is the marketplace comparison above, widened from *installed vs
+  published* to answer *published vs declined*.
 - **Five gates read `UNRECORDED` and will until each next deploys.** That is
   ADR 0038 reporting itself, and the deliberate cost of adding a field rather
   than back-filling one. Filling a stamp by hand remains forbidden.
-- **[ee-skills-incubator#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627)**
-  is with its maintainers. Until it ships, `lint-md` writes an invocation into a
-  fresh hook that contract 35 fails — so an adopter deploying today fails a check
-  on the artefact the skill just wrote them, and this repository's own pinned
-  spelling is a hand-edit rather than configuration.
+- ~~**[ee-skills-incubator#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627)**
+  is with its maintainers.~~ **Closed 2026-08-28**, shipped in `lint-md@1.0.9`
+  and taken here the same day. It is struck rather than deleted because a phase
+  review is a record of what the phase left open, and this one stayed open for
+  hours rather than for a phase — which is the unusual outcome, not the normal
+  one.
 - **The survey nobody has run.** DOC-001's editor locus had two artefacts and one
   was checked, for four phases, in a tracked file that described the gap
   accurately. Whether any other control has that shape was not looked at.

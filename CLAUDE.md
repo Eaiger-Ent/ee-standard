@@ -545,30 +545,33 @@ exits `0`; a stale *record* (expired, superseded, or naming a skill nothing
 stamps) exits `1`, and a malformed file exits `2` rather than reading as no
 declinations.
 
-**`/lint-md` was re-run at 1.0.8 on 2026-08-28, and the declination is gone.**
-All five DOC-001 artefacts are stamped `lint-md@1.0.8`, `deployment-decisions.yaml`
-is `declined: []`, and `register-check deployments` is back to exit `0`. The
-impasse is over: the two disputed values now come from
-`.claude/skill-config.yaml`, so `entry:` in the pre-commit hook and the CI step's
-invocation are **configured rather than corrected** — they had been hand-edits
-since Phase 1.
+**`/lint-md` was re-run at 1.0.8 on 2026-08-28, and the declination went with
+it.** `deployment-decisions.yaml` is `declined: []` and `register-check
+deployments` is back to exit `0`. The impasse is over: the two disputed values
+now come from `.claude/skill-config.yaml`, so `entry:` in the pre-commit hook
+and the CI step's invocation are **configured rather than corrected** — they had
+been hand-edits since Phase 1.
 
-**Four of the five artefacts are what 1.0.8 writes; the fifth is not, and that
-is recorded rather than hidden.** Every step of the run hit its skip branch
-except `.markdownlint.yaml`, which was overwritten and came back byte-identical
-below the stamp. `.claude/hooks/md-lint.py` is the exception:
-`local-config.md` says `invocation` reaches *"every locus … the PostToolUse
-hook"*, but Step 3a is a plain `cp` of a script with
-`NPX_LINT = ("npx", "--no-install", …)` hardcoded, so the configured value never
-arrives there. The shipped script also carries `#!/usr/bin/env python3`, which
-`tests/test_toolchain_pin.py` fails. Both are filed upstream as
+That run left one artefact diverging from what the release writes:
+`local-config.md` said `invocation` reaches *"every locus … the PostToolUse
+hook"*, but Step 3a was a plain `cp` of a script with npx hardcoded, so the
+configured value never arrived there, and the shipped script's
+`#!/usr/bin/env python3` is a shebang `tests/test_toolchain_pin.py` fails. Both
+were filed as
 [ee-skills-incubator#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627).
 
-**ADR 0020's row is now closed at every locus here**, the hook included: it
-invokes `node_modules/.bin/markdownlint-cli2`, the register's pinned string,
-rather than `npx --no-install`. That is a hand-edit until #627 ships and is
-marked as one in the file's stamp comment — Step 3a's skip branch leaves an
-existing hook alone, so a re-run will not revert it.
+**#627 shipped in `lint-md` 1.0.9, and `/lint-md` was re-run against it the same
+day.** All five DOC-001 artefacts are now stamped `lint-md@1.0.9` at register
+contract 35, and **`.claude/hooks/md-lint.py` is the release's own script for
+the first time**: 1.0.9 ships the `-S uv run python` shebang and the
+memory-file skip, its script passes `uv run ruff check` and `uv run mypy` here
+unedited, and Step 3a now substitutes `invocation` into it and verifies the
+value landed. The four divergences that file used to carry are all upstream, so
+**it is a deployment rather than a reconciliation** — the first time that stamp
+has meant the plain thing. Everything else hit its skip branch; `.markdownlint.yaml`
+was overwritten under the Step 1 prompt and came back byte-identical below the
+stamp, as it did at 1.0.8. **ADR 0020's row is closed at every locus here** and
+is no longer held open by a hand-edit anywhere.
 
 **From register contract 35 it is verified rather than remembered.** The editor
 locus has **two** artefacts and `markdown_gate_wired_at_all_loci` read one:
@@ -588,10 +591,12 @@ mentions the tool is not judged, and a repository with no hook at all is not in
 violation — this verifies the locus the control already claims rather than
 adding a requirement.
 
-A stamp naming 1.0.8 on a file 1.0.8 did not write is deliberate and is what the
-comment qualifies: the stamp records the release the artefact was **reconciled
-against**, and this repository's stamps have always carried their hand-edits.
-What is still forbidden is refreshing one with no run behind it.
+A stamp naming a release on a file that release did not write is deliberate
+where the file's comment qualifies it: the stamp records the release the
+artefact was **reconciled against**, and this repository's stamps have always
+carried their hand-edits. Four of the five DOC-001 stamps are still that kind,
+refreshed by the 1.0.9 run over files it skipped. What is forbidden is
+refreshing one with no run behind it.
 
 Per [ADR 0043](docs/adr/0043-a-declination-is-reconciled-against-the-installed-skill.md)
 (**Accepted** and implemented 2026-08-28) a declination is reconciled against

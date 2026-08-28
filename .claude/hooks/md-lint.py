@@ -1,82 +1,100 @@
 #!/usr/bin/env -S uv run python
-# ee-control: DOC-001  ee-skill: lint-md@1.0.8  register: v0.29.0  register-contract: 34
+# ee-control: DOC-001  ee-skill: lint-md@1.0.9  register: v0.29.0  register-contract: 35
 #
-# Deployed artefact — DOC-001's editor locus, as a PostToolUse hook. The 1.0.8
-# run on 2026-08-28 reconciled it and **skipped** it: Step 3a copies the
-# release's own script verbatim, and that script is not what this file is. The
-# stamp names 1.0.8 because that is the release this file was reconciled
-# against, not because 1.0.8 wrote it — the divergences below are deliberate
-# and each is a narrowing.
+# Deployed artefact — DOC-001's editor locus, as a PostToolUse hook. Written by
+# `lint-md` 1.0.9 on 2026-08-28: Step 3a copies the release's own script and
+# then writes `invocation` from .claude/skill-config.yaml into it.
 #
-# Three of them. The shebang reads `-S uv run python` rather than the shipped
-# `python3`, which in this container resolves to the base image's 3.13.5 and is
-# below the floor (ADR 0028 revision 2, tests/test_toolchain_pin.py). It skips
-# Claude's own memory files. And it conforms to this repository's ruff and mypy
-# rules rather than sitting behind an exclusion.
+# It is a deployment rather than a reconciliation, and that is the news. Until
+# 1.0.9 this file carried four deliberate divergences from the shipped script —
+# the `-S uv run python` shebang, a skip for Claude's own memory files,
+# conformance with this repository's ruff and mypy rules, and the register's
+# pinned invocation in place of `npx --no-install`. All four are now upstream:
+# 1.0.9 ships the shebang and the memory skip, its script passes `uv run ruff
+# check` and `uv run mypy` here unedited, and Step 3a substitutes the invocation
+# instead of hardcoding npx. That last one was
+# EqualExperts/ee-skills-incubator#627, filed against 1.0.8 and fixed here.
 #
-# A fourth, added 2026-08-28: the invocation is the register's pinned one,
-# `tools.markdownlint-cli2.invocation`, the same string the pre-commit hook and
-# the CI step reach the tool through. It was `npx --no-install` until then —
-# which ADR 0020 measured falling through to PATH when the local install is
-# missing, so a lockfile is an authority in name only. Every locus now spells it
-# the same way, which is `docs/00-concepts.md` § Locus: pin once, reference many.
-#
-# This is the one divergence the skill will re-introduce. 1.0.8's
-# local-config.md says `invocation` reaches "every locus ... the PostToolUse
-# hook", but Step 3a is a plain `cp` of a script with npx hardcoded, so the
-# configured value in .claude/skill-config.yaml never arrives here — filed as
-# EqualExperts/ee-skills-incubator#627. Until that ships, this line is a
-# hand-edit rather than configuration; Step 3a's skip branch leaves an existing
-# hook alone, so a re-run will not revert it.
+# So there is nothing left hand-edited below, and the stamp means what it says:
+# 1.0.9 wrote this file. Do not re-introduce a divergence without recording it
+# here — the previous four were each a narrowing, and each was named.
 # See docs/00-concepts.md § The provenance stamp.
-"""Lint (and auto-fix) a markdown file after Claude writes it."""
-
-from __future__ import annotations
+"""PostToolUse hook: auto-fix Markdown files with markdownlint-cli2, block on the rest."""
 
 import json
+import shlex
 import subprocess
 import sys
 from pathlib import Path
 
-MARKDOWNLINT = ["node_modules/.bin/markdownlint-cli2"]
+# The invocation this skill was configured with — `invocation` in
+# .claude/skill-config.yaml, see local-config.md. Step 3a rewrites this one line
+# at deploy time; the string below is the default, which is what a repository
+# that configures nothing gets.
+#
+# Kept as a single string rather than a tuple so the substitution is a
+# whole-line replacement. A configured value is a command line, not a token:
+# "node_modules/.bin/markdownlint-cli2" is one word and the default is three.
+LINT_INVOCATION = "node_modules/.bin/markdownlint-cli2"
+
+LINT = shlex.split(LINT_INVOCATION)
+
+
+def find_repo_root(start: Path) -> Path:
+    """Nearest ancestor containing .git — where package-lock.json and node_modules live."""
+    for candidate in (start, *start.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return start
 
 
 def main() -> int:
     payload = json.load(sys.stdin)
-    target = payload.get("tool_input", {}).get("file_path", "")
-    if not target.endswith(".md"):
-        return 0
-    path = Path(target)
-    if not path.exists():
+    file_arg = str(payload.get("tool_input", {}).get("file_path", ""))
+    target = Path(file_arg)
+
+    if target.suffix != ".md" or not target.exists():
         return 0
 
     # Claude's auto-memory files (~/.claude/projects/*/memory/*.md) are managed
-    # by Claude's memory system, not by this repo's markdown conventions.
+    # by Claude's memory system, not this repo's markdown conventions.
     memory_root = Path.home() / ".claude" / "projects"
-    if path.is_relative_to(memory_root) and "memory" in path.parts:
+    if target.is_relative_to(memory_root) and "memory" in target.parts:
         return 0
 
-    # DOC-001's tool resolves from package-lock.json, so npx must run with the
-    # repository root as cwd — the hook fires on files anywhere, including
-    # outside it.
-    repo_root = Path(__file__).resolve().parents[2]
+    # Run from the repository root so the lockfile-pinned install resolves
+    # regardless of where the edited file lives. This matters for both spellings:
+    # `npx` searches upwards for node_modules, and a relative invocation such as
+    # `node_modules/.bin/markdownlint-cli2` resolves against the cwd.
+    repo_root = find_repo_root(target.resolve().parent)
 
-    # Auto-fix what markdownlint can repair on its own, then re-check for what
-    # it cannot.
-    subprocess.run([*MARKDOWNLINT, "--fix", str(path)], capture_output=True, cwd=repo_root)
-    result = subprocess.run(
-        [*MARKDOWNLINT, str(path)], capture_output=True, text=True, cwd=repo_root
+    # Auto-fix what markdownlint can repair on its own.
+    subprocess.run(
+        [*LINT, "--fix", str(target)],
+        capture_output=True,
+        cwd=repo_root,
+        check=False,
     )
-    output = (result.stdout + result.stderr).strip()
+
+    # Re-check for anything that couldn't be auto-fixed.
+    result = subprocess.run(
+        [*LINT, str(target)],
+        capture_output=True,
+        text=True,
+        cwd=repo_root,
+        check=False,
+    )
+    findings = (result.stdout + result.stderr).strip()
 
     if result.returncode != 0:
         print(
-            f"\n\n⚠ STOP: markdownlint [{path.name}] has unfixable errors — "
+            f"\n\n⚠ STOP: markdownlint [{target.name}] has unfixable errors — "
             f"do not proceed until resolved.\n"
-            f"Fix each issue listed below by editing {path}, then re-save:\n\n{output}\n"
+            f"Fix each issue listed below by editing {target}, then re-save:\n\n{findings}\n"
         )
         return 1
-    print(f"markdownlint [{path.name}]: OK")
+
+    print(f"markdownlint [{target.name}]: OK")
     return 0
 
 

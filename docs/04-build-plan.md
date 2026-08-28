@@ -1218,15 +1218,18 @@ repository-local file keyed by skill name, absent file meaning today's
 behaviour. Rows 1 and 2 are one line of local configuration each, and
 `.claude/skill-config.yaml` here holds both.
 
-#### Where the four rows stand at 1.0.8
+#### Where the four rows stand at 1.0.9
 
 Measured 2026-08-28 against the installed skill rather than its release notes,
 because three of the four had moved and none of the three was announced as a
-move:
+move. Re-measured against 1.0.9 the same day: the four rows below are unchanged
+by that release — its `local-config.md` defaults are byte-identical and Step 1
+still offers the overwrite prompt — and what 1.0.9 does move is #627, two rows
+further down:
 
 | Row | State | Evidence |
 | --- | --- | --- |
-| 1 `npx --no-install` | **Configurable, default unchanged** | `local-config.md` § What is read: `invocation` defaults to `npx --no-install markdownlint-cli2`; this repository sets the register's pinned path and gets it at every locus but one |
+| 1 `npx --no-install` | **Configurable, default unchanged** | `local-config.md` § What is read: `invocation` defaults to `npx --no-install markdownlint-cli2`; this repository sets the register's pinned path and, from 1.0.9, gets it at **every** locus — the PostToolUse hook was the exception and is #627 below |
 | 2 `.claude/**` in `ignores` | **Configurable, default unchanged** | Same table: the default list still contains `.claude/**`. `ignores: []` set here means *ignore nothing*, because a present key replaces the default rather than merging with it |
 | 3 the `grep -q "node_modules"` guard | **Closed** | 1.0.7's Step 2b guard is gone. 1.0.8 reads the file with a YAML parser and compares the `ignores` list against the configured one, in as many words: *"parsing the YAML rather than grepping it"* |
 | 4 the overwrite prompt | **Open, unchanged** | Step 1 still offers *"Overwrite and reconfigure, or abort?"* with no reading of an `ee-control:` header, so accepting it drops the DOC-001 stamp |
@@ -1245,13 +1248,20 @@ was written while the mechanism was still a proposal, and it carries more weight
 now that the mechanism has shipped, because a configuration key that answers the
 complaint locally is the most comfortable possible reason to stop making it.
 
-Two further rows are already filed, as
-[#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627), and are
-submission 4's rather than a separate errand: `local-config.md` says
-`invocation` reaches *"every locus … the PostToolUse hook"* and Step 3a is a
-plain `cp` of a script with the invocation hardcoded, so the configured value
-never arrives there; and that shipped script's shebang resolves from `PATH`,
-which `tests/test_toolchain_pin.py` fails.
+Two further rows were filed as
+[#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627):
+`local-config.md` said `invocation` reaches *"every locus … the PostToolUse
+hook"* while Step 3a was a plain `cp` of a script with the invocation
+hardcoded, so the configured value never arrived there; and that shipped
+script's shebang resolved from `PATH`, which `tests/test_toolchain_pin.py`
+fails. **Both shipped in `lint-md@1.0.9` and #627 is closed** (COMPLETED,
+2026-08-28). 1.0.9's Step 3a substitutes `invocation` into the copied script and
+verifies the value landed, and the script it copies carries
+`#!/usr/bin/env -S uv run python`. Measured here the same day: `/lint-md` at
+1.0.9 wrote `.claude/hooks/md-lint.py` from the release unedited, and the four
+divergences that file used to carry are gone. So this is the one row of the six
+that closed by being fixed upstream rather than by being made configurable, and
+it is **not** submission 4's any more.
 
 The general rule this phase owes a mechanism to: **an exclusion is scoped by
 what it is for, not by where it sits.** A path outside the repository is out of
@@ -1326,9 +1336,10 @@ particular is three rows smaller than the plan first described, for which see
       exemption, both now *defaults* rather than fixed behaviour, and the
       overwrite prompt that does not recognise a provenance header. The
       `node_modules` guard that matched prose is closed, measured rather than
-      assumed, and two more are already filed as
-      [#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627) —
-      all of it enumerated in § Accepting an upstream skill release
+      assumed, and the two filed as
+      [#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627) are
+      closed too — shipped in `lint-md@1.0.9` on 2026-08-28 and taken here the
+      same day — all of it enumerated in § Accepting an upstream skill release
 - [ ] `control-register` installable from the marketplace **as one plugin**, with
       every skill in it — not as one plugin per skill
 - [ ] The consumer repo re-adopts from the *marketplace* copy and still passes —
