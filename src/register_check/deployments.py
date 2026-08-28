@@ -79,6 +79,14 @@ class State(Enum):
 #: requirement 6 keeps posture out of what an adopter installs (ADR 0042 rev 2).
 DECISIONS = "deployment-decisions.yaml"
 
+#: Where the Claude Code harness records which plugins are installed, and at
+#: what version. Read directly rather than through `claude plugin list`: the
+#: answer lives in a JSON file, and shelling out would make a checker that has
+#: the file but not the CLI unable to read it (ADR 0043 part 1).
+_INVENTORY_ENV = "CLAUDE_CONFIG_DIR"
+_INVENTORY_HOME = ".claude"
+_INVENTORY = "plugins/installed_plugins.json"
+
 
 @dataclass(frozen=True)
 class Declination:
@@ -106,6 +114,73 @@ def _version_key(version: str) -> tuple[int, ...]:
     if not all(piece.isdigit() for piece in pieces):
         return ()
     return tuple(int(piece) for piece in pieces)
+
+
+@dataclass(frozen=True)
+class Inventory:
+    """What the harness reports as installed, or why that could not be read.
+
+    Two fields rather than one dictionary, because *nothing installed* and
+    *nothing readable* are different answers and collapsing them is the bug
+    ADR 0043 part 2 is about: a missing inventory would read as "no skill is
+    newer than any declination", which is agreement invented out of not having
+    looked.
+    """
+
+    versions: dict[str, str]
+    #: Why `versions` is empty, when it is empty for a reason. `None` means the
+    #: inventory was read and simply lists nothing relevant.
+    unreadable: str | None = None
+
+    def version_of(self, skill: str) -> str | None:
+        return self.versions.get(skill)
+
+
+def read_inventory(path: Path | None = None) -> Inventory:
+    """The installed version of every plugin the harness knows about.
+
+    Never raises. A checker that failed because a developer's home directory
+    is laid out unusually would be failing over the one input it is allowed
+    not to have — CI has no plugins installed at all, and that run must still
+    produce a report.
+    """
+    target = path or _inventory_path()
+    if not target.is_file():
+        return Inventory({}, f"no plugin inventory at {target}")
+    try:
+        raw = json.loads(target.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return Inventory({}, f"{target} could not be read: {exc}")
+    plugins = raw.get("plugins") if isinstance(raw, dict) else None
+    if not isinstance(plugins, dict):
+        return Inventory({}, f"{target} declares no plugins")
+    versions: dict[str, str] = {}
+    for key, installs in plugins.items():
+        # `lint-md@ee-skills` — the marketplace is the suffix, and the skill is
+        # what a provenance stamp names.
+        name = str(key).rsplit("@", 1)[0]
+        if not isinstance(installs, list):
+            continue
+        for install in installs:
+            if not isinstance(install, dict):
+                continue
+            version = install.get("version")
+            if not isinstance(version, str):
+                continue
+            # Installed at two scopes: the later one wins. A record covering
+            # the older of two installations is covering the copy that is not
+            # going to run (ADR 0043 part 1).
+            current = versions.get(name)
+            if current is None or _version_key(version) > _version_key(current):
+                versions[name] = version
+    return Inventory(versions)
+
+
+def _inventory_path() -> Path:
+    """`$CLAUDE_CONFIG_DIR` beats `~/.claude`, which is the harness's own default."""
+    configured = os.environ.get(_INVENTORY_ENV)
+    root = Path(configured) if configured else Path.home() / _INVENTORY_HOME
+    return root / _INVENTORY
 
 
 def read_decisions(repo: Repo, path: Path | None = None) -> tuple[Declination, ...]:
@@ -162,6 +237,7 @@ def decision_problems(
     declined: tuple[Declination, ...],
     deployed: dict[str, str],
     today: datetime.date,
+    installed: Inventory | None = None,
 ) -> list[str]:
     """What is wrong with the record itself, as opposed to with a deployment.
 
@@ -177,6 +253,12 @@ def decision_problems(
 
     A declination naming a skill **nothing here stamps** describes a deployment
     that does not exist, which is a record nobody could act on.
+
+    And a declination whose skill is **installed at a later release** has
+    stopped covering that skill (ADR 0043). `deployment-decisions.yaml` says so
+    in its own header and the report prints the rule underneath every entry;
+    until this was added, nothing applied it, so a record went quiet about the
+    release it was no longer speaking for.
     """
     problems: list[str] = []
     for entry in declined:
@@ -198,7 +280,52 @@ def decision_problems(
                 f"{entry.skill}@{entry.version}: already deployed at {stamped}, so the "
                 "decision no longer applies and the entry should go"
             )
+        here = (installed or Inventory({})).version_of(entry.skill)
+        if here is not None and _is_later(here, entry.version):
+            problems.append(
+                f"{entry.skill}@{entry.version}: {entry.skill} is installed at {here}, "
+                "which this record does not cover — a declination covers the version it "
+                "names and no later one, so the question is re-opened and the entry must "
+                "be renewed against the new release or deleted"
+            )
     return problems
+
+
+def unreconciled(
+    declined: tuple[Declination, ...],
+    installed: Inventory,
+) -> list[str]:
+    """Declinations whose installed release could not be determined, and why.
+
+    Reported rather than counted as agreement, and separately from
+    `decision_problems` because it is not a problem with the record: it is this
+    run saying which question it did not get to answer (ADR 0043 part 2). CI has
+    no plugins installed, so this is the ordinary case there rather than a fault.
+    """
+    notes: list[str] = []
+    for entry in declined:
+        here = installed.version_of(entry.skill)
+        if here is None:
+            why = installed.unreadable or f"{entry.skill} is not installed here"
+            notes.append(f"{entry.skill}@{entry.version}: {why}")
+        elif not (_version_key(here) and _version_key(entry.version)):
+            notes.append(
+                f"{entry.skill}@{entry.version}: installed at {here}, which does not "
+                "compare as a dotted version"
+            )
+    return notes
+
+
+def _is_later(installed: str, declined: str) -> bool:
+    """Strictly later, and only when both sides parse.
+
+    Strictly, because a record naming the version that is installed covers it
+    exactly — that is the whole state a declination is written in. Both sides,
+    for `_both_parse_and_stamp_is_newer`'s reason: an unparseable version that
+    sorted below everything would report a live record as superseded.
+    """
+    a, b = _version_key(installed), _version_key(declined)
+    return bool(a) and bool(b) and a > b
 
 
 def _both_parse_and_stamp_is_newer(stamped: str, declined: str) -> bool:
@@ -267,9 +394,13 @@ class Report:
     #: file is absent — never that it could not be read, which raises.
     declined: tuple[Declination, ...] = ()
     #: Records that have stopped describing reality: expired, superseded by a
-    #: deployment, or naming a skill nothing stamps. Distinct from `owed`,
-    #: which is about deployments rather than about the record.
+    #: deployment or by an installed release, or naming a skill nothing stamps.
+    #: Distinct from `owed`, which is about deployments rather than the record.
     stale_decisions: tuple[str, ...] = ()
+    #: Declinations this run could not reconcile against an installed release,
+    #: each with the reason. Not a problem and not agreement — the third state
+    #: ADR 0043 part 2 keeps apart from both.
+    unreconciled: tuple[str, ...] = ()
 
     @property
     def owed(self) -> list[GateReport]:
@@ -373,6 +504,7 @@ def build(
     register: Register,
     declined: tuple[Declination, ...] = (),
     today: datetime.date | None = None,
+    installed: Inventory | None = None,
 ) -> Report:
     """Read the sidecar and the repository's stamps, and join them.
 
@@ -419,8 +551,9 @@ def build(
     deployed_versions = {
         stamp.skill: stamp.skill_version for in_file in stamps.values() for stamp in in_file
     }
+    inventory = installed if installed is not None else read_inventory()
     problems = decision_problems(
-        declined, deployed_versions, today or datetime.date.today()
+        declined, deployed_versions, today or datetime.date.today(), inventory
     )
     return Report(
         plugin=plugin,
@@ -428,6 +561,7 @@ def build(
         foreign=foreign,
         declined=declined,
         stale_decisions=tuple(problems),
+        unreconciled=tuple(unreconciled(declined, inventory)),
     )
 
 
@@ -490,6 +624,12 @@ def render(report: Report, register: Register) -> str:
             "    A declination covers the version it names and no later one: a "
             "new release re-opens the question."
         )
+        if report.unreconciled:
+            lines.append(
+                "    Not reconciled against an installed release (reported, not assumed "
+                "current):"
+            )
+            lines.extend(f"      ? {note}" for note in report.unreconciled)
     if report.stale_decisions:
         lines.append("")
         lines.append("  The record itself has stopped describing reality:")

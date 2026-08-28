@@ -682,3 +682,91 @@ than by a reader.
   record and the next run opens a second. A label would be sturdier and needs a
   label to exist first; this is the smaller assumption, recorded rather than
   hidden.
+
+## The seventh slice — a declination is reconciled against what is installed
+
+**[ADR 0043](adr/0043-a-declination-is-reconciled-against-the-installed-skill.md)**,
+Accepted and implemented 2026-08-28. The sixth slice left this open in as many
+words — *"nothing compares against what is available upstream"* — and this
+closes the half of it that is about a machine somebody is standing at.
+
+### What was found
+
+`/skill-update` updated `lint-md` from 1.0.7 to 1.0.8. The declination named
+1.0.7. `register-check deployments` exited `0`, listed the entry as live, and
+printed underneath it:
+
+```text
+A declination covers the version it names and no later one: a new release
+re-opens the question.
+```
+
+The rule was stated and not applied. `decision_problems` had three checks —
+expired, naming a skill nothing stamps, and a version the repository has already
+*deployed* — and the third compares against the **stamp**. Nothing compared
+against what is **installed**, which is the release the rule is about.
+
+That is worse than an unimplemented rule, because the sentence reads as a check
+that has been made. The prediction made before the update — that the report
+would start failing — was wrong for this reason, and being wrong is how the gap
+was found: the expectation was checked against the code rather than trusted.
+
+### What landed, and what the evidence is
+
+`read_inventory` reads the harness's plugin inventory,
+`plugins/installed_plugins.json` under `$CLAUDE_CONFIG_DIR` (default
+`~/.claude`), and `decision_problems` fails an entry whose skill is installed at
+a strictly later release. Run here, it names the state the repository is
+actually in:
+
+```text
+✗ lint-md@1.0.7: lint-md is installed at 1.0.8, which this record does not
+  cover — a declination covers the version it names and no later one, so the
+  question is re-opened and the entry must be renewed against the new release
+  or deleted
+```
+
+Exit `1`, joining the expired entry rather than the stale deployment: a record
+that has stopped describing reality is not a chore.
+
+### Absence is a third state, not agreement
+
+CI has no plugins installed. A rule reading *not found* as *still covered* would
+be right on a developer's machine and vacuous in the only place the repository
+is audited on every push — correct where nobody could check it. So three
+outcomes are reported as unknown rather than as agreement: no inventory file, no
+entry for that skill, and a version either side that does not parse. The report
+says which:
+
+```text
+Not reconciled against an installed release (reported, not assumed current):
+  ? lint-md@1.0.7: no plugin inventory at /nonexistent/inv.json
+```
+
+This is `kind: remote`'s `UNCLASSIFIED` applied to a local input, and the test
+asserts both branches against one commit and one record — exit `1` with an
+inventory, exit `0` and a named reason without one.
+
+### The suite gained a second ambient input to strip
+
+`tests/conftest.py` already deleted `GITHUB_TOKEN` autouse, so no verdict
+depends on who is logged in. The inventory is the same hazard wearing a
+different name: a test declining `lint-md@1.0.6` would have passed in CI and
+failed on this container the day somebody updated a plugin. `CLAUDE_CONFIG_DIR`
+is now pointed at an empty directory for every test — redirected rather than
+deleted, so the `~/.claude` default is never reached from a test at all.
+
+### What the slice deliberately left open
+
+- **The marketplace half is still open.** This sees what is *installed*, not
+  what is *published*. A repository whose machine has never updated will not
+  learn that a newer release exists, which remains `skill-update`'s question and
+  its still-open criterion.
+- **The verdict is environment-dependent**, which no other part of this command
+  is. The same commit reports a stale record here and an unreconciled one in CI.
+  Accepted, and the reason the report names why it could not look: the two runs
+  disagree visibly rather than silently.
+- **A repository with no Claude Code installation never exercises the check**,
+  so its declinations expire (rule 2) rather than being superseded (rule 1).
+  Rule 2 still bounds them; rule 1 only shortens the bound where a machine can
+  see further.

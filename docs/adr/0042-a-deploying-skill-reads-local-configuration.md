@@ -160,6 +160,39 @@ artefacts it writes must be byte-identical to what is deployed here today, with
 the stamp moving to the new version. Anything else is the contract not being
 honoured, and it is checkable rather than arguable.
 
+## Applied — pass 1: the contract shipped, 2026-08-28
+
+`lint-md@1.0.8` ships it, one day after this ADR was written. `/skill-update`
+moved this container from 1.0.7; the release carries
+`skills/lint-md/local-config.md`, which is this decision's four parts in the
+skill's own words:
+
+| This ADR | 1.0.8 |
+| --- | --- |
+| A deploying skill declares the values it decides | `local-config.md` § What is read — a table of key, default and the loci each is used at |
+| Read from a repository-local file keyed by skill name | `.claude/skill-config.yaml`, `lint-md:` key, read once at pre-flight |
+| An absent file means today's behaviour | *"Absent file, absent key, absent value — behave exactly as this skill always has"* |
+| The run reports which values came from configuration | § Report what you used |
+
+One thing it settles that this ADR left implicit: a **present key replaces the
+default entirely** rather than merging with it. That is what makes `ignores: []`
+mean *ignore nothing* rather than *nothing to add*, and without it the row this
+repository cares about would have been unexpressible.
+
+**The defaults did not move**, and that is the contract working rather than
+failing. 1.0.8 still writes `npx --no-install` and `.claude/**` where nothing
+configures it; the disagreement was never that those values are wrong for every
+repository, only that they are wrong for this one and that arguing them one at a
+time does not generalise.
+
+`.claude/skill-config.yaml` exists here and sets both. The acceptance test above
+— re-run `/lint-md` and the artefacts must be byte-identical to what is deployed
+today, with the stamp moving — is **not yet run**: the skill carries
+`disable-model-invocation: true`, so it is a person's `/lint-md` after a restart.
+Until it is, the `lint-md@1.0.7` declination is superseded rather than deleted,
+which [ADR 0043](0043-a-declination-is-reconciled-against-the-installed-skill.md)
+is what makes visible.
+
 ## Revision History
 
 | Rev | Date | What changed | Ratified by |

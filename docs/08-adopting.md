@@ -1811,7 +1811,12 @@ enforces both:
 
 - **`version` covers the release it names and no later one.** Declining 1.0.7
   does not decline 1.0.8 — a new release re-opens the question, which is the
-  whole point.
+  whole point. The command checks this against the release you have
+  **installed**, read from Claude Code's own plugin inventory
+  (`plugins/installed_plugins.json` under `$CLAUDE_CONFIG_DIR`, default
+  `~/.claude`), so updating a skill you have declined **fails** the command
+  until you renew the entry against the new release or delete it
+  ([ADR 0043](adr/0043-a-declination-is-reconciled-against-the-installed-skill.md)).
 - **`review_by` expires it.** An entry past its date **fails** the command, the
   way GOV-003 fails a control past its review date. A declination nobody
   revisits is a permanent exemption wearing a reason.
@@ -1821,7 +1826,15 @@ entry for a version you have **already deployed** (the decision no longer
 applies), and one naming a skill **nothing in your repository stamps**. And a
 file that will not parse exits `2` rather than reading as no declinations —
 which would report every declined deployment as a chore nobody got to, in a
-report that looked entirely ordinary. If your plugin is installed somewhere the command cannot guess, pass
+report that looked entirely ordinary.
+
+**Where the inventory cannot be read, the command says so instead of passing.**
+CI has no plugins installed, so a scheduled or workflow run will report your
+declinations as *not reconciled against an installed release* and name the
+reason, rather than reporting them as still covered — a verdict produced by not
+having looked is not a verdict. Expect this command's exit code to differ
+between your machine and CI for that reason alone; the expiry rule still bounds
+every entry in both. If your plugin is installed somewhere the command cannot guess, pass
 `--plugin <plugin root>` or set `CLAUDE_PLUGIN_ROOT`.
 
 **How you know it worked:** run it before deploying anything and every gate
@@ -1910,7 +1923,7 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 10 | The conformance step passes `--require-complete` | A run that cannot verify a control fails the check rather than printing that it could not. Turn it on **after** row 9, not before |
 | 10a | The fork path, if you take fork pull requests | A test running the step's own script asserts it tolerates `3` and only `3` (§ 4.3). Do not write the branch if you do not need it |
 | 11b | Conformance and deployments are both checked when nothing has changed | Your conformance workflow has a `schedule:` trigger, and a sweep run appears in Actions with a job summary. A control that expires or a release that is re-cut is found by a cron rather than by the next pull request (§ 4.5) |
-| 11a | A release you decided not to take is recorded rather than remembered | `uv run register-check deployments` shows it under *Deliberately not deployed* with a live `review_by`, and exits `0`. An expired or superseded entry exits `1` (§ 4.4) |
+| 11a | A release you decided not to take is recorded rather than remembered | `uv run register-check deployments` shows it under *Deliberately not deployed* with a live `review_by`, and exits `0`. An expired entry, one you have already deployed, or one whose skill you have since **updated** exits `1` (§ 4.4) |
 | 11 | Every gate you deployed is current, and you can see which are not | `uv run register-check deployments` reports `CURRENT` for each gate you ran and `NOT APPLICABLE` or `NEVER DEPLOYED` for the rest — never `UNRECORDED` or `AHEAD` in a fresh adoption (§ 4.4) |
 
 ## When something is wrong with the standard itself

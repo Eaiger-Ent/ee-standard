@@ -346,8 +346,12 @@ that quietly becomes general.
 - Which gates are deployed and current: `uv run register-check deployments`. It
   is **not** part of a conformance run and never fails a build over staleness —
   exit `0` over any number of stale gates, non-zero only for a stamp ahead of
-  the installed gate. Every gate here reads `UNRECORDED` until it is re-run,
-  which is ADR 0038 reporting itself rather than a defect.
+  the installed gate, or for a **record** that has stopped describing reality.
+  Every gate here reads `UNRECORDED` until it is re-run, which is ADR 0038
+  reporting itself rather than a defect. From ADR 0043 it also reconciles each
+  declination against the **installed** skill, so its verdict depends on the
+  machine: this container has a plugin inventory and CI has none, and a run that
+  cannot look says so rather than reporting agreement.
 - Quality gates: `uv run ruff check .`, `uv run mypy`, `uv run pytest` — all
   configured in `pyproject.toml`, the single definition every locus reads.
 - Build-plan progress: `uv run python scripts/plan_progress.py` — a derived view
@@ -511,16 +515,20 @@ shape (pre-flight → install → write config → wire every locus → migrate 
 verify) is the template every future gate skill copies (`docs/02-skill-family.md`).
 
 Per [ADR 0042](docs/adr/0042-a-deploying-skill-reads-local-configuration.md)
-(**Accepted** 2026-08-27, **proposed upstream, not implemented**) the route out
+(**Accepted** 2026-08-27, **shipped upstream in `lint-md` 1.0.8**) the route out
 of the `lint-md` impasse is a contract rather than an argument: **a skill that
 deploys artefacts takes the values it writes as input**, reading them from a
 repository-local `.claude/skill-config.yaml` keyed by skill name, with an absent
 file meaning today's behaviour. The two disputed rows are about *values*, and
-arguing values one at a time is a standing tax that does not generalise. It is a
-**proposal until it ships**; until then the 1.0.6 stamp is a decision with a
-reason rather than a chore nobody got to. The two rows still need raising
-anyway — `ignores: []` set locally stops `.claude/**` reaching this repository
-and not anyone else's, and ADR 0019's argument is about any repository.
+arguing values one at a time is a standing tax that does not generalise.
+
+**It is no longer a proposal.** 1.0.8 ships `skills/lint-md/local-config.md`:
+the file, the key, read at pre-flight, and both rows as inputs — a present key
+replaces the default entirely rather than merging with it, which is what makes
+`ignores: []` mean *ignore nothing*. The **defaults are unchanged**, so 1.0.8
+still writes `npx --no-install` and `.claude/**` where nothing configures it;
+what shipped is the mechanism, not the values. `.claude/skill-config.yaml` now
+exists here and holds both.
 
 **Revision 2 (same day) adds where a declination is recorded:
 `deployment-decisions.yaml`, at the repository root beside `controls.yaml`** —
@@ -535,18 +543,41 @@ exits `0`; a stale *record* (expired, superseded, or naming a skill nothing
 stamps) exits `1`, and a malformed file exits `2` rather than reading as no
 declinations.
 
-**Do not re-run `/lint-md` here.** The stamps read `lint-md@1.0.6` and the
-installed skill is 1.0.7, so the deployment is stale — which is reported and
-never enforced. 1.0.7 shipped most of the amend at
-[#530](https://github.com/EqualExperts/ee-skills-incubator/issues/530) but still
-writes `npx --no-install` at every locus, which ADR 0020 measured falling
-through to `PATH`, and still writes `.claude/**` into `ignores`, which ADR 0019
-forbids. Its presence checks mean a re-run would skip four of the five artefacts
-today rather than revert them — but that is idempotency rather than agreement,
-one of the four greps matches only a comment, and the fifth
-(`.markdownlint.yaml`) prompts to overwrite rather than skipping. Refresh the
-deployment only once those two rows ship
-(`docs/09-phase-1.5-review.md` § F, Update 2026-08-20).
+**`/lint-md` is now owed a re-run here, and the condition that blocked it is
+met.** The stamps read `lint-md@1.0.6`, the installed skill is 1.0.8, and the
+`.claude/skill-config.yaml` beside them pins the two values the impasse was
+about. The standing *do not re-run* instruction is withdrawn: it existed because
+1.0.7 would have replaced conforming artefacts with non-conforming ones, and
+1.0.8 reading local configuration is exactly the change that ends it
+(`docs/09-phase-1.5-review.md` § F).
+
+Two things must go together and neither is done: the **re-run**, which needs a
+Claude Code restart before the updated plugin loads and is a person's `/lint-md`
+because the skill carries `disable-model-invocation: true`; and **deleting the
+`lint-md@1.0.7` entry** from `deployment-decisions.yaml`, whose reason has
+stopped being true. Until both land, `register-check deployments` exits `1` and
+names the gap — which is ADR 0043 working, not a defect. **Do not refresh a
+stamp by hand** to close it: that records a redeployment that did not happen,
+which Phase 5's exit criteria name specifically as not one of the outcomes.
+
+Per [ADR 0043](docs/adr/0043-a-declination-is-reconciled-against-the-installed-skill.md)
+(**Accepted** and implemented 2026-08-28) a declination is reconciled against
+the **installed** skill, not only against the stamped one. ADR 0042 revision 2's
+first rule — *an entry covers the version it names and no later one* — was
+stated in the record's header, printed under every entry in the report, and
+checked by nothing: `decision_problems` compared the declined version against
+the stamp, so `lint-md` moving to 1.0.8 left the 1.0.7 entry reading as live at
+exit `0`. A rule stated and not applied is worse than one not stated, because
+the sentence reads as a check that has been made. The version comes from the
+harness's own inventory, `plugins/installed_plugins.json` under
+`$CLAUDE_CONFIG_DIR` (default `~/.claude`), read as a file rather than through
+`claude plugin list` — a checker that needed the CLI on `PATH` to read a JSON
+file would fail wherever the file is present and the binary is not. **Absence is
+a third state**: no inventory, no entry for the skill, or a version that does
+not parse is reported as unreconciled and leaves the exit code alone, because CI
+has no plugins installed and a rule reading *not found* as *still covered* would
+be right only where nobody could check it. `tests/conftest.py` now redirects
+`CLAUDE_CONFIG_DIR` autouse for the same reason it strips `GITHUB_TOKEN`.
 
 Enforcement is never Claude: gates are pinned binaries reading pinned configs;
 a skill may install or explain a gate but cannot be one.
@@ -580,7 +611,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the twenty-six things it found |
 | `docs/13-phase-5-review.md` | Record of Phase 5 slice by slice, and what each one deliberately left open |
 | `docs/14-file-map.md` | **Where everything is.** Which file to open, and why `controls.yaml`, `deployment-decisions.yaml` and `.claude/skill-config.yaml` are three files rather than one. Held true by `tests/test_file_map.py`, in both directions at the top level |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **41** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0042 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **42** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0043 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fifteen Tier-1 controls, with

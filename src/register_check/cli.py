@@ -29,7 +29,13 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
-from register_check.deployments import BadDecisions, NoPlugin, find_plugin, read_decisions
+from register_check.deployments import (
+    BadDecisions,
+    NoPlugin,
+    find_plugin,
+    read_decisions,
+    read_inventory,
+)
 from register_check.deployments import build as build_deployments
 from register_check.deployments import render as render_deployments
 from register_check.meta import META_CHECKS
@@ -149,6 +155,17 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "what this repository has deliberately not deployed "
             "(default: <repo>/deployment-decisions.yaml)"
+        ),
+    )
+    deployments.add_argument(
+        "--installed",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help=(
+            "the harness's plugin inventory, which says at what release each "
+            "skill is installed (default: $CLAUDE_CONFIG_DIR, then "
+            "~/.claude, plus plugins/installed_plugins.json)"
         ),
     )
     return parser
@@ -309,6 +326,7 @@ def _cmd_deployments(
     register_path: Path | None,
     plugin: Path | None,
     decisions: Path | None = None,
+    installed: Path | None = None,
 ) -> int:
     """Report deployment currency, gate by gate.
 
@@ -317,7 +335,9 @@ def _cmd_deployments(
     redeploy), and a command that failed over one would be enforcing
     redeployment through the back door. Exit `1` only for a defect — a stamp
     claiming a contract the installed gate has not reached — which is the same
-    thing `provenance_stamp_present` already fails a register contract for.
+    thing `provenance_stamp_present` already fails a register contract for — or
+    for a declination that has stopped describing reality, which from ADR 0043
+    includes one whose skill is installed at a later release than it names.
     """
     register, code = _load(repo_path, register_path)
     if register is None:
@@ -325,7 +345,13 @@ def _cmd_deployments(
     try:
         repo = Repo(repo_path)
         root = find_plugin(repo, plugin)
-        report = build_deployments(repo, root, register, read_decisions(repo, decisions))
+        report = build_deployments(
+            repo,
+            root,
+            register,
+            read_decisions(repo, decisions),
+            installed=read_inventory(installed),
+        )
     except NoPlugin as exc:
         print(f"deployments: {exc}", file=sys.stderr)
         return 2
@@ -461,7 +487,7 @@ def _dispatch(args: argparse.Namespace, repo_path: Path, register_path: Path | N
             return _cmd_explain(repo_path, register_path, args.id)
         case "deployments":
             return _cmd_deployments(
-                repo_path, register_path, args.plugin, args.decisions
+                repo_path, register_path, args.plugin, args.decisions, args.installed
             )
         case "variance":
             return _cmd_variance(repo_path, register_path, args.against, args.path)

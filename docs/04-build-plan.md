@@ -1004,7 +1004,19 @@ Wire the mechanism that keeps deployments current.
       naming a skill nothing stamps — each **fail** the command, where a stale
       *deployment* only recommends. A malformed file exits `2` rather than
       reading as no declinations, which would report every declined deployment
-      as a chore
+      as a chore.
+
+      **Extended 2026-08-28**, because the first of those two rules was stated
+      and not applied. `lint-md` moved to 1.0.8 and the 1.0.7 entry went on
+      reading as live at exit `0`, under a report printing *"a declination
+      covers the version it names and no later one"* — the comparison was
+      against the **stamp**, never against what is **installed**. There are now
+      four ways the record can stop being true, and the fourth reads the
+      harness's plugin inventory
+      ([ADR 0043](adr/0043-a-declination-is-reconciled-against-the-installed-skill.md)).
+      A run that cannot see one — CI has no plugins installed — reports the
+      question as unreconciled rather than answering it in the repository's
+      favour
 - [x] A deployment behind because nobody has redeployed is distinguishable from
       one behind because the release would revert a narrowing this register
       holds. The first is a chore; the second is a decision, and reporting them

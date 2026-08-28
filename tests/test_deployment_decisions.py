@@ -7,14 +7,25 @@ this register holds — *"the first is a chore; the second is a decision, and
 reporting them the same way trains everyone to ignore both."*
 
 The distinction is only worth having if the record cannot quietly stop being
-true, so most of this file is about the three ways it can: an entry that has
-expired, one the repository has already moved past, and one naming a skill
-nothing here stamps. Each fails; none of them is a deployment anyone owes.
+true, so most of this file is about the four ways it can: an entry that has
+expired, one the repository has already moved past, one naming a skill nothing
+here stamps, and — from
+[ADR 0043](../docs/adr/0043-a-declination-is-reconciled-against-the-installed-skill.md)
+— one whose skill is **installed** at a later release than it names. Each
+fails; none of them is a deployment anyone owes.
+
+The fourth is the one that had been stated and not applied: the report printed
+*"a declination covers the version it names and no later one"* underneath an
+entry while comparing that entry against nothing of the sort. Its tests carry
+the weight of the third state as well — a run that cannot see an inventory must
+say so rather than report agreement, because CI has no plugins installed and a
+rule that read absence as coverage would be right only where nobody could check.
 """
 
 from __future__ import annotations
 
 import datetime
+import json
 from pathlib import Path
 
 import pytest
@@ -25,8 +36,11 @@ from register_check.deployments import (
     DECISIONS,
     BadDecisions,
     Declination,
+    Inventory,
     decision_problems,
     read_decisions,
+    read_inventory,
+    unreconciled,
 )
 from register_check.repo import Repo
 
@@ -247,3 +261,199 @@ def test_the_file_lives_beside_the_register() -> None:
     """The location, asserted so it cannot drift into a tool's directory."""
     assert DECISIONS == "deployment-decisions.yaml"
     assert (REPO_ROOT / DECISIONS).is_file()
+
+
+# --- ADR 0043: reconciled against what is installed ---------------------------
+
+DECLINED_AT = (
+    Declination(
+        skill="lint-md",
+        version="1.0.7",
+        reason="writes what this register forbids",
+        review_by=datetime.date(2026, 11, 27),
+    ),
+)
+
+#: Stamped at the version being declined, so the *deployment* comparison stays
+#: silent and every assertion below is about the inventory alone.
+STAMPED = {"lint-md": "1.0.6"}
+
+
+def _problems(installed: Inventory) -> list[str]:
+    return decision_problems(DECLINED_AT, STAMPED, TODAY, installed)
+
+
+def _inventory_file(tmp_path: Path, plugins: dict[str, list[dict[str, str]]]) -> Path:
+    target = tmp_path / "installed_plugins.json"
+    target.write_text(json.dumps({"version": 2, "plugins": plugins}), encoding="utf-8")
+    return target
+
+
+def test_a_later_installed_release_re_opens_the_record() -> None:
+    """The state this repository was in, and the report that did not say so.
+
+    `lint-md` was updated to 1.0.8 while the record named 1.0.7, and the command
+    exited 0 with the entry printed as live. Nothing about the record had
+    changed; what it was about had moved out from under it.
+    """
+    problems = _problems(Inventory({"lint-md": "1.0.8"}))
+    assert len(problems) == 1
+    assert "installed at 1.0.8" in problems[0]
+    assert "renewed against the new release or deleted" in problems[0]
+
+
+def test_the_release_it_names_is_still_covered() -> None:
+    """Strictly later, not later-or-equal.
+
+    A record naming the installed version is the ordinary state a declination is
+    written in — it is *this* release we are declining — so equality must be
+    silence. `_both_parse_and_stamp_is_newer` uses `>=` for the stamp because
+    that question is the opposite one: whether the repository moved past it.
+    """
+    assert _problems(Inventory({"lint-md": "1.0.7"})) == []
+
+
+def test_an_older_installed_release_is_not_a_problem() -> None:
+    """Nobody has taken the release yet, which is not a fault in the record."""
+    assert _problems(Inventory({"lint-md": "1.0.6"})) == []
+
+
+def test_a_two_digit_component_compares_as_a_number() -> None:
+    """1.0.10 is later than 1.0.9, which a string comparison gets backwards."""
+    assert _problems(Inventory({"lint-md": "1.0.10"})) != []
+    assert _problems(Inventory({"lint-md": "1.0.70"})) != []
+
+
+def test_an_unparseable_installed_version_never_reports_superseded() -> None:
+    """Both sides must parse, for `_both_parse_and_stamp_is_newer`'s reason.
+
+    A version that sorted below everything would be *above* nothing, but the
+    mirror bug is the dangerous one: an empty key comparing high would report a
+    live declination as superseded and tell somebody to delete it.
+    """
+    assert _problems(Inventory({"lint-md": "main-4f21a9c"})) == []
+
+
+def test_a_version_that_does_not_compare_is_reported_rather_than_dropped() -> None:
+    """Silence would be indistinguishable from having checked and agreed."""
+    notes = unreconciled(DECLINED_AT, Inventory({"lint-md": "main-4f21a9c"}))
+    assert len(notes) == 1
+    assert "does not compare as a dotted version" in notes[0]
+
+
+def test_a_missing_inventory_is_reported_rather_than_read_as_agreement() -> None:
+    """The third state, and the reason ADR 0043 part 2 exists.
+
+    CI has no plugins installed. A rule that read "not found" as "still covered"
+    would be correct on a developer's machine and silently vacuous everywhere
+    the repository is actually audited.
+    """
+    inventory = Inventory({}, "no plugin inventory at /nowhere")
+    assert _problems(inventory) == []
+    notes = unreconciled(DECLINED_AT, inventory)
+    assert notes == ["lint-md@1.0.7: no plugin inventory at /nowhere"]
+
+
+def test_a_skill_absent_from_a_readable_inventory_says_so() -> None:
+    """Different from an unreadable one: here we looked, and it is not there."""
+    notes = unreconciled(DECLINED_AT, Inventory({"adr-toolkit": "0.1.13"}))
+    assert notes == ["lint-md@1.0.7: lint-md is not installed here"]
+
+
+def test_the_marketplace_suffix_is_not_part_of_the_skill_name(tmp_path: Path) -> None:
+    """`lint-md@ee-skills` is the plugin; `lint-md` is what a stamp names."""
+    path = _inventory_file(tmp_path, {"lint-md@ee-skills": [{"version": "1.0.8"}]})
+    assert read_inventory(path).version_of("lint-md") == "1.0.8"
+
+
+def test_the_later_of_two_installed_scopes_wins(tmp_path: Path) -> None:
+    """Covering the older of two installations covers the copy that will not run."""
+    path = _inventory_file(
+        tmp_path,
+        {"lint-md@ee-skills": [{"version": "1.0.6"}, {"version": "1.0.8"}]},
+    )
+    assert read_inventory(path).version_of("lint-md") == "1.0.8"
+
+
+def test_a_malformed_inventory_is_reported_rather_than_raised(tmp_path: Path) -> None:
+    """Never raises. A home directory laid out unusually may not fail a report.
+
+    `deployment-decisions.yaml` raises in the same situation and that asymmetry
+    is deliberate: the record is this repository's own tracked file, where the
+    inventory is the machine's, and the run has to work on a machine that has
+    none.
+    """
+    target = tmp_path / "installed_plugins.json"
+    target.write_text("{not json", encoding="utf-8")
+    inventory = read_inventory(target)
+    assert inventory.versions == {}
+    assert inventory.unreadable is not None and "could not be read" in inventory.unreadable
+
+
+def test_an_inventory_without_a_plugins_object_is_reported(tmp_path: Path) -> None:
+    target = tmp_path / "installed_plugins.json"
+    target.write_text(json.dumps({"version": 2}), encoding="utf-8")
+    assert read_inventory(target).unreadable is not None
+
+
+def test_the_command_fails_over_a_record_the_inventory_has_moved_past(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """End to end, and the exit code is the point.
+
+    A stale *deployment* is a recommendation and exits 0; a stale *record* is a
+    claim that has stopped being true. An entry the installed release has moved
+    past is the second, and joins the expired entry in exiting 1.
+    """
+    root = tmp_path / "repo"
+    make_repo(
+        root,
+        {
+            "README.md": "# x\n",
+            # Stamped at the declined release's predecessor, so the two rules
+            # that would otherwise also fire — nothing stamps this skill, and
+            # the repository has already deployed past it — both stay silent
+            # and the exit code below is about the inventory alone.
+            ".markdownlint.yaml": (
+                "# ee-control: DOC-001  ee-skill: lint-md@1.0.6  "
+                "register: v0.5.0  register-contract: 5\ndefault: true\n"
+            ),
+            DECISIONS: (
+                "declined:\n"
+                "  - skill: lint-md\n"
+                '    version: "1.0.7"\n'
+                "    reason: writes what this register forbids\n"
+                "    review_by: 2026-11-27\n"
+            ),
+        },
+    )
+    inventory = _inventory_file(tmp_path, {"lint-md@ee-skills": [{"version": "1.0.8"}]})
+    code = main(
+        [
+            "--repo", str(root),
+            "--register", str(REPO_ROOT / "controls.yaml"),
+            "deployments",
+            "--plugin", str(REPO_ROOT / "plugins/control-register"),
+            "--decisions", str(root / DECISIONS),
+            "--installed", str(inventory),
+        ]
+    )
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "installed at 1.0.8" in out
+
+    # Same commit, same record, a machine with no plugins: the question is
+    # unanswered rather than answered in the repository's favour.
+    code = main(
+        [
+            "--repo", str(root),
+            "--register", str(REPO_ROOT / "controls.yaml"),
+            "deployments",
+            "--plugin", str(REPO_ROOT / "plugins/control-register"),
+            "--decisions", str(root / DECISIONS),
+            "--installed", str(tmp_path / "absent.json"),
+        ]
+    )
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "Not reconciled against an installed release" in out

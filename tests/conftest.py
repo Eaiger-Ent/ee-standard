@@ -40,6 +40,23 @@ def _no_ambient_github_token(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(name, raising=False)
 
 
+@pytest.fixture(autouse=True)
+def _no_ambient_plugin_inventory(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Nor on which plugins happen to be installed on the machine running it.
+
+    From ADR 0043 a declination is reconciled against the harness's plugin
+    inventory, which this devcontainer has and CI does not. Left ambient, a test
+    declining `lint-md@1.0.6` would pass in CI and fail on a laptop the day
+    somebody updated a plugin — the same hidden input as the token above, and
+    harder to spot because nothing in the test mentions it.
+
+    Pointed at an empty directory rather than deleted, so the default branch
+    (`~/.claude`) is never reached from a test at all. Tests that care about the
+    inventory pass one explicitly.
+    """
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "no-claude-config"))
+
+
 class FakeGitHub(GitHub):
     """A GitHub whose answers are supplied rather than fetched."""
 
