@@ -344,7 +344,19 @@ meta:
   #     measured, gitleaks' per-asset URL 404s. The `also:` map closes the
   #     aarch64 digests, which lived only in `setup.sh` and were compared by
   #     nothing.
-  register_contract: 34
+  # 35: DOC-001's editor locus is verified by both its artefacts, not one.
+  #     `markdown_gate_wired_at_all_loci` checked that an editor configuration
+  #     installs the extension and read nothing else, so the PostToolUse hook
+  #     `lint-md` also writes was unchecked — and this repository's own invoked
+  #     `npx --no-install markdownlint-cli2` against a register pinning
+  #     `node_modules/.bin/markdownlint-cli2` from Phase 1 until 2026-08-28,
+  #     reported wired throughout. ADR 0020 measured `--no-install` falling
+  #     through to PATH, so it was a weakening rather than a spelling. No field
+  #     is added: the hook's path is read from `.claude/settings.json`, which
+  #     already names it, rather than restated here. It alters what gets
+  #     deployed — a conformant repository's markdown hook must now reach the
+  #     pinned artefact — which is what this number is for.
+  register_contract: 35
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
