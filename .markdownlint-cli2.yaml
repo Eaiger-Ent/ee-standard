@@ -1,11 +1,14 @@
 # .markdownlint-cli2.yaml
-# ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.5.0  register-contract: 5
+# ee-control: DOC-001  ee-skill: lint-md@1.0.8  register: v0.29.0  register-contract: 34
 #
 # Deployed artefact — the runner's configuration. The rule set itself lives in
 # .markdownlint.yaml. See docs/00-concepts.md § The provenance stamp.
 #
-# Hand-edited since deployment, per ADR 0019: the exemption list is derived
-# rather than kept. markdownlint-cli2 resolves its globs against the filesystem,
+# No longer hand-edited. `lint-md` 1.0.8 reads `ignores` from
+# .claude/skill-config.yaml (ADR 0042), so the empty list below is what the
+# skill now writes rather than something corrected after it. Reconciled by the
+# 1.0.8 run on 2026-08-28, which found it already correct and skipped it.
+# It is derived rather than kept, per ADR 0019: markdownlint-cli2 resolves its globs against the filesystem,
 # not against git, so without this it lints the 164 third-party READMEs under
 # node_modules as well as this repository's own files. `gitignore: true` scopes
 # it to what git does not ignore; `ignores:` is empty because nothing here needs

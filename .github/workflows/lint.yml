@@ -1,10 +1,12 @@
-# ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.5.0  register-contract: 5
+# ee-control: DOC-001  ee-skill: lint-md@1.0.8  register: v0.29.0  register-contract: 34
 #
-# Deployed artefact — DOC-001's ci locus. Hand-edited since deployment: the
-# checkout action is pinned to a commit SHA (SUP-003) and markdownlint-cli2 is
-# invoked through node_modules/.bin so package-lock.json owns its version. Both
-# are narrowings; re-running `lint-md` would revert them, which is the amend
-# tracked in docs/09-phase-1.5-review.md § F.
+# Deployed artefact — DOC-001's ci locus. Reconciled by the `lint-md` 1.0.8 run
+# on 2026-08-28, which detected the step and skipped it. Two hand-edits remain
+# and both are narrowings the skill would not revert now: the checkout action is
+# pinned to a newer commit SHA than the template's (SUP-003), and `npm ci`
+# carries --no-audit --no-fund. The invocation is no longer among them — 1.0.8
+# takes it from .claude/skill-config.yaml (ADR 0042), which is what closed the
+# amend tracked in docs/09-phase-1.5-review.md § F.
 name: Lint
 
 on:

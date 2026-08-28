@@ -15,14 +15,15 @@ default_stages: [pre-commit]
 repos:
   - repo: local
     hooks:
-      # ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.5.0  register-contract: 5
+      # ee-control: DOC-001  ee-skill: lint-md@1.0.8  register: v0.29.0  register-contract: 34
       #
       # Stamped at the hook rather than at the top of the file: `lint-md` owns
-      # this entry and none of the four below it. Hand-edited since deployment
-      # twice: to drop the upstream mirror's `rev:` (a second copy of the
-      # version, free to drift from every other locus), and to invoke the
-      # lockfile's own binary rather than `npx --no-install`, which falls
-      # through to PATH when the local install is missing (ADR 0020).
+      # this entry and none of the four below it. Both hand-edits it used to
+      # carry are now the skill's own output: 1.0.7 dropped the upstream
+      # mirror's `rev:` for a `repo: local` block, and 1.0.8 takes `entry:`
+      # from .claude/skill-config.yaml (ADR 0042), so the lockfile's binary
+      # below is configured rather than corrected. Only `name:` is still this
+      # repository's, which adds the control id the template does not know.
       - id: markdownlint-cli2
         name: markdownlint-cli2 (DOC-001)
         entry: node_modules/.bin/markdownlint-cli2

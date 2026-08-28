@@ -543,22 +543,39 @@ exits `0`; a stale *record* (expired, superseded, or naming a skill nothing
 stamps) exits `1`, and a malformed file exits `2` rather than reading as no
 declinations.
 
-**`/lint-md` is now owed a re-run here, and the condition that blocked it is
-met.** The stamps read `lint-md@1.0.6`, the installed skill is 1.0.8, and the
-`.claude/skill-config.yaml` beside them pins the two values the impasse was
-about. The standing *do not re-run* instruction is withdrawn: it existed because
-1.0.7 would have replaced conforming artefacts with non-conforming ones, and
-1.0.8 reading local configuration is exactly the change that ends it
-(`docs/09-phase-1.5-review.md` § F).
+**`/lint-md` was re-run at 1.0.8 on 2026-08-28, and the declination is gone.**
+All five DOC-001 artefacts are stamped `lint-md@1.0.8`, `deployment-decisions.yaml`
+is `declined: []`, and `register-check deployments` is back to exit `0`. The
+impasse is over: the two disputed values now come from
+`.claude/skill-config.yaml`, so `entry:` in the pre-commit hook and the CI step's
+invocation are **configured rather than corrected** — they had been hand-edits
+since Phase 1.
 
-Two things must go together and neither is done: the **re-run**, which needs a
-Claude Code restart before the updated plugin loads and is a person's `/lint-md`
-because the skill carries `disable-model-invocation: true`; and **deleting the
-`lint-md@1.0.7` entry** from `deployment-decisions.yaml`, whose reason has
-stopped being true. Until both land, `register-check deployments` exits `1` and
-names the gap — which is ADR 0043 working, not a defect. **Do not refresh a
-stamp by hand** to close it: that records a redeployment that did not happen,
-which Phase 5's exit criteria name specifically as not one of the outcomes.
+**Four of the five artefacts are what 1.0.8 writes; the fifth is not, and that
+is recorded rather than hidden.** Every step of the run hit its skip branch
+except `.markdownlint.yaml`, which was overwritten and came back byte-identical
+below the stamp. `.claude/hooks/md-lint.py` is the exception:
+`local-config.md` says `invocation` reaches *"every locus … the PostToolUse
+hook"*, but Step 3a is a plain `cp` of a script with
+`NPX_LINT = ("npx", "--no-install", …)` hardcoded, so the configured value never
+arrives there. The shipped script also carries `#!/usr/bin/env python3`, which
+`tests/test_toolchain_pin.py` fails. Both are filed upstream as
+[ee-skills-incubator#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627).
+
+**ADR 0020's row is now closed at every locus here**, the hook included: it
+invokes `node_modules/.bin/markdownlint-cli2`, the register's pinned string,
+rather than `npx --no-install`. That is a hand-edit until #627 ships and is
+marked as one in the file's stamp comment — Step 3a's skip branch leaves an
+existing hook alone, so a re-run will not revert it. **Nothing verifies it**:
+`markdown_gate_wired_at_all_loci` reads the pre-commit hook's and the CI step's
+invocation but checks the editor locus by extension presence alone, so this
+value is held by a comment rather than by a build failure. Teaching the assert
+to read the hook is open work, not something done.
+
+A stamp naming 1.0.8 on a file 1.0.8 did not write is deliberate and is what the
+comment qualifies: the stamp records the release the artefact was **reconciled
+against**, and this repository's stamps have always carried their hand-edits.
+What is still forbidden is refreshing one with no run behind it.
 
 Per [ADR 0043](docs/adr/0043-a-declination-is-reconciled-against-the-installed-skill.md)
 (**Accepted** and implemented 2026-08-28) a declination is reconciled against

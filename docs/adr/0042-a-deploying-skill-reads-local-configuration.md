@@ -185,13 +185,38 @@ configures it; the disagreement was never that those values are wrong for every
 repository, only that they are wrong for this one and that arguing them one at a
 time does not generalise.
 
-`.claude/skill-config.yaml` exists here and sets both. The acceptance test above
-— re-run `/lint-md` and the artefacts must be byte-identical to what is deployed
-today, with the stamp moving — is **not yet run**: the skill carries
-`disable-model-invocation: true`, so it is a person's `/lint-md` after a restart.
-Until it is, the `lint-md@1.0.7` declination is superseded rather than deleted,
-which [ADR 0043](0043-a-declination-is-reconciled-against-the-installed-skill.md)
-is what makes visible.
+`.claude/skill-config.yaml` exists here and sets both.
+
+## Applied — pass 2: the acceptance test, run 2026-08-28
+
+`/lint-md` was re-run at 1.0.8. The test this ADR set was mechanical — *the
+artefacts it writes must be byte-identical to what is deployed here today, with
+the stamp moving to the new version* — and it is worth reporting that it
+**passed at four loci and failed at one**, because a test that can only be
+reported as passed is not a test.
+
+| Artefact | Result |
+| --- | --- |
+| `.markdownlint.yaml` | Overwritten; byte-identical below the stamp |
+| `.markdownlint-cli2.yaml` | Skipped — `ignores: []` read from configuration and already correct |
+| `.pre-commit-config.yaml` | Skipped — `entry:` is the configured invocation |
+| `.github/workflows/lint.yml` | Skipped — invocation configured; the checkout SHA and `npm ci` flags remain this repository's narrowings |
+| `.claude/hooks/md-lint.py` | **Not honoured** |
+
+The exception is the contract's own boundary showing itself. `local-config.md`
+says `invocation` is used at *"every locus: the pre-commit hook, the CI step,
+the DevContainer check, **the PostToolUse hook** and every verification
+command"*, and Step 3a is a plain `cp` of a script carrying
+`NPX_LINT = ("npx", "--no-install", "markdownlint-cli2")`. A configured value
+that reaches four of the five sites the documentation names is the contract
+being *stated* at a locus where it is not *applied* — the same shape as the rule
+[ADR 0043](0043-a-declination-is-reconciled-against-the-installed-skill.md) was
+written for, one layer up.
+
+It cost nothing here, because Step 3a's own skip branch leaves an existing hook
+alone. It is an amend owed upstream rather than a reason to decline 1.0.8: the
+release is takeable, so the `lint-md@1.0.7` entry was **deleted** rather than
+renewed, and `deployment-decisions.yaml` now reads `declined: []`.
 
 ## Revision History
 

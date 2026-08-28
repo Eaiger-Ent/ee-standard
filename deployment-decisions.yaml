@@ -25,16 +25,10 @@
 #   mechanism meant to stop it becoming a loophole was unreachable. An expired
 #   entry fails this command.
 
-declined:
-  - skill: lint-md
-    version: "1.0.7"
-    reason: >
-      1.0.7 writes `npx --no-install markdownlint-cli2` at every locus, which
-      ADR 0020 measured falling through to PATH rather than reaching the
-      artefact package-lock.json pins; and it writes `.claude/**` into
-      `ignores`, which ADR 0019 forbids because an exemption may not hide a
-      file git tracks. Re-running it would replace conforming artefacts with
-      non-conforming ones, so the stamp would claim 1.0.7 wrote what 1.0.7 is
-      not allowed to write.
-    adr: docs/adr/0042-a-deploying-skill-reads-local-configuration.md
-    review_by: 2026-11-27
+declined: []
+# Empty, and that is a state rather than a placeholder: nothing here is
+# currently being declined. The first and so far only entry — `lint-md@1.0.7` —
+# was deleted on 2026-08-28 when 1.0.8 shipped ADR 0042's contract and the
+# release became takeable. It was not renewed against 1.0.8: the two values it
+# declined are now read from `.claude/skill-config.yaml`, so there is nothing
+# left to decline.

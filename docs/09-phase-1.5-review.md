@@ -246,9 +246,22 @@ entirely rather than merging with it, so `ignores: []` means *ignore nothing*.
 
 So the sentence above — *the act nobody should perform here while ADR 0020's row
 is open* — has expired. Re-deploying is now the right act rather than the
-forbidden one, and it is what deletes the `lint-md@1.0.7` declination. The
-`.markdownlint.yaml` overwrite prompt still applies: answering Overwrite rewrites
-the rule set, and the MD013 ceiling and the register must still agree afterwards.
+forbidden one, and it is what deletes the `lint-md@1.0.7` declination.
+
+**Done the same day.** `/lint-md` ran at 1.0.8; `.markdownlint.yaml` was
+overwritten and came back byte-identical below the stamp, every other step hit
+its skip branch, all five artefacts are stamped `lint-md@1.0.8`, and
+`deployment-decisions.yaml` is `declined: []`. § F's remaining amend — *a locus
+must reach the artefact the lockfile pins* — is closed at the pre-commit and CI
+loci, where the invocation is now configured rather than corrected.
+
+**It is not closed at the editor locus, and that is new.** 1.0.8's
+`local-config.md` names the PostToolUse hook among the loci `invocation` reaches,
+but Step 3a copies a script with `npx --no-install` hardcoded, so nothing
+configured arrives there. This repository's own hook uses `npx` too — from the
+repository root, so `package-lock.json` still owns the version — which is why
+the row reads as narrower than it was rather than gone. It is one amend against
+`lint-md`, and it is the last thing § F is still waiting on.
 
 That last clause is a **Phase 5 dependency, not a cosmetic one**. Phase 5's first
 two exit criteria — a version bump must produce no redeployment recommendation, a

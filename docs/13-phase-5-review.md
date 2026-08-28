@@ -770,3 +770,38 @@ deleted, so the `~/.claude` default is never reached from a test at all.
   so its declinations expire (rule 2) rather than being superseded (rule 1).
   Rule 2 still bounds them; rule 1 only shortens the bound where a machine can
   see further.
+
+### The deployment that cleared it, and the one locus it did not
+
+Later the same day, `/lint-md` was re-run at 1.0.8 — the act the check had been
+naming. `deployment-decisions.yaml` is now `declined: []`, all five DOC-001
+artefacts are stamped `lint-md@1.0.8`, and the command is back to exit `0`.
+
+ADR 0042's acceptance test is the part worth recording, because it did not
+simply pass:
+
+| Artefact | Result |
+| --- | --- |
+| `.markdownlint.yaml` | Overwritten; byte-identical below the stamp |
+| `.markdownlint-cli2.yaml` | Skipped — `ignores: []` read from configuration |
+| `.pre-commit-config.yaml` | Skipped — `entry:` is the configured invocation |
+| `.github/workflows/lint.yml` | Skipped — invocation configured |
+| `.claude/hooks/md-lint.py` | **Not honoured** — Step 3a copies a script with `npx --no-install` hardcoded |
+
+The fifth row is the same failure this slice was written about, one layer up:
+`local-config.md` names the PostToolUse hook among the loci `invocation`
+reaches, and Step 3a is a plain `cp`. A contract stated at a locus where it is
+not applied reads, to anyone checking the documentation, as a locus that has
+been covered.
+
+It cost nothing here — Step 3a's skip branch leaves an existing hook alone — and
+it is an amend owed upstream rather than a reason to decline 1.0.8. The release
+is takeable, so the entry was deleted rather than renewed.
+
+Three tests had to change, and what they had been asserting is the point: that
+**this repository** declines `lint-md@1.0.7`. A test written against a live
+posture fails the day the posture is resolved, which is correct but takes its
+coverage with it — so *"a declination prints the rule that bounds it"* moved to
+a constructed repository, where it survives this one having nothing to decline.
+The posture boundary test lost its non-vacuity guard for the same reason: a rule
+that fires on the **absence** of posture is aimed at the wrong thing.
