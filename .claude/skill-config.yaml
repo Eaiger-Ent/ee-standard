@@ -1,0 +1,26 @@
+# Local configuration for skills that deploy artefacts into this repository.
+#
+# Read by the deploying skill at pre-flight, keyed by skill name. It is **not**
+# the register: `controls.yaml` says what conformant means for every repository,
+# and this says what one skill should write here. It is not
+# `deployment-decisions.yaml` either — that records what was deliberately *not*
+# deployed, where this records the values a deployment must use.
+# See docs/14-file-map.md for why the three are three files, and
+# ADR 0042 for the contract.
+#
+# The format belongs to ee-skills rather than to this repository, so nothing
+# here is stamped and no control reads it.
+
+lint-md:
+  # `npx --no-install` does not mean *resolve locally*. With no local install it
+  # falls through to PATH and runs whichever global copy it finds, which is what
+  # ADR 0020 case C measured. package-lock.json pins markdownlint-cli2 here, and
+  # every locus must reach that binary.
+  invocation: node_modules/.bin/markdownlint-cli2
+
+  # Empty on purpose, and not a shorter default. ADR 0019: an exemption may not
+  # hide a file git tracks, and `.claude/**` — the skill's own default — is
+  # tracked, authored content here; it hid eleven violations until somebody read
+  # it. The tool is scoped with `gitignore: true` in .markdownlint-cli2.yaml
+  # instead, which is derived rather than kept.
+  ignores: []

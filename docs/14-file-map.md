@@ -18,7 +18,7 @@ a new file inside `src/` does not fail a build over documentation.
 | --- | --- | --- |
 | `controls.yaml` | **The register.** A control entry *is* the control, not documentation of one. Everything else derives from it | Anything below. If a rule could reasonably differ between Equal Experts repositories, it belongs here |
 | `deployment-decisions.yaml` | What this repository has deliberately **not** deployed, and why, and until when. Read by `register-check deployments` | The register. This is *posture* — it must never reach `controls.yaml` or `plugins/` ([ADR 0022](adr/0022-a-platform-token-ci-carries.md) requirement 6) |
-| `.claude/skill-config.yaml` | *(proposed, not yet real)* What a third-party skill should write here, keyed by skill name ([ADR 0042](adr/0042-a-deploying-skill-reads-local-configuration.md)) | The two above. It is read by a **skill**, at deploy time, and its format belongs to `ee-skills` rather than to us |
+| `.claude/skill-config.yaml` | What a third-party skill writes here, keyed by skill name ([ADR 0042](adr/0042-a-deploying-skill-reads-local-configuration.md)). Real from `lint-md` 1.0.8, which reads it at pre-flight; it holds this repository's `invocation` and its empty `ignores` | The two above. It is read by a **skill**, at deploy time, and its format belongs to `ee-skills` rather than to us — nothing stamps it and no control reads it |
 
 Those three are separate on purpose, and the sharpest reason is that two of them
 fail in opposite directions: a malformed `deployment-decisions.yaml` **exits 2**,

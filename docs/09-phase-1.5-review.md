@@ -228,6 +228,28 @@ artefact the lockfile pins, and `npx --no-install` does not. It is narrower than
 what #530 was raised for, and Phase 6 tracks the follow-up rather than a fresh
 submission.
 
+**Update, 2026-08-28 — `lint-md@1.0.8` closes both rows, as inputs rather than
+as defaults.** `/skill-update` moved this container from 1.0.7, and 1.0.8 ships
+`skills/lint-md/local-config.md`: `.claude/skill-config.yaml`, keyed by skill
+name, read at pre-flight, with `invocation` and `ignores` as the two keys — the
+contract [ADR 0042](adr/0042-a-deploying-skill-reads-local-configuration.md)
+proposed, arriving in the release after the ADR was written. Its own rationale
+reproduces both arguments this repository made: `--no-install` falling through
+to `PATH`, and `.claude/**` hiding tracked, authored content.
+
+The **defaults are unchanged** — 1.0.8 writes `npx --no-install` and
+`.claude/**` where nothing configures it — so the two rows above are still
+accurate about what a fresh deployment writes elsewhere. What changed is that
+they are no longer this repository's problem: a present key replaces the default
+entirely rather than merging with it, so `ignores: []` means *ignore nothing*.
+`.claude/skill-config.yaml` now sets both.
+
+So the sentence above — *the act nobody should perform here while ADR 0020's row
+is open* — has expired. Re-deploying is now the right act rather than the
+forbidden one, and it is what deletes the `lint-md@1.0.7` declination. The
+`.markdownlint.yaml` overwrite prompt still applies: answering Overwrite rewrites
+the rule set, and the MD013 ceiling and the register must still agree afterwards.
+
 That last clause is a **Phase 5 dependency, not a cosmetic one**. Phase 5's first
 two exit criteria — a version bump must produce no redeployment recommendation, a
 contract bump must — are the whole noise argument expressed as a test, and
