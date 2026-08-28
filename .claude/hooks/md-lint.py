@@ -14,12 +14,21 @@
 # Claude's own memory files. And it conforms to this repository's ruff and mypy
 # rules rather than sitting behind an exclusion.
 #
-# One divergence is NOT a narrowing and is owed upstream: the invocation. 1.0.8's
+# A fourth, added 2026-08-28: the invocation is the register's pinned one,
+# `tools.markdownlint-cli2.invocation`, the same string the pre-commit hook and
+# the CI step reach the tool through. It was `npx --no-install` until then —
+# which ADR 0020 measured falling through to PATH when the local install is
+# missing, so a lockfile is an authority in name only. Every locus now spells it
+# the same way, which is `docs/00-concepts.md` § Locus: pin once, reference many.
+#
+# This is the one divergence the skill will re-introduce. 1.0.8's
 # local-config.md says `invocation` reaches "every locus ... the PostToolUse
-# hook", but Step 3a is a plain copy of a script with npx hardcoded, so the
-# configured value never arrives here. This file invokes npx too, from the
-# repository root so package-lock.json still owns the version — the one locus
-# where ADR 0020's row is open. See docs/00-concepts.md § The provenance stamp.
+# hook", but Step 3a is a plain `cp` of a script with npx hardcoded, so the
+# configured value in .claude/skill-config.yaml never arrives here — filed as
+# EqualExperts/ee-skills-incubator#627. Until that ships, this line is a
+# hand-edit rather than configuration; Step 3a's skip branch leaves an existing
+# hook alone, so a re-run will not revert it.
+# See docs/00-concepts.md § The provenance stamp.
 """Lint (and auto-fix) a markdown file after Claude writes it."""
 
 from __future__ import annotations
@@ -29,7 +38,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-MARKDOWNLINT = ["npx", "--no-install", "markdownlint-cli2"]
+MARKDOWNLINT = ["node_modules/.bin/markdownlint-cli2"]
 
 
 def main() -> int:

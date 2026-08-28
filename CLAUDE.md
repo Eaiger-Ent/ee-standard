@@ -558,11 +558,19 @@ below the stamp. `.claude/hooks/md-lint.py` is the exception:
 `local-config.md` says `invocation` reaches *"every locus … the PostToolUse
 hook"*, but Step 3a is a plain `cp` of a script with
 `NPX_LINT = ("npx", "--no-install", …)` hardcoded, so the configured value never
-arrives there. ADR 0020's row is closed at four loci and **open at the editor
-locus**, which is an upstream amend rather than something to fix by editing a
-file the skill owns. The shipped script also carries `#!/usr/bin/env python3`,
-which `tests/test_toolchain_pin.py` fails. Both are in that file's stamp
-comment.
+arrives there. The shipped script also carries `#!/usr/bin/env python3`, which
+`tests/test_toolchain_pin.py` fails. Both are filed upstream as
+[ee-skills-incubator#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627).
+
+**ADR 0020's row is now closed at every locus here**, the hook included: it
+invokes `node_modules/.bin/markdownlint-cli2`, the register's pinned string,
+rather than `npx --no-install`. That is a hand-edit until #627 ships and is
+marked as one in the file's stamp comment — Step 3a's skip branch leaves an
+existing hook alone, so a re-run will not revert it. **Nothing verifies it**:
+`markdown_gate_wired_at_all_loci` reads the pre-commit hook's and the CI step's
+invocation but checks the editor locus by extension presence alone, so this
+value is held by a comment rather than by a build failure. Teaching the assert
+to read the hook is open work, not something done.
 
 A stamp naming 1.0.8 on a file 1.0.8 did not write is deliberate and is what the
 comment qualifies: the stamp records the release the artefact was **reconciled
