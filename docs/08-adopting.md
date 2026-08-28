@@ -79,9 +79,12 @@ claude plugin list | grep control-register
 ls ~/.claude/plugins/cache/ee-standard/control-register/*/templates/devcontainer
 ```
 
-The eight skills — six gates, `register-adopt` and `register-install` — are
-reachable as slash commands in the next session. `/register-adopt` is the only
-one you invoke by hand; it dispatches the rest.
+The nine skills — six gates, `register-adopt`, `register-install` and
+`register-variance` — are reachable as slash commands in the next session.
+`/register-adopt` is the only one you invoke by hand; it dispatches the rest.
+`/register-variance` is not on the adoption route at all: it reports which way a
+change to gated configuration moved, and you reach for it after adoption rather
+than during it.
 
 **Install it on the host, before the container exists.** § 2.0a is the table of
 what runs where, and this is the first row of it in practice: the template you

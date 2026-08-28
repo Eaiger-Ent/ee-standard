@@ -126,8 +126,10 @@ before you submit.
 
 **All four re-verified on 2026-08-25** against an installed checkout at
 `~/.claude/plugins/marketplaces/ee-skills/` (`2ce0e19`), five days after they
-were first read. None has been fixed, so submission 3 still has something to
-say. Also observed then, and not an error so much as a thing worth knowing
+were first read, **and again on 2026-08-28** against the same checkout at
+`d83e1c6`. None has been fixed, so submission 3 still has something to say — and
+it is the submission that goes first, so its evidence is the one worth being
+freshest. Also observed then, and not an error so much as a thing worth knowing
 before looking for it: `skill-submit-new` is not a plugin of its own — it ships
 inside `ee-skills-contribute`, where `skill-submit-amend` is a top-level plugin.
 Both open issues.
@@ -158,9 +160,37 @@ Plus the repository CI gates: `markdownlint-cli2`, `claude plugin validate .`,
 **Run on 2026-08-25 against all eight skills** — the six gates, `register-adopt`
 and `register-install` — using the marketplace's own script from an installed
 checkout rather than a description of it. Every skill returned `PASS` on P1
-through P11 with no check below `PASS`. That is evidence rather than an
-expectation, and it is worth re-running before submitting, because the script is
-the marketplace's and moves without asking.
+through P11 with no check below `PASS`.
+
+**Re-run on 2026-08-28 against all nine**, `register-variance` having joined the
+family in Phase 5, and the second run is why the first was not enough. Two
+things had moved in three days:
+
+- `gate-supply-chain` **failed P2**, at 285 characters against a ceiling of 250.
+  SUP-004 landed on 2026-08-27
+  ([ADR 0041](adr/0041-a-pinned-digest-is-checked-against-what-was-published.md))
+  and the description grew a clause to name it. That is a `FAIL`, which is a
+  submission blocker, and it sat there for a day with nothing here reporting it.
+- Six gates now report **`WARN` on P4** — side-effect verbs with no
+  `disable-model-invocation: true`. That is
+  [ADR 0035](adr/0035-a-dispatched-skill-is-reachable.md) working as ratified
+  rather than a regression: a callee carrying the flag cannot be dispatched at
+  all, and `register-adopt` dispatches every one of them. A `WARN` does not
+  block. It is recorded here so nobody reading *"no check below `PASS`"* above
+  reads the change as a defect.
+
+*"Worth re-running before submitting"* was the plan's answer and it is not one:
+a submission is the single moment there is no iterate-in-review loop to fix
+anything in, which is the same argument this document makes about finishing the
+skills first. `tests/test_preflight.py` now runs the marketplace's script over
+every skill in the plugin. It runs **their** script rather than reimplementing
+P1–P11 here — a local copy of the 250-character ceiling would be a second source
+of truth for someone else's rule, free to drift from the one a submission is
+judged against — and where the machine has no marketplace checkout it skips and
+says so, which is the state ADR 0043 gives the plugin inventory for the same
+reason. CI has none; `git push` runs the suite
+([ADR 0039](adr/0039-a-push-is-a-locus.md)) in the container where the skills
+are edited, which is the locus that matters for this one.
 
 P1 and P2 bind hardest on this family. `register-adopt` is a dispatcher across
 six gates and could trivially exceed 500 lines if per-control detail is inlined
@@ -240,7 +270,7 @@ plugins are separate again and should not be bundled with any of it:
 | 1. `control-register` | `/skill-submit-new`, once per skill | The new plugin, plus the `governance` category. Every issue must name the same `promote-config.json` entry — `"control-register": {"skills": [ … ]}` — or the skills are promoted as separate single-skill plugins, which is what the tool's generated entry says by default. |
 | 2. `skill-update` widening | `/skill-submit-amend` against `ee-skills-manage` | Changes an existing, widely installed skill. Reviewers assessing a new plugin and reviewers assessing a behaviour change to a shipped one are asking different questions. |
 | 3. `CONTRIBUTING.md` corrections | Direct PR (Lane B) | Documentation fix, explicitly permitted as a direct PR. Useful to land first — it is small, independent, and establishes contact before the large submission arrives. |
-| 4. `lint-md` amendment | `/skill-submit-amend` against `ee-skills-incubator` | Raised 2026-08-18 as [issue #530](https://github.com/EqualExperts/ee-skills-incubator/issues/530), and **mostly shipped in `lint-md@1.0.7`** on 2026-08-20: the CI template now pins `actions/checkout` to a SHA, the tool installs as an exact-pinned dev dependency with `npm ci` at the other loci, and the pre-commit hook is `repo: local` with no `rev:` copy. Two rows remain open, and both are this repository's own ADRs rather than the original report: a locus must reach the artefact the lockfile pins, where 1.0.7 still writes `npx --no-install` ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)); and an exemption may not hide a tracked file, where a fresh deployment still writes `.claude/**` into `ignores` ([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)). This is a follow-up on an open issue, not a fresh submission. |
+| 4. `lint-md` amendment | `/skill-submit-amend` against `ee-skills-incubator` | Raised 2026-08-18 as [issue #530](https://github.com/EqualExperts/ee-skills-incubator/issues/530), which is **closed**, and mostly answered across `lint-md@1.0.7` and `1.0.8`. **Measured against the installed 1.0.8 on 2026-08-28, one of its four rows is closed and two changed shape.** Closed: the guard that skipped Step 2b on a `grep -q "node_modules"` matching this repository's own *comment* now parses the YAML and compares the `ignores` list. Changed shape: the two disputed **values** are inputs rather than arguments, because 1.0.8 ships `local-config.md`, which is [ADR 0042](adr/0042-a-deploying-skill-reads-local-configuration.md) implemented upstream — but a key that can be set is not a default that is right, and what this amendment argues is the defaults. So three rows stand: `invocation` still defaults to `npx --no-install` ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) and `ignores` still defaults to a list containing `.claude/**` ([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)), which local configuration fixes here and nowhere else; and the overwrite prompt still does not recognise an `ee-control:` header, so accepting it drops a provenance stamp. Two more are already filed as [#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627) and belong to it: `local-config.md` says `invocation` reaches the PostToolUse hook and Step 3a is a plain `cp` of a script with the value hardcoded, and that script's shebang resolves from `PATH`. This is now a **new** amendment against a closed issue rather than a follow-up on an open one, which is what makes carrying ADR 0019's and ADR 0020's measurements — rather than their conclusions — the whole of its case. |
 | 5. `skill-submit-new` layout amendment | `/skill-submit-amend` against `ee-skills-incubator` | Teaches the tool to resolve `plugins/<plugin>/skills/<skill>/`, which `preflight-check.sh` in the same marketplace already does — one of the two tools has learned about plugin layouts and the other has not. **Not a blocker**: [ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md) clears the path locally with symlinks, so this is the general fix for the next repository rather than the one this one waits on. Deliberately last, so it is never on the critical path. |
 
 Submission 4 was identified by this repository deploying `lint-md` and then
@@ -266,12 +296,23 @@ published instructions, with `register-check` passing afterwards.
 A conformance tool that has only ever been run against the repository that
 defines conformance has not been tested. It has been demonstrated.
 
-**That gate is Phase 4, and Phase 4 has not run.** It needs a host with Docker,
-which the container this repository is developed in does not have
-([`04-build-plan.md`](04-build-plan.md) § Before this phase can start). So no
-issue may be opened yet, and the rule is this repository's own rather than a
-maintainer's — which makes it exactly the kind of rule that gets quietly
-downgraded when the rest of the work is finished and only the gate remains.
+**That gate is Phase 4, and Phase 4 has run.** It needed a host with Docker,
+which the container this repository is developed in does not have, and it got
+one: `Eaiger-Ent/ee-standard-consumer` was adopted on a macOS host over
+2026-08-25 and 2026-08-26, closing 6/6 and finding twenty-six things
+([`12-phase-4-review.md`](12-phase-4-review.md)). The gate is open, and it was
+worth having — four of the twenty-six were defects in artefacts every check here
+reported healthy, including a front door that could dispatch nothing
+([ADR 0035](adr/0035-a-dispatched-skill-is-reachable.md)) and a devcontainer
+template that did not build.
+
+**One thing it deliberately did not prove**, and it is the reason a criterion
+survives it: the consumer installed `control-register` from this repository's own
+`.claude-plugin/marketplace.json`, not from `ee-skills`. Installing *as
+published* is Phase 6's last criterion rather than something Phase 4 covered, and
+it cannot be tested before the promotion it tests. Saying so is the point —
+"the gate has been passed" is the sentence under which a bounded deviation
+becomes an unrecorded one.
 
 ### What is ready, and what it is waiting on
 
@@ -283,16 +324,21 @@ submission is prepared" is the sort of claim that hides the one row that is not.
 | --- | --- |
 | Plugin layout matches the marketplace's | Done — `plugins/control-register/`, field for field |
 | `LICENSE` in the plugin | Done 2026-08-25, byte-identical to the root's, held by a test |
-| Preflight P1–P11 on all eight skills | Done 2026-08-25 — every skill `PASS`, run against the marketplace's own script |
+| Preflight P1–P11 on all nine skills | Done — re-run 2026-08-28 against the marketplace's own script, one `FAIL` found and fixed, and held from here by `tests/test_preflight.py` rather than by remembering to re-run it |
 | The names the `promote-config.json` entry will use | Done — [ADR 0031](adr/0031-the-plugin-is-named-for-the-register.md), and the rename landed 2026-08-25 |
 | How the tool reaches the skills | Done — [ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md) |
 | The `governance` category entry | Drafted above; lands in the same PR as the submission, in the destination repository |
 | `marketplace.json` and `readme-meta.json` entries | Not stageable here — both live in `ee-skills`, and are written when the plugin is promoted |
 | Submission 3 (`CONTRIBUTING.md` corrections) | Ready, and **independent of the gate** — it is a documentation PR about the destination, not a submission of this plugin |
-| Submissions 1, 2, 4, 5 | Blocked on Phase 4 |
+| Submissions 1, 2, 4, 5 | **Unblocked 2026-08-26**, when Phase 4 closed. Submission 4 is three rows smaller than it was — see its entry above |
 
-Submission 3 is the one row that could go today. It is listed as ready rather
-than sent, because opening a pull request against another organisation's
-repository is an act with a person on the other end of it, and the reason to
-land it first — establishing contact before the large submission arrives — is
-worth less if the large submission is still weeks away.
+Submission 3 was for a long time the one row that could go today, and it is
+still the one that goes first — but the reason has strengthened rather than
+lapsed. It was listed as ready rather than sent because the argument for landing
+it first, establishing contact before the large submission arrives, is worth
+little when the large submission is still weeks away. Phase 4 closing removed
+that objection: submission 1 is now next in the order rather than next quarter,
+so the small independent PR is doing the job it was put first to do.
+
+Every one of these is an act with a person on the other end of it, in another
+organisation's repository, and none is raised without being asked for.
