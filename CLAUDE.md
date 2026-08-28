@@ -649,6 +649,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the twenty-six things it found |
 | `docs/13-phase-5-review.md` | Record of Phase 5 slice by slice, and what each one deliberately left open |
 | `docs/14-file-map.md` | **Where everything is.** Which file to open, and why `controls.yaml`, `deployment-decisions.yaml` and `.claude/skill-config.yaml` are three files rather than one. Held true by `tests/test_file_map.py`, in both directions at the top level |
+| `docs/15-phase-6-review.md` | Record of Phase 6 slice by slice. § The transport changed is why `05-promotion.md` no longer says a submission is an issue |
 | `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **42** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0043 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
@@ -759,9 +760,14 @@ Per [ADR 0033](docs/adr/0033-the-submission-tool-reaches-the-skills-by-symlink.m
 the index, not a copy. `/skill-submit-new` resolves `<name>/SKILL.md` in the
 project's Claude skills directory and this repository uses the marketplace's
 plugin layout, so without the links the submission tool cannot see any of the
-eight skills. A copy made at submission time was rejected: eight of them, by
-hand, at the one moment the content has to be right and with no way to push a
-fix, since a submission is an issue rather than a pull request.
+eight skills. A copy made at submission time was rejected: nine of them, by
+hand, diverging from the plugin between submissions. **The transport changed on
+2026-08-28** — `/skill-submit-new` and `/skill-submit-amend` now push a branch
+and open a pull request rather than filing an issue, so there is an
+iterate-in-review loop, but the incubator's gates run before the push and a
+failing submission is never filed at all. The decision does not move with it,
+and ADR 0033 is not edited: an ADR is a dated record. See
+`docs/15-phase-6-review.md` § The transport changed.
 `tests/test_skill_links.py` derives the set from the plugin in both directions,
 so a ninth skill without a link is a build failure. The side effect is
 deliberate — every gate is now invocable here as `/gate-secrets` and the rest.
