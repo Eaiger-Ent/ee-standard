@@ -57,13 +57,21 @@ def _repo(tmp_path: Path, text: str | None) -> Repo:
 # --- reading the record ----------------------------------------------------
 
 
-def test_this_repository_records_the_lint_md_declination() -> None:
-    """The live entry, read from the file this repository actually ships."""
-    declined = read_decisions(Repo(REPO_ROOT))
-    assert [d.skill for d in declined] == ["lint-md"]
-    assert declined[0].version == "1.0.7"
-    assert declined[0].adr is not None and "0042" in declined[0].adr
-    assert declined[0].review_by > TODAY
+def test_this_repository_currently_declines_nothing() -> None:
+    """Read from the file this repository actually ships, and it is empty.
+
+    It held one entry — `lint-md@1.0.7` — from 2026-08-27 until 2026-08-28,
+    when 1.0.8 shipped ADR 0042's contract and the release became takeable. The
+    entry was deleted rather than renewed against 1.0.8, because the two values
+    it declined are now read from `.claude/skill-config.yaml` and there is
+    nothing left to decline.
+
+    An empty record and an absent one are the same to `read_decisions`, which is
+    correct: both mean nothing is declined. What must not be the same is either
+    of those and an *unreadable* one, which is
+    `test_a_malformed_file_raises_rather_than_reading_as_empty`.
+    """
+    assert read_decisions(Repo(REPO_ROOT)) == ()
 
 
 def test_an_absent_file_is_no_declinations(tmp_path: Path) -> None:
@@ -176,18 +184,55 @@ def _run(root: Path, capsys: pytest.CaptureFixture[str]) -> tuple[int, str, str]
     return code, captured.out, captured.err
 
 
-def test_the_command_reports_this_repository_s_declination(
+def test_the_command_over_this_repository_reports_no_declination(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """This repository declines nothing, so the block is absent rather than empty.
+
+    A heading with nothing under it would read as a record somebody had emptied
+    and forgotten. The exit code is `0`: five gates are owed a redeployment
+    here, and staleness of a *deployment* is a recommendation.
+    """
     code = main(
         ["--repo", str(REPO_ROOT), "--register", str(REPO_ROOT / "controls.yaml"), "deployments"]
     )
     out = capsys.readouterr().out
     assert code == 0
+    assert "Deliberately not deployed:" not in out
+
+
+def test_a_live_declination_prints_the_rule_that_bounds_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The property that makes it a record rather than an opt-out.
+
+    Asserted against a constructed repository rather than this one, so it
+    survives this repository having nothing to decline. It was asserted against
+    the live entry until 2026-08-28, and deleting that entry would have taken
+    the coverage with it.
+    """
+    root = tmp_path / "repo"
+    make_repo(
+        root,
+        {
+            "README.md": "# x\n",
+            ".markdownlint.yaml": (
+                "# ee-control: DOC-001  ee-skill: lint-md@1.0.6  "
+                "register: v0.5.0  register-contract: 5\ndefault: true\n"
+            ),
+            DECISIONS: (
+                "declined:\n"
+                "  - skill: lint-md\n"
+                '    version: "1.0.7"\n'
+                "    reason: it would revert a narrowing\n"
+                "    review_by: 2099-01-01\n"
+            ),
+        },
+    )
+    code, out, _ = _run(root, capsys)
+    assert code == 0
     assert "Deliberately not deployed:" in out
     assert "lint-md@1.0.7" in out and "DECLINED until" in out
-    # The property that makes it a record rather than an opt-out, said in the
-    # report rather than only in the ADR.
     assert "covers the version it names and no later one" in out
 
 
@@ -246,8 +291,14 @@ def test_the_register_does_not_carry_the_declination() -> None:
     """
     register = (REPO_ROOT / "controls.yaml").read_text(encoding="utf-8")
     assert "declined:" not in register
+    # The record must be real and readable; it need not be non-empty. It held
+    # one entry until 2026-08-28 and an earlier version of this test asserted
+    # that, which would now fail over this repository having nothing to decline
+    # — a rule that fires on the absence of posture is aimed at the wrong thing,
+    # the same mistake as the `plugins/` filename ban described above. The scan
+    # below is a no-op today and is what runs the moment an entry returns.
+    assert (REPO_ROOT / DECISIONS).is_file()
     ours = read_decisions(Repo(REPO_ROOT))
-    assert ours, "this test is vacuous unless something is declined"
     for path in (REPO_ROOT / "plugins").rglob("*"):
         if not path.is_file() or path.suffix not in {".yaml", ".yml", ".json", ".md"}:
             continue

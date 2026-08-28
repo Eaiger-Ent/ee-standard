@@ -1,11 +1,25 @@
 #!/usr/bin/env -S uv run python
-# ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.5.0  register-contract: 5
+# ee-control: DOC-001  ee-skill: lint-md@1.0.8  register: v0.29.0  register-contract: 34
 #
-# Deployed artefact — DOC-001's editor locus, as a PostToolUse hook. Hand-edited
-# since deployment: it invokes markdownlint-cli2 through npx from the repository
-# root so package-lock.json owns the version, it skips Claude's own memory
-# files, and it conforms to this repository's ruff and mypy rules rather than
-# sitting behind an exclusion. See docs/00-concepts.md § The provenance stamp.
+# Deployed artefact — DOC-001's editor locus, as a PostToolUse hook. The 1.0.8
+# run on 2026-08-28 reconciled it and **skipped** it: Step 3a copies the
+# release's own script verbatim, and that script is not what this file is. The
+# stamp names 1.0.8 because that is the release this file was reconciled
+# against, not because 1.0.8 wrote it — the divergences below are deliberate
+# and each is a narrowing.
+#
+# Three of them. The shebang reads `-S uv run python` rather than the shipped
+# `python3`, which in this container resolves to the base image's 3.13.5 and is
+# below the floor (ADR 0028 revision 2, tests/test_toolchain_pin.py). It skips
+# Claude's own memory files. And it conforms to this repository's ruff and mypy
+# rules rather than sitting behind an exclusion.
+#
+# One divergence is NOT a narrowing and is owed upstream: the invocation. 1.0.8's
+# local-config.md says `invocation` reaches "every locus ... the PostToolUse
+# hook", but Step 3a is a plain copy of a script with npx hardcoded, so the
+# configured value never arrives here. This file invokes npx too, from the
+# repository root so package-lock.json still owns the version — the one locus
+# where ADR 0020's row is open. See docs/00-concepts.md § The provenance stamp.
 """Lint (and auto-fix) a markdown file after Claude writes it."""
 
 from __future__ import annotations

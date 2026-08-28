@@ -1,11 +1,12 @@
 # .markdownlint.yaml
-# ee-control: DOC-001  ee-skill: lint-md@1.0.6  register: v0.5.0  register-contract: 5
+# ee-control: DOC-001  ee-skill: lint-md@1.0.8  register: v0.29.0  register-contract: 34
 #
-# Deployed artefact. DOC-001 is `narrowing-only`, so rules may be added or
+# Deployed artefact, rewritten by `lint-md` 1.0.8 on 2026-08-28 — the rule set
+# below is that release's Step 2 output unedited, and it is byte-identical to
+# what 1.0.6 wrote. DOC-001 is `narrowing-only`, so rules may be added or
 # tightened here but not removed or loosened — `markdown_gate_wired_at_all_loci`
 # verifies that the MD013 ceiling below is at or under the register's.
 # See docs/00-concepts.md § The provenance stamp.
-
 default: true
 MD013:
   line_length: 250
