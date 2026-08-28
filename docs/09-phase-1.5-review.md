@@ -255,13 +255,26 @@ its skip branch, all five artefacts are stamped `lint-md@1.0.8`, and
 must reach the artefact the lockfile pins* — is closed at the pre-commit and CI
 loci, where the invocation is now configured rather than corrected.
 
-**It is not closed at the editor locus, and that is new.** 1.0.8's
+**It was not closed at the editor locus, and that was new.** 1.0.8's
 `local-config.md` names the PostToolUse hook among the loci `invocation` reaches,
-but Step 3a copies a script with `npx --no-install` hardcoded, so nothing
-configured arrives there. This repository's own hook uses `npx` too — from the
-repository root, so `package-lock.json` still owns the version — which is why
-the row reads as narrower than it was rather than gone. It is one amend against
-`lint-md`, and it is the last thing § F is still waiting on.
+but Step 3a copied a script with `npx --no-install` hardcoded, so nothing
+configured arrived there. This repository's own hook used `npx` too — from the
+repository root, so `package-lock.json` still owned the version — which is why
+the row read as narrower than it was rather than gone. It was one amend against
+`lint-md`, and it was the last thing § F was waiting on.
+
+**Closed 2026-08-28, upstream.** `lint-md@1.0.9` ships the fix filed as
+[ee-skills-incubator#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627)
+(closed COMPLETED the same day): Step 3a substitutes `invocation` into the copied
+script and greps the file to verify the value landed, and the script it copies
+carries `#!/usr/bin/env -S uv run python` rather than a shebang resolving from
+`PATH`. `/lint-md` was re-run here at 1.0.9 and `.claude/hooks/md-lint.py` is now
+the release's own script unedited — the four divergences it had carried are all
+upstream. **§ F is closed at every locus**, and the row it tracked is not one
+this repository holds open with a hand-edit anywhere. Note what closed it: not
+the argument, which #530 rejected, but the contract of
+[ADR 0042](adr/0042-a-deploying-skill-reads-local-configuration.md) — the value
+became an input, and then the last locus that ignored the input was fixed.
 
 That last clause is a **Phase 5 dependency, not a cosmetic one**. Phase 5's first
 two exit criteria — a version bump must produce no redeployment recommendation, a
