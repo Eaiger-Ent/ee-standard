@@ -959,8 +959,42 @@ Wire the mechanism that keeps deployments current.
 - [x] Bumping a gate's version *without* changing its output produces **no**
       redeployment recommendation
 - [x] Bumping its contract version *does*
-- [ ] `skill-update` reports an owed deployment where every plugin is current,
-      and does not print *Already done* over it
+- [x] `skill-update` reports an owed deployment where every plugin is current,
+      and does not print *Already done* over it.
+
+      **Closed 2026-08-28.** The criterion needs two things true at once — an
+      empty update list *and* an owed deployment — and the first is the hard
+      half, because the marketplace moves. Three runs on one day each found a
+      different plugin stale (`lint-md`, then `skill-preflight`, then
+      `ee-skills-contribute`; the marketplace HEAD went `f75deae` → `85bab6d` →
+      `d83e1c6`), so each took the Success path and said nothing about this.
+
+      The state is **made** rather than waited for: run it once to empty the
+      list, then again immediately. The second run found all seven plugins
+      current, did not stop at Step 2.6, ran `register-check deployments` at
+      Step 2.7, and printed **Deployment owed** naming five gates:
+
+      ```text
+      **Status:** Deployment owed
+
+      **No changes made.** All installed ee-skills plugins are already at their
+      latest versions. A deployment is outstanding, so this is not "already
+      done":
+
+        gate-build           UNRECORDED      contract 3   BLD-001, DEV-001
+        gate-quality         UNRECORDED      contract 6   LNT-001, TYP-001, TST-001
+        gate-repo            UNRECORDED      contract 4   CI-001
+        gate-secrets         UNRECORDED      contract 6   SEC-001, SEC-002, SEC-003
+        gate-supply-chain    UNRECORDED      contract 6   SUP-001, SUP-002, SUP-003, SUP-004
+      ```
+
+      The five gates are `UNRECORDED` under
+      [ADR 0038](adr/0038-the-stamp-records-the-deployment-contract.md) and will
+      be until each next deploys, which is why the *owed* half of the condition
+      holds here at all. Two properties the run demonstrates and neither is
+      incidental: the reconciliation is **through the checker**, so there is no
+      second implementation to disagree with `register-check`; and the skill
+      **deployed nothing** — it reported, which is the whole job
 - [x] The sweep runs unattended and produces a report nobody has to ask for.
       **Closed 2026-08-27**, and as **two** scheduled runs rather than one.
       `register-check.yml` gained a `schedule:` trigger, because several

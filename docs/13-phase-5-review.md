@@ -890,3 +890,41 @@ the signal.
   [ee-skills-incubator#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627),
   and until it ships the pinned invocation here is a hand-edit rather than
   configuration.
+
+## Where Phase 5 finished
+
+Twelve criteria, all met, none retired — closed 2026-08-28 over eight slices.
+The last to close was the one that needed no code: *`skill-update` reports an
+owed deployment where every plugin is current*.
+
+It stayed open because it asks for a **coincidence** rather than a behaviour.
+The skill implemented it correctly from 0.1.12; what was missing was a run where
+the update list is empty at the same moment a deployment is owed. Three runs on
+2026-08-28 each found a different plugin stale — `lint-md`, then
+`skill-preflight`, then `ee-skills-contribute`, as the marketplace HEAD moved
+`f75deae` → `85bab6d` → `d83e1c6` — so each took the Success path and said
+nothing about the criterion at all.
+
+Waiting for that state to recur is not a plan, and the fix was to **make** it:
+run the skill once to empty the list, then again immediately. The second run
+reported `Deployment owed` over five `UNRECORDED` gates. Worth naming as a
+lesson for a criterion of this shape — one that depends on the world being in a
+particular state — because the instinct is to keep re-running and hope.
+
+### What Phase 5 leaves open
+
+- **The marketplace half of staleness.** Nothing here compares what is installed
+  against what is *published*; ADR 0043 closed the comparison against what is
+  installed, which is a different question. `skill-update` is where the first
+  belongs, and it answers it for plugins rather than for deployments.
+- **Five gates read `UNRECORDED` and will until each next deploys.** That is
+  ADR 0038 reporting itself, and the deliberate cost of adding a field rather
+  than back-filling one. Filling a stamp by hand remains forbidden.
+- **[ee-skills-incubator#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627)**
+  is with its maintainers. Until it ships, `lint-md` writes an invocation into a
+  fresh hook that contract 35 fails — so an adopter deploying today fails a check
+  on the artefact the skill just wrote them, and this repository's own pinned
+  spelling is a hand-edit rather than configuration.
+- **The survey nobody has run.** DOC-001's editor locus had two artefacts and one
+  was checked, for four phases, in a tracked file that described the gap
+  accurately. Whether any other control has that shape was not looked at.

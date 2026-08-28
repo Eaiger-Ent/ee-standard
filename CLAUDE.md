@@ -8,12 +8,14 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 "conformant" means, a family of Claude skills deploys the gates, and a checker
 (`register-check`, in `src/register_check/`) audits them.
 
-Current status: **Phase 5 is in progress** as of 2026-08-26 — its first slice,
-ADR 0038, is described below. Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
+Current status: **Phase 5 is complete** as of 2026-08-28, over eight slices —
+ADR 0038 was the first and ADR 0043 the seventh; the eighth is a checker fix at
+contract 35 with no ADR. **Phase 6 is the only phase with open criteria**, at
+2/8. Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
 with no re-opened criteria outstanding. **Phase 3 is complete** as of
 2026-08-24, and **Phases 2 and 4 are both complete** as of 2026-08-26 — Phase 4
 with one criterion retired rather than met (ADR 0037). The register is at
-contract 30.
+contract 35.
 `docs/04-build-plan.md` is the only list of outstanding work and `uv run python scripts/plan_progress.py` is its
 derived view — never keep a second copy of that status here. The slice-by-slice
 record, and the evidence behind every criterion each phase ticks, lives in
