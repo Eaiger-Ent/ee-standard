@@ -566,11 +566,25 @@ arrives there. The shipped script also carries `#!/usr/bin/env python3`, which
 invokes `node_modules/.bin/markdownlint-cli2`, the register's pinned string,
 rather than `npx --no-install`. That is a hand-edit until #627 ships and is
 marked as one in the file's stamp comment — Step 3a's skip branch leaves an
-existing hook alone, so a re-run will not revert it. **Nothing verifies it**:
-`markdown_gate_wired_at_all_loci` reads the pre-commit hook's and the CI step's
-invocation but checks the editor locus by extension presence alone, so this
-value is held by a comment rather than by a build failure. Teaching the assert
-to read the hook is open work, not something done.
+existing hook alone, so a re-run will not revert it.
+
+**From register contract 35 it is verified rather than remembered.** The editor
+locus has **two** artefacts and `markdown_gate_wired_at_all_loci` read one:
+whether an editor configuration installs the extension. So the hook was
+unchecked, and this repository's ran `npx` against a register pinning the
+lockfile's binary from Phase 1 until 2026-08-28 — described accurately in its
+own provenance comment the whole time, and reported wired throughout, which is
+`docs/09-phase-1.5-review.md` § A again. The assert now reads every
+`PostToolUse` script `.claude/settings.json` names and fails one that runs the
+tool by another route. **A comment is not an invocation**: a Python hook is
+parsed and its string constants taken, so the prose in that file explaining
+which spelling it replaced cannot satisfy the check — the accident § F records
+about a `node_modules` grep, refused by construction. The hook's path is
+**derived** from `.claude/settings.json` rather than named in `args:`, which
+would be a second copy of a path that already exists. A script that never
+mentions the tool is not judged, and a repository with no hook at all is not in
+violation — this verifies the locus the control already claims rather than
+adding a requirement.
 
 A stamp naming 1.0.8 on a file 1.0.8 did not write is deliberate and is what the
 comment qualifies: the stamp records the release the artefact was **reconciled

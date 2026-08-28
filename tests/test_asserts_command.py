@@ -382,3 +382,149 @@ def test_the_rule_moves_with_the_register(tmp_path: Path) -> None:
     result = no_unregistered_workflow_secrets(repo, register, {})
     assert not result.passed
     assert "GITHUB_TOKEN" in result.message
+
+
+# --- the editor locus has two artefacts, and the hook is the second ----------
+
+#: What `lint-md` writes into `.claude/settings.json`. The script path sits
+#: inside a `bash -c '…'` string, which is why the helper tests every token
+#: against what git tracks rather than parsing shell.
+def _hook_settings(script: str = ".claude/hooks/md-lint.py") -> str:
+    return (
+        '{"hooks": {"PostToolUse": [{"matcher": "Write|Edit", "hooks": ['
+        '{"type": "command", "command": "bash -c \'cd \\"$(git rev-parse '
+        '--show-toplevel)\\" && uv run python ' + script + "'\"}]}]}}\n"
+    )
+
+
+_PINNED_HOOK = 'LINT = ["node_modules/.bin/markdownlint-cli2"]\n'
+_NPX_HOOK = 'LINT = ["npx", "--no-install", "markdownlint-cli2"]\n'
+
+
+def test_a_hook_reaching_the_pinned_artefact_passes(tmp_path: Path) -> None:
+    repo = _markdown_repo(
+        tmp_path / "hook-ok",
+        **{
+            ".claude/settings.json": _hook_settings(),
+            ".claude/hooks/md-lint.py": _PINNED_HOOK,
+        },
+    )
+    result = markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS)
+    assert result.passed, result.message
+    assert "1 editor hook script(s)" in result.message
+
+
+def test_a_hook_running_the_tool_another_way_fails(tmp_path: Path) -> None:
+    """The drift this check was added for, reproduced.
+
+    `.claude/hooks/md-lint.py` invoked `npx --no-install markdownlint-cli2`
+    against a register pinning `node_modules/.bin/markdownlint-cli2` from Phase 1
+    until 2026-08-28. The extension was installed the whole time, so the editor
+    locus reported wired — presence of one artefact standing in for the other
+    (§ A). ADR 0020 measured `--no-install` falling through to PATH, which is
+    what makes this a weakening rather than a spelling.
+    """
+    repo = _markdown_repo(
+        tmp_path / "hook-npx",
+        **{
+            ".claude/settings.json": _hook_settings(),
+            ".claude/hooks/md-lint.py": _NPX_HOOK,
+        },
+    )
+    result = markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS)
+    assert not result.passed
+    assert "editor locus" in result.message
+    assert ".claude/hooks/md-lint.py" in result.message
+
+
+def test_a_comment_naming_the_pinned_path_does_not_satisfy_it(tmp_path: Path) -> None:
+    """A comment is not an invocation, and this is the case that proves it.
+
+    The real hook explains in prose which spelling it uses and which it replaced,
+    so a substring search over the file text matches the pinned path in a comment
+    while the code runs npx — reporting agreement it has not established. That
+    accident is recorded in `09-phase-1.5-review.md` § F, where a `node_modules`
+    grep held only because the word appeared in a comment about its removal.
+    """
+    repo = _markdown_repo(
+        tmp_path / "hook-comment",
+        **{
+            ".claude/settings.json": _hook_settings(),
+            ".claude/hooks/md-lint.py": (
+                "# The register pins node_modules/.bin/markdownlint-cli2, and this\n"
+                "# file used to reach it that way.\n" + _NPX_HOOK
+            ),
+        },
+    )
+    result = markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS)
+    assert not result.passed
+    assert "editor locus" in result.message
+
+
+def test_a_hook_that_is_not_about_this_tool_is_not_judged(tmp_path: Path) -> None:
+    """Not every PostToolUse hook is a markdown hook.
+
+    Demanding the invocation of every one would fail a repository for having a
+    hook, which is the opposite of what this control asks.
+    """
+    repo = _markdown_repo(
+        tmp_path / "hook-other",
+        **{
+            ".claude/settings.json": _hook_settings(".claude/hooks/fmt.py"),
+            ".claude/hooks/fmt.py": 'FMT = ["node_modules/.bin/prettier"]\n',
+        },
+    )
+    assert markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS).passed
+
+
+def test_no_hook_at_all_is_not_a_violation(tmp_path: Path) -> None:
+    """A repository need not have a PostToolUse hook to satisfy DOC-001.
+
+    The extension is the editor locus's other artefact and it is checked
+    separately. Requiring a hook here would add a requirement rather than verify
+    the one the control already states.
+    """
+    repo = _markdown_repo(tmp_path / "hook-none")
+    result = markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS)
+    assert result.passed, result.message
+    assert "editor hook script" not in result.message
+
+
+def test_a_hook_script_that_is_not_python_still_reads(tmp_path: Path) -> None:
+    """The fallback path: strip `#` comments and search what is left."""
+    good = _markdown_repo(
+        tmp_path / "hook-sh-ok",
+        **{
+            ".claude/settings.json": _hook_settings(".claude/hooks/md-lint.sh"),
+            ".claude/hooks/md-lint.sh": (
+                "#!/usr/bin/env bash\nnode_modules/.bin/markdownlint-cli2 --fix \"$1\"\n"
+            ),
+        },
+    )
+    assert markdown_gate_wired_at_all_loci(good, a_register(), _DOC_ARGS).passed
+
+    bad = _markdown_repo(
+        tmp_path / "hook-sh-bad",
+        **{
+            ".claude/settings.json": _hook_settings(".claude/hooks/md-lint.sh"),
+            ".claude/hooks/md-lint.sh": (
+                "#!/usr/bin/env bash\n# node_modules/.bin/markdownlint-cli2 was here\n"
+                'npx --no-install markdownlint-cli2 --fix "$1"\n'
+            ),
+        },
+    )
+    assert not markdown_gate_wired_at_all_loci(bad, a_register(), _DOC_ARGS).passed
+
+
+def test_an_untracked_path_in_a_hook_command_is_not_read(tmp_path: Path) -> None:
+    """Only tracked files are candidates, so a stray token is not a script.
+
+    A command naming a script the repository does not track is a hook this
+    control cannot verify — and inventing a file to fail over would be worse
+    than saying nothing.
+    """
+    repo = _markdown_repo(
+        tmp_path / "hook-untracked",
+        **{".claude/settings.json": _hook_settings(".claude/hooks/absent.py")},
+    )
+    assert markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS).passed

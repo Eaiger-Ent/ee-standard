@@ -6,6 +6,7 @@ They read workflow and configuration files; none of them executes anything.
 
 from __future__ import annotations
 
+import ast
 import configparser
 import fnmatch
 import re
@@ -548,6 +549,75 @@ def _devcontainer_extensions(repo: Repo) -> list[str]:
             if isinstance(recommendations, list):
                 found += [str(e) for e in recommendations]
     return found
+
+
+#: Where Claude Code records which scripts run as hooks. Read rather than named
+#: in the register: the path of a hook script already exists in the settings file
+#: the harness itself reads, and writing it into `args:` would be a second copy
+#: free to drift from the thing that actually runs.
+_HOOK_SETTINGS = ".claude/settings.json"
+
+
+def _editor_hook_scripts(repo: Repo) -> list[str]:
+    """Tracked scripts a `PostToolUse` hook runs, from `.claude/settings.json`.
+
+    A hook command is a shell line — `bash -c 'cd "$(git rev-parse
+    --show-toplevel)" && uv run python .claude/hooks/md-lint.py'` is what
+    `lint-md` writes — so the script is found the way `_fingerprint_paths` finds
+    a path in a gitleaks fingerprint: every token is tested against what git
+    tracks, and one that is a tracked file is a tracked file wherever in the
+    line it sits. Nothing here parses shell, which would be a grammar to get
+    wrong for no gain.
+    """
+    if not repo.exists(_HOOK_SETTINGS):
+        return []
+    config = load_jsonc(repo.root / _HOOK_SETTINGS)
+    if not isinstance(config, dict):
+        return []
+    hooks = config.get("hooks")
+    entries = hooks.get("PostToolUse") if isinstance(hooks, dict) else None
+    if not isinstance(entries, list):
+        return []
+    tracked = repo.tracked
+    found: list[str] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        for hook in entry.get("hooks", []) or []:
+            if not isinstance(hook, dict):
+                continue
+            command = str(hook.get("command", ""))
+            found += [
+                token.strip("\"'")
+                for token in command.replace("'", " ").replace('"', " ").split()
+                if token.strip("\"'") in tracked
+            ]
+    return list(dict.fromkeys(found))
+
+
+def _script_strings(text: str) -> str:
+    """What a script *runs*, with what it merely *says* removed.
+
+    A comment is not an invocation. `.claude/hooks/md-lint.py` explains in prose
+    which spelling it uses and which it used to use, so a substring search over
+    the whole file matches both and reports agreement it has not established —
+    the same accident § F recorded, where a `node_modules` grep held only
+    because the word appeared in a comment explaining its removal.
+
+    Python is parsed and its string constants taken, which excludes comments and
+    docstrings by construction. Anything that will not parse falls back to
+    dropping `#` comments, which is cruder and can only lose a real invocation
+    (a loud failure) rather than invent one.
+    """
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return "\n".join(line.split("#", 1)[0] for line in text.splitlines())
+    return "\n".join(
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+    )
 
 
 def _config_files(repo: Repo, location: ConfigLocation) -> list[str]:
@@ -1211,6 +1281,24 @@ def _hidden_tracked_files(repo: Repo) -> list[str]:
     return hidden
 
 
+def _hook_script_problems(repo: Repo, tool: str, invocation: str) -> list[str]:
+    """Editor-locus hook scripts that run the tool without reaching the pin.
+
+    A script that never mentions the tool is skipped rather than failed: this
+    asks whether a hook that lints markdown does it through the pinned artefact,
+    not whether every hook a repository has is about markdown.
+    """
+    problems = []
+    for path in _editor_hook_scripts(repo):
+        runs = _script_strings(repo.read(path))
+        if tool in runs and invocation not in runs:
+            problems.append(
+                f"editor locus — {path} runs {tool} but not through '{invocation}', "
+                "so this locus does not reach the artefact the lockfile pins"
+            )
+    return problems
+
+
 def markdown_gate_wired_at_all_loci(
     repo: Repo,
     register: Register,
@@ -1263,6 +1351,19 @@ def markdown_gate_wired_at_all_loci(
         )
     if extension not in _devcontainer_extensions(repo):
         problems.append(f"editor locus — no editor configuration installs {extension}")
+    # The editor locus has a second artefact, and presence of the extension does
+    # not speak for it: `lint-md` also writes a PostToolUse hook that runs the
+    # tool. Until contract 35 nothing read it, and a hook invoking
+    # `npx --no-install markdownlint-cli2` sat against a register pinning
+    # `node_modules/.bin/markdownlint-cli2` from Phase 1, described accurately in
+    # its own provenance comment the whole time — nobody read it, because nothing
+    # failed. This is § A again: a locus reported as wired on the strength of the
+    # half of it that was checked.
+    #
+    # Only a script that runs *this* tool is judged. A repository's other
+    # PostToolUse hooks are not this control's business, and demanding the
+    # invocation of every one of them would fail a repository for having a hook.
+    problems.extend(_hook_script_problems(repo, tool, invocation))
     if not _hook_mentions(repo, invocation):
         problems.append(
             f"pre-commit locus — no hook runs '{invocation}'"
@@ -1275,9 +1376,11 @@ def markdown_gate_wired_at_all_loci(
     problems.extend(_hidden_tracked_files(repo))
     if problems:
         return _fail("; ".join(problems))
+    hooks = len(_editor_hook_scripts(repo))
     return _ok(
         f"{path} caps lines at {effective} (register allows {ceiling}), and every locus "
         f"reaches {tool} through '{invocation}'"
+        + (f" — including {hooks} editor hook script(s)" if hooks else "")
     )
 
 

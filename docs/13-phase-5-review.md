@@ -805,3 +805,88 @@ coverage with it — so *"a declination prints the rule that bounds it"* moved t
 a constructed repository, where it survives this one having nothing to decline.
 The posture boundary test lost its non-vacuity guard for the same reason: a rule
 that fires on the **absence** of posture is aimed at the wrong thing.
+
+## The eighth slice — the editor locus had two artefacts and one was read
+
+Register contract 35, 2026-08-28. No ADR: DOC-001 already says its rule set is
+*"wired at editor, pre-commit and CI loci"*, and this verifies what the control
+claims rather than deciding anything new. It is
+[`09-phase-1.5-review.md`](09-phase-1.5-review.md) § A — *verdicts that overstate
+what was checked* — found once more, in the assert § A itself produced.
+
+### What was found
+
+`markdown_gate_wired_at_all_loci` checks three loci. For pre-commit and CI it
+asks whether the step runs the **pinned invocation**. For the editor locus it
+asked whether an editor configuration installs the extension — and stopped.
+
+But the editor locus has two artefacts: the extension, and the PostToolUse hook
+`lint-md` writes. Nothing read the second. So `.claude/hooks/md-lint.py` invoked
+
+```python
+MARKDOWNLINT = ["npx", "--no-install", "markdownlint-cli2"]
+```
+
+against a register pinning `node_modules/.bin/markdownlint-cli2`, from Phase 1
+until 2026-08-28, with DOC-001 green throughout. ADR 0020 measured
+`--no-install` falling through to `PATH` when the local install is missing, so
+this was a weakening rather than a spelling.
+
+The part worth recording is that **it was never hidden**. That file's provenance
+comment said, in terms, that it invoked the tool through npx. It sat in a
+tracked file, in a stamp this repository's own convention requires, for the
+whole of Phase 1 through Phase 5. Nobody read it, because nothing failed. A
+comment is where a fact goes to be true and unenforced.
+
+### What landed
+
+The assert reads every `PostToolUse` script `.claude/settings.json` names and
+fails one that runs the tool by another route. Three decisions inside it:
+
+**The path is derived, not declared.** A hook's path already exists in the
+settings file the harness reads; putting it in `args:` would be a second copy
+free to drift from the thing that actually runs. The script is found the way
+`_fingerprint_paths` finds a path in a gitleaks fingerprint — every token in the
+command tested against what git tracks — so nothing here parses shell, which
+would be a grammar to get wrong for no gain.
+
+**A comment is not an invocation.** A Python hook is parsed and its string
+constants taken; comments and docstrings are excluded by construction. This is
+not fastidiousness: the real file explains in prose which spelling it uses and
+which it replaced, so a substring search over the text matches the pinned path
+in a comment while the code runs npx. That is exactly the accident § F records,
+where a `node_modules` grep held only because the word appeared in a comment
+about its removal. A script that will not parse falls back to dropping `#`
+comments, which can only lose a real invocation — a loud failure — rather than
+invent one.
+
+**Only a script that runs this tool is judged.** Demanding the pinned invocation
+of every `PostToolUse` hook would fail a repository for having a hook. And a
+repository with no hook at all is not in violation: the extension is the editor
+locus's other artefact and is checked separately, so requiring one here would
+add a requirement rather than verify the one the control states.
+
+### Why the contract moved
+
+`01-register-schema.md` says the number is bumped *"when a change alters what
+gets deployed"*. No field was added and the register's `verify` block is
+unchanged textually — but a conformant repository's markdown hook must now reach
+the pinned artefact, which it did not have to before. An adopter whose build
+starts failing on an unchanged register is owed the signal, and this number is
+the signal.
+
+### What the slice deliberately left open
+
+- **The stamps stay at contract 34.** They record the deployment that happened,
+  and staleness is reported and never enforced. Rewriting them would claim a
+  redeployment nobody ran.
+- **Only DOC-001 gained this.** Whether other controls have a second artefact at
+  a locus verified through the first is not something this slice surveyed, and
+  the shape — presence of one artefact standing in for another — is general
+  enough to be worth a sweep.
+- **The upstream half is unfixed.** `lint-md` 1.0.8 still writes npx into a
+  fresh hook, so an adopter deploying today fails this check on the artefact the
+  skill just wrote them. That is
+  [ee-skills-incubator#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627),
+  and until it ships the pinned invocation here is a hand-edit rather than
+  configuration.
