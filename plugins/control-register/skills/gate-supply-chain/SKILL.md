@@ -1,9 +1,9 @@
 ---
 name: gate-supply-chain
 description: >
-  Deploy SUP-001 to SUP-004: frozen install from the lockfile, update
-  proposals for every ecosystem, every CI action pinned to a SHA, and every
-  pinned release digest checked against what the project published.
+  Deploy SUP-001 to SUP-004: frozen lockfile install, update proposals per
+  ecosystem, CI actions pinned to a SHA, and pinned digests checked against
+  what was published.
   Triggers: 'deploy gate-supply-chain', 'pin CI actions', '/gate-supply-chain'.
 argument-hint: "[--repo <path>] [--register <path>]"
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
