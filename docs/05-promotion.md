@@ -526,11 +526,18 @@ All of it went out on 2026-08-29, in the order this document sets.
 | Submission | Where it went |
 | --- | --- |
 | 3. `CONTRIBUTING.md` corrections | [ee-skills#550](https://github.com/EqualExperts/ee-skills/pull/550) — Lane B direct PR |
-| 5 + 6. `skill-submit-new` | [incubator#655](https://github.com/EqualExperts/ee-skills-incubator/pull/655) — **one PR, forced**: `/skill-submit-amend` builds `amend/<skill>--<author>-<date>`, so two amendments to one skill on one day is one branch |
-| 4. `lint-md` | [incubator#656](https://github.com/EqualExperts/ee-skills-incubator/pull/656) — **two rows, not three**; see below |
+| 5 + 6. `skill-submit-new` | [incubator#655](https://github.com/EqualExperts/ee-skills-incubator/pull/655) — **one PR, forced**: `/skill-submit-amend` builds `amend/<skill>--<author>-<date>`, so two amendments to one skill on one day is one branch. **Merged and shipped in `ee-skills-contribute@0.1.23`** |
+| 4. `lint-md` | [incubator#656](https://github.com/EqualExperts/ee-skills-incubator/pull/656) — **two rows, not three**; see below. **Merged and shipped in `lint-md@1.0.10`** |
 | 7. `lint-md` reachability | [ee-skills#551](https://github.com/EqualExperts/ee-skills/issues/551) — **answered and closed the same day**: *"This is a current feature of the repository and is planned to be fixed in the future. Closing as a known feature."* |
-| 1. `control-register` | [incubator#657](https://github.com/EqualExperts/ee-skills-incubator/pull/657) — **one PR, not nine** |
+| 1. `control-register` | [incubator#657](https://github.com/EqualExperts/ee-skills-incubator/pull/657) — **one PR, not nine. Merged and promoted 2026-08-29**, and `claude plugin install control-register@ee-skills` installs one plugin at 0.1.0 with all nine skills |
 | 2. `skill-update` widening | Not raised. It shipped upstream; see its row above |
+
+**All five that went out are merged, and three came back as installed releases**
+— `control-register@0.1.0`, `ee-skills-contribute@0.1.23` and `lint-md@1.0.10`,
+the last two carrying the changes argued for here. What did **not** come back is
+the `governance` category: the published entry reads `productivity` and
+`categories.json` still has four keys, so § The `governance` category above is a
+follow-up somebody may raise rather than a thing that shipped.
 
 **Submission 1 is one pull request because nine would have been worse.** Nine
 branches each adding the same `"control-register"` key to `promote-config.json`
