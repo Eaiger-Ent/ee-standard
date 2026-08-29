@@ -464,3 +464,35 @@ rather than pick.
 nobody here can close**: `control-register` installable from the marketplace,
 and the consumer repository re-adopting from the marketplace copy. Both wait on
 a maintainer, and the second additionally on a host with Docker.
+
+## The sixth slice — submission 7 is answered, and ADR 0044 was right not to wait
+
+Recorded 2026-08-29, hours after the submission went out.
+
+[ee-skills#551](https://github.com/EqualExperts/ee-skills/issues/551) — the ask
+that `lint-md` be reachable to adopters outside Equal Experts — was **closed as
+a known limitation**: *"This is a current feature of the repository and is
+planned to be fixed in the future. Closing as a known feature."*
+
+That is the outcome
+[ADR 0044](adr/0044-the-adopter-installs-from-the-public-marketplace.md) was
+written for, and it needs no amendment: *"Nothing is blocked on this … A yes
+would make that section unnecessary; a no changes nothing and needs no reply."*
+The answer is a not-yet, `EqualExperts/ee-skills` stays private today, and the
+by-hand route for DOC-001 stays the supported one for an adopter who cannot
+reach it. Had this repository made promotion conditional on the answer — the
+third alternative that ADR rejected — Phase 6 would now be waiting on somebody
+else's roadmap.
+
+**It is also the slice's own correction.** Submission 7 did not come from the
+promotion plan. It was added on 2026-08-29 by the ADR 0044 slice, as this
+repository's own idea, and then went out inside a blanket *"go ahead with all
+the submissions"* alongside four items the plan had carried for over a week. The
+authorisation covered the list; the list had grown that morning, and the new
+item was not called out as new when it was given. Raising a question in another
+organisation's repository is cheap to do and not free to receive, which is the
+argument for naming what is new rather than counting it among what was agreed.
+
+Nothing else changes. `08-adopting.md` § 3 already describes the private
+marketplace as a fact rather than a temporary state, and § 0.0 already sends an
+adopter to the public one.
