@@ -567,3 +567,73 @@ section carries the tool versions it was taken on.**
 would pin another project's behaviour to one machine's npm, and would fail as a
 *correct* npm release changed it — reporting a defect here for a change
 elsewhere. The guard is the recorded version and date.
+
+## The eighth slice — it installs, as one plugin
+
+Landed 2026-08-29. It closes the criterion that had been waiting on somebody
+else since the phase began.
+
+### What happened upstream
+
+[incubator#657](https://github.com/EqualExperts/ee-skills-incubator/pull/657)
+merged and `auto-promote.yml` published `plugins/control-register/` into
+`EqualExperts/ee-skills`. [#655](https://github.com/EqualExperts/ee-skills-incubator/pull/655)
+and [#656](https://github.com/EqualExperts/ee-skills-incubator/pull/656) went
+with it, reaching this container as `ee-skills-contribute@0.1.23` and
+`lint-md@1.0.10` — both verified to carry the changes this repository argued
+for, which is the first time a submission from here has come back as an
+installed release.
+
+### How the criterion was judged
+
+**By installing it**, not by reading the manifest.
+`claude plugin install control-register@ee-skills` produced one plugin at 0.1.0
+with nine skills. The shape the criterion doubts — nine single-skill plugins —
+is one the *promotion pipeline* produces from `promote-config.json`, so the
+source declaring the right thing proves nothing about the result.
+
+Four artefacts were checked past the skill count, each of which would have left
+the install useless while the count looked right:
+
+| Checked | Why it could have failed |
+| --- | --- |
+| `reference/` at the **plugin root** | Eight of nine skills read it through `${CLAUDE_PLUGIN_ROOT}`; `promote.py` routes bundle-root entries it does not recognise down into `skills/<bundle>/` |
+| `templates/` at the plugin root | Same routing, and `gate-build` cannot deploy a devcontainer it cannot find |
+| `.claude-plugin/deploys.json` | The per-gate `contractVersion` ADR 0038 added; without it every gate reads `UNRECORDED` forever |
+| `LICENSE` | `check_plugin_license.py` fails a plugin without one, and two that disagree is worse than one missing |
+
+All four held. The layout was predicted from `git-summary-plugin`, whose
+`backend/` survives at *its* plugin root — a precedent read before the bundle
+was assembled rather than a hope confirmed after.
+
+### What did not survive, and is not a re-opening
+
+The marketplace entry reads `"category": "productivity"`, and `categories.json`
+still holds `development`, `productivity`, `workflow`, `contributor-tooling`.
+**The `governance` category did not land.** It was part of submission 1 and the
+pipeline assigned a fallback rather than adding a key.
+
+It is recorded rather than chased because nothing depends on it: no criterion
+names the category, the plugin installs and works, and the fix is a one-line
+change plus a regenerated README in a repository this project does not own. It
+is a follow-up someone may decide to raise, and
+[`05-promotion.md`](05-promotion.md) § The `governance` category still holds the
+drafted entry and its two consequences.
+
+### The container carries it now
+
+`.devcontainer/setup.sh` installs `control-register` alongside the other six
+ee-skills plugins. The two copies do not compete — ADR 0033's symlinks give the
+working tree project precedence, so `/gate-*` here still runs what is being
+edited. What the installed copy buys is **the artefact an adopter receives being
+present to compare against**, which is exactly what this phase kept finding it
+could not do from the tree alone: twenty-three dangling links passed every local
+test and failed the destination's gate.
+
+### What it deliberately left open
+
+**One criterion remains, and it is the one that matters most.** *The consumer
+repo re-adopts from the marketplace copy and still passes* — installing a plugin
+is not the same as a repository that did not author it reaching conformance
+through the published route. It needs the macOS host with Docker that Phase 4
+used. Everything upstream of it is now done.

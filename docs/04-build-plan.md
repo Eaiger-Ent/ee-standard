@@ -1373,8 +1373,27 @@ document that described it.
       `invocation` row's premise, that `npx --no-install` falls through to
       `PATH`, does not reproduce on npm 11.17.0, so it was withdrawn and the
       measurement sent as information
-- [ ] `control-register` installable from the marketplace **as one plugin**, with
-      every skill in it — not as one plugin per skill
+- [x] `control-register` installable from the marketplace **as one plugin**, with
+      every skill in it — not as one plugin per skill. **Closed 2026-08-29**:
+      [incubator#657](https://github.com/EqualExperts/ee-skills-incubator/pull/657)
+      merged, `auto-promote.yml` published it, and
+      `claude plugin install control-register@ee-skills` installs **one** plugin
+      at version 0.1.0 carrying all nine skills. Judged by installing it rather
+      than by reading the manifest, because the thing the criterion doubts —
+      nine single-skill plugins — is a shape the promotion pipeline produces,
+      not one the source declares. Four artefacts were checked past the skill
+      count, each of which would have made the install useless while the count
+      looked right: `reference/` and `templates/` sit at the **plugin root**
+      where `${CLAUDE_PLUGIN_ROOT}` resolves them, `.claude-plugin/deploys.json`
+      survived with a per-gate `contractVersion`, and `LICENSE` is
+      byte-identical to the repository root's.
+      **One thing did not survive and is recorded rather than fixed**: the
+      marketplace entry reads `"category": "productivity"`, and `categories.json`
+      still holds four keys. The `governance` category
+      ([`05-promotion.md`](05-promotion.md) § The `governance` category) was
+      part of submission 1 and the pipeline assigned a fallback. It is a
+      one-line difference in someone else's repository and no criterion depends
+      on it, so it is a follow-up rather than a re-opening
 - [ ] The consumer repo re-adopts from the *marketplace* copy and still passes —
       proving the plugin works when installed, not only when developed
 - [x] **DOC-001 has a route for an adopter who cannot see `ee-skills`.** Added
