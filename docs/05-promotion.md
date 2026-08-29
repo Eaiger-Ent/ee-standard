@@ -81,6 +81,27 @@ container, measured here:
 | `tests/<skill>/triggers.yaml` and `tests/<skill>/prompt.txt` | **Do not exist, for any of the nine.** They are built interactively from the tool's Q1–Q4 and confirmed before the branch is committed, so they are the operator's answers rather than a file to stage — but Gate 3 is trigger fidelity, and nine sets of them is the largest piece of work left in submission 1 that nothing here had named |
 | `SKILL_SUBMIT_CHECKOUT` — where the incubator checkout lives | Unset, so it defaults to `~/.cache/ee-skills-incubator`. It must have no uncommitted changes; the script refuses rather than resetting work it finds |
 
+#### The submitting shell
+
+Three of the five rows above are environment, and together they are one command.
+Run every `/skill-submit-new` and `/skill-submit-amend` from a shell prepared
+this way — **verified on 2026-08-29**, which is what the last line is for:
+
+```bash
+set -a; . .devcontainer/.env; set +a   # CLAUDE_CODE_OAUTH_TOKEN, for Gate 4
+unset GITHUB_TOKEN                     # scoped to Eaiger-Ent; it shadows the next line
+export GH_TOKEN="$EE_SKILLS_GITHUB_TOKEN"
+
+gh api repos/EqualExperts/ee-skills-incubator --jq .permissions.push   # true, or stop
+```
+
+`unset` rather than a prefix, because `gh` honours one of `GH_TOKEN`/`GITHUB_TOKEN`
+at a time and the scripts invoke `gh` themselves — this is the whole reason the
+`gh-ee-skills` wrapper cannot serve here, since it scopes a single invocation and
+the invocations are somebody else's. The last line is not ceremony: it is the
+one check that distinguishes *can push* from *cannot see*, which is the
+distinction the next paragraph is about.
+
 **Step 1a reads a 404 as good news, and on this machine a 404 is ambiguous.**
 Before doing anything else, `skill-submit-new` runs
 `gh api repos/EqualExperts/ee-skills-incubator/contents/skills/<name>` and treats
@@ -388,6 +409,7 @@ plugins are separate again and should not be bundled with any of it:
 | 4. `lint-md` amendment | `/skill-submit-amend` against `ee-skills-incubator` | Raised 2026-08-18 as [issue #530](https://github.com/EqualExperts/ee-skills-incubator/issues/530), which is **closed**, and mostly answered across `lint-md@1.0.7` and `1.0.8`. **Measured against the installed 1.0.8 on 2026-08-28, one of its four rows is closed and two changed shape, and re-measured against 1.0.9 the same evening with all three still standing** — the defaults in `local-config.md` are byte-for-byte the ones 1.0.8 shipped, and `SKILL.md` still mentions no `ee-control` header anywhere. Closed: the guard that skipped Step 2b on a `grep -q "node_modules"` matching this repository's own *comment* now parses the YAML and compares the `ignores` list. Changed shape: the two disputed **values** are inputs rather than arguments, because 1.0.8 ships `local-config.md`, which is [ADR 0042](adr/0042-a-deploying-skill-reads-local-configuration.md) implemented upstream — but a key that can be set is not a default that is right, and what this amendment argues is the defaults. So three rows stand: `invocation` still defaults to `npx --no-install` ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) and `ignores` still defaults to a list containing `.claude/**` ([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)), which local configuration fixes here and nowhere else; and the overwrite prompt still does not recognise an `ee-control:` header, so accepting it drops a provenance stamp. Two more are already filed as [#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627) and belong to it: `local-config.md` says `invocation` reaches the PostToolUse hook and Step 3a is a plain `cp` of a script with the value hardcoded, and that script's shebang resolves from `PATH`. This is now a **new** amendment against a closed issue rather than a follow-up on an open one, which is what makes carrying ADR 0019's and ADR 0020's measurements — rather than their conclusions — the whole of its case. |
 | 5. `skill-submit-new` layout amendment | `/skill-submit-amend` against `ee-skills-incubator` | Teaches the tool to resolve `plugins/<plugin>/skills/<skill>/`, which `preflight-check.sh` in the same marketplace already does — one of the two tools has learned about plugin layouts and the other has not. Re-read at `0ff6b28`: the resolution rule is unchanged by the transport change, so [ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md)'s symlinks still carry submissions 1 to 4 and this is still the general fix for the next repository rather than the one this one waits on. Deliberately last, so it is never on the critical path. |
 | 6. `skill-submit-new` reads a 404 as an answer | `/skill-submit-amend` against `ee-skills-incubator` | Added 2026-08-28. Step 1a asks the API whether `skills/<name>` already exists and treats **any** failure as *it does not*, so a token that cannot see a private repository — this container's ambient one — clears every name. The fix is small (distinguish 404 from 401/403, and stop rather than continue on the latter), the argument is one this repository has made four times about its own asserts, and it is worth raising **before** submission 1 rather than after, because submission 1 is what would run into it nine times. Bundled with 5 or separate is the maintainer's call; both touch one skill. |
+| 7. `lint-md` where an adopter can reach it | An issue against `EqualExperts/ee-skills` — a request, not an amendment | Added 2026-08-29 with [ADR 0044](adr/0044-the-adopter-installs-from-the-public-marketplace.md). `ee-skills` is private, `lint-md` owns the whole DOC-001 lifecycle, and an adopter outside Equal Experts therefore satisfies one control by hand. The ask is that `lint-md` be reachable to them — published to a public marketplace, or mirrored. **Nothing here waits on the answer**, which is the point of raising it as its own submission rather than as a precondition: ADR 0044 decided what this repository does while the answer is no, and a yes makes part 2 of it unnecessary without touching part 1. |
 
 Submission 4 was identified by this repository deploying `lint-md` and then
 having to hand-edit every artefact it wrote — recorded in
@@ -422,9 +444,19 @@ reported healthy, including a front door that could dispatch nothing
 ([ADR 0035](adr/0035-a-dispatched-skill-is-reachable.md)) and a devcontainer
 template that did not build.
 
-**One thing it deliberately did not prove**, and it is the reason a criterion
-survives it: the consumer installed `control-register` from this repository's own
-`.claude-plugin/marketplace.json`, not from `ee-skills`. Installing *as
+**Promotion adds a route and does not replace one**
+([ADR 0044](adr/0044-the-adopter-installs-from-the-public-marketplace.md)).
+`ee-skills` is private, so an `ee-skills` install serves people inside Equal
+Experts; [`08-adopting.md`](08-adopting.md) § 0.0 goes on naming the public
+`Eaiger-Ent/ee-standard` marketplace, before promotion and after it, and
+`tests/test_adopter_guide.py` fails a guide that names a second address. Read
+every criterion below with that in mind: *installable from the marketplace*
+means the plugin installs cleanly from the published copy, not that the
+published copy is the one an outside adopter is sent to.
+
+**One thing Phase 4 deliberately did not prove**, and it is the reason a
+criterion survives it: the consumer installed `control-register` from this
+repository's own `.claude-plugin/marketplace.json`, not from `ee-skills`. Installing *as
 published* is Phase 6's last criterion rather than something Phase 4 covered, and
 it cannot be tested before the promotion it tests. Saying so is the point —
 "the gate has been passed" is the sentence under which a bounded deviation
@@ -447,11 +479,12 @@ submission is prepared" is the sort of claim that hides the one row that is not
 | The consolidated `promote-config.json` entry | Done 2026-08-28 — written out in § The `promote-config.json` entry and derived from the plugin by `tests/test_promote_entry.py`, rather than left as an ellipsis nine branches would each have to guess |
 | The `governance` category entry | Drafted above; lands in the same PR as the submission, in the destination repository |
 | `tests/<skill>/triggers.yaml` and `prompt.txt`, nine sets | **Not done, and not stageable here.** The tool builds them from its own Q1–Q4 and will not commit a branch until the operator has confirmed each pair. It is the largest remaining piece of submission 1, it is interactive, and until 2026-08-28 nothing in this plan knew it existed |
-| A machine that can actually push the branch | **Not this container as it stands.** `submit-branch.sh` invokes `gh` directly and the ambient `GITHUB_TOKEN` here cannot see `EqualExperts/ee-skills-incubator`; `EE_SKILLS_GITHUB_TOKEN` can, and must be supplied as `GH_TOKEN` for the whole run rather than through the `gh-ee-skills` wrapper. Gate 4 also needs `CLAUDE_CODE_OAUTH_TOKEN` exported, which `.devcontainer/.env` holds. Both are a shell line each, and neither was known before the transport changed |
+| A machine that can actually push the branch | **Done 2026-08-29** — § The submitting shell, three lines, verified by asking the API for `permissions.push` and getting `true`. It was not obvious: `submit-branch.sh` invokes `gh` directly, the ambient `GITHUB_TOKEN` here cannot see `EqualExperts/ee-skills-incubator`, and `gh` honours one token variable at a time, so the fix is to `unset` rather than to prefix |
 | `marketplace.json` and `readme-meta.json` entries | Not stageable here — both live in `ee-skills`, and are written when the plugin is promoted |
 | Submission 3 (`CONTRIBUTING.md` corrections) | Ready, and **independent of the gate** — it is a documentation PR about the destination, not a submission of this plugin |
 | Submissions 1, 2, 4, 5 | **Unblocked 2026-08-26**, when Phase 4 closed. Submission 4 is three rows smaller than it was — see its entry above |
 | Submission 6 (`skill-submit-new` reads a 404 as an answer) | Found 2026-08-28, measured rather than reasoned about; ready to raise, and worth raising before submission 1 rather than after |
+| Submission 7 (`lint-md` where an adopter can reach it) | Ready 2026-08-29. It is the one submission whose answer changes nothing here either way, which is why it is last and why no criterion is written against it |
 
 Submission 3 was for a long time the one row that could go today, and it is
 still the one that goes first — but the reason has strengthened rather than

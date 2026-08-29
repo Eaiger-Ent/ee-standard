@@ -64,7 +64,14 @@ is true of the machine the standard was written on and of no other.
 
 The repository that defines the standard is also a plugin marketplace — its
 `.claude-plugin/marketplace.json` is what makes that true — and it is public, so
-this needs no credential:
+this needs no credential. **It stays the address**: the plugin is also published
+to the `EqualExperts/ee-skills` marketplace, which is private and is where
+people inside Equal Experts already look, and that is a second publication of
+the same tree rather than a replacement for this instruction
+([ADR 0044](adr/0044-the-adopter-installs-from-the-public-marketplace.md)). The
+register, the checker and the plugin all come from one public repository, and
+`tests/test_adopter_guide.py` holds this command to the address the register
+names.
 
 ```bash
 claude plugin marketplace add Eaiger-Ent/ee-standard
@@ -791,17 +798,27 @@ dispatches them in order. DOC-001 is the one control no gate here deploys: it is
 
 **And that plugin is one you may not be able to install.** `lint-md` lives in
 the `EqualExperts/ee-skills` marketplace, which is **private**. If your account
-cannot reach it, DOC-001 has no route through this guide at all — the plan
-names it *dispatch elsewhere*, and elsewhere is somewhere you cannot go.
-Phase 4 met this and resolved it by **copying** the skill into the consumer
-repository's `.claude/skills/`, which is a copy of someone else's skill living
-in your repository, going stale silently: exactly the duplication this standard
-exists to prevent, and not a recommendation.
+cannot reach it, no skill deploys DOC-001 for you — the plan names it *dispatch
+elsewhere*, and elsewhere is somewhere you cannot go.
 
-Until that is resolved, DOC-001 is **the one control an outside adopter may have
-to satisfy by hand**. It is the same access-shaped single point of failure the
-devcontainer template was moved into this plugin to escape, and it is recorded
-here rather than discovered.
+**So you deploy it by hand, and the checker verifies it.** That is a decision
+rather than a stopgap
+([ADR 0044](adr/0044-the-adopter-installs-from-the-public-marketplace.md)): the
+six steps below are the supported route for an adopter who cannot reach
+`ee-skills`, and `register-check` runs the same two verify blocks over what you
+write as over anything a gate writes, because a control is verified by what your
+repository contains and not by what put it there. DOC-001 is **the one control
+an outside adopter satisfies by hand**, and it is one control's worth of extra
+work, written here rather than discovered.
+
+Two routes were rejected and are worth knowing about, because both look
+reasonable. **Copying `lint-md` into your repository** is what Phase 4 did, and
+it is recorded as what happened rather than as a recommendation: a copy of
+someone else's skill, in your repository, going stale with no line to read on
+the day it stops matching upstream — and `register-check deployments` cannot
+reconcile it, because a copied directory is not an installed plugin. **A DOC-001
+gate in this plugin** would fork one lifecycle into two implementations free to
+drift, which is the duplication this standard exists to prevent, one level up.
 
 The good news, which is not obvious: **DOC-001 asks for no provenance stamp.**
 Its verify blocks are the tool itself and `markdown_gate_wired_at_all_loci` —

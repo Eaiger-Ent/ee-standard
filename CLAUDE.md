@@ -598,6 +598,26 @@ carried their hand-edits. Four of the five DOC-001 stamps are still that kind,
 refreshed by the 1.0.9 run over files it skipped. What is forbidden is
 refreshing one with no run behind it.
 
+Per [ADR 0044](docs/adr/0044-the-adopter-installs-from-the-public-marketplace.md)
+(**Accepted** and implemented 2026-08-29) **the adopter installs from the public
+marketplace, and promotion adds a publication rather than replacing an
+instruction.** `EqualExperts/ee-skills` is private, so `docs/08-adopting.md`
+§ 0.0 goes on naming `Eaiger-Ent/ee-standard` before promotion and after it;
+`tests/test_adopter_guide.py` derives that address from
+`tools.register-check.install.repository` and fails a guide that names another,
+because the substitution is a one-line edit made while thinking about the
+destination rather than about who cannot reach it. Its second part is the one
+that closes a criterion: **a control whose deploying skill an adopter cannot
+install is satisfied by hand and verified by the register.** DOC-001 is the
+instance and today the only one — `lint-md` owns its lifecycle and lives behind
+that door — and `08-adopting.md` § 3's six steps are the supported route rather
+than the stopgap they were written as, because `register-check run --control
+DOC-001` runs the same two blocks over a hand-wired gate as over a deployed one.
+**Write no stamp naming `lint-md`** for a deployment it did not make. Copying the
+skill and adding a DOC-001 gate here were both rejected; asking that `lint-md` be
+reachable is submission 7 and nothing waits on the answer. No control changed, so
+the contract stayed at 35.
+
 Per [ADR 0043](docs/adr/0043-a-declination-is-reconciled-against-the-installed-skill.md)
 (**Accepted** and implemented 2026-08-28) a declination is reconciled against
 the **installed** skill, not only against the stamped one. ADR 0042 revision 2's
@@ -650,7 +670,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/13-phase-5-review.md` | Record of Phase 5 slice by slice, and what each one deliberately left open |
 | `docs/14-file-map.md` | **Where everything is.** Which file to open, and why `controls.yaml`, `deployment-decisions.yaml` and `.claude/skill-config.yaml` are three files rather than one. Held true by `tests/test_file_map.py`, in both directions at the top level |
 | `docs/15-phase-6-review.md` | Record of Phase 6 slice by slice. § The transport changed is why `05-promotion.md` no longer says a submission is an issue |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **42** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0043 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **43** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0044 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fifteen Tier-1 controls, with
