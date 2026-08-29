@@ -157,13 +157,26 @@ sudo install -m 0755 .devcontainer/bin/gh-ee-skills /usr/local/bin/gh-ee-skills
 # volume. The marketplace repo is private to the EqualExperts org, so both the
 # add and the installs run under the second PAT — the ambient GITHUB_TOKEN is
 # Eaiger-Ent-scoped and cannot clone it.
+#
+# `control-register` is in the list even though this repository *is* its source,
+# and the two copies do not compete: `.claude/skills/<name>` symlinks into
+# `plugins/control-register/` (ADR 0033) take project precedence, so `/gate-*`
+# here always runs the working tree. What the installed copy buys is the
+# published artefact being present to compare against — the thing an adopter
+# actually receives, which Phase 6 found differs from the tree in ways no local
+# test saw — and an entry in the plugin inventory, which is where
+# `register-check deployments` reads an installed version from (ADR 0043).
+# It is installed from the private marketplace here because that is the one this
+# container already adds; an adopter takes the public `Eaiger-Ent/ee-standard`
+# marketplace instead (ADR 0044), which is why the shipped template installs no
+# plugins at all rather than a copy of this list.
 if [ -n "${EE_SKILLS_GITHUB_TOKEN:-}" ]; then
   if ! claude plugin marketplace list 2>/dev/null | grep -q "EqualExperts/ee-skills"; then
     GITHUB_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" GH_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" \
       claude plugin marketplace add EqualExperts/ee-skills
   fi
   installed="$(claude plugin list 2>/dev/null || true)"
-  for plugin in adr-toolkit lint-md devcontainer-check skill-preflight ee-skills-manage clarify-all; do
+  for plugin in control-register adr-toolkit lint-md devcontainer-check skill-preflight ee-skills-manage clarify-all; do
     echo "${installed}" | grep -q "${plugin}@ee-skills" && continue
     GITHUB_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" GH_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" \
       claude plugin install "${plugin}@ee-skills"
