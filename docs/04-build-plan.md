@@ -1292,6 +1292,12 @@ submission now argues, is the table in that section; the `lint-md` amendment in
 particular is three rows smaller than the plan first described, for which see
 § Accepting an upstream skill release above.
 
+The evidence for every row below is in
+[`15-phase-6-review.md`](15-phase-6-review.md), which also records what each
+slice found that no criterion asked about — beginning with the promotion route
+changing transport on 2026-08-28, hours after this repository re-verified the
+document that described it.
+
 ### Exit criteria — phase 6
 
 - [ ] [`08-adopting.md`](08-adopting.md) describes installing from the
@@ -1319,12 +1325,16 @@ particular is three rows smaller than the plan first described, for which see
       tool about plugin layouts is submission 5 rather than a blocker.
       `tests/test_skill_links.py` derives the link set from the plugin in both
       directions, so a ninth skill added without a link fails the build instead
-      of being found missing while eight issues are being written
-- [ ] Every skill in the family is submitted, and every issue names the **same**
-      `promote-config.json` entry. `/skill-submit-new` is per skill and its
-      generated entry is `{"skills": ["<name>"]}`, so the default outcome of
-      nine issues is nine single-skill plugins rather than one
-- [ ] All the submissions raised: the family (one issue per skill), the
+      of being found missing while eight submissions are being written
+- [ ] Every skill in the family is submitted, and every submission carries the
+      **same** `promote-config.json` entry. `/skill-submit-new` is per skill and
+      `apply-promote-entry.py` writes `{"skills": ["<name>"]}` on each branch, so
+      the default outcome of nine pull requests is nine single-skill plugins
+      rather than one. The consolidated entry is written out in
+      [`05-promotion.md`](05-promotion.md) § The `promote-config.json` entry and
+      derived from the plugin by `tests/test_promote_entry.py`, so what nine
+      branches have to agree about is one artefact rather than nine guesses
+- [ ] All the submissions raised: the family (one pull request per skill), the
       `governance` category, the `skill-update` widening, the `CONTRIBUTING.md`
       corrections, and what remains of the `lint-md` amendment from Phase 1.5
       § F. `lint-md@1.0.7` shipped most of #530 on 2026-08-20 and **#530 is

@@ -11,9 +11,12 @@ contains**, not what its documentation says.
             │
             ▼
   /skill-submit-new  (new)   or   /skill-submit-amend  (update)
-            │                     one issue per SKILL, not per plugin
+            │                     one pull request per SKILL, not per plugin
             ▼
-  GitHub issue on EqualExperts/ee-skills-incubator
+  the incubator gates, run locally, before anything is pushed
+            │
+            ▼
+  branch + pull request on EqualExperts/ee-skills-incubator
             │
             ▼
   maintainer review → each skill lands flat at incubator skills/<skill>/
@@ -25,23 +28,68 @@ contains**, not what its documentation says.
   marketplace.json + readme-meta.json → installable
 ```
 
+**The transport changed on 2026-08-28, and this section was rewritten the same
+day.** Everything below was measured against the installed marketplace checkout
+at `~/.claude/plugins/marketplaces/ee-skills/` (`0ff6b28`), and
+[`15-phase-6-review.md`](15-phase-6-review.md) § The transport changed records
+what it replaced and how a re-verification earlier that morning missed it.
+
 Three properties of this route shape the build plan:
 
-**Submission is an issue, not a pull request.** Both `skill-submit-new` and
-`skill-submit-amend` open a GitHub issue against `EqualExperts/ee-skills-incubator`
-for maintainer review. You do not push a branch, and you cannot self-merge. The
-practical consequence: **the skills must be complete and working locally before
-submission**, because there is no iterate-in-review loop under your control.
-That is why the build plan tests everything against a real consumer repo before
-promotion is attempted at all.
+**Submission is a branch and a pull request, not an issue.** Both
+`skill-submit-new` and `skill-submit-amend` build a branch —
+`new/<skill>--<author>-<YYYYMMDD>` and `amend/<skill>--<author>-<YYYYMMDD>` — in
+a reusable incubator checkout, run the incubator's own gates on it, and only
+then push and open a pull request against `EqualExperts/ee-skills-incubator`.
+The submission travels as commits: *"Nothing is serialised into text: the commit
+is the submission, and a commit is its own file manifest"* (#608, #611, #615).
+You still cannot self-merge, and promotion is still someone else's action — but
+the branch is yours, `submit-branch.sh` is idempotent (*"PR already open for
+$BRANCH — branch updated, no new PR created"*), so **there is now an
+iterate-in-review loop under your control.**
+
+That removes the argument this document used to make for finishing everything
+first, and the rule survives on a better one: **the gates run before the push**
+(#637). `test-local.sh` Gates 1–4 — plugin validation, smoke test, trigger
+fidelity, and a rubric evaluation that calls the API — are run on the committed
+branch, and a submission that fails one never reaches a pull request at all. So
+an unfinished skill is not something you fix in review; it is something that
+does not get filed. Testing against a real consumer repo before promotion is
+attempted was never contingent on the transport anyway.
 
 **Promotion is a maintainer action.** Whatever the incubator-to-marketplace step
 is mechanically, it is not yours to run. Budget calendar time for it.
 
 **The unit of submission is a skill, not a plugin.** `/skill-submit-new` takes a
-skill name, reads one `SKILL.md`, and opens one issue. A plugin shipping nine
-skills is nine issues. This is the correction that matters most to Phase 6's
-shape, and § What the incubator actually holds sets out what follows from it.
+skill name, reads one `SKILL.md`, and opens one pull request. A plugin shipping
+nine skills is nine pull requests. This is the correction that matters most to
+Phase 6's shape, it is the one of the three that the transport change did **not**
+alter, and § What the incubator actually holds sets out what follows from it.
+
+### What a submission now needs from the machine it runs on
+
+None of this was in the plan before 2026-08-28, because none of it was true of a
+tool that posted an issue body. Each was read from the installed
+`skill-submit-new` and `skill-submit-amend` and, where it is a fact about this
+container, measured here:
+
+| Requirement | State on this machine |
+| --- | --- |
+| `gh` authenticated with push access to `EqualExperts/ee-skills-incubator`, or able to fork it | **Push access yes, ambient `gh` no.** The scripts invoke `gh` themselves, and this container's `GITHUB_TOKEN` is scoped to `Eaiger-Ent`: plain `gh api repos/EqualExperts/ee-skills-incubator` returns 404. `EE_SKILLS_GITHUB_TOKEN` has `push` and `admin`, so a submission must be run with it in the environment as `GH_TOKEN` — the `gh-ee-skills` wrapper cannot help, because it scopes a single invocation and the invocations are inside someone else's script |
+| `claude` and `uv` on `PATH` | Both present |
+| An Anthropic credential — `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` — for Gate 4 | Neither is exported in an ordinary shell here. `CLAUDE_CODE_OAUTH_TOKEN` is in `.devcontainer/.env`, so this is a `set -a; . .devcontainer/.env; set +a` away rather than a gap. Without it the scripts **stop**: the gates are refused rather than degraded, because Gate 4 skipping without failing would push an ungated submission under a "gates passed" banner |
+| `tests/<skill>/triggers.yaml` and `tests/<skill>/prompt.txt` | **Do not exist, for any of the nine.** They are built interactively from the tool's Q1–Q4 and confirmed before the branch is committed, so they are the operator's answers rather than a file to stage — but Gate 3 is trigger fidelity, and nine sets of them is the largest piece of work left in submission 1 that nothing here had named |
+| `SKILL_SUBMIT_CHECKOUT` — where the incubator checkout lives | Unset, so it defaults to `~/.cache/ee-skills-incubator`. It must have no uncommitted changes; the script refuses rather than resetting work it finds |
+
+**Step 1a reads a 404 as good news, and on this machine a 404 is ambiguous.**
+Before doing anything else, `skill-submit-new` runs
+`gh api repos/EqualExperts/ee-skills-incubator/contents/skills/<name>` and treats
+failure as *the skill is new — continue*. A token that cannot see the repository
+at all returns exactly that, so with the ambient `GITHUB_TOKEN` the check passes
+for every name, including one already there. It is the failure this repository
+refuses everywhere else — SEC-001 raising rather than reading an omitted
+`security_and_analysis` as "off", ADR 0043 giving a missing plugin inventory a
+third state instead of reading it as agreement — and it is submission 6 below.
 
 ## What the incubator actually holds
 
@@ -100,12 +148,15 @@ each skill is exposed at `.claude/skills/<name>` as a tracked symlink into the
 plugin, so there is one definition and a second reference rather than a copy —
 and the amendment that would teach the tool about plugin layouts is submission 5
 rather than a blocker on submissions 1 to 4. A copy made at submission time was
-rejected: eight of them, by hand, at the one moment the content has to be right
-and there is no iterate-in-review loop to fix it in.
+rejected: eight of them, by hand, at the one moment the content has to be right.
+The transport has changed since — a branch can be amended where an issue body
+could not — but the decision does not move with it: the copies would be nine
+files diverging from the plugin between submissions, which is the drift this
+repository exists to prevent rather than a review-loop problem.
 
 `tests/test_skill_links.py` derives the link set from the plugin in both
 directions, so a ninth skill added without a link fails the build rather than
-being discovered as "not found" while eight issues are being written.
+being discovered as "not found" while eight submissions are being written.
 
 ## Corrections to `CONTRIBUTING.md`
 
@@ -115,24 +166,35 @@ fixes) and are recorded here so this plan is not built on them.
 
 | `CONTRIBUTING.md` says | Actually |
 | --- | --- |
-| Run `/submit-amendment`; it "opens a PR against the incubator on branch `amend/<skill>--<author>-<YYYYMMDD>`" | The skill is `/skill-submit-amend`, and it opens a **GitHub issue**. No such branch is created. |
+| Run `/submit-amendment`; it "opens a PR against the incubator on branch `amend/<skill>--<author>-<YYYYMMDD>`" | **Only the name is wrong now:** the skill is `/skill-submit-amend`. Since 2026-08-28 it does open a pull request, on exactly that branch — `submit-branch.sh` builds `amend/${NAME}--${AUTHOR}-$(date -u +%Y%m%d)`. This row was two errors and is one. |
 | "A maintainer runs `scripts/promote.py` here" | `scripts/` contains `check_duplicated_files.py`, `check_plugin_license.py`, `render_readme.py`, `sync-contrib-bundle.py`. There is no `promote.py` anywhere in the repo. |
 | "Preflight P1–P6 … `plugins/skill-review/skills/skill-review/scripts/preflight-check.sh`" | The script implements **P1–P11**, and there is no `skill-review` plugin. It ships as nine byte-identical copies under `plugins/<plugin>/skills/skill-scripts/scripts/`. |
 | "SKILL.md files are governed by the preflight P1–P6 checks" (a second line, further down) | The same error twice in one document, and the second instance is easy to miss when fixing the first. |
 
-The first is the one that matters operationally — planning for a PR you can push
-commits to, and finding an issue you cannot, changes how much must be finished
-before you submit.
+The first used to be the one that mattered operationally, for a reason that has
+inverted: planning for a PR you can push commits to and finding an issue you
+cannot is no longer the risk, because the tool now does what the sentence says.
+`CONTRIBUTING.md` was describing the transport correctly the whole time and this
+document recorded it as wrong — accurately, when it was written, which is the
+argument for dating a measurement rather than stating a fact.
 
 **All four re-verified on 2026-08-25** against an installed checkout at
 `~/.claude/plugins/marketplaces/ee-skills/` (`2ce0e19`), five days after they
-were first read, **and again on 2026-08-28** against the same checkout at
-`d83e1c6`. None has been fixed, so submission 3 still has something to say — and
-it is the submission that goes first, so its evidence is the one worth being
-freshest. Also observed then, and not an error so much as a thing worth knowing
-before looking for it: `skill-submit-new` is not a plugin of its own — it ships
-inside `ee-skills-contribute`, where `skill-submit-amend` is a top-level plugin.
-Both open issues.
+were first read, again on 2026-08-28 at `d83e1c6`, **and re-measured the same
+evening at `0ff6b28`**, which is the run that found the transport change and
+shrank the first row. The measurements behind rows 2 to 4 at `0ff6b28`:
+`scripts/` holds those four files and no `promote.py`; `preflight-check.sh`
+implements P1 to P11 and ships as nine copies of one md5 under
+`plugins/<plugin>/skills/skill-scripts/scripts/`, with no `skill-review` plugin
+among the forty-nine; and the second `P1–P6` line is still there. None of the
+four has been fixed, so submission 3 still has something to say — and it is the
+submission that goes first, so its evidence is the one worth being freshest.
+
+Two things worth knowing before looking for them, neither an error:
+`skill-submit-new` is not a plugin of its own — it ships inside
+`ee-skills-contribute`, where `skill-submit-amend` is both a top-level plugin
+**and** a skill inside `ee-skills-contribute`, two byte-identical copies that
+moved together in the same hour. Both open pull requests.
 
 ## Gates a submission must pass
 
@@ -157,6 +219,17 @@ Plus the repository CI gates: `markdownlint-cli2`, `claude plugin validate .`,
 `scripts/render_readme.py --check`, `scripts/check_plugin_license.py`,
 `scripts/check_duplicated_files.py`.
 
+**And, from 2026-08-28, four gates that run before the push rather than after
+it.** `submit-branch.sh` runs the incubator's `test-local.sh` Gates 1–4 on the
+committed branch — plugin validation, smoke test, trigger fidelity, and a rubric
+evaluation — and pushes only if all four pass, because `gh pr create` is what
+starts CI and gating afterwards would spend a full CI run, the paid rubric call
+among it, on a tree no gate had seen (#637). Two of the four are new information
+for this family: Gate 3 reads the `triggers.yaml` that does not exist yet for
+any of the nine, and Gate 4 needs an Anthropic credential on the machine. The
+gates are **refused rather than degraded** when they cannot run in full, which is
+the same shape as this repository's own `UNCLASSIFIED`.
+
 **Run on 2026-08-25 against all eight skills** — the six gates, `register-adopt`
 and `register-install` — using the marketplace's own script from an installed
 checkout rather than a description of it. Every skill returned `PASS` on P1
@@ -179,10 +252,12 @@ things had moved in three days:
   block. It is recorded here so nobody reading *"no check below `PASS`"* above
   reads the change as a defect.
 
-*"Worth re-running before submitting"* was the plan's answer and it is not one:
-a submission is the single moment there is no iterate-in-review loop to fix
-anything in, which is the same argument this document makes about finishing the
-skills first. `tests/test_preflight.py` now runs the marketplace's script over
+*"Worth re-running before submitting"* was the plan's answer and it is not one.
+The reason has changed with the transport and has not weakened: the incubator's
+own gates now run on the committed branch **before** it is pushed, so a
+`FAIL` here is not something a reviewer sees and asks about — it is a submission
+that is never filed, discovered by a script at the moment the operator expected
+a pull-request URL. `tests/test_preflight.py` now runs the marketplace's script over
 every skill in the plugin. It runs **their** script rather than reimplementing
 P1–P11 here — a local copy of the 250-character ceiling would be a second source
 of truth for someone else's rule, free to drift from the one a submission is
@@ -258,20 +333,61 @@ Two consequences to handle in the same PR:
 2. `render_readme.py` must be re-run so the README's Categories and Plugins
    sections regenerate.
 
+## The `promote-config.json` entry
+
+The one thing nine pull requests have to agree about, and the one the tool
+writes wrongly by default. `apply-promote-entry.py` applies
+`"<name>": {"skills": ["<name>"], "description": …}` on each branch, so the
+default outcome of submission 1 is **nine single-skill plugins**. The entry
+below is what each branch must carry instead — one key under `plugins`, naming
+all nine skills. (`skills/promote-config.json` has three top-level keys —
+`plugins`, `incubatorOnly` and `removed`; this belongs under the first.)
+
+```json
+"control-register": {
+  "skills": [
+    "register-adopt",
+    "gate-secrets",
+    "gate-quality",
+    "gate-supply-chain",
+    "gate-build",
+    "gate-iac",
+    "gate-repo",
+    "register-install",
+    "register-variance"
+  ],
+  "description": "Deploys and verifies the Equal Experts control standard. The register in controls.yaml defines what conformant means; the gate skills write the artefacts, and register-check audits them."
+}
+```
+
+It is written out here rather than left as an ellipsis because it is the text an
+operator pastes onto nine branches, and because the failure it prevents is
+silent: nine correct submissions, each individually gated and merged, arriving
+as nine plugins nobody asked for. **It is not a second copy.**
+`tests/test_promote_entry.py` derives both fields from the plugin — the skill
+list from `plugins/control-register/skills/`, the description from
+`.claude-plugin/plugin.json` — so a tenth skill, or a description reworded in
+the plugin and not here, fails the build. The order is the dispatcher first,
+then the six gates it dispatches, then the two skills that are on nobody's
+route; the test compares the set, because ordering is presentation and a rule
+about it would fail a build over a preference.
+
 ## Submission order
 
 The family is one plugin, and it is **not** one submission: `/skill-submit-new`
-is per skill, so submission 1 is one issue per skill in the family, asking in
-each for the shared `promote-config.json` entry. The two changes to *existing*
+is per skill, so submission 1 is one pull request per skill in the family, each
+carrying the **same** `promote-config.json` entry — the consolidated one below,
+not the single-skill entry the tool generates. The two changes to *existing*
 plugins are separate again and should not be bundled with any of it:
 
 | Submission | Target | Why separate |
 | --- | --- | --- |
-| 1. `control-register` | `/skill-submit-new`, once per skill | The new plugin, plus the `governance` category. Every issue must name the same `promote-config.json` entry — `"control-register": {"skills": [ … ]}` — or the skills are promoted as separate single-skill plugins, which is what the tool's generated entry says by default. |
+| 1. `control-register` | `/skill-submit-new`, once per skill | The new plugin, plus the `governance` category. Every pull request must carry the same `promote-config.json` entry — § The `promote-config.json` entry below — or the skills are promoted as separate single-skill plugins, which is what the tool's generated entry says by default. Nine of them, and `apply-promote-entry.py` writes the generated one on each branch, so the entry is corrected on the branch rather than asked for in prose. |
 | 2. `skill-update` widening | `/skill-submit-amend` against `ee-skills-manage` | Changes an existing, widely installed skill. Reviewers assessing a new plugin and reviewers assessing a behaviour change to a shipped one are asking different questions. |
 | 3. `CONTRIBUTING.md` corrections | Direct PR (Lane B) | Documentation fix, explicitly permitted as a direct PR. Useful to land first — it is small, independent, and establishes contact before the large submission arrives. |
-| 4. `lint-md` amendment | `/skill-submit-amend` against `ee-skills-incubator` | Raised 2026-08-18 as [issue #530](https://github.com/EqualExperts/ee-skills-incubator/issues/530), which is **closed**, and mostly answered across `lint-md@1.0.7` and `1.0.8`. **Measured against the installed 1.0.8 on 2026-08-28, one of its four rows is closed and two changed shape.** Closed: the guard that skipped Step 2b on a `grep -q "node_modules"` matching this repository's own *comment* now parses the YAML and compares the `ignores` list. Changed shape: the two disputed **values** are inputs rather than arguments, because 1.0.8 ships `local-config.md`, which is [ADR 0042](adr/0042-a-deploying-skill-reads-local-configuration.md) implemented upstream — but a key that can be set is not a default that is right, and what this amendment argues is the defaults. So three rows stand: `invocation` still defaults to `npx --no-install` ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) and `ignores` still defaults to a list containing `.claude/**` ([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)), which local configuration fixes here and nowhere else; and the overwrite prompt still does not recognise an `ee-control:` header, so accepting it drops a provenance stamp. Two more are already filed as [#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627) and belong to it: `local-config.md` says `invocation` reaches the PostToolUse hook and Step 3a is a plain `cp` of a script with the value hardcoded, and that script's shebang resolves from `PATH`. This is now a **new** amendment against a closed issue rather than a follow-up on an open one, which is what makes carrying ADR 0019's and ADR 0020's measurements — rather than their conclusions — the whole of its case. |
-| 5. `skill-submit-new` layout amendment | `/skill-submit-amend` against `ee-skills-incubator` | Teaches the tool to resolve `plugins/<plugin>/skills/<skill>/`, which `preflight-check.sh` in the same marketplace already does — one of the two tools has learned about plugin layouts and the other has not. **Not a blocker**: [ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md) clears the path locally with symlinks, so this is the general fix for the next repository rather than the one this one waits on. Deliberately last, so it is never on the critical path. |
+| 4. `lint-md` amendment | `/skill-submit-amend` against `ee-skills-incubator` | Raised 2026-08-18 as [issue #530](https://github.com/EqualExperts/ee-skills-incubator/issues/530), which is **closed**, and mostly answered across `lint-md@1.0.7` and `1.0.8`. **Measured against the installed 1.0.8 on 2026-08-28, one of its four rows is closed and two changed shape, and re-measured against 1.0.9 the same evening with all three still standing** — the defaults in `local-config.md` are byte-for-byte the ones 1.0.8 shipped, and `SKILL.md` still mentions no `ee-control` header anywhere. Closed: the guard that skipped Step 2b on a `grep -q "node_modules"` matching this repository's own *comment* now parses the YAML and compares the `ignores` list. Changed shape: the two disputed **values** are inputs rather than arguments, because 1.0.8 ships `local-config.md`, which is [ADR 0042](adr/0042-a-deploying-skill-reads-local-configuration.md) implemented upstream — but a key that can be set is not a default that is right, and what this amendment argues is the defaults. So three rows stand: `invocation` still defaults to `npx --no-install` ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) and `ignores` still defaults to a list containing `.claude/**` ([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)), which local configuration fixes here and nowhere else; and the overwrite prompt still does not recognise an `ee-control:` header, so accepting it drops a provenance stamp. Two more are already filed as [#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627) and belong to it: `local-config.md` says `invocation` reaches the PostToolUse hook and Step 3a is a plain `cp` of a script with the value hardcoded, and that script's shebang resolves from `PATH`. This is now a **new** amendment against a closed issue rather than a follow-up on an open one, which is what makes carrying ADR 0019's and ADR 0020's measurements — rather than their conclusions — the whole of its case. |
+| 5. `skill-submit-new` layout amendment | `/skill-submit-amend` against `ee-skills-incubator` | Teaches the tool to resolve `plugins/<plugin>/skills/<skill>/`, which `preflight-check.sh` in the same marketplace already does — one of the two tools has learned about plugin layouts and the other has not. Re-read at `0ff6b28`: the resolution rule is unchanged by the transport change, so [ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md)'s symlinks still carry submissions 1 to 4 and this is still the general fix for the next repository rather than the one this one waits on. Deliberately last, so it is never on the critical path. |
+| 6. `skill-submit-new` reads a 404 as an answer | `/skill-submit-amend` against `ee-skills-incubator` | Added 2026-08-28. Step 1a asks the API whether `skills/<name>` already exists and treats **any** failure as *it does not*, so a token that cannot see a private repository — this container's ambient one — clears every name. The fix is small (distinguish 404 from 401/403, and stop rather than continue on the latter), the argument is one this repository has made four times about its own asserts, and it is worth raising **before** submission 1 rather than after, because submission 1 is what would run into it nine times. Bundled with 5 or separate is the maintainer's call; both touch one skill. |
 
 Submission 4 was identified by this repository deploying `lint-md` and then
 having to hand-edit every artefact it wrote — recorded in
@@ -316,9 +432,10 @@ becomes an unrecorded one.
 
 ### What is ready, and what it is waiting on
 
-Everything below is done, so that when the gate opens the submission is a
-submission rather than a week of preparation. Stated as a table because "the
-submission is prepared" is the sort of claim that hides the one row that is not.
+Everything below was done, so that when the gate opened the submission would be
+a submission rather than a week of preparation. Stated as a table because "the
+submission is prepared" is the sort of claim that hides the one row that is not
+— and on 2026-08-28 the transport change put two rows in it that are not.
 
 | Piece | State |
 | --- | --- |
@@ -327,10 +444,14 @@ submission is prepared" is the sort of claim that hides the one row that is not.
 | Preflight P1–P11 on all nine skills | Done — re-run 2026-08-28 against the marketplace's own script, one `FAIL` found and fixed, and held from here by `tests/test_preflight.py` rather than by remembering to re-run it |
 | The names the `promote-config.json` entry will use | Done — [ADR 0031](adr/0031-the-plugin-is-named-for-the-register.md), and the rename landed 2026-08-25 |
 | How the tool reaches the skills | Done — [ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md) |
+| The consolidated `promote-config.json` entry | Done 2026-08-28 — written out in § The `promote-config.json` entry and derived from the plugin by `tests/test_promote_entry.py`, rather than left as an ellipsis nine branches would each have to guess |
 | The `governance` category entry | Drafted above; lands in the same PR as the submission, in the destination repository |
+| `tests/<skill>/triggers.yaml` and `prompt.txt`, nine sets | **Not done, and not stageable here.** The tool builds them from its own Q1–Q4 and will not commit a branch until the operator has confirmed each pair. It is the largest remaining piece of submission 1, it is interactive, and until 2026-08-28 nothing in this plan knew it existed |
+| A machine that can actually push the branch | **Not this container as it stands.** `submit-branch.sh` invokes `gh` directly and the ambient `GITHUB_TOKEN` here cannot see `EqualExperts/ee-skills-incubator`; `EE_SKILLS_GITHUB_TOKEN` can, and must be supplied as `GH_TOKEN` for the whole run rather than through the `gh-ee-skills` wrapper. Gate 4 also needs `CLAUDE_CODE_OAUTH_TOKEN` exported, which `.devcontainer/.env` holds. Both are a shell line each, and neither was known before the transport changed |
 | `marketplace.json` and `readme-meta.json` entries | Not stageable here — both live in `ee-skills`, and are written when the plugin is promoted |
 | Submission 3 (`CONTRIBUTING.md` corrections) | Ready, and **independent of the gate** — it is a documentation PR about the destination, not a submission of this plugin |
 | Submissions 1, 2, 4, 5 | **Unblocked 2026-08-26**, when Phase 4 closed. Submission 4 is three rows smaller than it was — see its entry above |
+| Submission 6 (`skill-submit-new` reads a 404 as an answer) | Found 2026-08-28, measured rather than reasoned about; ready to raise, and worth raising before submission 1 rather than after |
 
 Submission 3 was for a long time the one row that could go today, and it is
 still the one that goes first — but the reason has strengthened rather than
@@ -342,3 +463,9 @@ so the small independent PR is doing the job it was put first to do.
 
 Every one of these is an act with a person on the other end of it, in another
 organisation's repository, and none is raised without being asked for.
+
+**And every one of them is now a branch pushed to that repository rather than an
+issue filed against it**, which raises what "asked for" has to cover: a
+submission that goes wrong leaves a branch and an open pull request in someone
+else's repository, not a comment. Nothing about the rule changes; what changes is
+that a mistaken submission is now something a maintainer has to clean up.

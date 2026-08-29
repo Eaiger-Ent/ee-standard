@@ -9,8 +9,10 @@ that the marketplace's script, when this machine has it, returns no `FAIL`.
 The gap this closes is small and had already opened: SUP-004 landed on
 2026-08-27 and grew `gate-supply-chain`'s description to 285 characters against
 a ceiling of 250, which nothing here noticed, because the promotion plan's
-answer was "re-run preflight before submitting" and a submission is the one
-moment there is no iterate-in-review loop to fix it in.
+answer was "re-run preflight before submitting", and since 2026-08-28 the
+marketplace's own gates run on the submission branch **before** it is pushed —
+so a `FAIL` here is not something a reviewer asks about, it is a submission that
+is never filed.
 
 **Absence is a state, not a pass** — the same shape ADR 0043 gives the plugin
 inventory. CI has no marketplace checkout, so there the test skips and says so.

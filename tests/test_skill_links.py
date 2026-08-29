@@ -6,11 +6,11 @@ exposes each skill at `.claude/skills/<name>` as a symlink into
 `<name>/SKILL.md` in the project's Claude skills directory and this repository
 uses the marketplace's plugin layout instead.
 
-The failure this file exists to catch is a **ninth skill added without a link**.
+The failure this file exists to catch is a **tenth skill added without a link**.
 Nothing would break: the plugin tests would pass, the preflight would pass, and
 the skill would simply be invisible to the tool — discovered at submission time,
-which is the one moment there is no iterate-in-review loop, because a submission
-is an issue and not a pull request.
+when the operator expected a pull-request URL and got a "skill not found" from
+someone else's script.
 
 The link set is therefore derived from the plugin in both directions. A skill
 with no link cannot be submitted; a link with no skill is a `/name` that resolves
