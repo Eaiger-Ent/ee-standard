@@ -877,9 +877,14 @@ keep in step.
 
 **Invoke the artefact, not the name.** Every locus here runs
 `node_modules/.bin/markdownlint-cli2`, because `npx --no-install` does *not* mean
-"resolve locally" — with no local install it falls through to `PATH` and runs
-whatever global it finds, which makes the lockfile an authority in name only
-([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)). The register
+"resolve locally" — with no local install it answers from the npx cache or the
+registry, never from your lockfile, which makes that lockfile an authority in
+name only ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)). A
+**bare** `markdownlint-cli2` is worse again: that one does resolve from `PATH`,
+so whatever is installed on the machine answers. Measured at npm 11.17.0 on
+2026-08-29; the ADR's § Re-measured has the table and the versions, because
+which wrong binary you reach depends on your npm and *that* you reach one does
+not. The register
 records that path as `tools.<tool>.invocation` and the checker holds every locus
 to it. A missing local install is then `UNCLASSIFIED — cannot verify`, which is
 the honest answer, rather than a pass earned by a binary nobody pinned.

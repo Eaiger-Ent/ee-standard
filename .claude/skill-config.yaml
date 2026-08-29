@@ -13,7 +13,7 @@
 
 lint-md:
   # `npx --no-install` does not mean *resolve locally*. With no local install it
-  # falls through to PATH and runs whichever global copy it finds, which is what
+  # answers from the npx cache or the registry rather than the lockfile, which is what
   # ADR 0020 case C measured. package-lock.json pins markdownlint-cli2 here, and
   # every locus must reach that binary.
   invocation: node_modules/.bin/markdownlint-cli2

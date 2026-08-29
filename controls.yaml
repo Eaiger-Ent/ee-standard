@@ -43,9 +43,10 @@ meta:
   #    outside `[tool.mypy] files`, which nothing imports, fails TYP-001 rather
   #    than passing it silently.
   # 10: DOC-001 invokes its tool through the path the lockfile owns rather than
-  #     through `npx`, which falls through to PATH. `tools.<tool>.invocation`
-  #     records that form for a lockfile-sourced tool, and every locus is
-  #     verified against it (ADR 0020, § H6).
+  #     through `npx`, which reaches a binary the lockfile does not own — its
+  #     own cache or the registry. `tools.<tool>.invocation` records that form
+  #     for a lockfile-sourced tool, and every locus is verified against it
+  #     (ADR 0020, § H6; mechanism re-measured 2026-08-29, ADR 0020 rev 3).
   # 11: SEC-001 is verified at both its local loci. Three were declared and one
   #     was read — `precommit_hook_present` checked the hook and nothing read
   #     the ci locus, so deleting the secret-scan job kept the control green.
@@ -401,12 +402,14 @@ tools:
     source: lockfile
     lockfile: package-lock.json
     # How a locus reaches the pin. `npx --no-install markdownlint-cli2` was the
-    # invocation at every locus and it does not fail when the local install is
-    # missing — it falls through to PATH and runs whatever global binary is
-    # there, so `source: lockfile` asserted an authority nothing enforced
-    # (§ H6). Measured: with node_modules deleted, `npx --no-install` and
-    # `npm exec --no --` both exit 0 against a global, and the path below
-    # exits 127.
+    # invocation at every locus, and with node_modules deleted it answered from
+    # somewhere the lockfile does not own — measured 2026-08-18 as exit 0 for
+    # both `npx --no-install` and `npm exec --no --` while the path below exited
+    # 127, so `source: lockfile` asserted an authority nothing enforced (§ H6).
+    # Re-measured 2026-08-29 at npm 11.17.0, both spellings exit 1 rather than
+    # reaching PATH: what they reach is the npx cache or the registry, never the
+    # lockfile. ADR 0020 rev 3 has the table. The conclusion is unchanged — the
+    # path below is the only spelling that reaches the pin.
     #
     # The pair is symmetric. A `literal` tool records `pinned_at` — where its
     # version is repeated. A `lockfile` tool records `invocation` — how the
@@ -581,9 +584,10 @@ ecosystems:
     # Where a package appears inside this ecosystem's lockfile, as regular
     # expressions with `{package}` substituted for the name being looked for.
     # ADR 0020 case C: `uv run <tool>` reaches the artefact uv.lock pins, and
-    # falls through to PATH only when the tool is absent from the project
-    # altogether. No spelling of `invocation` closes that, because the question
-    # is whether the pin exists rather than how it is reached — so it is
+    # reaches something else only when the tool is absent from the project
+    # altogether — not PATH, re-measured at uv 0.12.6 (ADR 0020 rev 3), but not
+    # the pin either. No spelling of `invocation` closes that, because the
+    # question is whether the pin exists rather than how it is reached — so it is
     # answered here, beside `frozen_install`, and for the same reason: a
     # lockfile format the checker has not heard of is a pin nothing verifies.
     # How a gate creates the pin it needs, keyed by the lockfile that is
@@ -1762,7 +1766,8 @@ controls:
     deployed_by: lint-md
     verify:
       - kind: command
-        # Not `npx`: it falls through to PATH (§ H6). An absent local install is
+        # Not `npx`: it answers from its own cache or the registry, never from
+        # the lockfile (§ H6; ADR 0020 rev 3). An absent local install is
         # now `tool not installed — cannot verify` (UNCLASSIFIED, ADR 0016)
         # rather than a pass earned by a global nobody pinned.
         run: node_modules/.bin/markdownlint-cli2 "**/*.md"
