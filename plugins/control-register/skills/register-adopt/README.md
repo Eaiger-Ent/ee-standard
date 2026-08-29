@@ -72,7 +72,7 @@ up, and it will not commit on an exit `1`.
 **Grant a permission or install a bot.** Dependabot or Renovate enabled on the
 repository, GitHub secret-scanning push protection, and `administration: write`
 for the branch ruleset are platform acts a human with admin takes
-([`08-adopting.md`](../../../../docs/08-adopting.md) § 1). They are listed in
+(`08-adopting.md` § 1). They are listed in
 the plan *before* deployment, because a plan that omits them promises an outcome
 it cannot reach.
 

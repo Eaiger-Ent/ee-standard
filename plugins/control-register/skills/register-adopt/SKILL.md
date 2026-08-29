@@ -82,7 +82,7 @@ If that fails, dispatch **`/register-install`** with the same `--repo` and
 `--register`, and let it ask its own question. Do not install the checker here:
 the address, the tag and the ecosystem's spelling are its business, and this
 skill would be a second place any of them could be written
-([ADR 0032](../../../../docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md)).
+(ADR 0032).
 
 **This is dispatched first and it is not a gate.** No control names *the checker
 is installed*, so it deploys nothing, appears in no plan row and writes no

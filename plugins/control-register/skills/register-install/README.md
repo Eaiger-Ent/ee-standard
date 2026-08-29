@@ -46,7 +46,7 @@ every adopter's install.
 ## Why a skill of its own
 
 Three candidates were considered and two rejected
-([ADR 0032](../../../../docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md)).
+(ADR 0032).
 
 **Not `register-adopt`'s pre-flight.** The dispatcher *verifies through* the
 checker — every gate it dispatches ends with `register-check run --control <ID>`.
@@ -97,4 +97,4 @@ not add `disable-model-invocation: true` here. A dispatched skill carrying that
 flag cannot be reached at all, which is preflight P9 and is what stopped the
 front door at Step 0 in Phase 4. The reasoning, and what guards the platform
 mutations instead, is
-[ADR 0035](../../../../docs/adr/0035-a-dispatched-skill-is-reachable.md).
+ADR 0035.

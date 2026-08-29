@@ -34,7 +34,7 @@ starts from, and an adopter whose stack it does not fit chooses for themselves.
 DEV-001 insists that whichever were chosen are pinned, and BLD-001 that the
 container does not end as root. Those are different questions, and this gate is
 only ever asked the second
-([`0037`](../../../../docs/adr/0037-the-template-is-the-whole-devcontainer-step.md)).
+(`0037`).
 Inventing an image or a user here produces a container that does not start,
 which is a worse failure than the one being fixed.
 
@@ -71,10 +71,10 @@ rather than a record.
 
 **A Dockerfile linter it does not pin.** BLD-001's container half runs
 `hadolint`, and an absent linter is `UNCLASSIFIED — cannot verify`, not a pass
-([ADR 0016](../../../../docs/adr/0016-exit-codes-for-unverifiable-controls.md)).
+(ADR 0016).
 What closes it is a `tools.hadolint` entry in **that repository's** register,
 naming the loci it installs the linter at — your register records your own files
-([`08-adopting.md`](../../../../docs/08-adopting.md) § 3.4). This gate does not
+(`08-adopting.md` § 3.4). This gate does not
 install a tool the register does not pin, and this standard's own register pins
 none, because this repository has no Dockerfile to lint.
 
@@ -85,4 +85,4 @@ not add `disable-model-invocation: true` here. A dispatched skill carrying that
 flag cannot be reached at all, which is preflight P9 and is what stopped the
 front door at Step 0 in Phase 4. The reasoning, and what guards the platform
 mutations instead, is
-[ADR 0035](../../../../docs/adr/0035-a-dispatched-skill-is-reachable.md).
+ADR 0035.

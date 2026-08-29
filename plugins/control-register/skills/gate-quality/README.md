@@ -80,4 +80,4 @@ not add `disable-model-invocation: true` here. A dispatched skill carrying that
 flag cannot be reached at all, which is preflight P9 and is what stopped the
 front door at Step 0 in Phase 4. The reasoning, and what guards the platform
 mutations instead, is
-[ADR 0035](../../../../docs/adr/0035-a-dispatched-skill-is-reachable.md).
+ADR 0035.
