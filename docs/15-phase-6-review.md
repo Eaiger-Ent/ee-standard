@@ -145,3 +145,79 @@ survives inside `docs/adr/` and `adr-toolkit@0.1.11` survives in ADRs 0025 and
 table true on the day of release — cannot be closed before the release it names,
 and this slice did not touch it. The submissions themselves are acts in another
 organisation's repository and none is raised without being asked for.
+
+## The second slice — the access decision, and the shell that can submit
+
+Landed 2026-08-29. It closes one criterion, the only open one that nothing
+outside this repository gated.
+
+### What was found
+
+Two open criteria were one problem. *"DOC-001 has a route for an adopter who
+cannot see `ee-skills`"* is about a private marketplace holding the gate that
+owns DOC-001's lifecycle. *"`control-register` installable from the marketplace
+as one plugin"* is about promoting this plugin **into that same private
+marketplace**. Read as *installable from `ee-skills` instead*, closing the second
+would have re-acquired the access-shaped single point of failure the devcontainer
+template was moved into this plugin to escape — and it would have done so in a
+one-line edit to `08-adopting.md` § 0.0, at the moment everyone was thinking
+about the destination rather than about who cannot reach it.
+
+Measured 2026-08-29: `EqualExperts/ee-skills` is `private: true`;
+`Eaiger-Ent/ee-standard` and `Eaiger-Ent/ee-standard-consumer` are public.
+
+### What was decided
+
+[ADR 0044](adr/0044-the-adopter-installs-from-the-public-marketplace.md), in two
+parts. The public marketplace stays the address the guide names, so **promotion
+adds a publication rather than replacing an instruction**; and a control whose
+deploying skill an adopter cannot install is **satisfied by hand and verified by
+the register** — DOC-001 being the instance, with the six steps already written
+and verified in Phase 4's consumer repository, promoted from stopgap to
+supported route.
+
+Three alternatives were rejected in the ADR, and the reason each looks
+reasonable is recorded there: copying `lint-md` into the adopter's repository
+(what Phase 4 did, and what `register-check deployments` cannot reconcile, since
+a copied directory is not an installed plugin), writing a DOC-001 gate here (one
+lifecycle, two implementations, free to drift), and making promotion conditional
+on `ee-skills` being published (gates this phase on a repository nobody here
+owns — the ordering ADR 0022 rules out and the reason ADR 0037 retired a
+criterion rather than leaving it open).
+
+The request is still worth making, so it is **submission 7** rather than a
+precondition: nothing here waits on the answer, and a yes makes part 2 of the
+ADR unnecessary without touching part 1.
+
+### What holds it
+
+`tests/test_adopter_guide.py::test_the_guide_installs_the_plugin_from_the_repository_the_register_names`
+derives the marketplace § 0.0 names from `tools.register-check.install.repository`
+and fails a guide that names another. Checked by mutation: rewriting the command
+to `EqualExperts/ee-skills` fails the test, and only that test. It is derived
+rather than compared against a literal because a fork or an internal mirror is a
+thing a repository reasonably differs on (ADR 0032), so the guide must move with
+the register and not with the test file.
+
+### The submitting shell
+
+The other half of the slice, and the smallest useful thing in it. Three of the
+five machine requirements the first slice found are environment, and together
+they are one command — `.devcontainer/.env` sourced for `CLAUDE_CODE_OAUTH_TOKEN`,
+`GITHUB_TOKEN` **unset** because `gh` honours one token variable at a time, and
+`GH_TOKEN` set to `EE_SKILLS_GITHUB_TOKEN`. Verified by asking the API for
+`permissions.push` on the incubator and getting `true`.
+[`05-promotion.md`](05-promotion.md) § The submitting shell carries it, with the
+verification line as part of the recipe rather than as a note beside it: the
+whole failure it guards against is a 404 that means *cannot see* being read as a
+404 that means *not there*.
+
+### What it deliberately left open
+
+The register is not touched and **the contract stays at 35**, which is what the
+criterion predicted when it said the answer would be a publication decision
+rather than a code change.
+
+Nothing was submitted. Submissions 3, 6 and 7 are ready and independent;
+submission 1 still needs nine sets of trigger fixtures, which are the operator's
+answers to the tool's own questions and cannot be staged here.

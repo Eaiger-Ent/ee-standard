@@ -193,3 +193,31 @@ def test_the_guide_does_not_hard_code_a_release_tag() -> None:
     assert not hard_coded, (
         f"§ 0.1 names {', '.join(hard_coded)} by hand; resolve the tag rather than writing one"
     )
+
+
+def test_the_guide_installs_the_plugin_from_the_repository_the_register_names() -> None:
+    """The published route stays the public one, and is not retyped as a second address.
+
+    Per [ADR 0044](../docs/adr/0044-the-adopter-installs-from-the-public-marketplace.md)
+    an adopter obtains the register, the checker and the plugin from one public
+    repository, and Phase 6's promotion adds an `ee-skills` copy rather than
+    replacing that instruction. The failure this catches is the promotion being
+    written into the guide as a substitution — a one-line edit at the moment
+    everyone is thinking about the destination rather than about who cannot
+    reach it, and one nothing else here would notice, because installing from a
+    private marketplace works perfectly for whoever makes the edit.
+
+    Derived from `tools.register-check.install.repository` rather than compared
+    against a literal: the address is a thing a fork or an internal mirror
+    reasonably differs on (ADR 0032), so the guide must move with the register
+    and not with this file.
+    """
+    install = a_register().tools["register-check"].install
+    assert install is not None, "the register no longer says where the checker comes from"
+    slug = install.repository.removeprefix("https://github.com/").removesuffix(".git")
+    adds = re.findall(r"claude plugin marketplace add (\S+)", GUIDE_TEXT)
+    assert adds, "§ 0.0 no longer adds a marketplace — this test is now vacuous"
+    wrong = sorted({named for named in adds if named != slug})
+    assert not wrong, (
+        f"§ 0.0 installs from {', '.join(wrong)}; the register names {slug} (ADR 0044)"
+    )

@@ -1354,7 +1354,7 @@ document that described it.
       every skill in it — not as one plugin per skill
 - [ ] The consumer repo re-adopts from the *marketplace* copy and still passes —
       proving the plugin works when installed, not only when developed
-- [ ] **DOC-001 has a route for an adopter who cannot see `ee-skills`.** Added
+- [x] **DOC-001 has a route for an adopter who cannot see `ee-skills`.** Added
       2026-08-25 by Phase 4, which found that the marketplace holding `lint-md`
       is **private**: every plan this repository produces rows DOC-001 as
       *dispatch elsewhere*, and elsewhere is somewhere an outside adopter cannot
@@ -1365,7 +1365,21 @@ document that described it.
       ([`12-phase-4-review.md`](12-phase-4-review.md) § 12). It is the same
       access-shaped single point of failure the devcontainer template was moved
       into this plugin to escape, and it belongs here because the answer is a
-      publication decision rather than a code change
+      publication decision rather than a code change.
+      **Closed 2026-08-29 by
+      [ADR 0044](adr/0044-the-adopter-installs-from-the-public-marketplace.md)**,
+      and the criterion's own prediction held — no control's `rung`, `verify`,
+      `variance` or `applies_to` moved and the contract stayed at 35. The route
+      is: the public `Eaiger-Ent/ee-standard` marketplace stays the address
+      `08-adopting.md` § 0.0 names, so promotion **adds** a publication rather
+      than replacing an instruction; and DOC-001 is deployed by hand and
+      verified by `register-check`, which runs the same two blocks over a
+      hand-wired gate as over a deployed one. The six steps were already in
+      § 3, written and verified in Phase 4's consumer repository; what changed
+      is that they are the supported route rather than a stopgap. Copying the
+      skill and writing a second DOC-001 gate here were both rejected in the
+      ADR, and `tests/test_adopter_guide.py` fails a guide that names a
+      marketplace the register does not
 
 ## What is deliberately not in scope
 
