@@ -374,3 +374,93 @@ boundary is the plugin, because the plugin is the thing that gets copied.
 passed preflight P1–P11 on all nine skills, passed the incubator's
 markdownlint, promote-config registration and skill-invocation-conflict checks,
 and failed path hygiene. It is re-assembled from this commit.
+
+## The fifth slice — the submissions are raised
+
+Landed 2026-08-29. It closes two criteria and it did not close either the way
+the plan expected, because three of the five prepared submissions moved between
+being written and being sent.
+
+### What went out
+
+| Submission | Where |
+| --- | --- |
+| 3. `CONTRIBUTING.md` corrections | [ee-skills#550](https://github.com/EqualExperts/ee-skills/pull/550) |
+| 5 + 6. `skill-submit-new` | [incubator#655](https://github.com/EqualExperts/ee-skills-incubator/pull/655) |
+| 4. `lint-md` | [incubator#656](https://github.com/EqualExperts/ee-skills-incubator/pull/656) |
+| 7. `lint-md` reachability | [ee-skills#551](https://github.com/EqualExperts/ee-skills/issues/551) |
+| 1. `control-register` | [incubator#657](https://github.com/EqualExperts/ee-skills-incubator/pull/657) |
+| 2. `skill-update` widening | Not raised — it shipped |
+
+### The three that moved
+
+**Submission 2 was withdrawn because it had already shipped.** Before writing
+it, the installed `skill-update` was read: it carries Step 2.7 *"Is a deployment
+owed?"*, a `DEPLOYMENT_STATE`, a *Deployment owed* output block, and the rule
+**"Never emit Already done over an owed deployment"** — this submission's own
+argument, almost verbatim. Its § Why criterion 5 has two halves states the
+failure mode this repository was going to report. Nothing to raise. It is kept
+in the promotion table rather than deleted, for the same reason Phase 4's
+retired criterion is: a submission that vanishes is indistinguishable from one
+nobody noticed.
+
+**Submissions 5 and 6 became one pull request, and had to.**
+`/skill-submit-amend` builds `amend/<skill>--<author>-<YYYYMMDD>`. Two
+amendments to one skill on one day is one branch. The plan had them as separate
+items and the tool's naming settles it.
+
+**Submission 4 went out with two rows instead of three, and the third is the
+finding of this slice.** It was going to argue that `invocation` should default
+to `node_modules/.bin/markdownlint-cli2`, on the premise — stated in
+`local-config.md` upstream and in
+[ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) here — that
+`npx --no-install` falls through to `PATH`.
+
+**It does not, on npm 11.17.0 / node 24.19.0.** Three probes, in a directory
+with no `package.json` and no `node_modules`:
+
+| Probe | Result |
+| --- | --- |
+| Real `markdownlint-cli2` first on `PATH` | exit `1` — *"npx canceled due to missing packages"*; the `PATH` copy is not run |
+| A `PATH`-only name that is not an npm package | exit `1` — 404 against the registry |
+| With a local install present | exit `0`, resolving `node_modules/.bin` |
+
+ADR 0020 § Background records the opposite as measured: *"With `node_modules`
+absent, npx falls through to `PATH` … exit 0 (a global answered)"*. What it most
+likely observed is the npx **cache** — the run above resolves a specific
+version, `markdownlint-cli2@0.23.2`, in a directory containing nothing that
+names one.
+
+**ADR 0020's decision survives and its stated mechanism does not.** npx still
+resolves a version from somewhere that is not the lockfile, so *a locus reaches
+the pinned artefact* holds; *it falls through to `PATH`* is false on this npm.
+Under [ADR 0026](adr/0026-an-adr-stands-on-its-own.md) that is the in-place
+amendment case — decision unchanged, record factually false — and it is owed by
+ADR 0020, CLAUDE.md, and `08-adopting.md` § 3, which tells an adopter the `PATH`
+claim outright. **Left open by this slice** rather than folded into it: an
+amendment to an accepted ADR is its own act with its own revision.
+
+The row was withdrawn rather than argued down, and the measurement sent to the
+maintainers as information rather than as a change request, with the note that
+the behaviour may well hold on the npm version they observed it on.
+
+### Submission 1 is one pull request, not nine
+
+The plan, the promotion document and the criterion all said one per skill,
+because `/skill-submit-new` is per skill. Assembling it showed what nine would
+cost: each branch adds the same `"control-register"` key to
+`promote-config.json`, so eight of the nine are textual conflicts on an
+**identical** addition, and until the last merges the entry names eight skills
+that are not there. `check-promote-registration.py` takes a *list* of changed
+skill directories and reported all nine registered from one branch.
+
+The deviation is stated in the pull request, which offers to split them — the
+destination holds three layouts at once, and this document already says to ask
+rather than pick.
+
+### What it deliberately left open
+
+**ADR 0020's amendment**, above. **And the two criteria that remain are the ones
+nobody here can close**: `control-register` installable from the marketplace,
+and the consumer repository re-adopting from the marketplace copy. Both wait on
+a maintainer, and the second additionally on a host with Docker.
