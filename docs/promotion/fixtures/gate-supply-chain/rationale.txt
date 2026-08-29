@@ -1,0 +1,5 @@
+Covers the four supply-chain controls together — a frozen lockfile install, an update
+bot per ecosystem, CI actions pinned to a commit SHA, and every pinned digest checked
+against what the project actually published. The last one exists because a bot once
+moved a version at four sites and left all three digests behind, and every check in the
+repository stayed green.

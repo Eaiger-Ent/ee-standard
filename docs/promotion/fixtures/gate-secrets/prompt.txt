@@ -1,0 +1,1 @@
+/gate-secrets --repo . --register ./controls.yaml

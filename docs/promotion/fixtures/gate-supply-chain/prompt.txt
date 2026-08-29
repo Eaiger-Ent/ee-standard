@@ -1,0 +1,1 @@
+/gate-supply-chain --repo . --register ./controls.yaml

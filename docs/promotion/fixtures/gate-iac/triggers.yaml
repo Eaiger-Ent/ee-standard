@@ -1,0 +1,10 @@
+should_activate:
+  - "/gate-iac"
+  - "/gate-iac --repo . --register ./controls.yaml"
+  - "deploy gate-iac"
+  - "wire terraform analysis"
+  - "run the register's infrastructure analysers at pre-commit and in CI"
+should_not_activate:
+  - "/gate-quality"
+  - "/register-variance"
+  - "write a terraform module for an S3 bucket"

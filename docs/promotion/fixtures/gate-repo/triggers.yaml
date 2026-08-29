@@ -1,0 +1,10 @@
+should_activate:
+  - "/gate-repo"
+  - "/gate-repo --repo . --register ./controls.yaml"
+  - "deploy gate-repo"
+  - "protect the default branch"
+  - "deploy CI-001"
+should_not_activate:
+  - "/gate-secrets"
+  - "/register-adopt"
+  - "create a new GitHub repository for this project"

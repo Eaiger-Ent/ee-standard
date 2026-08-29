@@ -1,0 +1,4 @@
+Wires the register's infrastructure analysers over all Terraform at pre-commit and in
+CI, where their exit codes block a merge rather than printing advice somebody reads
+later. It applies only where Terraform is present, so a repository without any is
+skipped by predicate instead of failed.

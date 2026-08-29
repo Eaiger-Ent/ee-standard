@@ -1,0 +1,8 @@
+should_activate:
+  - "/register-adopt"
+  - "/register-adopt --repo ."
+  - "/register-adopt --repo . --register ./controls.yaml"
+should_not_activate:
+  - "/gate-secrets"
+  - "/register-install"
+  - "explain what a control register is"

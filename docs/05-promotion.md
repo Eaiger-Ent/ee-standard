@@ -78,8 +78,33 @@ container, measured here:
 | `gh` authenticated with push access to `EqualExperts/ee-skills-incubator`, or able to fork it | **Push access yes, ambient `gh` no.** The scripts invoke `gh` themselves, and this container's `GITHUB_TOKEN` is scoped to `Eaiger-Ent`: plain `gh api repos/EqualExperts/ee-skills-incubator` returns 404. `EE_SKILLS_GITHUB_TOKEN` has `push` and `admin`, so a submission must be run with it in the environment as `GH_TOKEN` — the `gh-ee-skills` wrapper cannot help, because it scopes a single invocation and the invocations are inside someone else's script |
 | `claude` and `uv` on `PATH` | Both present |
 | An Anthropic credential — `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` — for Gate 4 | Neither is exported in an ordinary shell here. `CLAUDE_CODE_OAUTH_TOKEN` is in `.devcontainer/.env`, so this is a `set -a; . .devcontainer/.env; set +a` away rather than a gap. Without it the scripts **stop**: the gates are refused rather than degraded, because Gate 4 skipping without failing would push an ungated submission under a "gates passed" banner |
-| `tests/<skill>/triggers.yaml` and `tests/<skill>/prompt.txt` | **Do not exist, for any of the nine.** They are built interactively from the tool's Q1–Q4 and confirmed before the branch is committed, so they are the operator's answers rather than a file to stage — but Gate 3 is trigger fidelity, and nine sets of them is the largest piece of work left in submission 1 that nothing here had named |
+| `tests/<skill>/triggers.yaml` and `tests/<skill>/prompt.txt` | **Drafted 2026-08-29** in [`promotion/fixtures/`](promotion/fixtures/README.md), one directory per skill, with the Q4 rationale beside them. The tool still builds the files it commits from its own Q1–Q4, so these are answers to review rather than files it reads — which turns nine live Q&A sessions into nine readings. `tests/test_submission_fixtures.py` derives the set from the plugin in both directions and holds each file to the tool's own validation |
 | `SKILL_SUBMIT_CHECKOUT` — where the incubator checkout lives | Unset, so it defaults to `~/.cache/ee-skills-incubator`. It must have no uncommitted changes; the script refuses rather than resetting work it finds |
+
+#### The drafted answers
+
+The tool asks four questions per skill and commits two files built from the
+answers. [`promotion/fixtures/`](promotion/fixtures/README.md) holds a drafted
+answer to each, one directory per skill — `triggers.yaml`, `prompt.txt`, and
+`rationale.txt` for Q4, which is typed into a question box and never rendered.
+
+**Nothing reads them**, and that is the point of writing them down: the tool
+resolves its fixtures from its own Q&A into temp files, so without a draft the
+answers are composed live, nine times, at the one moment there is no undo. A
+test derives the set from the plugin in both directions, so a tenth skill added
+without answers fails the build rather than being noticed with eight
+submissions already open.
+
+Two things the drafting found, both about `prompt.txt`. **The smoke test runs
+it for real** — `claude -p "$(cat prompt.txt)"` under
+`--permission-mode bypassPermissions`, ten-second deadline — but in a **fresh
+empty temp repository** holding only a shim of the skill under test, so nothing
+in a real repository is at risk, and with no `controls.yaml` there every gate
+stops at its own pre-flight, which is the most inert thing this family can be
+asked to do. The gate's only assertion is that the reply is not
+`Unknown command`. And **`register-adopt` gets no natural-language entries**: it
+is the one skill still carrying `disable-model-invocation: true`, and Q2 is
+skipped entirely for such a skill.
 
 #### The submitting shell
 

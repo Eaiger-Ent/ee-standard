@@ -1,0 +1,4 @@
+Deploys one linter, one type checker and one test command from a single pinned
+definition to the editor, pre-commit and CI at once, so the three loci cannot drift
+apart. The drift it prevents is the ordinary kind that nobody notices: an editor
+formatting with one tool while CI checks with another, each green on its own terms.

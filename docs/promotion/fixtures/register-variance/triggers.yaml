@@ -1,0 +1,10 @@
+should_activate:
+  - "/register-variance"
+  - "/register-variance --against HEAD~1"
+  - "/register-variance --against origin/main --repo ."
+  - "classify this variance"
+  - "which way did this config move"
+should_not_activate:
+  - "/register-adopt"
+  - "/gate-quality"
+  - "explain the difference between these two branches"

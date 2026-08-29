@@ -1333,7 +1333,14 @@ document that described it.
       rather than one. The consolidated entry is written out in
       [`05-promotion.md`](05-promotion.md) § The `promote-config.json` entry and
       derived from the plugin by `tests/test_promote_entry.py`, so what nine
-      branches have to agree about is one artefact rather than nine guesses
+      branches have to agree about is one artefact rather than nine guesses.
+      The other per-skill input is drafted too: `/skill-submit-new` asks four
+      questions per skill and Gate 3 is trigger fidelity, so
+      [`promotion/fixtures/`](promotion/fixtures/README.md) holds a drafted
+      answer to each, held to the tool's own validation by
+      `tests/test_submission_fixtures.py`. The tool still builds the files it
+      commits from its own Q&A — these turn nine live sessions into nine
+      readings, not into files anything reads
 - [ ] All the submissions raised: the family (one pull request per skill), the
       `governance` category, the `skill-update` widening, the `CONTRIBUTING.md`
       corrections, and what remains of the `lint-md` amendment from Phase 1.5
