@@ -1333,9 +1333,10 @@ def markdown_gate_wired_at_all_loci(
 
     # How the pinned artefact is reached, not merely which tool is named. A
     # lockfile is an authority only if the invocation resolves to what it pins,
-    # and `npx --no-install` falls through to PATH when the local install is
-    # missing — measured, with a global binary answering for the lockfile's
-    # (ADR 0020, § H6). A tool the register does not pin is invoked by name.
+    # and `npx --no-install` answers from its own cache when the local install is
+    # missing — a binary the lockfile does not own answering for one it does
+    # (ADR 0020, § H6; mechanism re-measured 2026-08-29, rev 3). A tool the
+    # register does not pin is invoked by name.
     pinned = register.tools.get(tool)
     invocation = pinned.invocation if pinned and pinned.invocation else tool
 

@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-18
-**Revision:** 2
+**Revision:** 3
 
 Ratified from [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § H6.
 
@@ -17,8 +17,9 @@ option which eliminates duplication rather than reconciling it. DOC-001's
 
 **Nothing enforced the second half of that sentence.** Every locus invoked the
 tool as `npx --no-install markdownlint-cli2`, and `--no-install` means *do not
-fetch*, not *resolve locally*. With `node_modules` absent, npx falls through to
-`PATH`. Measured in this container, in a repository with no local install:
+fetch*, not *resolve locally*. With `node_modules` absent, the invocation did
+not reach the lockfile's binary. Measured in this container on 2026-08-18, in a
+repository with no local install, on tool versions nobody recorded:
 
 ```text
 npx --no-install markdownlint-cli2 --version    exit 0   (a global answered)
@@ -26,11 +27,17 @@ npm exec --no -- markdownlint-cli2 --version    exit 0   (the same global)
 node_modules/.bin/markdownlint-cli2 --version   exit 127
 ```
 
-The global that answered was `markdownlint-cli2@0.23.2`, left on `PATH` by the
-`setup.sh` that predates `bd23bfb` — the same version the lockfile pins, by
-coincidence rather than by mechanism. A different one would have passed
-identically, and DOC-001 would have reported a rule set enforced by a binary
-nobody pinned.
+The version that answered was `markdownlint-cli2@0.23.2` — the same version the
+lockfile pins, by coincidence rather than by mechanism. A different one would
+have passed identically, and DOC-001 would have reported a rule set enforced by
+a binary nobody pinned.
+
+**Read that block as a dated observation, not as a mechanism.** It was written
+as *"npx falls through to `PATH`"*, and § Re-measured below shows that is not
+what npx does — the version that answered here almost certainly came from the
+npx cache rather than from `PATH`, and the distinction did not matter to the
+decision, which is why nobody drew it. **The decision is unchanged and better
+supported**: the invocation reached a binary the lockfile did not own.
 
 So `source: lockfile` was a claim about where the version comes from, verified by
 nothing about which artefact runs. `tool_versions_match_register` checks that
@@ -170,8 +177,9 @@ line `npx --no-install` failed to hold, and `uv run` holds it — so the criteri
 *deleting the artefact and watching the locus fail* is now demonstrated in a
 second ecosystem, by measurement rather than by analogy.
 
-**C is a residual, and it is a different condition.** `uv run` falls through to
-`PATH` when the tool is absent from the project altogether. `npx --no-install`
+**C is a residual, and it is a different condition.** `uv run` reached something
+other than the pin when the tool was absent from the project altogether — read
+at the time as `PATH` answering, which § Re-measured below finds it is not. `npx --no-install`
 fell through whenever the *install* was missing — a state any fresh clone is in.
 This one requires someone to remove the dependency and leave the invocation
 behind, which is a smaller and noisier hole, but it is the same shape and it is
@@ -227,11 +235,61 @@ to remove.
 - [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § H6 — the finding and
   its measurements.
 
+## Re-measured 2026-08-29 — the runners do not fall through, the bare name does
+
+Preparing an amendment to `lint-md` that would have argued its default
+`invocation` on this ADR's premise, the premise was re-measured before it was
+argued. **It does not hold at these versions**, and neither does the `uv run`
+half of § Applied to the quality gates:
+
+```text
+node v24.19.0   npm 11.17.0   uv 0.12.6
+no node_modules, no local venv, impostor first on PATH
+
+npx --no-install markdownlint-cli2 --version   exit 1   npx canceled — missing packages
+npm exec --no -- markdownlint-cli2 --version   exit 1   npx canceled — missing packages
+markdownlint-cli2 --version           (bare)   exit 0   v9.9.9-IMPOSTOR
+uv run ruff --version                          exit 0   ruff 0.16.4  (not the impostor)
+ruff --version                        (bare)   exit 0   9.9.9-IMPOSTOR
+```
+
+**The runners refuse; the bare name answers.** `npx --no-install` and
+`npm exec --no` do not consult `PATH` at all — they resolve against the registry
+and fail rather than run something else. `uv run` does not consult it either:
+with the tool absent from the project it produced a real `ruff`, not the
+impostor first on `PATH`, which is case C of § Applied reading differently at
+uv 0.12.6 than it did at the version measured then. What falls through to `PATH`
+is a **bare command name**, which is ordinary shell resolution and was never in
+doubt.
+
+**The decision does not move, and this is the third time it has been checked.**
+A locus must invoke a pinned tool by the path its lockfile owns, because the
+alternatives reach a binary the lockfile does not own — `npx` from its own cache
+or the registry, a bare name from wherever `PATH` points. Which wrong binary is
+reached turns out to depend on the tool and its version; *that a wrong binary is
+reached* has held every time it has been looked at.
+
+**What was actually wrong was the shape of the claim.** *"npx falls through to
+`PATH`"* is a statement about a mechanism, made from one observation, on tool
+versions nobody wrote down, and repeated afterwards in four register comments,
+the checker, the adopter guide and this ADR — none of which could be checked
+against anything. The correction is not only the words: a measurement is
+recorded with the versions it was taken on and dated, so the next person can
+tell a stale reading from a wrong one. This repository had already learned that
+about someone else's documentation (`docs/15-phase-6-review.md` § The transport
+changed) and had not applied it to its own.
+
+**Not held by a test.** A test asserting how `npx` resolves would pin another
+project's behaviour on one machine's npm, and would fail as a *correct* npm
+release changed it — reporting a defect here for a change somewhere else. The
+guard is the recorded version and date above.
+
 ## Revision History
 
 | Rev | Date | What changed | Ratified by |
 | --- | --- | --- | --- |
 | 1 | 2026-08-18 | Original decision: invoke a `lockfile`-sourced tool by the path its package manager owns, recorded as `tools.<tool>.invocation`. | Nathan Carney |
-| 2 | 2026-08-20 | § Applied to the quality gates — register contract 12, measured. The rule extended from DOC-001 to the quality gates, with the fall-through to `PATH` measured rather than asserted. | Nathan Carney |
+| 2 | 2026-08-20 | § Applied to the quality gates — register contract 12, measured. The rule extended from DOC-001 to the quality gates, with the invocation's resolution measured rather than asserted. | Nathan Carney |
+| 3 | 2026-08-29 | § Re-measured — the runners do not consult `PATH`; the bare name does. Corrects the mechanism stated in § Background and in § Applied case C, on recorded tool versions. The decision is unchanged and better supported. | Nathan Carney |
 
 Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.

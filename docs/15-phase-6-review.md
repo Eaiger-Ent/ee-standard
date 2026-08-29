@@ -496,3 +496,74 @@ argument for naming what is new rather than counting it among what was agreed.
 Nothing else changes. `08-adopting.md` § 3 already describes the private
 marketplace as a fact rather than a temporary state, and § 0.0 already sends an
 adopter to the public one.
+
+## The seventh slice — the runners do not fall through, the bare name does
+
+Landed 2026-08-29. It closes no criterion. It pays the debt the fifth slice
+recorded and deliberately left open.
+
+### What was wrong
+
+[ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) § Background said
+*"With `node_modules` absent, npx falls through to `PATH`"*, and § Applied case
+C said `uv run` does the same when a tool is absent from the project. Both are
+statements about a **mechanism**, each made from one observation, on tool
+versions nobody recorded. Re-measured on 2026-08-29 at `node v24.19.0`,
+`npm 11.17.0`, `uv 0.12.6`, with an impostor first on `PATH`:
+
+```text
+npx --no-install markdownlint-cli2 --version   exit 1   npx canceled — missing packages
+npm exec --no -- markdownlint-cli2 --version   exit 1   npx canceled — missing packages
+markdownlint-cli2 --version           (bare)   exit 0   v9.9.9-IMPOSTOR
+uv run ruff --version                          exit 0   ruff 0.16.4  (not the impostor)
+ruff --version                        (bare)   exit 0   9.9.9-IMPOSTOR
+```
+
+**The runners refuse; the bare name answers.** Neither npx spelling consults
+`PATH` — they resolve against their own cache or the registry and fail rather
+than run something else. `uv run` does not consult it either: with the tool
+absent from the project it produced a real `ruff`, not the impostor. What falls
+through to `PATH` is a bare command name, which is ordinary shell resolution and
+was never in doubt.
+
+### What did not change
+
+**The decision.** A locus must invoke a pinned tool by the path its lockfile
+owns, because every alternative reaches a binary the lockfile does not own — npx
+from its cache or the registry, a bare name from wherever `PATH` points. *Which*
+wrong binary is reached depends on the tool and its version; *that* a wrong one
+is reached has held on all three occasions anyone has looked. ADR 0020 is
+amended in place at **revision 3** rather than superseded, which is exactly the
+case [ADR 0026](adr/0026-an-adr-stands-on-its-own.md) permits: the decision is
+unchanged and the record had become factually false.
+
+### Where it was repeated
+
+The claim had been copied into four `controls.yaml` comments, the checker,
+`.claude/skill-config.yaml` and `docs/08-adopting.md` § 3 — the last of which
+told an adopter the `PATH` story outright, in a guide this repository publishes.
+All are corrected. No control's `rung`, `verify`, `variance` or `applies_to`
+moved and no field was added, so **the contract stays at 35**.
+
+Two are deliberately untouched. `docs/09-phase-1.5-review.md` § H6 is a dated
+record of what a review found, and dated records are not rewritten — the same
+rule that left `standard-check` inside `docs/adr/`. And **CLAUDE.md was checked
+and is correct**: it says a bare invocation reaches `npx`, *"which downloads a
+version rather than using the one `package-lock.json` pins"*. That is registry
+resolution, which is what the new measurement shows, and it happens to be the
+one restatement that described the behaviour rather than the mechanism.
+
+### The lesson, which is not about npx
+
+This repository has spent Phase 6 learning that a measurement needs a date, and
+learned it twice from someone else's repository — the transport that changed
+under a re-verification, and the `CONTRIBUTING.md` line that had been right all
+along. This is the same failure in its own record: an observation written up as
+a property, in the present tense, with no versions beside it, then repeated
+seven times where nothing could check any copy. **Every measurement in the new
+section carries the tool versions it was taken on.**
+
+**It is not held by a test, on purpose.** A test asserting how `npx` resolves
+would pin another project's behaviour to one machine's npm, and would fail as a
+*correct* npm release changed it — reporting a defect here for a change
+elsewhere. The guard is the recorded version and date.
