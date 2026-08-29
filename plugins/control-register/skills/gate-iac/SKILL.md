@@ -161,7 +161,7 @@ repository.
 
 IAC-001's blocks name two analysers and the register may pin neither. An absent
 analyser is `UNCLASSIFIED — cannot verify`, not a pass
-([ADR 0016](../../../../docs/adr/0016-exit-codes-for-unverifiable-controls.md)),
+(ADR 0016),
 and that is the honest verdict for a control whose tool is not installed.
 
 - **`PINNED_STATE` shows a `tools:` entry for each analyser:** install each at

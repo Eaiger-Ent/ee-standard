@@ -35,14 +35,14 @@ control whose arguments a skill chooses is a control nobody can review.
 **`UNCLASSIFIED`, not `PASS`.** IAC-001 names two analysers and this standard's
 register pins neither, because this repository has no `*.tf` to analyse. An
 absent analyser is *cannot verify*
-([ADR 0016](../../../../docs/adr/0016-exit-codes-for-unverifiable-controls.md)),
+(ADR 0016),
 which is the honest verdict — and the skill will not make it green by installing
 an unpinned tool. That would leave the version unrecorded, which is exactly the
 condition `tool_versions_match_register` exists to fail.
 
 What closes it is a `tools.checkov` and `tools.tflint` entry in **your**
 register, naming the loci you install them at — your register records your own
-files ([`08-adopting.md`](../../../../docs/08-adopting.md) § 3.5).
+files (`08-adopting.md` § 3.5).
 
 ## Exit `1` has two causes and they are not the same
 
@@ -61,7 +61,7 @@ analyser does. Not a predecessor — a different check.
 **A second analyser**, such as `tfsec` or `terrascan`. Having one is not a
 violation, but two analysers means two suppression files, and only one of them
 is a place this standard checks
-([ADR 0019](../../../../docs/adr/0019-exemptions-cannot-hide-tracked-files.md)).
+(ADR 0019).
 The skill shows what each is configured to do and asks.
 
 **A repository with no `*.tf`.** The predicate is evaluated against files and
@@ -75,4 +75,4 @@ not add `disable-model-invocation: true` here. A dispatched skill carrying that
 flag cannot be reached at all, which is preflight P9 and is what stopped the
 front door at Step 0 in Phase 4. The reasoning, and what guards the platform
 mutations instead, is
-[ADR 0035](../../../../docs/adr/0035-a-dispatched-skill-is-reachable.md).
+ADR 0035.

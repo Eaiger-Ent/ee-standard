@@ -306,3 +306,71 @@ judgement and a reviewer's, which is the same boundary
 and not the accuracy of its summaries.
 
 Nothing was submitted.
+
+## The fourth slice — a link that resolves here and nowhere else
+
+Landed 2026-08-29, in the middle of assembling submission 1, and it is the
+reason that submission paused rather than shipped.
+
+### What was found
+
+`ee-skills-incubator` runs `scripts/check-path-hygiene.sh` over everything under
+`skills/`, and it forbids `../` outright. The first assembly of the submission
+bundle failed it — **twenty-three links across eleven files in nine of the nine
+skills**, every one of the form
+`[ADR 0035](../../../../docs/adr/0035-a-dispatched-skill-is-reachable.md)`.
+
+They resolve in this repository and nowhere else. A plugin is copied into its
+own install cache; `docs/` is not shipped and never will be. Every one of those
+links dangles the moment anybody installs the plugin.
+
+**[ADR 0036](adr/0036-shared-skill-prose-has-one-home.md) had already made this
+exact argument**, and made it well: its two shared reference files cite it *in
+prose rather than by link*, because "a relative link out of the plugin resolves
+here and dangles in every installation". The rule was stated, applied to the two
+files the ADR was about, and never applied to the skills — where it mattered
+more, because a skill is what an adopter reads.
+
+Nothing here caught it. `tests/test_plugin.py` checks that no value the register
+pins appears under `plugins/`; nothing checked where a link points. It was found
+by a gate in somebody else's repository, at the one moment there is no undo,
+which is the worst available place to learn it and the reason the rule is now
+held here.
+
+### The fix that was tried first, and why it was wrong
+
+The obvious replacement is an `https` citation of this public repository — the
+decision register contract 30 already took for `rationale_adr`, for the same
+reason: a register fetched into a repository that did not author it cannot
+resolve a path either.
+
+It was applied, and `tests/test_register_install.py` failed:
+`test_the_skill_writes_no_address_of_its_own` forbids the value of
+`tools.register-check.install.repository` from appearing anywhere in a skill's
+files, because a skill must read that address from the register at run time or
+not at all. The URL contains it.
+
+That test is right and the citation is not worth an exception, so the links
+became **prose** — `ADR 0035`, no link — which is what ADR 0036's own files do.
+The cost is honest: a reader of an installed skill sees the reference and cannot
+click it. The alternative was a link that looked clickable and went nowhere.
+
+### What holds it
+
+`tests/test_plugin_links.py`, in both directions. No markdown under
+`plugins/` may link out of the plugin; and every `ADR NNNN` cited in that
+markdown must name an ADR this repository has, `docs/adr/archive/` included,
+because an archived ADR is still a decision that was taken. A citation naming a
+decision that does not exist is the mirror failure — a reference the reader can
+neither follow nor verify.
+
+### What it deliberately left open
+
+**The rule is checked for the plugin, not for the repository.** `docs/` links to
+`docs/` freely and should: those files ship together and resolve together. The
+boundary is the plugin, because the plugin is the thing that gets copied.
+
+**Nothing was submitted in this slice.** Submission 1's bundle was assembled,
+passed preflight P1–P11 on all nine skills, passed the incubator's
+markdownlint, promote-config registration and skill-invocation-conflict checks,
+and failed path hygiene. It is re-assembled from this commit.

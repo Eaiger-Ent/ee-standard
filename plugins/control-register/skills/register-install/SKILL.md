@@ -29,7 +29,7 @@ update proposals and frozen installs; the checker being present is a
 precondition of all three being *checkable*, which is a different thing. So
 nothing here writes an `ee-control:` stamp — a stamp names a control, and there
 is no control to name. That is the reason, and it is not the same as forgetting
-([ADR 0032](../../../../docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md)).
+(ADR 0032).
 
 **Do not use when:**
 
@@ -128,7 +128,7 @@ Then read two commands out of that ecosystem:
 spelling for a dependency on a git ref in this register, and inventing one is
 worse than not having one: the wrong grammar fails at install time in the
 adopter's repository rather than here. Today only `python` declares one, and
-[ADR 0032](../../../../docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md)
+ADR 0032
 § The non-Python adopter is not solved says that is known and not an oversight.
 
 ### Compose the requirement
@@ -225,7 +225,7 @@ cd "$REPO" && <the ecosystem's runner> register-check --version
 
 Through the package manager — `uv run register-check` for uv — and never a bare
 `register-check`, which resolves from `PATH` and would report success against
-some other copy entirely ([ADR 0020](../../../../docs/adr/0020-a-locus-reaches-the-pinned-artefact.md)).
+some other copy entirely (ADR 0020).
 
 Then confirm the lockfile carries it:
 

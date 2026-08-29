@@ -43,7 +43,7 @@ So the pre-commit hook runs `register-check run --control SUP-003`: the same
 pinned binary, the same assert, one implementation. It is reached through the
 register's `tools.register-check.invocation` rather than by name, because a bare
 name resolves from `PATH` and for this tool what answered would be auditing the
-repository ([ADR 0020](../../../../docs/adr/0020-a-locus-reaches-the-pinned-artefact.md)).
+repository (ADR 0020).
 
 Running the checker is not the same as auditing with it. `register-check
 schema`, `meta`, `assert` and `explain` reach no control, and the verify step
@@ -69,7 +69,7 @@ so this gate cannot write an install step its own verify step would refuse.
 the repository, and a `renovate.json` is inert until the Renovate app is
 installed and its onboarding pull request is left open rather than closed. Both
 are platform acts a human with admin takes
-([`08-adopting.md`](../../../../docs/08-adopting.md) § 1.1). The skill says
+(`08-adopting.md` § 1.1). The skill says
 which one the repository now needs.
 
 **Write a lockfile.** A repository in an ecosystem with no tracked lockfile
@@ -87,4 +87,4 @@ not add `disable-model-invocation: true` here. A dispatched skill carrying that
 flag cannot be reached at all, which is preflight P9 and is what stopped the
 front door at Step 0 in Phase 4. The reasoning, and what guards the platform
 mutations instead, is
-[ADR 0035](../../../../docs/adr/0035-a-dispatched-skill-is-reachable.md).
+ADR 0035.
