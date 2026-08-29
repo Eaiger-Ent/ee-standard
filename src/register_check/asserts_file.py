@@ -594,8 +594,20 @@ def tool_versions_match_register(
             # a pass: drifting setup.sh to 9.99.9 changed nothing. Renovate's
             # own dashboard found it, by listing five managed sites where the
             # register implies six.
+            # An optional quote after the separator, because a pin is still a
+            # pin when it is quoted. Without it `uv_version="0.12.6"` reported
+            # *no pin found* — a correctly pinned, shellcheck-clean line read as
+            # an unpinned one — and the workaround was an instruction to
+            # substitute unquoted, which is this checker's brittleness written
+            # up as a rule for every repository to follow. Measured on the
+            # published `control-register` template, whose placeholders an
+            # upstream `shellcheck-clean` commit quoted (2026-08-29).
+            #
+            # It also reaches a JSON site, `"uv": "0.12.6"`, which the unquoted
+            # form could not read at all. No `pinned_at` here is JSON today, so
+            # that is a hole closed rather than a defect found.
             pattern = re.compile(
-                rf"{re.escape(tool.name)}[^\n]*?[@=:\s]v?(\d+\.\d+\.\d+)",
+                rf"{re.escape(tool.name)}[^\n]*?[@=:\s][\"']?v?(\d+\.\d+\.\d+)",
                 re.IGNORECASE,
             )
             found = list(pattern.finditer(text))

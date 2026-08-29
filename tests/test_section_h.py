@@ -22,6 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 
 from conftest import REPO_ROOT, a_register, make_repo, register_with, write_register
@@ -112,6 +113,49 @@ def test_h2_the_loci_come_from_the_register_not_the_checker(tmp_path: Path) -> N
     repo = make_repo(tmp_path / "repo", {"tools/versions.env": "GITLEAKS_VERSION=8.30.1\n"})
     result = tool_versions_match_register(repo, register, {})
     assert result.passed, result.message
+
+
+@pytest.mark.parametrize(
+    ("spelling", "label"),
+    [
+        ("GITLEAKS_VERSION=8.30.1", "bare"),
+        ('GITLEAKS_VERSION="8.30.1"', "double-quoted"),
+        ("GITLEAKS_VERSION='8.30.1'", "single-quoted"),
+        ('  "gitleaks": "8.30.1",', "json"),
+        ("gitleaks v8.30.1", "prose with a v"),
+    ],
+)
+def test_a_quoted_pin_is_still_a_pin(tmp_path: Path, spelling: str, label: str) -> None:
+    """A correctly pinned line read as an unpinned one, because of a quote.
+
+    `uv_version="0.12.6"` reported *no pin found*: the pattern looked for a
+    separator immediately followed by digits, and the quote landed where the
+    separator was expected. Found on the published `control-register` template,
+    whose placeholders an upstream `shellcheck-clean` commit quoted — a change
+    that is correct shell style and broke nothing except this assert.
+
+    The workaround in place until then was an instruction to substitute
+    unquoted, which is a checker's brittleness written up as a rule for every
+    repository to follow. `tests/test_devcontainer_template.py` had already
+    stopped believing it: it asserts `UV_VERSION="{{UV_VERSION}}"` passes.
+
+    The JSON row is a hole closed rather than a defect found — no `pinned_at`
+    in this register names a `.json` file today, and one that did would have
+    been reported as holding no pin at all.
+    """
+    register = register_with(tmp_path, _only_gitleaks(["ci/install.sh"]))
+    repo = make_repo(tmp_path / "repo", {"ci/install.sh": f"{spelling}\n"})
+    result = tool_versions_match_register(repo, register, {})
+    assert result.passed, f"{label}: {result.message}"
+
+
+def test_a_quoted_pin_that_drifted_is_still_caught(tmp_path: Path) -> None:
+    """Tolerating the quote must not tolerate the drift behind it."""
+    register = register_with(tmp_path, _only_gitleaks(["ci/install.sh"]))
+    repo = make_repo(tmp_path / "repo", {"ci/install.sh": 'GITLEAKS_VERSION="9.9.9"\n'})
+    result = tool_versions_match_register(repo, register, {})
+    assert not result.passed
+    assert "9.9.9" in result.message
 
 
 # --- H3 — the ecosystem map, and SUP-001's reach ----------------------------

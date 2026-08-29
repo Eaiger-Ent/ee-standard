@@ -637,3 +637,74 @@ repo re-adopts from the marketplace copy and still passes* — installing a plug
 is not the same as a repository that did not author it reaching conformance
 through the published route. It needs the macOS host with Docker that Phase 4
 used. Everything upstream of it is now done.
+
+## The ninth slice — a quoted pin is a pin
+
+Landed 2026-08-29. It closes no criterion. It removes a trap the published copy
+of this repository's own template had already fallen into.
+
+### What was found
+
+Installing `control-register` from **both** marketplaces and diffing them showed
+the two published copies are not the same plugin. The incubator pushed four
+remediation commits onto the submission branch before merging it, and one —
+`b1d2220c fix(control-register): make the devcontainer templates
+shellcheck-clean` — quoted the placeholders:
+
+```diff
+- uv_sha={{UV_SHA256_AARCH64}}
++ uv_sha="{{UV_SHA256_AARCH64}}"
+```
+
+That is correct shell style. It broke `tool_versions_match_register`, which
+matched `[@=:\s]v?(\d+\.\d+\.\d+)` — a separator followed immediately by
+digits — so the quote landed where the separator was expected:
+
+```text
+uv_version=0.12.6      -> MATCH 0.12.6
+uv_version="0.12.6"    -> NO MATCH — "no uv version pin found"
+```
+
+A correctly pinned, shellcheck-clean line read as an unpinned one. An adopter
+taking the published template would have failed a control over a version they
+had pinned properly.
+
+### The instruction was the defect
+
+CLAUDE.md carried the workaround as a rule — *"Substitute **unquoted**: … a
+quote lands where it looks for the separator and the pin is reported missing"* —
+which is this checker's brittleness written up as a requirement for every
+repository that adopts the standard. It is the shape
+[ADR 0018](adr/0018-register-checker-boundary.md) exists to prevent, arriving
+from the other direction: not a rule wrongly held in the checker, but a checker
+limitation wrongly exported as a rule.
+
+**Two statements here already disagreed, and nobody noticed.**
+`tests/test_devcontainer_template.py` asserts `UV_VERSION="{{UV_VERSION}}"`
+**passes** — it had stopped believing the instruction, in a test, while the
+instruction stood in CLAUDE.md and the assert enforced the opposite. The
+disagreement was invisible because no file was ever both quoted and checked.
+
+### The fix, and the hole it also closed
+
+The pattern takes an optional quote after the separator. Five spellings are
+covered by `tests/test_section_h.py::test_a_quoted_pin_is_still_a_pin`, and a
+sixth test holds the thing that must not follow: tolerating the quote must not
+tolerate drift behind it. Confirmed by mutation — reverting the pattern fails
+four of the six.
+
+One row is a **hole closed rather than a defect found**: `"uv": "0.12.6"`, a
+JSON pin, which the old pattern could not read at all and would have reported as
+holding no pin. No `pinned_at` in this register names a `.json` file today, so
+nothing was failing; a repository that pinned in JSON would have been told its
+pin was missing.
+
+### What it deliberately left open
+
+**Nothing was raised upstream.** The first reading of this was *"they broke our
+template"*, and it was wrong: their change is correct, ours was the fragile
+half, and an amendment asking them to un-quote a shell script would have been
+asking another team to work around a defect in this checker. What remains
+outstanding is not a fix but a **divergence** — nine SKILL.md files, ten new
+files, and the two template edits — and that is the next slice's job rather than
+this one's.
