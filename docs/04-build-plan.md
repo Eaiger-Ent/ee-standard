@@ -1326,7 +1326,7 @@ document that described it.
       `tests/test_skill_links.py` derives the link set from the plugin in both
       directions, so a ninth skill added without a link fails the build instead
       of being found missing while eight submissions are being written
-- [ ] Every skill in the family is submitted, and every submission carries the
+- [x] Every skill in the family is submitted, and every submission carries the
       **same** `promote-config.json` entry. `/skill-submit-new` is per skill and
       `apply-promote-entry.py` writes `{"skills": ["<name>"]}` on each branch, so
       the default outcome of nine pull requests is nine single-skill plugins
@@ -1334,6 +1334,12 @@ document that described it.
       [`05-promotion.md`](05-promotion.md) § The `promote-config.json` entry and
       derived from the plugin by `tests/test_promote_entry.py`, so what nine
       branches have to agree about is one artefact rather than nine guesses.
+      **Closed 2026-08-29 as [incubator#657](https://github.com/EqualExperts/ee-skills-incubator/pull/657),
+      and as one pull request rather than nine.** Nine branches each adding the
+      same key is eight textual conflicts on an identical addition, and an entry
+      naming eight skills absent until the last merges;
+      `check-promote-registration.py` takes a list and reported all nine
+      registered. The deviation is in the PR, which offers to split them.
       The other per-skill input is drafted too: `/skill-submit-new` asks four
       questions per skill and Gate 3 is trigger fidelity, so
       [`promotion/fixtures/`](promotion/fixtures/README.md) holds a drafted
@@ -1341,7 +1347,7 @@ document that described it.
       `tests/test_submission_fixtures.py`. The tool still builds the files it
       commits from its own Q&A — these turn nine live sessions into nine
       readings, not into files anything reads
-- [ ] All the submissions raised: the family (one pull request per skill), the
+- [x] All the submissions raised: the family (one pull request per skill), the
       `governance` category, the `skill-update` widening, the `CONTRIBUTING.md`
       corrections, and what remains of the `lint-md` amendment from Phase 1.5
       § F. `lint-md@1.0.7` shipped most of #530 on 2026-08-20 and **#530 is
@@ -1356,7 +1362,17 @@ document that described it.
       assumed, and the two filed as
       [#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627) are
       closed too — shipped in `lint-md@1.0.9` on 2026-08-28 and taken here the
-      same day — all of it enumerated in § Accepting an upstream skill release
+      same day — all of it enumerated in § Accepting an upstream skill release.
+      **Closed 2026-08-29**, and three of the five moved on the way:
+      [`05-promotion.md`](05-promotion.md) § What was raised has the table. The
+      `skill-update` widening was **withdrawn because it shipped** — the skill
+      already carries Step 2.7 and the rule *"Never emit Already done over an
+      owed deployment"*. Submissions 5 and 6 are one PR because
+      `/skill-submit-amend` builds one branch per skill per day. And the
+      `lint-md` amendment went out with **two rows, not three**: the
+      `invocation` row's premise, that `npx --no-install` falls through to
+      `PATH`, does not reproduce on npm 11.17.0, so it was withdrawn and the
+      measurement sent as information
 - [ ] `control-register` installable from the marketplace **as one plugin**, with
       every skill in it — not as one plugin per skill
 - [ ] The consumer repo re-adopts from the *marketplace* copy and still passes —

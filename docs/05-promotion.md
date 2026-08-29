@@ -428,8 +428,8 @@ plugins are separate again and should not be bundled with any of it:
 
 | Submission | Target | Why separate |
 | --- | --- | --- |
-| 1. `control-register` | `/skill-submit-new`, once per skill | The new plugin, plus the `governance` category. Every pull request must carry the same `promote-config.json` entry — § The `promote-config.json` entry below — or the skills are promoted as separate single-skill plugins, which is what the tool's generated entry says by default. Nine of them, and `apply-promote-entry.py` writes the generated one on each branch, so the entry is corrected on the branch rather than asked for in prose. |
-| 2. `skill-update` widening | `/skill-submit-amend` against `ee-skills-manage` | Changes an existing, widely installed skill. Reviewers assessing a new plugin and reviewers assessing a behaviour change to a shipped one are asking different questions. |
+| 1. `control-register` | **Raised 2026-08-29 as [incubator#657](https://github.com/EqualExperts/ee-skills-incubator/pull/657) — one pull request, not nine** | The new plugin, plus the `governance` category. Every pull request must carry the same `promote-config.json` entry — § The `promote-config.json` entry below — or the skills are promoted as separate single-skill plugins, which is what the tool's generated entry says by default. Nine of them, and `apply-promote-entry.py` writes the generated one on each branch, so the entry is corrected on the branch rather than asked for in prose. |
+| 2. `skill-update` widening | **Withdrawn 2026-08-29 — it shipped.** | Measured against the installed skill before writing it: `skill-update` already has Step 2.7 *"Is a deployment owed?"*, a `DEPLOYMENT_STATE`, a *Deployment owed* output block, and the rule **"Never emit Already done over an owed deployment"** — stating this submission's own argument almost verbatim. Nothing to raise. Kept in the table because a submission that vanishes is indistinguishable from one nobody noticed. |
 | 3. `CONTRIBUTING.md` corrections | Direct PR (Lane B) | Documentation fix, explicitly permitted as a direct PR. Useful to land first — it is small, independent, and establishes contact before the large submission arrives. |
 | 4. `lint-md` amendment | `/skill-submit-amend` against `ee-skills-incubator` | Raised 2026-08-18 as [issue #530](https://github.com/EqualExperts/ee-skills-incubator/issues/530), which is **closed**, and mostly answered across `lint-md@1.0.7` and `1.0.8`. **Measured against the installed 1.0.8 on 2026-08-28, one of its four rows is closed and two changed shape, and re-measured against 1.0.9 the same evening with all three still standing** — the defaults in `local-config.md` are byte-for-byte the ones 1.0.8 shipped, and `SKILL.md` still mentions no `ee-control` header anywhere. Closed: the guard that skipped Step 2b on a `grep -q "node_modules"` matching this repository's own *comment* now parses the YAML and compares the `ignores` list. Changed shape: the two disputed **values** are inputs rather than arguments, because 1.0.8 ships `local-config.md`, which is [ADR 0042](adr/0042-a-deploying-skill-reads-local-configuration.md) implemented upstream — but a key that can be set is not a default that is right, and what this amendment argues is the defaults. So three rows stand: `invocation` still defaults to `npx --no-install` ([ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md)) and `ignores` still defaults to a list containing `.claude/**` ([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md)), which local configuration fixes here and nowhere else; and the overwrite prompt still does not recognise an `ee-control:` header, so accepting it drops a provenance stamp. Two more are already filed as [#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627) and belong to it: `local-config.md` says `invocation` reaches the PostToolUse hook and Step 3a is a plain `cp` of a script with the value hardcoded, and that script's shebang resolves from `PATH`. This is now a **new** amendment against a closed issue rather than a follow-up on an open one, which is what makes carrying ADR 0019's and ADR 0020's measurements — rather than their conclusions — the whole of its case. |
 | 5. `skill-submit-new` layout amendment | `/skill-submit-amend` against `ee-skills-incubator` | Teaches the tool to resolve `plugins/<plugin>/skills/<skill>/`, which `preflight-check.sh` in the same marketplace already does — one of the two tools has learned about plugin layouts and the other has not. Re-read at `0ff6b28`: the resolution rule is unchanged by the transport change, so [ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md)'s symlinks still carry submissions 1 to 4 and this is still the general fix for the next repository rather than the one this one waits on. Deliberately last, so it is never on the critical path. |
@@ -519,8 +519,41 @@ little when the large submission is still weeks away. Phase 4 closing removed
 that objection: submission 1 is now next in the order rather than next quarter,
 so the small independent PR is doing the job it was put first to do.
 
+## What was raised, and when
+
+All of it went out on 2026-08-29, in the order this document sets.
+
+| Submission | Where it went |
+| --- | --- |
+| 3. `CONTRIBUTING.md` corrections | [ee-skills#550](https://github.com/EqualExperts/ee-skills/pull/550) — Lane B direct PR |
+| 5 + 6. `skill-submit-new` | [incubator#655](https://github.com/EqualExperts/ee-skills-incubator/pull/655) — **one PR, forced**: `/skill-submit-amend` builds `amend/<skill>--<author>-<date>`, so two amendments to one skill on one day is one branch |
+| 4. `lint-md` | [incubator#656](https://github.com/EqualExperts/ee-skills-incubator/pull/656) — **two rows, not three**; see below |
+| 7. `lint-md` reachability | [ee-skills#551](https://github.com/EqualExperts/ee-skills/issues/551) |
+| 1. `control-register` | [incubator#657](https://github.com/EqualExperts/ee-skills-incubator/pull/657) — **one PR, not nine** |
+| 2. `skill-update` widening | Not raised. It shipped upstream; see its row above |
+
+**Submission 1 is one pull request because nine would have been worse.** Nine
+branches each adding the same `"control-register"` key to `promote-config.json`
+is eight textual conflicts on an identical addition, and an entry naming eight
+skills that do not exist until the last one merges. `check-promote-registration.py`
+takes a *list* of changed skill directories and reported all nine registered.
+The PR says so and offers to split them.
+
+**Submission 4 lost a row to measurement.** It was going to argue that
+`invocation` should default to `node_modules/.bin/markdownlint-cli2`, on the
+premise — stated in `local-config.md` itself, and in
+[ADR 0020](adr/0020-a-locus-reaches-the-pinned-artefact.md) here — that
+`npx --no-install` falls through to `PATH`. **That does not reproduce on npm
+11.17.0.** With a real `markdownlint-cli2` first on `PATH`, no `package.json`
+and no `node_modules`, `npx --no-install markdownlint-cli2 --version` exits `1`
+against the registry rather than running it. The row was withdrawn rather than
+argued, and the measurement sent as information instead.
+[`15-phase-6-review.md`](15-phase-6-review.md) § The fifth slice records what
+that means for ADR 0020, whose decision survives and whose stated mechanism does
+not.
+
 Every one of these is an act with a person on the other end of it, in another
-organisation's repository, and none is raised without being asked for.
+organisation's repository, and none was raised without being asked for.
 
 **And every one of them is now a branch pushed to that repository rather than an
 issue filed against it**, which raises what "asked for" has to cover: a
