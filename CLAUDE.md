@@ -818,10 +818,17 @@ verification on the tool it had not installed yet. **A placeholder is not a pin*
 template pins no tool version by hand"* criterion stays closed on its own terms,
 and the grep in `tests/test_devcontainer_template.py` is stricter after the
 change than before: a `FOO_VERSION=` assignment still fails and one whose value
-is a placeholder passes, with both directions asserted. Substitute **unquoted**:
-`tool_versions_match_register` matches a tool name and a version across `@`, `=`,
-`:` or whitespace, so a quote lands where it looks for the separator and the pin
-is reported missing.
+is a placeholder passes, with both directions asserted. **Quoting the substituted value is fine**,
+and was not always: `tool_versions_match_register` matched a tool name and a
+version across `@`, `=`, `:` or whitespace only, so a quote landed where it
+looked for the separator and the pin was reported missing. *Substitute unquoted*
+was the instruction that came of it — this checker's brittleness written up as a
+rule for every repository to follow, which the template test had already stopped
+believing, since it asserts `UV_VERSION="{{UV_VERSION}}"` passes. The assert
+takes an optional quote from 2026-08-29, and reaches a JSON pin it could never
+read. Found when an upstream `shellcheck-clean` commit quoted the placeholders
+in the **published** copy of this template, which nothing here would have
+noticed.
 
 **From register contract 30 a control's `rationale_adr` may be an `http(s)`
 citation as well as a path.** It resolves against the register's own directory,
