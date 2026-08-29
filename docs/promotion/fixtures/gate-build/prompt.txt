@@ -1,0 +1,1 @@
+/gate-build --repo . --register ./controls.yaml

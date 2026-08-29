@@ -221,3 +221,88 @@ rather than a code change.
 Nothing was submitted. Submissions 3, 6 and 7 are ready and independent;
 submission 1 still needs nine sets of trigger fixtures, which are the operator's
 answers to the tool's own questions and cannot be staged here.
+
+## The third slice — the answers are drafted before they are asked
+
+Landed 2026-08-29. It closes no criterion and it removes the largest remaining
+piece of preparation from the one criterion nobody can start.
+
+### What was found
+
+The first slice found that `/skill-submit-new` needs `tests/<skill>/triggers.yaml`
+and `tests/<skill>/prompt.txt` per skill, that Gate 3 is trigger fidelity, and
+that none of the nine existed. What it did not say is how those files come to
+exist: the tool asks four questions — slash invocations, natural-language
+invocations, prompts that must **not** activate, and a contribution rationale —
+validates each answer, and builds the files from them into temp files it commits
+onto the branch. **It never reads them from the submitting repository.**
+
+That is the whole argument for drafting them here. Submission 1 is nine pull
+requests; without drafts it is thirty-six answers composed live, in the session
+where the branch is pushed, at the one moment there is no undo. With drafts it
+is nine readings.
+
+### What was drafted
+
+`docs/promotion/fixtures/<skill>/` — `triggers.yaml`, `prompt.txt`, and
+`rationale.txt` for Q4. Plain text rather than Markdown for the last one,
+because it is typed into a question box and never rendered.
+
+The entries are derived from each skill rather than invented: `should_activate`
+opens with the bare slash command, then the argument variants each
+`argument-hint` declares, then the natural-language phrases the skill's own
+`description` already advertises under `Triggers:`. `should_not_activate` names
+a sibling in the family — the confusable that actually exists, since a family of
+six gates dispatched by one skill is the realistic way a wrong one fires — plus
+a slash command from outside it and a close but out-of-scope prose prompt.
+
+### Two things the drafting found
+
+**The smoke test runs `prompt.txt` for real.** `scripts/smoke-test.sh` executes
+`claude -p "$(cat prompt.txt)"` under `--permission-mode bypassPermissions` with
+a ten-second deadline. That is worth knowing for a family of skills that writes
+files and, in one case, mutates GitHub. It is safe, and the reason is
+structural rather than lucky: the run happens in a **fresh empty temp
+repository** containing only a shim of the skill under test, and because that
+repository has no `controls.yaml`, every gate stops at its own pre-flight. The
+gate's only assertion is that the reply is not `Unknown command`. The prompts
+were chosen with that in mind — the documented invocation, `--repo .` and
+`--register ./controls.yaml`, which is both the realistic example the tool asks
+for and the most inert thing these skills can be handed.
+
+**`register-adopt` advertises triggers it cannot answer to.** Q2 is skipped
+entirely for a skill carrying `disable-model-invocation: true`, and after
+[ADR 0035](adr/0035-a-dispatched-skill-is-reachable.md) `register-adopt` is the
+only one of the nine that still does — so its fixture is three slash entries and
+no prose, correctly. But its `description` says
+`Triggers: 'adopt the standard', 'deploy the control register', '/register-adopt'`,
+and the first two of those cannot fire, because the flag is exactly what stops
+the model invoking it. Nothing checks that a description's advertised triggers
+are reachable; preflight P4 checks the opposite direction. **Recorded rather
+than fixed**: the flag is deliberate (the entry point is a person's, ADR 0033
+revision 2), the description is what a reader sees, and which of the two should
+move is a decision, not a typo.
+
+### What holds it
+
+`tests/test_submission_fixtures.py`, deriving the set from the plugin in both
+directions the way `tests/test_skill_links.py` derives the symlinks — a skill
+with no answers, and answers for no skill, fail differently and neither is more
+likely. The per-file rules are **the tool's own**, read from
+`skill-submit-new-qa.md`: one slash entry at least, two must-not-activate
+entries including a slash command, a rationale of ten words, the bare command
+first. One rule is this repository's: `prompt.txt` must be an entry
+`triggers.yaml` already lists, because the tool derives it from the answers and
+a prompt appearing nowhere in the triggers is a draft that has drifted from
+itself. Mutation-checked in both directions.
+
+### What it deliberately left open
+
+**These are drafts, not fixtures.** Nothing in the submission path reads them,
+and a test cannot make them true — it can only keep them present, well-formed
+and in step with the skill list. Whether an entry is a *good* trigger is Gate 3's
+judgement and a reviewer's, which is the same boundary
+`tests/test_adr_revisions.py` draws when it holds the form of a revision history
+and not the accuracy of its summaries.
+
+Nothing was submitted.

@@ -1,0 +1,9 @@
+should_activate:
+  - "/register-install"
+  - "/register-install --repo . --register ./controls.yaml"
+  - "install the checker"
+  - "install register-check"
+should_not_activate:
+  - "/register-adopt"
+  - "/gate-supply-chain"
+  - "install the python dependencies for this project"

@@ -1,0 +1,10 @@
+should_activate:
+  - "/gate-quality"
+  - "/gate-quality --repo . --register ./controls.yaml"
+  - "deploy gate-quality"
+  - "wire the linter and type checker at every locus they declare"
+  - "deploy LNT-001, TYP-001 and TST-001"
+should_not_activate:
+  - "/gate-secrets"
+  - "/register-variance"
+  - "fix the failing type errors in this module"

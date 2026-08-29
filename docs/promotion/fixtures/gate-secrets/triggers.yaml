@@ -1,0 +1,10 @@
+should_activate:
+  - "/gate-secrets"
+  - "/gate-secrets --repo . --register ./controls.yaml"
+  - "deploy gate-secrets"
+  - "wire secret scanning"
+  - "wire the register's secret scanner at pre-commit and CI"
+should_not_activate:
+  - "/gate-supply-chain"
+  - "/register-adopt"
+  - "rotate the AWS keys in our secrets manager"

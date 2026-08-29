@@ -1,0 +1,4 @@
+Answers the question a diff of gated configuration cannot: whether a change tightened a
+control, loosened it, or did neither. It reports a mixed change as a loosening and says
+which keys it could not classify and why, so a review never mistakes 'no verdict' for
+'no problem'.

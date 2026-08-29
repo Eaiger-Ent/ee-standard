@@ -1,0 +1,5 @@
+One command takes a repository from nothing to a verified deployment: it reads the
+register, works out which controls apply from the repository's own files, shows a plan,
+confirms once, dispatches the gates in dependency order and verifies through the
+checker. Without it an adopter runs six gates by hand and has no way to tell which ones
+their repository even needed.

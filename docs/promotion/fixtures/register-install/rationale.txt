@@ -1,0 +1,4 @@
+Places the conformance checker into a repository as a dependency pinned to the tagged
+ref the register names, so every locus that runs it has something to run and runs the
+same version. It is separate from adoption because a pre-flight that verifies through an
+instrument it does not yet have verifies nothing.

@@ -1,0 +1,4 @@
+Records the default-branch ruleset the register requires as a tracked file, then applies
+it through the GitHub API only after an explicit confirmation for each change. It is the
+one gate that alters state outside the repository, which is exactly why the file and the
+confirmation exist rather than a silent API call.

@@ -1,0 +1,10 @@
+should_activate:
+  - "/gate-supply-chain"
+  - "/gate-supply-chain --repo . --register ./controls.yaml"
+  - "deploy gate-supply-chain"
+  - "pin CI actions"
+  - "wire frozen lockfile installs and dependency update proposals"
+should_not_activate:
+  - "/gate-build"
+  - "/register-install"
+  - "upgrade the dependencies in this project"

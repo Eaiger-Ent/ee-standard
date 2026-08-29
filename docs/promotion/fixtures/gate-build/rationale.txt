@@ -1,0 +1,4 @@
+Pins what a development container actually resolves to — a digest rather than a floating
+tag, a non-root user, and a lock file covering every declared feature — so two engineers
+on the same branch are running the same image. It pins what it finds and never chooses
+the image, which keeps the decision with the team and the enforcement with the gate.

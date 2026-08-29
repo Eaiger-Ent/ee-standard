@@ -1,0 +1,10 @@
+should_activate:
+  - "/gate-build"
+  - "/gate-build --repo . --register ./controls.yaml"
+  - "deploy gate-build"
+  - "pin the devcontainer"
+  - "deploy BLD-001 and DEV-001"
+should_not_activate:
+  - "/devcontainer-check"
+  - "/gate-supply-chain"
+  - "rebuild the dev container"

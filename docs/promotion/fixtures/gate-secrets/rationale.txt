@@ -1,0 +1,5 @@
+Wires the register's pinned secret scanner at every locus SEC-001 declares and stamps
+what it writes, so a repository's scanning is deployed and auditable rather than
+configured by hand and trusted. It also reports SEC-002 and SEC-003 without deploying
+them, which is how a team learns it is carrying a standing cloud key or an over-lived
+platform token before a reviewer does.
