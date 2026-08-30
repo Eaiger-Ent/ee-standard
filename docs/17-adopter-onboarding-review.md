@@ -38,7 +38,9 @@ makes some of them disappear:
 
 ## A — The adopter route names no prerequisite at all
 
-This is the largest gap and everything in § B, § C and § D is downstream of it.
+This is the largest **onboarding** gap and everything in § B, § C and § D is
+downstream of it. The largest **conformance** gap is § J, which is not about
+onboarding at all.
 
 [`08-adopting.md`](08-adopting.md) opens at § 0.0 with
 `claude plugin marketplace add`, and never states what must already be on the
@@ -228,6 +230,94 @@ Recorded because they cost a junior confidence rather than time.
   point at which the reader can stop and say they are done. § 5's checklist is
   the closest, and it is at the end of a 1,963-line document.
 
+## J — Renovate is mandatory in fact and optional in every document
+
+**This is the most severe finding here, and it is not an onboarding gap.** An
+adopter who follows every document correctly ends up with a uv pin that nothing
+will ever propose an upgrade for, and a green SUP-002 over it.
+
+Five facts, each verified rather than read:
+
+**1. The template guarantees a version literal in a shell script.** After the
+§ 2.0 substitution, the adopter's `.devcontainer/setup.sh` line 102 reads
+`uv_version="0.12.7"`. That is precisely the case § 1.1 names as the one
+Dependabot cannot see: *"Dependabot cannot see a version literal embedded in a
+shell script or a workflow step … It has no equivalent of a custom manager."*
+
+**2. Every document presents Renovate as conditional.** § 1.1 opens *"What
+satisfies it depends on what your repository pins"*, and § 5's checklist row 5
+reads *"Renovate installed, **if** any version is a literal or a toolchain
+file"*. The template makes that `if` unconditional for every adopter, and no
+document says so. `gate-supply-chain` is the same: *"A repository **may** run
+Dependabot for the ecosystems it understands and Renovate for what it cannot
+reach"*.
+
+**3. The shipped template carries no `# renovate:` annotation.** This
+repository's own `.devcontainer/setup.sh` carries two — line 82 for uv, line 129
+for gitleaks. `grep -c 'renovate:'` on the template's `setup.sh` returns `0`. So
+an adopter who installs the Renovate app still gets zero matched sites, and
+Renovate's Dependency Dashboard — which § 1.1 correctly identifies as *"the only
+external evidence the annotations do anything"* — will report nothing missing,
+because nothing is declared.
+
+**4. The only config the guide offers matches nothing by construction.** § 1.1
+gives one fragment:
+
+```json
+{ "enabledManagers": ["custom.regex"] }
+```
+
+There is no `customManagers` array in it, so a repository applying exactly that
+enables the custom-regex manager and defines no custom manager for it to run.
+The plugin ships no `renovate.json` template either — `find plugins -iname
+'*renovate*'` returns nothing. The one working example is this repository's own
+`renovate.json`, which no adopter is pointed at.
+
+**And copying that file verbatim would still not work.** The two pin sites are
+spelled differently, and the difference is load-bearing:
+
+| | Annotation | Pin |
+| --- | --- | --- |
+| This repository | `# renovate: datasource=pypi depName=uv` | `UV_VERSION=0.12.7` |
+| The shipped template | none | `uv_version="{{UV_VERSION}}"` |
+
+This repository's matcher for a pypi literal is
+`…depName=(?<depName>\S+)\s+[A-Z_]+=(?<currentValue>\d+\.\d+\.\d+)`. Run
+against the template's substituted output it fails three ways: no annotation,
+`[A-Z_]+` does not match a lowercase `uv_version`, and the quote sits where the
+first digit is expected. Adding the annotation alone is **not** enough —
+confirmed by running the expression against all three spellings.
+
+That asymmetry is a second copy that has already drifted. Two consumers read
+that pin site — `tool_versions_match_register` and Renovate's regex — and only
+the first was taught to tolerate a quote (2026-08-29, per the template's quoted
+placeholder). The second was not.
+
+**5. SUP-002 passes throughout.** `dependency_update_config_covers_all_ecosystems`
+resolves a Renovate config first, finds a custom-managers-only one does not cover
+ecosystems, falls through to `.github/dependabot.yml`, and compares
+`package-ecosystem` entries against the ecosystems present. It never asks whether
+a `source: literal` tool's `pinned_at` sites are covered by anything.
+`gate-supply-chain` writes `.github/dependabot.yml` and stamps it, and the
+control is green.
+
+SUP-004 does not catch it either: it checks that each pinned digest is the one
+the project published **for that release**, so a pin three versions stale has a
+perfectly valid digest.
+
+So the end state for a correct adopter is a repository where the tool *every
+verification in this standard runs on* is pinned at whatever version they adopted
+at, with nothing proposing a move and two supply-chain controls reporting PASS.
+That is theme **T-1** — a stated standard that nothing enforces — on the artefact
+this repository ships, and § 1.1's own closing line is the diagnosis: *"A bot's
+config file is not a bot. An annotation with no app installed … is a mechanism
+that exists on paper and not in fact."* The template has neither.
+
+This repository has already paid for this once. [ADR 0041](adr/0041-a-pinned-digest-is-checked-against-what-was-published.md)
+exists because Renovate's uv bump moved the version at all four sites and left
+all three digests behind while everything passed. That was the bot working and
+the check being wrong; this is the bot never running at all.
+
 ## The doc plan
 
 The deferred question was whether to write something new or restructure
@@ -250,8 +340,11 @@ two documents, one of them deriving from the other.
 3. **The steps**, each one command and one piece of evidence, linking into
    `08-adopting.md` for the reasoning rather than restating it. No passage
    explains a decision; every explanation is a link.
-4. **When you are done**, and what a `3` means versus a `0`.
-5. **When it goes wrong**, pointing at the three failures Phase 4 actually hit.
+4. **The bots**, as a step rather than a conditional aside — with the
+   annotation, a working `renovate.json`, and the Dependency Dashboard count to
+   check against. § J is why this cannot be a footnote.
+5. **When you are done**, and what a `3` means versus a `0`.
+6. **When it goes wrong**, pointing at the three failures Phase 4 actually hit.
 
 It must restate no rule, no version and no path that another file owns — a
 quickstart that copies is theme **T-2** with a friendlier tone. Where it needs a
@@ -268,8 +361,18 @@ onboarding:
 | Extend the placeholder test to execute the template README's commands, not only the guide's (§ E) | `tests/test_devcontainer_placeholders.py` |
 | Drop the `register-check` row, add `register-install`, spell `uv run` (§ F, § G) | `plugins/control-register/README.md` |
 | Bring § Status and the document table up to date (§ H) | `README.md` |
+| Annotate the uv pin, and settle the spelling the annotation has to match (§ J) | `plugins/control-register/templates/devcontainer/setup.sh` |
+| Ship a working `renovate.json` template, or have `gate-supply-chain` write one; replace § 1.1's fragment with a pointer to it (§ J) | the plugin, `08-adopting.md` § 1.1 |
 
 The second row is the one that keeps the first fixed.
+
+**One of § J's fixes is a decision rather than an edit**, and should not be taken
+here. Whether SUP-002 ought to fail a repository whose `source: literal` tools
+have `pinned_at` sites that no custom manager covers is a register question with
+an ADR's shape: it would make the control read a second file, it would fail
+repositories that are conformant today, and the alternative — leaving it as
+guidance — is what produced this finding. Raise it; do not decide it in a
+documentation change.
 
 ## What no file check can close
 
