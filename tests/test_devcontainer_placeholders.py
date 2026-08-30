@@ -253,7 +253,14 @@ def test_substituting_from_the_register_leaves_no_placeholder(tmp_path: Path) ->
     # somewhere in the tree. The version is quoted from 2026-08-29, which the
     # register's own assert learned to read at the same time (an upstream
     # `shellcheck-clean` commit quoted the placeholders in the published copy).
+    #
+    # The name is asserted in UPPER_SNAKE_CASE, and that is load-bearing rather
+    # than tidy: Renovate's custom manager matches `[A-Z_]+=`, so a lowercase
+    # pin here is one no bot ever proposes an upgrade for. The checker accepts
+    # either — `tool_versions_match_register` is case-insensitive — which is
+    # exactly why the case needs a test of its own. See
+    # `tests/test_shell_conventions.py`.
     setup = (target / "setup.sh").read_text(encoding="utf-8")
-    assert f'uv_version="{values["UV_VERSION"]}"' in setup
+    assert f'UV_VERSION="{values["UV_VERSION"]}"' in setup
     assert values["UV_SHA256_X86_64"] in setup
     assert values["UV_SHA256_AARCH64"] in setup

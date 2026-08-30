@@ -913,7 +913,34 @@ view` and any "latest release" idiom fail here and are not the replacement.
 Either verify `sort -V` on a Mac or replace the resolution with something that
 does not sort.
 
+## Q — The guide told adopters to undo a deliberate quoting
+
+Found while acting on Decision 1, and it is the same shape as § E: a correction
+made in one place and not in the place that repeats it.
+
+`08-adopting.md` § 2.0 said, until this review's branch:
+
+```text
+**Substitute them unquoted.** `tool_versions_match_register` matches a tool name
+followed by a version across `@`, `=`, `:` or whitespace, so `uv_version="0.12.5"`
+puts a quote where it looks for the separator and the pin is reported missing.
+```
+
+That was true for about a week in August 2026 and has not been true since. The
+assert's pattern is `[@=:\s][\"']?v?(\d+\.\d+\.\d+)` with `re.IGNORECASE` — an
+optional quote, and case-blind. And the shipped template writes its placeholder
+**already quoted**, because an upstream `shellcheck-clean` commit quoted it. So
+an adopter following the instruction would have had to delete quotes the
+template put there on purpose, regressing a lint fix to satisfy a rule that had
+already been relaxed.
+
+Two readers of one line, and only one of them was told the rule had changed.
+
 ## The four decisions
+
+**All four are answered as of 2026-08-30**, and Decision 1 is implemented on
+this branch. Each entry keeps its options and costs, with the answer recorded
+under it, because the reasoning is what makes the answer reviewable.
 
 Written out because a fix table row saying *settle the spelling* is not something
 anybody can answer. Each is: what is true now, what is broken, the question, and
@@ -949,7 +976,26 @@ regress a lint fix to satisfy a regex.
 cheap migration, and B widens a pattern in a file that does not exist yet to
 accommodate a spelling we control.
 
-**Question: A or B?**
+**Answered: A, generalised to a repository-wide convention and implemented.**
+The survey that settled it: six of seven tracked shell files already used
+`UPPER_SNAKE_CASE` at the top level, and the seventh was the shipped template's
+`setup.sh` — the one file an adopter substitutes a real version into. So this
+was one file out of step rather than a choice between two houses.
+
+**Quotes turned out not to matter to either checker.** `tool_versions_match_register`
+takes an optional quote *and* is `re.IGNORECASE`; `tool_digests_match_register`
+matches a bare `\b[0-9a-f]{64}\b`. Neither the case nor the quoting was ever
+visible to the checker — which is why this had to be a convention with a test
+rather than something a control would have caught. The consumer that cares is
+Renovate, and only about case.
+
+So: **`UPPER_SNAKE_CASE` at the top level, quotes kept**, transient locals
+(`first`, `value`, `installed`) left lowercase as ordinary shell style. The
+template's `UV_VERSION`, `UV_ARCH`, `UV_SHA` and `UV_DIR` were renamed, the
+`# renovate:` annotation added above the pin (§ L's first row), and the three
+`renovate.json` patterns widened to accept a quote — which they had to be
+regardless, since `UV_VERSION="0.12.7"` failed the old pattern on the quote even
+in upper case. `tests/test_shell_conventions.py` holds both halves.
 
 ### Decision 2 — should SUP-002 fail a pin that no bot covers?
 

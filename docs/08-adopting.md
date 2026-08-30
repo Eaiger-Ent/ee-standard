@@ -446,10 +446,20 @@ returned empty, `sed` substituted nothing, and the placeholders survived into a
 container that then failed at `sha256sum -c`. An extraction that quietly yields
 nothing is worse than one that errors.
 
-**Substitute them unquoted.** `tool_versions_match_register` matches a tool name
-followed by a version across `@`, `=`, `:` or whitespace, so `uv_version="0.12.5"`
-puts a quote where it looks for the separator and the pin is reported missing —
-a file that reconciles against nothing while looking correct.
+**Substitute them as they are, quotes and all.** The template ships
+`UV_VERSION="{{UV_VERSION}}"` quoted because that is what `shellcheck` wants,
+and both readers of that line take it: `tool_versions_match_register` matches an
+optional quote after the separator and is case-insensitive, and the
+`# renovate:` annotation above the pin is read by a custom manager whose pattern
+accepts one too. An earlier version of this section said to substitute
+*unquoted*, which was true of the assert for one week in August 2026 and has not
+been true since — following it now would mean deleting quotes the template put
+there deliberately.
+
+**Do not change the case either.** Script-level shell variables in this template
+are `UPPER_SNAKE_CASE`, and that is the one spelling Renovate's custom manager
+matches (`[A-Z_]+=`). The checker does not care; the bot does, and a pin the bot
+cannot see never moves.
 
 Then run `/gate-build` to pin what you chose and stamp it.
 

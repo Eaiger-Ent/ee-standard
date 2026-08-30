@@ -99,16 +99,17 @@ git config --global --add safe.directory "$PWD"
 # tarball with no checksum and no signature, so `devcontainer-lock.json` would
 # pin the installer and not the artefact — the measurement Phase 0.5 already
 # made for uv and gitleaks (docs/adr/0034-the-template-bootstraps-uv.md).
-uv_version="{{UV_VERSION}}"
+# renovate: datasource=pypi depName=uv
+UV_VERSION="{{UV_VERSION}}"
 case "$(uname -m)" in
-  aarch64|arm64) uv_arch=aarch64 uv_sha="{{UV_SHA256_AARCH64}}" ;;
-  *)             uv_arch=x86_64  uv_sha="{{UV_SHA256_X86_64}}" ;;
+  aarch64|arm64) UV_ARCH=aarch64 UV_SHA="{{UV_SHA256_AARCH64}}" ;;
+  *)             UV_ARCH=x86_64  UV_SHA="{{UV_SHA256_X86_64}}" ;;
 esac
-uv_dir="uv-${uv_arch}-unknown-linux-gnu"
+UV_DIR="uv-${UV_ARCH}-unknown-linux-gnu"
 curl -sSfL -o /tmp/uv.tgz \
-  "https://github.com/astral-sh/uv/releases/download/${uv_version}/${uv_dir}.tar.gz"
-echo "${uv_sha}  /tmp/uv.tgz" | sha256sum -c --quiet -
-tar -xzf /tmp/uv.tgz -C /tmp --strip-components=1 "${uv_dir}/uv" "${uv_dir}/uvx"
+  "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${UV_DIR}.tar.gz"
+echo "${UV_SHA}  /tmp/uv.tgz" | sha256sum -c --quiet -
+tar -xzf /tmp/uv.tgz -C /tmp --strip-components=1 "${UV_DIR}/uv" "${UV_DIR}/uvx"
 sudo install /tmp/uv /tmp/uvx /usr/local/bin/
 rm /tmp/uv.tgz /tmp/uv /tmp/uvx
 
