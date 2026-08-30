@@ -220,6 +220,37 @@ substitution reads the register and nothing else.
    (**both**, which is the ADR 0039 change), and `claude update` reaching the
    permissions fix rather than *"Insufficient permissions to install update"*.
 
+### What has already been rehearsed, and what is left
+
+Everything in step 1 was run in this repository's own container on 2026-08-30,
+so the host is owed the build and not the preparation:
+
+| Rehearsed | Result |
+| --- | --- |
+| The four placeholders, by count and location | Exactly four, in `devcontainer.json` (2) and `setup.sh` (3 lines) — § 2.0's description is accurate |
+| § 2.0's `uv_block` extraction commands, verbatim | `0.12.6` and the x86_64 sha, both non-empty |
+| The aarch64 checksum fetch | `d58030ac…128d`, the release endpoint answers |
+| The x86_64 two-source agreement check | **Agrees** — register and vendor are the same digest |
+| Substitution, then `grep -rn '{{'` | **None remaining** |
+| `devcontainer.json` parses; features vs. `devcontainer-lock.json` | Valid; image digest-pinned; **3 features, 3 locked** |
+| `bash -n` over all three scripts | Syntax clean |
+| The ADR 0039 pre-commit branch, under `set -euo pipefail` with stubs | Both arms correct: reachable → `install --hook-type pre-commit --hook-type pre-push`; **unreachable → the note, and the script survives** |
+
+**What none of that touches is the point of the build**: whether the nvm glob
+matches a real path, whether `safe.directory` fixes a real bind mount, whether
+uv actually downloads and verifies against the quoted digests, and whether
+`claude update` clears the permissions error. Those are the four changes, and a
+static check can only show they are well-formed.
+
+**One static finding, and it is latent rather than live.** The `chown` loop's
+comment says an unmatched glob is *"a no-op rather than an error"*. It is a
+no-op for control flow — measured, the script continues under `set -e` — but the
+loop's exit status is `1`, because `[ -d "$d" ]` is the last thing to run in the
+body. Nothing depends on that today, since statements follow it. It would become
+live the moment that loop is the last statement in the file, where the same code
+exits `1` and fails container create. Worth knowing before anyone reorders
+`setup.sh`; not worth changing ahead of the build that is about to exercise it.
+
 ### What passing looks like
 
 A container that creates, and all five checks in step 3 answering. There is no
