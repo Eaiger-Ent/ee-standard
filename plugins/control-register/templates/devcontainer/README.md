@@ -40,13 +40,60 @@ and wrong the second.
 
 `{{UV_VERSION}}`, `{{UV_SHA256_X86_64}}` and `{{UV_SHA256_AARCH64}}` in
 `setup.sh` — uv, which every verification in this standard runs on and which no
-gate can install, because a gate's own verify step is a `uv run`. Copy the first
-two straight out of the register you are adopting:
+gate can install, because a gate's own verify step is a `uv run`.
+
+**Read the version and the x86_64 checksum out of the register you are
+adopting.** Do not use `grep -A<n>` for this: the register comments that block,
+so a fixed context window reaches no value, returns empty, and `sed` then
+substitutes nothing — leaving the placeholders in a file that fails at
+`sha256sum -c` during container create. Read the whole block instead:
 
 ```bash
-uv_version=$(grep -A4 '^  uv:' controls.yaml | sed -n 's/^ *version: *//p')
-uv_sha=$(grep -A4 '^  uv:' controls.yaml | sed -n 's/^ *sha256: *//p')
+uv_block() { sed -n '/^  uv:/,/^  [a-z-]*:$/p' controls.yaml; }
+uv_version=$(uv_block | sed -n 's/^ *version: *"\{0,1\}\([0-9][^"]*\)"\{0,1\} *$/\1/p')
+uv_sha_x86=$(uv_block | sed -n 's/^ *sha256: *//p')
 ```
+
+The register pins **one** checksum, for x86_64. The aarch64 one is published
+beside the same release and is compared by nothing here — a gap this standard
+carries for its own container too, recorded rather than hidden:
+
+```bash
+rel="https://github.com/astral-sh/uv/releases/download/${uv_version}"
+uv_sha_arm=$(curl -fsSL "${rel}/uv-aarch64-unknown-linux-gnu.tar.gz.sha256" | cut -d' ' -f1)
+```
+
+**Check all three are non-empty before substituting**, because an extraction
+that quietly yields nothing is worse than one that errors:
+
+```bash
+echo "${uv_version:?} ${uv_sha_x86:?} ${uv_sha_arm:?}"
+```
+
+Then substitute, and expect no output from the last line:
+
+```bash
+sed -i.bak \
+  -e "s/{{PROJECT_NAME}}/$(basename "$PWD")/g" \
+  devcontainer.json
+sed -i.bak \
+  -e "s/{{UV_VERSION}}/${uv_version}/g" \
+  -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86}/g" \
+  -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm}/g" \
+  setup.sh
+rm ./*.bak
+grep -rl '{{' .
+```
+
+`-i.bak` and the `rm` are portability rather than caution: BSD `sed`, which is
+what a macOS host has, requires an argument to `-i` where GNU `sed` requires its
+absence.
+
+**Substitute the values as they are — do not unquote them, and do not change the
+case.** `setup.sh` writes `UV_VERSION="..."`: the quotes are what `shellcheck`
+wants, and both readers of that line accept them. The upper case is the one that
+matters — Renovate's custom manager matches `[A-Z_]+=`, so a lowercase pin is
+one no bot ever proposes an upgrade for.
 
 They are placeholders rather than pins on purpose: the version stays in the
 register and this file references it, which is the difference between a
@@ -54,15 +101,6 @@ reference and the second copy this standard exists to prevent. Once
 `.devcontainer/setup.sh` is named in that tool's `pinned_at`,
 `tool_versions_match_register` reconciles the two and a drifted copy is a
 verdict rather than a surprise.
-
-The register pins **one** checksum, for x86_64. The aarch64 one comes from the
-same release on GitHub and is compared by nothing — a gap this standard already
-carries for its own container, recorded rather than hidden:
-
-```bash
-gh release download "$uv_version" --repo astral-sh/uv \
-  --pattern 'uv-aarch64-unknown-linux-gnu.tar.gz.sha256' --output -
-```
 
 Then run `/gate-build`, which pins whatever you changed and stamps it.
 
