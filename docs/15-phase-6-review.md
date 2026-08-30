@@ -807,7 +807,7 @@ why this repository has a Phase 4 record at all when Phase 4 happened elsewhere.
 
 | Question the criterion asks | What the run measured |
 | --- | --- |
-| Is the published plugin the same artefact as this tree? | `diff -rq` over the `ee-standard` and `ee-skills` plugin caches is **silent** |
+| Is the published plugin the same artefact as this tree? | `diff -rq` over the `ee-standard` and `ee-skills` plugin caches is **silent** — on the second pass's evidence, not the first's; see § The run was repeated |
 | Does it work when installed rather than developed? | `/register-adopt` dispatched **every** gate from the marketplace install |
 | Does the repository still pass? | 12 passed, 0 failed, 1 skipped (`terraform` predicate), 1 unclassified, 3/3 meta-controls, **exit 3** |
 | Is the chain to a blocked merge intact? | Both workflows green on `push` and on `pull_request` |
@@ -860,6 +860,63 @@ prescribes. And the substitution is not equivalent: stamps say what was
 deployed, `deployments` reconciles that against what is *installed*
 ([ADR 0043](adr/0043-a-declination-is-reconciled-against-the-installed-skill.md)),
 so the weaker question is the honest one to ask there rather than a shortcut.
+
+### The run was repeated, and the second pass found the parity check weaker than it read
+
+The runbook was followed a second time the same day, with every command's
+output captured, because a criterion closed on a verdict nobody can re-read is
+closed on trust. It found nothing wrong with the plugin and one thing wrong with
+the *question* — which is the same shape as the finding above, and again in this
+repository's documents rather than in the artefact.
+
+**A marketplace has a source, and `ee-skills` on that host was a local
+directory.** `claude plugin marketplace list` prints it:
+`Source: Directory (/Users/nathan/git/ee-skills)`. That clone was **twenty
+commits behind `origin/master`**, so the first pass's `diff -rq` compared this
+tree against a cached copy of a stale checkout of the promoted repository — it
+was comparing two things that were both current *enough* to agree, and would
+have agreed just as silently if the published copy had moved and diverged.
+
+The repair is the one the finding above got: ask the question where it can be
+answered. Inside the consumer's devcontainer `ee-skills` resolves to
+`GitHub (EqualExperts/ee-skills)` directly, and the second pass ran the whole
+parity check there — both marketplaces updated, both plugins uninstalled and
+reinstalled, then `diff -rq`. **Silent**, at `ee-standard` `320f853` and
+`ee-skills` `6e11754`, which is the promoted repository's own HEAD rather than a
+host's opinion of it. The conclusion of the first pass survives; what did not
+survive is the evidence it rested on.
+
+The rest of the second pass reproduces the first exactly: `schema: OK` at
+v0.24.0 contract 30, twenty-four provenance stamps all reading `register:
+v0.24.0  register-contract: 30` at gate `0.1.0`, the checker at 12 passed / 0 failed / 1
+skipped (`terraform`) / 1 unclassified / 3 of 3 meta-controls and **exit 3**,
+and both workflows green on `push` and on `pull_request`. `register-check
+--help` again lists no `deployments`, which is the § What passing looks like
+repair above confirmed against the tag rather than reasoned about.
+
+**No stamp is ahead of its gate, and that is not a reconciliation.** Those
+twenty-four stamps carry four fields, not five: the consumer adopted on
+2026-08-26 and
+[ADR 0038](adr/0038-the-stamp-records-the-deployment-contract.md) added
+`gate-contract:` on 2026-08-27, so there is no gate contract in them to be ahead
+*of*. This repository's word for that state is `UNRECORDED` — neither current
+nor stale — and it is the honest reading here. Nothing is ahead because nothing
+is comparable, which is a different sentence from a comparison that came back
+clean, and keeping the two apart is the whole point of the § What passing looks
+like repair above.
+
+**One thing the second pass is weaker at, and it is worth saying.**
+`/register-adopt` was declined at its confirmation — it had nothing to write, so
+there was nothing to confirm — meaning it proved the dispatch and the plan but
+never entered a gate's write path. The first pass dispatched every gate. Neither
+pass shows a gate rewriting an artefact identically, because no gate was owed
+one; that is a property of re-adopting an unchanged repository and not something
+either run could have arranged.
+
+The raw output lives in an untracked directory on the operator's machine and is
+**not a third record**: it is what the two records were written from, it is not
+git-tracked, and nothing cites it. The two homes § Where the record goes names
+are still the only two.
 
 ### What it deliberately left open
 

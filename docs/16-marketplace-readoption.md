@@ -1,11 +1,16 @@
 # Re-adopting from the marketplace
 
-The runbook for Phase 6's last exit criterion — *the consumer repo re-adopts
-from the marketplace copy and still passes*. It is written for an operator on a
-host this container is not, so it states what that host must have and what each
-step is expected to produce, and it **does not restate the adoption steps
-themselves**: those live in [`08-adopting.md`](08-adopting.md) and a second copy
-of them here would be free to drift from the guide an adopter actually follows.
+The runbook for the two Phase 6 exit criteria that need a macOS host with
+Docker: *the consumer repo re-adopts from the marketplace copy and still passes*
+— **closed 2026-08-30**, and § Building the shipped template, which is what
+[`08-adopting.md`](08-adopting.md) § Status still owes a reader before it can
+claim the template has been built.
+
+It is written for an operator on a host this container is not, so it states what
+that host must have and what each step is expected to produce, and it **does not
+restate the adoption steps themselves**: those live in
+[`08-adopting.md`](08-adopting.md) and a second copy of them here would be free
+to drift from the guide an adopter actually follows.
 
 ## Why this run exists at all
 
@@ -54,13 +59,26 @@ that they still are before trusting either**, because if they have diverged
 again that is the finding, not the conformance run:
 
 ```bash
+claude plugin marketplace list          # read the Source line of each; see below
 claude plugin marketplace add Eaiger-Ent/ee-standard
+claude plugin marketplace update ee-standard
+claude plugin marketplace update ee-skills
 claude plugin install control-register@ee-standard --scope user
 # and, with an ee-skills credential:
 claude plugin install control-register@ee-skills --scope user
 diff -rq ~/.claude/plugins/cache/ee-standard/control-register/*/ \
          ~/.claude/plugins/cache/ee-skills/control-register/*/ --exclude='.in_use'
 ```
+
+**A marketplace has a source, and the first line is there because it may not be
+the one you assume.** `claude plugin marketplace list` prints it, and on the
+macOS host `ee-skills` was `Source: Directory (/Users/nathan/git/ee-skills)` — a
+clone twenty commits behind `origin/master`. A `diff` against that compares this
+tree with a host's stale opinion of the promoted copy, and it is silent for the
+same reason a correct one is, so it reads as a pass. Where the source is a
+directory, update the clone or run the check somewhere the marketplace resolves
+to `GitHub (EqualExperts/ee-skills)` — the consumer's own devcontainer does, and
+is where this check belongs anyway.
 
 Silence is the pass. Do the conformance run against the **`ee-skills`** copy,
 since that is the one the criterion names, and record that the public one is
@@ -149,3 +167,71 @@ git-tracked and immutable where a pull request page is neither. Two records of
 one run, each free to drift from the other, is the duplication this repository
 exists to prevent; and an issue is not a third option, being untracked by git
 and outside the docs tree `tests/test_file_map.py` holds true.
+
+## Building the shipped template
+
+The second run this document covers, and the one still outstanding. It closes no
+part of the re-adoption criterion above — that one is done — and everything
+below is about a different sentence: `08-adopting.md` § Status claiming *"Exists
+and has been built"* of the devcontainer template.
+
+### Why it is owed
+
+That row cites Phase 4's build on **2026-08-25**, and the template has changed
+seven times since, four of them in `setup.sh`, which runs at container create
+under `set -euo pipefail`:
+
+| Change | Landed | Why a build is the only thing that tests it |
+| --- | --- | --- |
+| `chown` loop over a node glob, so `claude update` works | ADR 0035 close-out | A glob that matches nothing, or a path the feature moved |
+| `git config --global --add safe.directory "$PWD"` | Phase 4 close-out | Only observable from inside a bind-mounted workspace |
+| Placeholders quoted (`uv_version="{{UV_VERSION}}"`) | `53966cc`, from upstream | Taken from the promoted copy and never built here |
+| `pre-commit install --hook-type pre-push`, guarded on reachability | [ADR 0039](adr/0039-a-push-is-a-locus.md) | The guard exists because the unguarded form aborted container create |
+
+Phase 4 is the precedent for why a file test cannot stand in: *it did not build
+first time*, and the three defects that exposed were all things no assert
+reads. The ninth slice is the narrower precedent — it caught the quoting defect
+by diffing and running an assert, which is exactly why the fix has never been
+through a `devcontainer up`.
+
+### Where to build it
+
+**Not in the consumer.** Its `.devcontainer/` is the copy Phase 4 took, it is
+that repository's adopted artefact, and replacing it would destroy the thing the
+re-adoption run just verified. Use a scratch repository — an empty directory
+with `git init` and a `controls.yaml` fetched per
+[`08-adopting.md`](08-adopting.md) § 0.1 is enough, because the template's
+substitution reads the register and nothing else.
+
+### The steps
+
+1. **Copy and substitute**, per [`08-adopting.md`](08-adopting.md) § 2.0 —
+   the four placeholders, the aarch64 checksum fetched from the release, and the
+   two-source agreement check on the x86_64 one. Follow that section rather than
+   anything written here; it is the guide an adopter reads and this is a
+   rehearsal of it.
+2. **`devcontainer up`**, and read what `setup.sh` prints rather than only its
+   exit code. Three of the four changes above fail *quietly* if they fail: a
+   glob matching nothing is a no-op, and the pre-commit branch is written to
+   report rather than abort.
+3. **Then, inside the container**: `uv --version` against the register's pin,
+   `uv run python -V` against `.python-version`, `git log -1` (the
+   `safe.directory` write), `ls .git/hooks/pre-commit .git/hooks/pre-push`
+   (**both**, which is the ADR 0039 change), and `claude update` reaching the
+   permissions fix rather than *"Insufficient permissions to install update"*.
+
+### What passing looks like
+
+A container that creates, and all five checks in step 3 answering. There is no
+`register-check` verdict to quote here: the scratch repository has no gates
+deployed, so a conformance run over it would measure the scratch repository
+rather than the template.
+
+**A failure here is the most valuable result this phase can still produce**, for
+the reason § What would fail the criterion gives above — it is the last place a
+defect is cheaper than an adopter finding it, and unlike everything else in this
+document it is testing a change that has never been executed anywhere.
+
+The record goes where § Where the record goes says. There is no consumer
+repository in this one, so the operator's half and this repository's half are
+both [`15-phase-6-review.md`](15-phase-6-review.md).
