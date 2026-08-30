@@ -698,7 +698,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/14-file-map.md` | **Where everything is.** Which file to open, and why `controls.yaml`, `deployment-decisions.yaml` and `.claude/skill-config.yaml` are three files rather than one. Held true by `tests/test_file_map.py`, in both directions at the top level |
 | `docs/15-phase-6-review.md` | Record of Phase 6 slice by slice. § The transport changed is why `05-promotion.md` no longer says a submission is an issue |
 | `docs/16-marketplace-readoption.md` | **The runbook for Phase 6's last criterion.** What the macOS Docker host must have, which of the two marketplaces to install from and why they differ, and what passing looks like — exit `3`, not `0` |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **44** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0045 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). Everything in this directory is `Accepted` and in force, so `ls docs/adr/` is the list of live decisions. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fifteen Tier-1 controls, with
