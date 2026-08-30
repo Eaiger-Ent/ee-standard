@@ -10,8 +10,11 @@ A control register for Equal Experts repositories: `controls.yaml` defines what
 
 Current status: **Phase 5 is complete** as of 2026-08-28, over eight slices —
 ADR 0038 was the first and ADR 0043 the seventh; the eighth is a checker fix at
-contract 35 with no ADR. **Phase 6 is the only phase with open criteria**, at
-2/8. Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
+contract 35 with no ADR. **Phase 6 is complete** as of 2026-08-30, closed by
+two runs on a macOS Docker host — the marketplace re-adoption and the first
+`devcontainer up` of the shipped template since Phase 4
+(`docs/16-marketplace-readoption.md` is the run sheet for both). **No phase has
+open criteria.** Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
 with no re-opened criteria outstanding. **Phase 3 is complete** as of
 2026-08-24, and **Phases 2 and 4 are both complete** as of 2026-08-26 — Phase 4
 with one criterion retired rather than met (ADR 0037). The register is at

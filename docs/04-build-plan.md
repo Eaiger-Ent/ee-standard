@@ -1300,7 +1300,7 @@ document that described it.
 
 ### Exit criteria — phase 6
 
-- [ ] [`08-adopting.md`](08-adopting.md) describes installing from the
+- [x] [`08-adopting.md`](08-adopting.md) describes installing from the
       marketplace, and its § Status table is true on the day of release — a
       guide that still calls the shipped machinery "not built" is the mirror of
       one that describes tooling which does not exist.
@@ -1323,7 +1323,18 @@ document that described it.
       [`16-marketplace-readoption.md`](16-marketplace-readoption.md) § Building
       the shipped template. It is not closable by editing the row: Phase 4 is
       the precedent that a file test cannot stand in for a build, having not
-      built first time and exposed three defects no assert reads
+      built first time and exposed three defects no assert reads.
+      **Closed 2026-08-30**: that build was run on the macOS host, in a scratch
+      repository seeded so the ADR 0039 hook block reached its *reachable* arm,
+      against `main`'s register rather than `v0.5.0`'s. The container created
+      first time and all four changes did what they claim — the glob matched a
+      real path, `safe.directory` fixed a real bind mount, uv 0.12.6 installed
+      against the aarch64 digest, and both hook types were written — with
+      `claude update` clearing the permissions error. One architecture was
+      exercised and the record says which
+      ([`15-phase-6-review.md`](15-phase-6-review.md) § The thirteenth slice).
+      The row now cites that build; the criterion is closed by the build, not by
+      the edit
 
 - [x] A repo-root `LICENSE` exists and is copied into the plugin —
       `check_plugin_license.py` fails without it, and `pyproject.toml` already
