@@ -59,7 +59,7 @@ jobs:
       - name: Install uv
         run: |
           # renovate: datasource=pypi depName=uv
-          pip install uv==0.12.6
+          pip install uv==0.12.7
 
       # SUP-001 — install from the committed lockfile, never re-resolve.
       - name: Install dependencies (frozen)
