@@ -640,6 +640,10 @@ onboarding:
 
 | Fix | File |
 | --- | --- |
+| Add a § 0 prerequisites section: both tables from § The template (§ A) | `08-adopting.md` |
+| Move the macOS statement to the first screen (§ B) | `08-adopting.md` § 0 |
+| Say the schema check waits for § 2.3, or move it there (§ C) | `08-adopting.md` § 0.1 |
+| Collect the four credentials in one table where they are obtained (§ D) | `08-adopting.md` § 0 |
 | Replace the `grep -A4` extraction, add the `sed` step, align the variable names (§ E) | `plugins/control-register/templates/devcontainer/README.md` |
 | Extend the placeholder test to execute the template README's commands, not only the guide's (§ E) | `tests/test_devcontainer_placeholders.py` |
 | Drop the `register-check` row, add `register-install`, spell `uv run` (§ F, § G) | `plugins/control-register/README.md` |
@@ -647,14 +651,35 @@ onboarding:
 | Annotate the uv pin, and settle the spelling the annotation has to match (§ J) | `plugins/control-register/templates/devcontainer/setup.sh` |
 | Ship a working `renovate.json` template, or have `gate-supply-chain` write one; replace § 1.1's fragment with a pointer to it (§ J) | the plugin, `08-adopting.md` § 1.1 |
 | Write the `# renovate:` annotation beside the gitleaks install, as the CI template already does (§ L) | `gate-secrets` Step 3.5 |
-| Ship a `.python-version`, or make § 2 a step that writes one (§ M) | the devcontainer template, `08-adopting.md` § 2 |
+| Make § 2 a step that writes `.python-version`, conditional on the ecosystem (§ M) | `08-adopting.md` § 2 |
 | Give the plugin-cache path beside the clone path (§ I) | `08-adopting.md` § 4.5 |
 | Lead with what you get, and move § The problem below it (§ P) | `README.md` |
 | Replace both descriptions with the offer rather than the mechanism (§ P) | `.claude-plugin/marketplace.json` |
 | Put the three-line triage above § The problem (§ N) | `README.md` |
 | Link the adoption route absolutely, from the first screen (§ N) | `plugins/control-register/README.md` |
 
-The second row is the one that keeps the first fixed.
+The first four rows are the ones a reader of this review is most likely to
+assume `START-HERE.md` makes unnecessary. It does not: `08-adopting.md` stays
+the reference, `README.md` links it, every step of the quickstart links into it,
+and a reader who lands there directly still meets § C's ordering trap and § B's
+buried platform assumption. A quickstart routes around a defect; it does not
+repair one.
+
+The row after them is the one that keeps § E fixed.
+
+**§ M's row got narrower once the template was read properly.** It said *ship a
+`.python-version`, or make § 2 a step*. Only the second survives: `setup.sh`
+branches on `package-lock.json`, `uv.lock` and `poetry.lock`, so the template is
+language-agnostic and shipping a `.python-version` would assert a Python
+toolchain for a node-only adopter. The step is conditional on the ecosystem.
+
+**§ L's row is a gate release, not an edit.** Annotating the gitleaks install
+changes what `gate-secrets` writes, so it bumps
+`gates.gate-secrets.contractVersion` from 6 — and by
+[ADR 0038](adr/0038-the-stamp-records-the-deployment-contract.md) every existing
+`gate-secrets` stamp then reads stale until the gate is re-run. That is the
+machinery working rather than a cost to avoid, but it is not in the same class
+as correcting a README and should not be bundled with one.
 
 **Two of these are decisions rather than edits**, and neither should be taken
 here.
