@@ -1394,7 +1394,7 @@ document that described it.
       part of submission 1 and the pipeline assigned a fallback. It is a
       one-line difference in someone else's repository and no criterion depends
       on it, so it is a follow-up rather than a re-opening
-- [ ] The consumer repo re-adopts from the *marketplace* copy and still passes —
+- [x] The consumer repo re-adopts from the *marketplace* copy and still passes —
       proving the plugin works when installed, not only when developed.
       **The runbook is [`16-marketplace-readoption.md`](16-marketplace-readoption.md)**:
       what the host must have, which of the two marketplaces to install from and
@@ -1402,7 +1402,25 @@ document that described it.
       `0`** — SEC-003's remote blocks answer only inside an Actions job), and the
       four outcomes that would fail it. It does not restate the adoption steps;
       those stay in [`08-adopting.md`](08-adopting.md), because a second copy of
-      the guide an adopter follows is free to drift from it
+      the guide an adopter follows is free to drift from it.
+      **Closed 2026-08-30** on the macOS Docker host. `diff -rq` over the two
+      plugin caches is silent, so the public route and the promoted copy are one
+      artefact; `/register-adopt` dispatched every gate from the marketplace
+      install and wrote nothing, every applicable control already being stamped;
+      the checker reports 12 passed, 0 failed, 1 skipped on the `terraform`
+      predicate, 3/3 meta-controls, **exit 3** — unchanged from Phase 4; both
+      workflows green on `push` and `pull_request`. None of the four failure
+      shapes occurred. The operator's record is the consumer's `README.md`
+      § Adoption record at commit
+      [`2b89221`](https://github.com/Eaiger-Ent/ee-standard-consumer/commit/2b89221e5f3455520a92668b99f018f9072b578c),
+      cited rather than copied and pinned to the commit rather than the pull
+      request; what the run proves about *this* repository is
+      [`15-phase-6-review.md`](15-phase-6-review.md) § The eleventh slice. The
+      run found one defect, in the runbook rather than the plugin: it asked for
+      `register-check deployments`, which the consumer's pinned `v0.5.0` checker
+      does not have — and the register contract does not reveal that, since the
+      consumer, `v0.5.0` and [ADR 0038](adr/0038-the-stamp-records-the-deployment-contract.md)
+      are all at contract 30
 - [x] **DOC-001 has a route for an adopter who cannot see `ee-skills`.** Added
       2026-08-25 by Phase 4, which found that the marketplace holding `lint-md`
       is **private**: every plan this repository produces rows DOC-001 as

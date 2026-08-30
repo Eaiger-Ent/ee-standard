@@ -778,3 +778,100 @@ content. The two are equal without anything being promoted again.
 
 **One criterion remains**: the consumer repository re-adopting from the
 marketplace copy, which needs the macOS host with Docker.
+
+## The eleventh slice — the re-adoption ran, on a host this container is not
+
+Ran 2026-08-30 on the macOS Docker host, and closes the criterion the tenth
+slice left as the only one outstanding: *the consumer repo re-adopts from the
+marketplace copy and still passes*. The runbook it followed is
+[`16-marketplace-readoption.md`](16-marketplace-readoption.md).
+
+### Where the record is, and why it is not here
+
+The operator's record is the consumer repository's own `README.md` §
+Adoption record, at commit
+[`2b89221`](https://github.com/Eaiger-Ent/ee-standard-consumer/commit/2b89221e5f3455520a92668b99f018f9072b578c)
+(2026-08-30T08:33:54Z). It is **cited rather than copied**, and pinned to the
+commit rather than to the pull request number, for the reason every other
+external citation in this file is: a copy of it here would be a second record of
+one run, free to drift from the one an adopter reads, and a pull request number
+is a pointer to a mutable page where a merge commit is git-tracked and
+immutable.
+
+What belongs there is what happened to **that** repository. What belongs here is
+what the run proves about **this** one, which is the rest of this section.
+[`12-phase-4-review.md`](12-phase-4-review.md) is the same division, and it is
+why this repository has a Phase 4 record at all when Phase 4 happened elsewhere.
+
+### What it proves
+
+| Question the criterion asks | What the run measured |
+| --- | --- |
+| Is the published plugin the same artefact as this tree? | `diff -rq` over the `ee-standard` and `ee-skills` plugin caches is **silent** |
+| Does it work when installed rather than developed? | `/register-adopt` dispatched **every** gate from the marketplace install |
+| Does the repository still pass? | 12 passed, 0 failed, 1 skipped (`terraform` predicate), 1 unclassified, 3/3 meta-controls, **exit 3** |
+| Is the chain to a blocked merge intact? | Both workflows green on `push` and on `pull_request` |
+
+**Exit `3` is the pass**, unchanged from what Phase 4 measured — SEC-003's
+remote blocks answer only inside a GitHub Actions job, so a `0` on a developer's
+machine would have meant something was skipped that should not have been.
+
+The four failure shapes the runbook named in advance — a control failing that
+passed in Phase 4, `DEV-001` failing on the template, a gate unable to resolve
+`${CLAUDE_PLUGIN_ROOT}/reference/…`, or a gate that could not be dispatched —
+none occurred. Naming them was worth it anyway: three of the four are defects
+this phase had already fixed, and a run that found one would have meant a fix
+had not held through promotion.
+
+**`/register-adopt` wrote nothing**, every applicable control already being
+stamped at register contract 30 by its gate at `0.1.0`. That is the expected
+outcome of re-adopting an unchanged repository rather than a no-op to be alarmed
+by, and the runbook says so — a gate that rewrites an artefact identically and a
+gate that declines to write are the same verdict from the outside.
+
+### The runbook asked for something the consumer cannot run
+
+The one finding, and it is about this repository rather than about the plugin.
+§ What passing looks like asks for `register-check deployments`, and the
+consumer's checker is pinned at **`v0.5.0`**, which does not have it. The
+operator read the gate state from `deployed_by` and the provenance stamps
+instead and recorded the substitution, which is the right response and not one a
+runbook should require anyone to invent.
+
+**The register contract does not tell you this, and reasoning from it gets the
+wrong answer.** The consumer is at contract 30;
+[ADR 0038](adr/0038-the-stamp-records-the-deployment-contract.md) landed *at*
+contract 30; `v0.5.0` ships contract 30 — and `src/register_check/deployments.py`
+is absent from that tag. The contract is a property of the **register** and the
+subcommand is a property of the **checker**, and a tag can carry a register
+whose contract postdates code the tag was cut before. Checking is one command,
+`register-check --help`, and the runbook now says to run it rather than to work
+it out.
+
+It is the failure this repository exists to prevent, one document over: a guide
+describing tooling that does not exist **at the version the reader has**. The
+runbook now asks the question in a form a contract-30 checker can answer, and
+says why the newer spelling would not work there.
+
+Two things it is worth being precise about. The consumer being behind is not a
+defect — `install.ref` is the last released checker and a consumer pinned to a
+tag is exactly what [ADR 0032](adr/0032-the-checker-is-installed-from-a-tagged-ref.md)
+prescribes. And the substitution is not equivalent: stamps say what was
+deployed, `deployments` reconciles that against what is *installed*
+([ADR 0043](adr/0043-a-declination-is-reconciled-against-the-installed-skill.md)),
+so the weaker question is the honest one to ask there rather than a shortcut.
+
+### What it deliberately left open
+
+**The record's location was never stated, and that is now fixed rather than
+excused.** The runbook said *"Record the result either way"* and named no home,
+so the operator chose one; it was a good choice, and it was a choice this
+document should have made. Until this slice, the evidence for a criterion of
+**this** repository lived only in another repository, reachable by a reader who
+already knew the pull request existed.
+
+**One criterion remains**, the last in the phase and in the plan:
+[`08-adopting.md`](08-adopting.md) § Status being true on the day of release.
+This run is what makes it checkable — the rows claim what the published plugin
+does, and until today nothing had installed the published plugin into a
+repository that did not author it.
