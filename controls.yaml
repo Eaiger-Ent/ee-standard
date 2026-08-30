@@ -493,13 +493,13 @@ tools:
     # holds. `github-releases` would split it in two and find nothing, since
     # that manager strips a leading `v` for gitleaks' tags and uv's carry none.
     # renovate: datasource=pypi depName=uv
-    version: "0.12.6"
+    version: "0.12.7"
     # The x86_64 asset's checksum, matching the `gitleaks` entry's convention;
     # `.devcontainer/setup.sh` carries both architectures. Unlike gitleaks, uv
     # publishes this beside the artefact as `<asset>.sha256` — so a bump can
     # fetch and compare it rather than deriving it, but still needs a human to
     # do so, and an unrevised digest fails the install rather than passing it.
-    sha256: 8681d8921e7d520fb368991dcf5f9c1905b80f5bf2a265a0ed085c8d8e342477
+    sha256: 788f18abea7c5f55d6216e4f5613fd89d4d59b631efeec117b2b07fe72f1da21
     # Where the project publishes its digests, so the pin above can be compared
     # against what was actually released (SUP-004, ADR 0041). A **manifest**
     # rather than a per-asset `.sha256`: uv publishes both forms and gitleaks
@@ -516,7 +516,7 @@ tools:
       manifest: sha256.sum
       asset: uv-x86_64-unknown-linux-gnu.tar.gz
       also:
-        uv-aarch64-unknown-linux-gnu.tar.gz: d58030acd26159499ac82f32da12d1b3c12a3a1bfc414232d9082070c03e128d
+        uv-aarch64-unknown-linux-gnu.tar.gz: 66393193038dd7eb108abd7a218d9cec04ac70ab98242b0720fa94de19223b7c
     pinned_at:
       - .devcontainer/setup.sh
       - .github/workflows/register-check.yml
