@@ -31,10 +31,17 @@ from register_check.asserts_remote import (
 )
 from register_check.repo import Repo
 
-UV_X86 = "8681d8921e7d520fb368991dcf5f9c1905b80f5bf2a265a0ed085c8d8e342477"
-UV_ARM = "d58030acd26159499ac82f32da12d1b3c12a3a1bfc414232d9082070c03e128d"
-#: uv 0.12.5's x86_64 digest — the value #74 left behind.
+#: uv 0.12.5's x86_64 digest — the value #74 left behind. This one **is** a
+#: literal and should stay one: it is a dated fact about a pull request, not a
+#: pin the register holds, so nothing moves it when uv releases.
 UV_X86_PREVIOUS = "68a509da24b06b4223a1c0175fb5eb5bc79342b76cbeff0cfe51ac3f5b17b6b2"
+
+
+def _pinned_digest() -> str:
+    """uv's current x86_64 digest, from the register rather than from a copy."""
+    digest = a_register().tools["uv"].sha256
+    assert digest is not None
+    return digest
 
 
 def _manifest(**digests: str) -> str:
@@ -58,11 +65,28 @@ def published(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     return served
 
 
-def _uv_url(version: str = "0.12.6") -> str:
+def _pinned(tool: str) -> str:
+    """The version the register pins, which is the one the assert will request.
+
+    **Never a literal.** These helpers defaulted to `"0.12.6"` and `"8.30.1"`,
+    which is a second copy of a pin the register already holds — the duplication
+    this repository exists to prevent, in the test module that guards against
+    exactly that. Renovate's 0.12.7 bump
+    ([#98](https://github.com/Eaiger-Ent/ee-standard/pull/98)) is what found it:
+    the assert asked for the new version's manifest, the fixture had seeded the
+    old version's URL, and four tests failed with a stubbed 404 for a reason
+    that had nothing to do with what any of them checks.
+    """
+    return str(a_register().tools[tool].version)
+
+
+def _uv_url(version: str | None = None) -> str:
+    version = version or _pinned("uv")
     return f"https://github.com/astral-sh/uv/releases/download/{version}/sha256.sum"
 
 
-def _gitleaks_url(version: str = "8.30.1") -> str:
+def _gitleaks_url(version: str | None = None) -> str:
+    version = version or _pinned("gitleaks")
     return (
         f"https://github.com/gitleaks/gitleaks/releases/download/v{version}/"
         f"gitleaks_{version}_checksums.txt"
@@ -110,7 +134,7 @@ def test_the_renovate_case_fails(published: dict[str, str], tmp_path: Path) -> N
     result = release_checksums_match_register(None, register, {})
     assert not result.passed
     assert "names a different artefact" in result.message
-    assert UV_X86_PREVIOUS[:12] in result.message and UV_X86[:12] in result.message
+    assert UV_X86_PREVIOUS[:12] in result.message and _pinned_digest()[:12] in result.message
 
 
 def test_a_digest_the_release_does_not_have_is_named(
@@ -118,7 +142,7 @@ def test_a_digest_the_release_does_not_have_is_named(
 ) -> None:
     """The register naming an asset that release never shipped."""
     register = a_register()
-    published[_uv_url()] = _manifest(**{"uv-some-other-target.tar.gz": UV_X86})
+    published[_uv_url()] = _manifest(**{"uv-some-other-target.tar.gz": _pinned_digest()})
     published[_gitleaks_url()] = _manifest()
     result = release_checksums_match_register(None, register, {})
     assert not result.passed
@@ -159,10 +183,9 @@ def test_a_tool_with_no_manifest_passes_and_says_so(
         del document["tools"]["gitleaks"]["checksums"]
 
     register = register_with(tmp_path, drop_the_manifest)
-    published[_uv_url()] = _manifest(
-        **{"uv-x86_64-unknown-linux-gnu.tar.gz": UV_X86,
-           "uv-aarch64-unknown-linux-gnu.tar.gz": UV_ARM}
-    )
+    # The register's own digests, for the same reason the URL is: uv's pin is
+    # the register's to move, and a literal here goes stale the next time it does.
+    _serve(published, register, "uv", _uv_url())
     result = release_checksums_match_register(None, register, {})
     assert result.passed, result.message
     assert "publish no manifest and were not compared" in result.message
@@ -246,3 +269,16 @@ def test_a_register_pinning_no_manifest_has_nothing_to_reconcile(tmp_path: Path)
     result = tool_digests_match_register(Repo(REPO_ROOT), register, {})
     assert result.passed
     assert "no digest to reconcile" in result.message
+
+
+def test_the_fixture_urls_track_the_register() -> None:
+    """The guard for the defect above, rather than a second reading of it.
+
+    A version literal here is invisible until a bump moves the register past
+    it, and then it fails four tests that check something else — so the symptom
+    (a stubbed 404) points nowhere near the cause. Asserting the URLs carry the
+    pinned version makes the next bump fail *this* test, by name.
+    """
+    register = a_register()
+    assert f"/{register.tools['uv'].version}/" in _uv_url()
+    assert f"/v{register.tools['gitleaks'].version}/" in _gitleaks_url()
