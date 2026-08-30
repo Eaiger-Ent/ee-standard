@@ -1303,7 +1303,27 @@ document that described it.
 - [ ] [`08-adopting.md`](08-adopting.md) describes installing from the
       marketplace, and its § Status table is true on the day of release — a
       guide that still calls the shipped machinery "not built" is the mirror of
-      one that describes tooling which does not exist
+      one that describes tooling which does not exist.
+      **Audited 2026-08-30: twelve of the thirteen rows are true** — the plugin,
+      the register, the checker, all nine skills, both remote-verification rows
+      and §§ 4.2–4.3, with the re-adoption run above the evidence that the
+      *published* copy behaves. **One row is false**, and it is the mirror
+      failure this criterion names rather than the one it names: *"A devcontainer
+      you can copy | **Exists and has been built** — Phase 4 built the shipped
+      template … on 2026-08-25"* cites a build of an artefact that has changed
+      seven times since, four of them in `setup.sh`, which runs at container
+      create under `set -euo pipefail` — the node `chown` loop, the
+      `safe.directory` write, the placeholders quoted from upstream at
+      `53966cc`, and `pre-commit install --hook-type pre-push`
+      ([ADR 0039](adr/0039-a-push-is-a-locus.md)). None has ever been built:
+      the ninth slice caught the quoting defect by diffing and running an
+      assert, and the 2026-08-30 re-adoption ran *inside* the consumer's
+      devcontainer, which is the copy Phase 4 took. **Blocked on a
+      `devcontainer up` of the current template**, runbook at
+      [`16-marketplace-readoption.md`](16-marketplace-readoption.md) § Building
+      the shipped template. It is not closable by editing the row: Phase 4 is
+      the precedent that a file test cannot stand in for a build, having not
+      built first time and exposed three defects no assert reads
 
 - [x] A repo-root `LICENSE` exists and is copied into the plugin —
       `check_plugin_license.py` fails without it, and `pyproject.toml` already
@@ -1420,7 +1440,25 @@ document that described it.
       `register-check deployments`, which the consumer's pinned `v0.5.0` checker
       does not have — and the register contract does not reveal that, since the
       consumer, `v0.5.0` and [ADR 0038](adr/0038-the-stamp-records-the-deployment-contract.md)
-      are all at contract 30
+      are all at contract 30.
+      **Run a second time the same day with every output captured**, because a
+      criterion closed on a verdict nobody can re-read is closed on trust. The
+      conclusion holds and the evidence is better: the first pass's `diff -rq`
+      had compared this tree against a **local-directory** `ee-skills`
+      marketplace twenty commits behind `origin/master`, so it was reading a
+      host's opinion of the promoted copy rather than the promoted copy. Re-run
+      inside the consumer's devcontainer, where `ee-skills` resolves to
+      `GitHub (EqualExperts/ee-skills)`, the diff is still **silent** — at
+      `ee-standard` `320f853` and `ee-skills` `6e11754`. Everything else
+      reproduces: `schema: OK` at contract 30, 24 stamps all at contract 30 and
+      gate `0.1.0` with none ahead of its gate, exit `3` on the same 12/0/1/1,
+      both workflows green. The second pass is **weaker in one place** —
+      `/register-adopt` was declined at its confirmation, having nothing to
+      write, so it proved the dispatch and the plan but not a gate's write path.
+      The twenty-four stamps carry no `gate-contract:` — the consumer predates
+      [ADR 0038](adr/0038-the-stamp-records-the-deployment-contract.md) — so
+      nothing is ahead of its gate because nothing is comparable, which is
+      `UNRECORDED` rather than a clean reconciliation
 - [x] **DOC-001 has a route for an adopter who cannot see `ee-skills`.** Added
       2026-08-25 by Phase 4, which found that the marketplace holding `lint-md`
       is **private**: every plan this repository produces rows DOC-001 as
