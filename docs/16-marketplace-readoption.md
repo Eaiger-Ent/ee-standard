@@ -198,10 +198,32 @@ through a `devcontainer up`.
 
 **Not in the consumer.** Its `.devcontainer/` is the copy Phase 4 took, it is
 that repository's adopted artefact, and replacing it would destroy the thing the
-re-adoption run just verified. Use a scratch repository — an empty directory
-with `git init` and a `controls.yaml` fetched per
-[`08-adopting.md`](08-adopting.md) § 0.1 is enough, because the template's
-substitution reads the register and nothing else.
+re-adoption run just verified. Use a scratch repository.
+
+**An empty directory is not enough, and this document said it was.** Two
+corrections, both taken on 2026-08-30 and both changing what the build measures:
+
+**Take the register from `main`, not from the newest tag.** § 0.1's fetch is
+right for an adopter and wrong for this build. `v0.5.0` pins **uv 0.12.5** where
+`main` pins **0.12.6**, and `main`'s `setup.sh` is sixty-five lines different
+from the one that tag ships. Each pair is internally consistent — a tag ships a
+register and a template as one artefact — so following § 0.1 verbatim would
+cross them and build the new template against the old register. Copy
+`controls.yaml` out of the `ee-standard` clone the template comes from.
+
+**Seed the repository, or two of the four changes go untested.** The claim that
+the substitution *"reads the register and nothing else"* is true of the
+substitution and false of the build. `setup.sh` guards the
+[ADR 0039](adr/0039-a-push-is-a-locus.md) hook block on
+`[ -f .pre-commit-config.yaml ]` and the frozen install on `uv.lock`, so in a
+bare directory the whole block is skipped, neither hook is written, and step 3's
+`ls .git/hooks/pre-push` has nothing to find. The *unreachable* arm was already
+rehearsed here with stubs; the *reachable* arm — the one that writes both hook
+types — has never run anywhere. So the scratch repository commits a minimal
+`pyproject.toml`, a `uv.lock` carrying `pre-commit`, and a trivial
+`.pre-commit-config.yaml` before the first `up`. If the host has no uv to write
+the lock file, commit the other two and **record which arm ran**: an untested
+arm reported as tested is the failure this phase keeps finding.
 
 ### The steps
 
@@ -209,7 +231,10 @@ substitution reads the register and nothing else.
    the four placeholders, the aarch64 checksum fetched from the release, and the
    two-source agreement check on the x86_64 one. Follow that section rather than
    anything written here; it is the guide an adopter reads and this is a
-   rehearsal of it.
+   rehearsal of it. **Its extraction commands are now executed by
+   `tests/test_devcontainer_placeholders.py`** rather than only read, so a
+   § 2.0 that has stopped finding a value fails the build here instead of at
+   `sha256sum -c` on the host.
 2. **`devcontainer up`**, and read what `setup.sh` prints rather than only its
    exit code. Three of the four changes above fail *quietly* if they fail: a
    glob matching nothing is a no-op, and the pre-commit branch is written to
@@ -241,6 +266,12 @@ matches a real path, whether `safe.directory` fixes a real bind mount, whether
 uv actually downloads and verifies against the quoted digests, and whether
 `claude update` clears the permissions error. Those are the four changes, and a
 static check can only show they are well-formed.
+
+**One build exercises one architecture**, and the record must say which.
+`setup.sh` branches on `uname -m` and reaches a different placeholder and a
+different digest per arm, so an Apple Silicon host verifies the aarch64 digest
+and leaves the x86_64 one untested. Either arm closes the criterion; naming the
+one that ran is what stops the record claiming both.
 
 **One static finding, and it is latent rather than live.** The `chown` loop's
 comment says an unmatched glob is *"a no-op rather than an error"*. It is a

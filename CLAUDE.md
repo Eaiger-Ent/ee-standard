@@ -831,6 +831,27 @@ read. Found when an upstream `shellcheck-clean` commit quoted the placeholders
 in the **published** copy of this template, which nothing here would have
 noticed.
 
+**A placeholder is only as good as its source, and from 2026-08-30 that join is
+tested.** The dependency runs one way — the register holds the version and the
+template references it — so there is **no reconciliation task between
+`.devcontainer/` and `controls.yaml`** to invent when either changes; Renovate
+moves the register and SUP-004 reconciles what it moved. What nothing covered
+was whether a placeholder still *has* a value:
+`tests/test_devcontainer_template.py` substitutes only `{{PROJECT_NAME}}` and
+leaves the three uv placeholders in, so a renamed `tools.uv.sha256` or a
+placeholder no field backs surfaced at `sha256sum -c` during container create in
+somebody else's repository. `tests/test_devcontainer_placeholders.py` holds three
+claims: the template's placeholders and their declared sources agree in both
+directions, each register-sourced one resolves to a value of the right shape, and
+**`08-adopting.md` § 2.0's own extraction commands are executed rather than
+re-typed** — the shape `tests/test_conformance_step.py` uses, because a
+reimplementation is a second copy free to keep working after the commands an
+adopter runs have stopped. That has already failed once: § 2.0's first version
+used `grep -A4`, which never reached `version:` because the register comments
+that block, and it returned empty at exit `0`. It builds nothing and cannot —
+that is Phase 6's last criterion and it needs a Docker host, so the cadence is
+**file-level reconciliation on every change, a real build at release cadence**.
+
 **From register contract 30 a control's `rationale_adr` may be an `http(s)`
 citation as well as a path.** It resolves against the register's own directory,
 so a register fetched into a repository that did not author it failed **every**
