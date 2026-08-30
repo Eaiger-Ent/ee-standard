@@ -23,7 +23,7 @@ prevent, so the gaps are stated rather than glossed.
 | The register — what "conformant" means | **Exists**; fetch it at a tag | `controls.yaml`, and § 0.1 |
 | `register-check` — the checker | **Exists** | `src/register_check/`, run with `uv run register-check` |
 | Platform prerequisites (this document, § 1) | **Exists**, manual | Below |
-| A devcontainer you can copy | **Exists and has been built** — Phase 4 built the shipped template in a repository that did not author it, on 2026-08-25 | `.devcontainer/`, and § 2.0 |
+| A devcontainer you can copy | **Exists and has been built** — Phase 4 built it in a repository that did not author it on 2026-08-25, and the template as it stands today was built on 2026-08-30 (aarch64), which is the build the four `setup.sh` changes since then are owed | `.devcontainer/`, and § 2.0 |
 | `gate-secrets` — deploys SEC-001, checks SEC-002 and SEC-003 | **Exists** | `plugins/control-register/skills/gate-secrets/` |
 | `gate-quality` — deploys LNT-001, TYP-001, TST-001 | **Exists** | `plugins/control-register/skills/gate-quality/` |
 | The other four `gate-*` skills | **Exists** | `plugins/control-register/skills/` |

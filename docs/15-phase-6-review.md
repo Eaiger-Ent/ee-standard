@@ -1035,3 +1035,92 @@ that will cut the next one, and the § 0.1 tag route gets rehearsed properly whe
 that tag exists. The run sheet takes `main`'s register for this build, recorded
 here because a reader of the eventual build record needs to know which pair was
 built.
+
+## The thirteenth slice — the template was built, and it built first time
+
+Date: 2026-08-30. The run [`16-marketplace-readoption.md`](16-marketplace-readoption.md)
+§ Building the shipped template asks for, on the macOS Docker host that
+container is not: a `devcontainer up` of the **current** template, which four
+changes had reached since Phase 4 built it on 2026-08-25 and none of which had
+ever been executed.
+
+### What was built, and against which register
+
+A scratch repository — not the consumer, whose `.devcontainer/` is the copy
+Phase 4 took and the artefact the eleventh slice verified. It was seeded before
+the first `up`, as the run sheet requires: a minimal `pyproject.toml` with
+`pre-commit` in its dev group, the `uv.lock` written from it, a trivial
+`.pre-commit-config.yaml` with `default_stages: [pre-commit]`, and `.python-version`
+at 3.14.
+
+The register was `main`'s at `bf891ac`, copied out of this clone rather than
+fetched at a tag, for the reason the twelfth slice recorded: `v0.5.0` pins uv
+**0.12.5** and `main` pins **0.12.6**, and a tag ships a register and a template
+as one artefact, so following § 0.1 verbatim would have crossed them.
+
+§ 2.0's own commands were run rather than paraphrased, and every one of them
+answered: `0.12.6`, the x86_64 digest `8681d892…2477`, the aarch64 digest
+`d58030ac…128d` fetched from the release, the two-source agreement check on the
+x86_64 one **agreeing**, and `grep -rl '{{'` clean after the substitution.
+
+### The four changes, and what the build says about each
+
+| Change | Result |
+| --- | --- |
+| `chown` loop over the nvm glob | **Matched a real path.** `/usr/local/share/nvm/versions/node/v24.19.0/lib/node_modules/@anthropic-ai`, owned `vscode:vscode` after create |
+| `git config --global --add safe.directory "$PWD"` | **Fixes a real bind mount.** `git log -1` inside the container reads the seed commit; the workspace is a macOS bind mount |
+| Quoted placeholders, from `53966cc` | **Substituted, downloaded and verified.** `uv --version` reports `0.12.6 (aarch64-unknown-linux-gnu)`; `sha256sum -c` runs under `set -euo pipefail`, so a container that creates is a digest that matched |
+| `pre-commit install --hook-type pre-push` | **Both hooks written.** `.git/hooks/pre-commit` and `.git/hooks/pre-push`, and the log line is the pair rather than the single |
+
+And the fifth check the run sheet asks for, which is not one of the four:
+`claude update` reached the permissions fix and moved 2.1.241 → 2.1.251 rather
+than printing *"Insufficient permissions to install update"*.
+
+**The reachable arm ran, which is the one that had never run anywhere.** The
+seeding is what bought that: the ADR 0039 block is guarded on
+`.pre-commit-config.yaml` and its first arm on `uv.lock` **and** `uv run
+pre-commit --version` succeeding, so a bare directory would have skipped the
+whole block and step 3 would have had nothing to find. The unreachable arm had
+already been rehearsed here with stubs; this is the other half of that pair, and
+the record says which one ran rather than implying both.
+
+### Two things the build does not claim
+
+**One architecture, and it is aarch64.** The host is Apple Silicon, so
+`setup.sh`'s `uname -m` branch reached the aarch64 placeholder and verified the
+aarch64 digest. The x86_64 digest is still verified by nothing but SUP-004's
+comparison against the published manifest. Either arm closes the criterion;
+naming the one that ran is what stops the record claiming both.
+
+**The feature layers were cached.** Docker reported `CACHED` for the
+`github-cli`, `node` and `claude-code` feature installs, from an earlier build on
+this host with the same feature set — so this run exercised `setup.sh`, which is
+`postCreateCommand` and always runs, and did not re-exercise a cold feature
+install. That is the right boundary to state: all four changes are in
+`setup.sh`, and none of them is what was cached.
+
+`check-auth.sh` reported `✗ GitHub CLI — not authenticated`, which is the host's
+Keychain having no `GITHUB_TOKEN` entry rather than a defect in the template —
+that value is documented as optional and the script reports rather than repairs.
+
+### The latent finding is still latent, and now measured live
+
+§ Building the shipped template records that the `chown` loop's exit status is
+`1` when the glob matches nothing, because `[ -d "$d" ]` is the last thing in
+the body. On this host the glob matched, so the loop exited `0` and the question
+did not arise. Nothing changes: it stays a hazard for whoever reorders
+`setup.sh` and puts that loop last, and not a defect in the file as it stands.
+
+### What it deliberately leaves open
+
+**There is no `register-check` verdict here, by construction.** The scratch
+repository has no gates deployed, so a conformance run over it would measure the
+scratch repository rather than the template. What a fresh copy is owed —
+`devcontainer_user_is_non_root`, `devcontainer_image_digest_pinned` and
+`devcontainer_lock_covers_all_features` passing before any gate runs — is
+[`08-adopting.md`](08-adopting.md) § 2.0's claim and was not re-measured here.
+
+**The cadence stands.** File-level reconciliation on every change, which
+`tests/test_devcontainer_placeholders.py` now runs in CI, and a real build at
+release cadence, which needs a host CI does not have. This is that build; the
+next one is owed when the template next changes and a tag is cut.

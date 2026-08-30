@@ -2,9 +2,11 @@
 
 The runbook for the two Phase 6 exit criteria that need a macOS host with
 Docker: *the consumer repo re-adopts from the marketplace copy and still passes*
-— **closed 2026-08-30**, and § Building the shipped template, which is what
-[`08-adopting.md`](08-adopting.md) § Status still owes a reader before it can
-claim the template has been built.
+and § Building the shipped template, which is what
+[`08-adopting.md`](08-adopting.md) § Status owed a reader before it could claim
+the template has been built. **Both are closed, 2026-08-30.** The document
+stays as the run sheet for the next time either is owed — the second at release
+cadence, whenever the template next changes.
 
 It is written for an operator on a host this container is not, so it states what
 that host must have and what each step is expected to produce, and it **does not
@@ -170,10 +172,17 @@ and outside the docs tree `tests/test_file_map.py` holds true.
 
 ## Building the shipped template
 
-The second run this document covers, and the one still outstanding. It closes no
-part of the re-adoption criterion above — that one is done — and everything
-below is about a different sentence: `08-adopting.md` § Status claiming *"Exists
-and has been built"* of the devcontainer template.
+The second run this document covers. It closes no part of the re-adoption
+criterion above — that one is done — and everything below is about a different
+sentence: `08-adopting.md` § Status claiming *"Exists and has been built"* of the
+devcontainer template.
+
+**It ran on 2026-08-30 and the container created first time**, on an Apple
+Silicon host, so the aarch64 arm is the one exercised. All four changes below
+did what they claim and `claude update` cleared the permissions error; the
+record is [`15-phase-6-review.md`](15-phase-6-review.md) § The thirteenth slice,
+including the two things the build does not claim. Everything that follows is
+kept as the run sheet for the next build rather than as outstanding work.
 
 ### Why it is owed
 
