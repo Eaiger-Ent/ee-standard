@@ -932,3 +932,106 @@ already knew the pull request existed.
 This run is what makes it checkable — the rows claim what the published plugin
 does, and until today nothing had installed the published plugin into a
 repository that did not author it.
+
+## The twelfth slice — a placeholder is only as good as its source
+
+Landed 2026-08-30. It closes no criterion. It closes the layer directly beneath
+the one criterion still open, which is the layer that can be tested without a
+Docker host.
+
+### What was found
+
+Preparing the operator run sheet for the template build raised a question the
+runbook does not answer: which register does the substitution read? Following
+[`08-adopting.md`](08-adopting.md) § 0.1 verbatim fetches `controls.yaml` from
+the newest tag, which is right for an adopter and wrong for this build. `v0.5.0`
+pins **uv 0.12.5** and `main` pins **0.12.6**, and `main`'s `setup.sh` is
+sixty-five lines different from the one that tag ships. The two are each
+internally consistent; crossing them is what § 0.1 verbatim would have done.
+
+That is not drift — a tag ships a register and a template as one artefact, and
+`tests/test_register_install.py` already holds that invariant. **The direction
+of the dependency is the thing to say plainly**: the template holds no versions
+to keep in step. `{{UV_VERSION}}` is a placeholder by rule, not by accident —
+Phase 2's criterion, [ADR 0034](adr/0034-the-template-bootstraps-uv.md), and
+`test_setup_pins_no_tool_version_by_hand`. So there is no per-change
+reconciliation task to invent between `.devcontainer/` and `controls.yaml`;
+Renovate moves the register and SUP-004 ([ADR 0041](adr/0041-a-pinned-digest-is-checked-against-what-was-published.md))
+reconciles what it moved.
+
+**What no test covered was the join.** `tests/test_devcontainer_template.py`
+holds two halves — the template pins nothing by hand, and a copy of it passes
+BLD-001 and DEV-001 — and neither reaches the step between them: its `_copied()`
+helper substitutes `{{PROJECT_NAME}}` and **leaves the three uv placeholders
+in**. `test_every_placeholder_is_named_in_the_readme` checks only that the
+template's own README mentions each name. So nothing asserted that a placeholder
+has a value in the register, and nothing asserted that § 2.0's commands for
+reading those values still find them.
+
+That join has already failed once, and § 2.0 records it: the first version of
+those commands used `grep -A4`, which never reached `version:` because the
+register comments that block. They returned empty **and exited zero**, `sed`
+substituted nothing, and the placeholders survived into a container that then
+failed at `sha256sum -c`. Renaming `tools.uv.sha256`, or adding a placeholder no
+register field backs, has the same shape and the same distance between cause and
+symptom — which is a container create in somebody else's repository.
+
+### What landed
+
+`tests/test_devcontainer_placeholders.py`, six tests in three claims:
+
+| Claim | What fails it |
+| --- | --- |
+| Every placeholder has a declared source, and every declared source has a placeholder | A new placeholder with no register field behind it; a source left in the table after its placeholder is deleted |
+| Each register-sourced placeholder resolves to a value **of the right shape** | The field renamed or removed; a `version:` that has become `0.12`, which still fills the placeholder and is noticed at `sha256sum -c` |
+| § 2.0's own extraction commands still find those values | The `grep -A4` regression, reproduced and caught |
+
+Three things about its construction are deliberate.
+
+**The guide's commands are executed, not re-typed.** The bash block is read out
+of [`08-adopting.md`](08-adopting.md) and run, the same shape
+`tests/test_conformance_step.py` uses for the workflow step's script. A
+reimplementation would be a second copy of the commands, free to go on working
+after the ones an adopter actually runs have stopped — which is the failure this
+repository exists to prevent, appearing in the test that guards against it.
+
+**The mapping is declared, not derived.** `{{UV_VERSION}}` reading as *the
+`version` of the tool called `uv`* is a naming convention nobody has written
+down, and a test that inferred it would pass a template whose placeholder is a
+typo by inventing a tool to match. `PROJECT_NAME` is enumerated as
+adopter-supplied for the same reason: a silent *not in the register, so it must
+be the adopter's* default is exactly what lets a typo through.
+
+**The two network-bound lines are cut, and said so.** The aarch64 digest is
+fetched from the release, so it is out of reach of a test that must not depend
+on the network; the register's copy of it is checked by SUP-004 and the fetch
+itself by the operator run sheet. Its `curl` line and the variable it sets are
+both dropped, because the guide's own `echo` dereferences that variable with
+`:?` and dropping one without the other would have turned this into a test of
+`set -u`.
+
+Each of the three claims was verified by mutation before the slice landed: the
+`grep -A4` regression reintroduced into the guide, the aarch64 entry deleted
+from `checksums.also`, and a `{{GITLEAKS_VERSION}}` added to `setup.sh`. All
+three failed the suite, and each failed the test that names them.
+
+### What it deliberately left open
+
+**It builds nothing, and a file test still cannot.** Whether the substituted
+values produce a container that creates is the criterion this phase still owes,
+and Phase 4 is the precedent for why: it did not build first time, and the three
+defects that exposed were all things no assert reads. What this slice can say is
+that the values are there and the documented route reaches them — which is
+strictly the layer below.
+
+**The honest cadence is therefore split**, and worth stating so nobody proposes
+a build per devcontainer edit: file-level reconciliation on every change, which
+now runs in CI, and a real build at release cadence, which needs a macOS Docker
+host CI does not have.
+
+**The `v0.5.0` register and `main`'s disagree about uv**, and nothing here
+changes that or should. It is the ordinary state between a tag and the branch
+that will cut the next one, and the § 0.1 tag route gets rehearsed properly when
+that tag exists. The run sheet takes `main`'s register for this build, recorded
+here because a reader of the eventual build record needs to know which pair was
+built.
