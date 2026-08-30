@@ -39,8 +39,8 @@ makes some of them disappear:
 ## A — The adopter route names no prerequisite at all
 
 This is the largest **onboarding** gap and everything in § B, § C and § D is
-downstream of it. The largest **conformance** gap is § J, which is not about
-onboarding at all.
+downstream of it. The largest **conformance** gaps are § J to § M, which are not
+about onboarding at all.
 
 [`08-adopting.md`](08-adopting.md) opens at § 0.0 with
 `claude plugin marketplace add`, and never states what must already be on the
@@ -226,6 +226,11 @@ Recorded because they cost a junior confidence rather than time.
   macOS supports `-V` was not verified here and should be, on a Mac, before it
   is relied on — a silent empty `$tag` produces a `curl` against a URL with an
   empty path segment.
+- § 4.5 tells the adopter to copy the sweep from
+  `plugins/control-register/templates/sweep/conformance-sweep.yml`. It ships, but
+  that is the **authoring repository's** path — the same defect § 2.0 records and
+  fixes for the devcontainer template, where both the plugin-cache path and the
+  clone path are given. § 4.5 gives only the second.
 - Nothing in the adopter route estimates how long any of it takes, or names the
   point at which the reader can stop and say they are done. § 5's checklist is
   the closest, and it is at the end of a 1,963-line document.
@@ -318,6 +323,97 @@ exists because Renovate's uv bump moved the version at all four sites and left
 all three digests behind while everything passed. That was the bot working and
 the check being wrong; this is the bot never running at all.
 
+## K — `pinned_at` is an allow-list, and the adopter is told to extend it by hand
+
+Both halves of the pin reconciliation iterate **declared** sites and nothing
+else:
+
+- `tool_versions_match_register` (SUP-001) —
+  `for tool in literal: for path in tool.pinned_at:`
+- `tool_digests_match_register` (SUP-004) —
+  `files = sorted({path for tool in register.tools.values() for path in tool.pinned_at})`
+
+SUP-004's second direction catches a **stray digest inside a declared site** —
+one the register does not name. Neither assert catches a **site the register
+does not name at all**. A file that installs a register-pinned tool and is
+missing from `pinned_at` is compared by nothing, in either direction, and
+reports no verdict.
+
+For this repository that is nearly harmless: the register and the files were
+written together. For an adopter it is a live hole, because they are explicitly
+instructed to close it by hand. The instruction is a comment inside a shipped
+template, `gate-secrets/templates/ci-steps.yaml`:
+
+```text
+The version appears twice in the repository once this is written — here and in
+the developer environment — which is why the register records those sites in
+`tools.{{TOOL}}.pinned_at` and `tool_versions_match_register` fails the build
+when one drifts. Add this workflow's path there if it is not already listed.
+```
+
+An adopter's gating workflow is not named `register-check.yml`, so the path
+almost never *is* already listed. If they miss that line — it is a comment in a
+file the gate writes, not a step the gate performs or a prompt they answer —
+their gitleaks pin drifts uncompared while SUP-001 and SUP-004 both pass.
+
+This is ADR 0019's own argument, unapplied one level up. That ADR is about
+exemptions: *"a map is an allow-list, and what an allow-list leaves out is
+invisible."* `pinned_at` is an allow-list with the same property and no
+equivalent check. `docs/14-file-map.md` earned a test in **both directions** for
+exactly this reason; `pinned_at` has one direction.
+
+Worth noting what the missing direction would have caught here. The comment in
+`tool_versions_match_register` records that gitleaks was compared at **no**
+locus while the assert reported a pass, and that *"Renovate's own dashboard found
+it, by listing five managed sites where the register implies six."* The
+instrument that found this repository's version of this bug is the one § J shows
+an adopter does not have.
+
+## L — The annotation pattern is applied at one site of three
+
+The standard knows the right shape and writes it in one place. Every site where
+an adopter ends up with a version literal, and whether the thing that puts it
+there also writes the `# renovate:` annotation that makes it visible to a bot:
+
+| Site | Written by | Literal | Annotation |
+| --- | --- | --- | --- |
+| the gating workflow, gitleaks | `gate-secrets/templates/ci-steps.yaml` | yes | **yes** |
+| `.devcontainer/setup.sh`, uv | the devcontainer template, § 2.0 substitution | yes | **no** |
+| `.devcontainer/setup.sh`, gitleaks | `gate-secrets` Step 3.5 | yes | **no** |
+
+Step 3.5 is prose with no template behind it, and it says to *"append an install
+block using the same pinned version and checksum Step 1 used"* — version and
+checksum, not annotation. So the one gate that demonstrably knows to write an
+annotation writes it into the workflow and omits it from the file next door.
+
+And per § J the one that **is** written is inert anyway: `depName={{TOOL_REPO}}`
+resolves correctly and matches nothing, because no `renovate.json` an adopter
+has defines a custom manager to read it. The standard ships an annotation with
+no config and a config fragment with no managers.
+
+## M — The template ships no `.python-version`, and no step creates one
+
+ADR 0027 makes `.python-version` the interpreter's authority, and `tools.python`
+declares `source: toolchain` with `toolchain: .python-version`.
+`tool_versions_match_register` fails a toolchain-sourced tool whose file git does
+not track — *"an untracked one is worse than a drifted pin: every locus falls
+back to whatever it would have resolved anyway."*
+
+The shipped template's directory is `.gitignore`, `README.md`, `check-auth.sh`,
+`devcontainer-lock.json`, `devcontainer.json`, `fetch-secrets.sh`, `setup.sh`.
+There is no `.python-version`, and `setup.sh` runs `uv sync --frozen` without
+one.
+
+So every Python adopter fails SUP-001 until they create a file that appears in
+no step of the guide. It is not undocumented — checklist row 5a names the
+property, and § 2.2 and § 3.7 mention the file in passing — but § 2 never says
+*create this file, put this in it*.
+
+This is the **least** severe of the four, and deliberately so: the failure is
+loud and immediate rather than a green control over a false property. It is
+listed because a junior meets it as a control failing on a file nobody told them
+to write, at the point they were expecting their first green run.
+
 ## The doc plan
 
 The deferred question was whether to write something new or restructure
@@ -363,16 +459,30 @@ onboarding:
 | Bring § Status and the document table up to date (§ H) | `README.md` |
 | Annotate the uv pin, and settle the spelling the annotation has to match (§ J) | `plugins/control-register/templates/devcontainer/setup.sh` |
 | Ship a working `renovate.json` template, or have `gate-supply-chain` write one; replace § 1.1's fragment with a pointer to it (§ J) | the plugin, `08-adopting.md` § 1.1 |
+| Write the `# renovate:` annotation beside the gitleaks install, as the CI template already does (§ L) | `gate-secrets` Step 3.5 |
+| Ship a `.python-version`, or make § 2 a step that writes one (§ M) | the devcontainer template, `08-adopting.md` § 2 |
+| Give the plugin-cache path beside the clone path (§ I) | `08-adopting.md` § 4.5 |
 
 The second row is the one that keeps the first fixed.
 
-**One of § J's fixes is a decision rather than an edit**, and should not be taken
-here. Whether SUP-002 ought to fail a repository whose `source: literal` tools
-have `pinned_at` sites that no custom manager covers is a register question with
-an ADR's shape: it would make the control read a second file, it would fail
-repositories that are conformant today, and the alternative — leaving it as
-guidance — is what produced this finding. Raise it; do not decide it in a
-documentation change.
+**Two of these are decisions rather than edits**, and neither should be taken
+here.
+
+**§ J** — whether SUP-002 ought to fail a repository whose `source: literal`
+tools have `pinned_at` sites that no custom manager covers. It would make the
+control read a second file, it would fail repositories that are conformant
+today, and the alternative — leaving it as guidance — is what produced the
+finding.
+
+**§ K** — whether `pinned_at` should be checked in both directions, failing a
+repository that installs a register-pinned tool at a site the register does not
+name. It is the same fix `docs/14-file-map.md` already has and for the same
+reason, and it would fail repositories that are conformant today. Until it
+exists, `gate-secrets` telling an adopter to edit their register in a code
+comment is the weakest link in the supply-chain chain.
+
+Both have an ADR's shape. Raise them; do not decide either in a documentation
+change.
 
 ## What no file check can close
 
