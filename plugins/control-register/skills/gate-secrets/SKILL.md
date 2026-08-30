@@ -1,9 +1,9 @@
 ---
 name: gate-secrets
 description: >
-  Deploy SEC-001 and check SEC-002 and SEC-003: wire the register's
-  secret scanner at
-  pre-commit and CI, stamp what it writes, verify through register-check.
+  Wire the register's secret scanner at pre-commit and in CI, stamp what it
+  writes, verify through register-check — deploys SEC-001, checks SEC-002
+  and SEC-003.
   Triggers: 'deploy gate-secrets', 'wire secret scanning', '/gate-secrets'.
 argument-hint: "[--repo <path>] [--register <path>]"
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
@@ -424,3 +424,30 @@ decides whether it lands (`docs/00-concepts.md` § Notify, never redeploy).
   `${CLAUDE_SKILL_DIR}/README.md`
 - The artefacts it writes: `${CLAUDE_SKILL_DIR}/templates/precommit-hook.yaml`
   and `${CLAUDE_SKILL_DIR}/templates/ci-steps.yaml`
+
+## Calibration
+
+- **Strong:** `${CLAUDE_SKILL_DIR}/examples.md` §Strong — a deployment where
+  every value came from the register, every declared locus is wired and stamped,
+  and the checker's verdict is reported as given.
+- **Weak:** `${CLAUDE_SKILL_DIR}/examples.md` §Weak — a run whose output
+  claims more than the artefacts deliver.
+
+## Co-update partners
+
+Canonical source for both shared standards below:
+`${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
+`docs/skill-relationship-map.md`.
+
+- **Write narration shape** (`reference/write-narration.md`) — shared with
+  `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
+  `gate-supply-chain`, `register-adopt`, `register-install` and
+  `register-variance`. Change the shape there, never here; ADR 0036 is the
+  reason it is one file rather than nine copies.
+- **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
+  shared with every gate skill that writes a pre-commit hook: `gate-build`,
+  `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
+- **Provenance stamp and verify contract** — every skill here stamps what it
+  writes and verifies through `register-check`. The stamp fields and the
+  checker's exit codes are the register's contract, not any one skill's;
+  co-update all nine when the contract version changes.

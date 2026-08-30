@@ -297,38 +297,10 @@ Read `${CLAUDE_SKILL_DIR}/templates/editor-extensions.json` and substitute
 
 ### Step 3b — Bind the file type, where the register says one
 
-Installing the extension is not the extension being the tool that runs, and the
-difference is the failure this step exists for: `charliermarsh.ruff` was
-installed for the whole time a devcontainer feature had Python files bound to
-`ms-python.autopep8`, and LNT-001 passed throughout (ADR 0029 point 4).
-
-**Skip this sub-step where `EDITOR_LANGUAGE` is absent.** A gate whose register
-entry declares no `editor_binding` holds no file type, and writing one would
-mandate a binding the register does not — eslint is a linter, not TypeScript's
-formatter.
-
-Otherwise read `${CLAUDE_SKILL_DIR}/templates/editor-settings.json`, substitute
-`{{EDITOR_LANGUAGE}}`, `{{EDITOR_BINDING_SETTING}}`, `{{EDITOR_EXTENSION}}`,
-`{{STACK}}`, `{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and
-`{{REGISTER_CONTRACT}}`, and merge it into **`.vscode/settings.json`**,
-preserving every other setting. Create the file where it does not exist.
-
-- **`BINDING_STATE` shows another extension holding the language:** replace that
-  value and say in the stamp comment which extension was displaced. A repository
-  that deliberately mandates a different one changes the register, not this
-  file.
-- **`BINDING_STATE` shows `devcontainer.json` also setting it:** remove it from
-  there. The binding belongs at workspace scope alone — a copy in
-  `devcontainer.json` lands in the same machine-scoped file a feature's does and
-  merges on terms the specification declines to state. The checker fails the
-  duplicate even when the two agree.
-
-Never write the binding into `devcontainer.json`, whichever file the extension
-list went into in Step 3.
-
-The editor reads the same configuration pre-commit and CI read. Write nothing
-that configures rules here: an editor with rules of its own is the second copy
-this standard exists to prevent.
+**Read `${CLAUDE_SKILL_DIR}/editor-binding-rules.md` and apply it.** It holds the
+skip condition, the template substitution, both `BINDING_STATE` cases and the
+rule that the binding never goes into `devcontainer.json` — held there rather
+than here because it is a stable rule set, not a step this file re-decides.
 
 ---
 
@@ -486,3 +458,30 @@ decides whether it lands (`docs/00-concepts.md` § Notify, never redeploy).
   `${CLAUDE_SKILL_DIR}/templates/editor-settings.json`,
   `${CLAUDE_SKILL_DIR}/templates/precommit-hooks.yaml` and
   `${CLAUDE_SKILL_DIR}/templates/ci-steps.yaml`
+
+## Calibration
+
+- **Strong:** `${CLAUDE_SKILL_DIR}/examples.md` §Strong — a deployment where
+  every value came from the register, every declared locus is wired and stamped,
+  and the checker's verdict is reported as given.
+- **Weak:** `${CLAUDE_SKILL_DIR}/examples.md` §Weak — a run whose output
+  claims more than the artefacts deliver.
+
+## Co-update partners
+
+Canonical source for both shared standards below:
+`${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
+`docs/skill-relationship-map.md`.
+
+- **Write narration shape** (`reference/write-narration.md`) — shared with
+  `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
+  `gate-supply-chain`, `register-adopt`, `register-install` and
+  `register-variance`. Change the shape there, never here; ADR 0036 is the
+  reason it is one file rather than nine copies.
+- **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
+  shared with every gate skill that writes a pre-commit hook: `gate-build`,
+  `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
+- **Provenance stamp and verify contract** — every skill here stamps what it
+  writes and verifies through `register-check`. The stamp fields and the
+  checker's exit codes are the register's contract, not any one skill's;
+  co-update all nine when the contract version changes.

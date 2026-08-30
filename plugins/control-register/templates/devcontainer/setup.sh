@@ -99,10 +99,10 @@ git config --global --add safe.directory "$PWD"
 # tarball with no checksum and no signature, so `devcontainer-lock.json` would
 # pin the installer and not the artefact — the measurement Phase 0.5 already
 # made for uv and gitleaks (docs/adr/0034-the-template-bootstraps-uv.md).
-uv_version={{UV_VERSION}}
+uv_version="{{UV_VERSION}}"
 case "$(uname -m)" in
-  aarch64|arm64) uv_arch=aarch64 uv_sha={{UV_SHA256_AARCH64}} ;;
-  *)             uv_arch=x86_64  uv_sha={{UV_SHA256_X86_64}} ;;
+  aarch64|arm64) uv_arch=aarch64 uv_sha="{{UV_SHA256_AARCH64}}" ;;
+  *)             uv_arch=x86_64  uv_sha="{{UV_SHA256_X86_64}}" ;;
 esac
 uv_dir="uv-${uv_arch}-unknown-linux-gnu"
 curl -sSfL -o /tmp/uv.tgz \

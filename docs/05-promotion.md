@@ -532,6 +532,18 @@ All of it went out on 2026-08-29, in the order this document sets.
 | 1. `control-register` | [incubator#657](https://github.com/EqualExperts/ee-skills-incubator/pull/657) — **one PR, not nine. Merged and promoted 2026-08-29**, and `claude plugin install control-register@ee-skills` installs one plugin at 0.1.0 with all nine skills |
 | 2. `skill-update` widening | Not raised. It shipped upstream; see its row above |
 
+**A submission is not the end of the conversation.** The incubator pushed four
+remediation commits onto submission 1's branch before merging it — descriptions
+rewritten to lead with intent, all nine skills brought to an *Optimised* rubric
+verdict, `gate-quality`'s editor binding rules extracted to their own file, and
+the devcontainer templates made shellcheck-clean. None of it came back
+automatically, and the two published copies were a different plugin at the same
+version number until somebody diffed them. **They were taken back on
+2026-08-30** and `plugins/control-register/` is byte-identical to the published
+copy again ([`15-phase-6-review.md`](15-phase-6-review.md) § The tenth slice).
+Expect this: what is promoted is not always what was submitted, and nothing
+tells you.
+
 **All five that went out are merged, and three came back as installed releases**
 — `control-register@0.1.0`, `ee-skills-contribute@0.1.23` and `lint-md@1.0.10`,
 the last two carrying the changes argued for here. What did **not** come back is

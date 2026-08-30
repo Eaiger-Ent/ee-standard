@@ -401,3 +401,30 @@ which is the point of re-running after a register bump.
 - Human-readable overview, and why the dispatch order is what it is:
   `${CLAUDE_SKILL_DIR}/README.md`
 - What an adopter must do that no skill can: `docs/08-adopting.md`
+
+## Calibration
+
+- **Strong:** `${CLAUDE_SKILL_DIR}/examples.md` §Strong — a deployment where
+  every value came from the register, every declared locus is wired and stamped,
+  and the checker's verdict is reported as given.
+- **Weak:** `${CLAUDE_SKILL_DIR}/examples.md` §Weak — a run whose output
+  claims more than the artefacts deliver.
+
+## Co-update partners
+
+Canonical source for both shared standards below:
+`${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
+`docs/skill-relationship-map.md`.
+
+- **Write narration shape** (`reference/write-narration.md`) — shared with
+  `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
+  `gate-supply-chain`, `register-adopt`, `register-install` and
+  `register-variance`. Change the shape there, never here; ADR 0036 is the
+  reason it is one file rather than nine copies.
+- **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
+  shared with every gate skill that writes a pre-commit hook: `gate-build`,
+  `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
+- **Provenance stamp and verify contract** — every skill here stamps what it
+  writes and verifies through `register-check`. The stamp fields and the
+  checker's exit codes are the register's contract, not any one skill's;
+  co-update all nine when the contract version changes.
