@@ -16,7 +16,10 @@ ENV_FILE="$SCRIPT_DIR/.env"
 # rotated secret needs a rebuild. Writing a profile fragment makes every shell
 # started afterwards see the same values, not only this one.
 if [ -f "$ENV_FILE" ]; then
-  set -a; . "$ENV_FILE"; set +a
+  set -a
+  # shellcheck source=/dev/null
+  . "$ENV_FILE"
+  set +a
   TMP=$(mktemp)
   cat > "$TMP" <<EOF
 #!/bin/sh

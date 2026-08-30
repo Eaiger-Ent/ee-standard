@@ -708,3 +708,73 @@ asking another team to work around a defect in this checker. What remains
 outstanding is not a fix but a **divergence** — nine SKILL.md files, ten new
 files, and the two template edits — and that is the next slice's job rather than
 this one's.
+
+## The tenth slice — the two published copies are one artefact again
+
+Landed 2026-08-30. It closes no criterion. It resolves the divergence the ninth
+slice found and deliberately left, and it is the case
+[ADR 0044](adr/0044-the-adopter-installs-from-the-public-marketplace.md) named
+in advance: *"one artefact published twice, not a fork — and if they ever stop
+being the same tree, that is a defect to fix rather than a state to document."*
+
+### What had diverged
+
+The incubator pushed **four remediation commits** onto the submission branch
+before merging it, none of which came back here:
+
+| Commit | What it did |
+| --- | --- |
+| `e41839c3` | `gate-secrets`' description leads with intent rather than control IDs |
+| `3ea9bab0` | All nine skills brought to an *Optimised* rubric verdict |
+| `3b2298d2` | `gate-quality`'s editor binding rules extracted to their own file |
+| `b1d2220c` | The devcontainer templates made shellcheck-clean |
+
+In artefacts: nine `SKILL.md` files rewritten (+27 to +48 lines each, gaining a
+`## Calibration` section and a `## Co-update partners` section), ten new files
+(an `examples.md` per skill, and `editor-binding-rules.md` for `gate-quality`),
+and two template edits. 367 lines of calibration examples that this repository
+did not write and that describe its own skills accurately.
+
+### Taken as-is, not rewritten
+
+`plugins/control-register/` is now **byte-identical** to the published copy,
+`diff -rq` clean. The alternative — writing our own versions of `examples.md` in
+the same shape — was rejected: they pass the rubric, they are accurate, and
+restating them differently would be pride rather than engineering. It is the
+first time this repository has taken content *from* the marketplace rather than
+sending content to it, and the direction is worth noticing: a submission is not
+the end of a conversation.
+
+All nine still pass preflight P1–P11. **`gate-repo` is now at 493 lines against
+the 500 ceiling**, which is seven lines of headroom on a file that has grown
+every time anyone has touched it — the next addition to it fails P1, and it will
+fail at submission time unless something here notices first.
+
+### One reference is deliberately left dangling
+
+The `## Co-update partners` sections end with *"Registered in
+`docs/skill-relationship-map.md`"* — a registry in the **incubator**, which this
+repository does not have. It is kept rather than corrected, for the reason
+[ADR 0036](adr/0036-shared-skill-prose-has-one-home.md) already established when
+it chose prose citations over links: prose does not dangle, and the sentence is
+true where the plugin is maintained. Rewriting it would re-open the divergence
+this slice exists to close, over a pointer that costs nothing.
+
+### What made this safe to take
+
+The ninth slice, an hour earlier. `b1d2220c` quoted the template placeholders,
+and until `tool_versions_match_register` learned to read a quoted pin, taking
+these files would have imported a template that fails DEV-001 on a correctly
+pinned container. **Fixing the checker first was what made the merge possible**,
+which is the argument for having read the diff before filing an amendment: the
+first reading was *"they broke our template"*, and acting on it would have left
+this divergence in place and asked another team to work around our defect.
+
+### What it deliberately left open
+
+**Nothing is re-published.** The public marketplace serves this tree, so that
+route is current the moment this merges; the `ee-skills` copy is already at this
+content. The two are equal without anything being promoted again.
+
+**One criterion remains**: the consumer repository re-adopting from the
+marketplace copy, which needs the macOS host with Docker.

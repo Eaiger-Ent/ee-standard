@@ -181,3 +181,51 @@ Direction: UNCLASSIFIED (exit 3)
 | Reported | The checker ran and its verdict was carried through |
 | Stopped — no checker | `register-check` is not installed; `/register-install` first |
 | Stopped — no baseline | The revision to compare against does not exist |
+
+## Idempotency
+
+Re-running against the same working tree and the same `--against` ref produces
+byte-identical output and the same exit code. This skill reads; it writes no
+file, opens no issue, and makes no platform call, so Q2 and Q3 of the
+idempotency standard do not apply to it — there is nothing to check for
+existence before writing.
+
+The one thing that changes a repeat run's answer is the register itself: adding
+a `variance.polarity` entry for a key previously reported `UNCLASSIFIED` moves
+that key into a real direction on the next run, and the exit code moves from 3
+to 0 or 1 accordingly. That is the intended way to close a declined
+classification, and it is why the `Fixable:` line names the entry to add.
+
+## Standards
+
+- Human-readable overview, and why declining beats guessing:
+  `${CLAUDE_SKILL_DIR}/README.md`
+- The polarity vocabulary and the `variance` declaration it reads are the
+  register's, not this skill's — the register is the canonical source for both.
+
+## Calibration
+
+- **Strong:** `${CLAUDE_SKILL_DIR}/examples.md` §Strong — a deployment where
+  every value came from the register, every declared locus is wired and stamped,
+  and the checker's verdict is reported as given.
+- **Weak:** `${CLAUDE_SKILL_DIR}/examples.md` §Weak — a run whose output
+  claims more than the artefacts deliver.
+
+## Co-update partners
+
+Canonical source for both shared standards below:
+`${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
+`docs/skill-relationship-map.md`.
+
+- **Write narration shape** (`reference/write-narration.md`) — shared with
+  `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
+  `gate-supply-chain`, `register-adopt`, `register-install` and
+  `register-variance`. Change the shape there, never here; ADR 0036 is the
+  reason it is one file rather than nine copies.
+- **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
+  shared with every gate skill that writes a pre-commit hook: `gate-build`,
+  `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
+- **Provenance stamp and verify contract** — every skill here stamps what it
+  writes and verifies through `register-check`. The stamp fields and the
+  checker's exit codes are the register's contract, not any one skill's;
+  co-update all nine when the contract version changes.
