@@ -4,8 +4,12 @@ A review of the adopter-facing surface against one reader: a developer who has
 never seen this repository, has a Mac and nothing else, and has been told to make
 their team's repository conformant.
 
-**It is a review, not a fix.** Nothing below has been changed. § The doc plan is
-what this recommends writing once the findings are agreed.
+**It began as a review and is now partly a record.** § The four decisions are
+all answered, Decision 1 is implemented on this branch, and Decision 3 became
+[ADR 0045](adr/0045-a-gate-records-where-it-installed-a-tool.md). Everything
+else is still a finding. Each section says which it is rather than leaving the
+reader to guess — a review that quietly becomes a changelog is § H's failure in
+a new file.
 
 ## How it was checked
 
@@ -496,14 +500,14 @@ carries one.
    and never a model, and the whole thing runs through `uv` in a container. One
    section, explicitly the single exception to rule 2.
 2. **README's triage gains a third line** — *Want to understand how it works? →*
-   — pointing at whatever answers question two.
-3. **`00-concepts.md` gains a short synopsis above its definitions**, and becomes
-   the named destination. Not a new numbered document: that would repeat exactly
-   the mistake § N diagnoses.
+   — pointing at `HOW-IT-WORKS.md` (Decision 4, answered B).
+3. **A root-level `HOW-IT-WORKS.md`** is the named destination — Decision 4,
+   answered B. Not a new *numbered* document under `docs/`: that would repeat
+   exactly the mistake § N diagnoses. At the root, beside `START-HERE.md`, where
+   a stranger finds it.
 
-The third is a decision rather than an edit. Turning the vocabulary file into the
-explanation changes what that document is for, and every other document opens by
-telling the reader to read it first.
+It links to `00-concepts.md` for every term rather than restating one, which is
+what keeps it from becoming the drift § R measures in `CLAUDE.md`.
 
 ## P — Nothing states the benefit, at any of the three doors
 
@@ -657,6 +661,10 @@ onboarding:
 | Replace both descriptions with the offer rather than the mechanism (§ P) | `.claude-plugin/marketplace.json` |
 | Put the three-line triage above § The problem (§ N) | `README.md` |
 | Link the adoption route absolutely, from the first screen (§ N) | `plugins/control-register/README.md` |
+| Write it, linking to `00-concepts.md` for every term rather than restating one (Decision 4) | `HOW-IT-WORKS.md` |
+| Prune to ~150 lines; every ADR restatement becomes a one-line pointer (§ R) | `CLAUDE.md` |
+| Recalibrate the ceiling to the target size, not to today's (§ R) | `tests/test_claude_md.py` |
+| A row for each new root entry, or the build fails (§ N, Decision 4) | `docs/14-file-map.md` |
 
 The first four rows are the ones a reader of this review is most likely to
 assume `START-HERE.md` makes unnecessary. It does not: `08-adopting.md` stays
@@ -858,7 +866,7 @@ Three edits, and the document is worth nothing without them — § N.
 
 | Edit | What it says |
 | --- | --- |
-| `README.md`, above § The problem | Three lines. *Adopting this into your repository? → `START-HERE.md`. Working on this repository? → `docs/06-devcontainer-setup.md`. Want to know how it works? → `docs/00-concepts.md`.* Nothing else moves — § N, § O |
+| `README.md`, above § The problem | Three lines. *Adopting this into your repository? → `START-HERE.md`. Working on this repository? → `docs/06-devcontainer-setup.md`. Want to know how it works? → `HOW-IT-WORKS.md`.* Nothing else moves — § N, § O |
 | `plugins/control-register/README.md` | An **absolute** link to `START-HERE.md` on the public repository, in the first screen. Relative dangles in every installation |
 | `docs/14-file-map.md` | A row for the new root entry, or `tests/test_file_map.py` fails the build |
 
@@ -935,6 +943,78 @@ template put there on purpose, regressing a lint fix to satisfy a rule that had
 already been relaxed.
 
 Two readers of one line, and only one of them was told the rule had changed.
+
+## R — CLAUDE.md is the anti-pattern Anthropic's own guidance names
+
+Not an adopter finding. It is here because it is the same failure as § J and
+§ Q — a rule this repository states and does not apply to itself — and because
+it degrades every session that works on any of the above.
+
+Anthropic publishes guidance for this file at
+<https://code.claude.com/docs/en/best-practices#write-an-effective-claude-md>.
+Measured against its Include/Exclude table on 2026-08-30:
+
+| Guidance | `CLAUDE.md` today |
+| --- | --- |
+| *"keep it short and human-readable"* — the page's own example is ~8 lines | **1,038 lines, ~18k tokens**, loaded every session |
+| *"If you emphasize many lines, none of them stands out"* | **222 bold spans across 82 paragraphs** — 2.7 per paragraph |
+| Exclude: *"Information that changes frequently"* | **49 dates, 22 contract numbers, 24 version strings** |
+| Exclude: *"Long explanations or tutorials"* | see the section sizes below |
+
+Section sizes make the last row concrete:
+
+| Section | Lines | Against the table |
+| --- | --- | --- |
+| `## Commands` | 57 | **Include.** Bash commands Claude cannot guess, env quirks, gotchas — the model of what belongs |
+| `## The core invariant` | 25 | **Include.** An architectural decision specific to this project |
+| `## Rules for editing controls.yaml` | 10 | **Include.** Repository etiquette |
+| `## Vocabulary…` | 33 | Borderline — mostly derivable from `docs/00-concepts.md` |
+| `## What this repo is` | 340 | **Exclude.** Narrative and phase history |
+| `## Deployed artefacts and skills` | 202 | **Exclude.** ADR restatement |
+| `## Documents` | 360 | **Exclude.** ADR restatement and a file-by-file table |
+
+**902 of 1,038 lines — 87% — are in the Exclude column.**
+
+Two lines from the page are the whole finding:
+
+> **"Bloated CLAUDE.md files cause Claude to ignore your actual instructions!"**
+
+That reframes the cost. This is not a token bill, it is an instruction-following
+problem: `## Commands` is the part that must land and it competes with nine
+hundred lines of history.
+
+> **"The over-specified CLAUDE.md.** If your CLAUDE.md is too long, Claude
+> ignores half of it because important rules get lost in the noise."
+
+**And the sharpest part is what the file is made of.** CLAUDE.md restates
+**thirty ADRs**, each of which already has a home in `docs/adr/`. That is thirty
+second copies, in the file that teaches the rule against second copies — theme
+**T-2**, this repository's stated reason for existing, in its own operating
+instructions. It has already drifted: the ADR count carried in it was wrong when
+this branch found it.
+
+**Recommended.** Cut to roughly 100–150 lines: `## Commands`, the core invariant,
+the register-editing rules, and the non-obvious gotchas that are genuinely
+Include-column material — work in the container not the host, a wired locus is
+not an installed hook, `markdownlint-cli2`'s path *is* the command. **Every ADR
+restatement becomes a one-line pointer**, which is what this repository's own
+rule demands anyway. The page notes that `/doctor` proposes cuts for a
+checked-in CLAUDE.md; worth running as a cross-check rather than trusting one
+reader's judgement about what is load-bearing.
+
+**The threshold already added is mis-calibrated, and that is part of this
+finding.** `tests/test_claude_md.py` sets a 1,500-line review trigger, chosen
+before this guidance was read and calibrated to *do not grow much further*. The
+file is already well past the point the guidance describes as harmful, so the
+test currently certifies the anti-pattern as acceptable. It should become a real
+ceiling near the target size, failing until the prune lands.
+
+**What that test got right is worth keeping.** Its other half checks that every
+ADR CLAUDE.md instructs from is still in force — because a restatement can
+outlive the decision it restates, and `tests/test_adr_revisions.py` already
+fails a live control whose `rationale_adr` cites an archived ADR for exactly
+that reason. Pruning to pointers reduces the surface that check has to guard; it
+does not remove the need for it.
 
 ## The four decisions
 
@@ -1020,7 +1100,16 @@ enforcement claimed, not performed.
 and gives the evidence for whether A is worth its machinery. C is what produced
 the finding.
 
-**Question: A, B or C?**
+**Answered: B — report it in `register-check deployments`, not yet
+implemented.** The report is the right home for it on the same argument
+staleness already uses: a recommendation nobody has to act on today, surfaced
+where somebody will see it, rather than a Tier-1 `blocking` control acquiring a
+`renovate.json` parser and a flag day.
+
+A **is not closed**, and B is what produces the evidence for it. Once the report
+exists it will say how many uncovered literal pins a real adoption actually has;
+if the answer is *always zero after `/register-adopt`*, A is cheap, and if it is
+*several, routinely*, A would have been a flag day taken blind.
 
 ### Decision 3 — is `pinned_at` checked in both directions?
 
@@ -1079,7 +1168,23 @@ synthesis is `CLAUDE.md` — 1,014 lines, addressed to an agent, unlinked from
 is missing is a paragraph above it saying how the nine terms relate. B adds a
 file that would drift from the concepts it summarises.
 
-**Question: A, B or C?**
+**Answered: B — a new root-level `HOW-IT-WORKS.md`.** The recommendation was
+overruled, and § R is the reason it should have been: the drift risk that made B
+look expensive is a risk `CLAUDE.md` is already carrying at thirty times the
+scale, and the answer to it is a pointer rather than a restatement. A
+`HOW-IT-WORKS.md` that *links* to `00-concepts.md` for every term does not drift
+from it, and it leaves the vocabulary file as the vocabulary file — which was
+the cost that made A unattractive in the first place.
+
+It also gives § R's prune somewhere to send the reader. `CLAUDE.md`'s 340-line
+§ What this repo is is a synthesis written for an agent; a human-facing one has
+not existed, and writing it is most of what that section should have been all
+along.
+
+Three consequences to carry: `README.md`'s third triage line points here rather
+than at `00-concepts.md`; `START-HERE.md`'s `## How this works` section links
+here as its one fuller explanation; and `docs/14-file-map.md` needs a row, like
+`START-HERE.md`, or `tests/test_file_map.py` fails the build.
 
 ## What no file check can close
 
