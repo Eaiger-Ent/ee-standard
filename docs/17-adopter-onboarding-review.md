@@ -4,12 +4,17 @@ A review of the adopter-facing surface against one reader: a developer who has
 never seen this repository, has a Mac and nothing else, and has been told to make
 their team's repository conformant.
 
-**It began as a review and is now partly a record.** § The four decisions are
-all answered, Decision 1 is implemented on this branch, and Decision 3 became
-[ADR 0045](adr/0045-a-gate-records-where-it-installed-a-tool.md). Everything
-else is still a finding. Each section says which it is rather than leaving the
-reader to guess — a review that quietly becomes a changelog is § H's failure in
-a new file.
+**It began as a review and is now the record of what came of it.** All four
+decisions are answered, every row of § The doc plan's fix table is applied, and
+`START-HERE.md` and `HOW-IT-WORKS.md` exist. The findings are kept in the past
+tense they were written in rather than rewritten as resolved: § A describes what
+the guide did before § 0 was added to it, and the value of that is the evidence,
+which a summary would lose.
+
+**Two things stay open deliberately**, both named where they arise: § K's human
+-written pin site, which ADR 0045 does not reach, and Decision 2's option A,
+which the new report exists to gather evidence for. § What no file check can
+close lists the three things only a macOS host with Docker can settle.
 
 ## How it was checked
 
@@ -639,8 +644,10 @@ executed by a test the way `tests/test_devcontainer_placeholders.py` executes
 § The template below is that plan as a skeleton, so writing it is assembly
 rather than discovery.
 
-**And separately, four fixes in place**, which are defects rather than
-onboarding:
+**And separately, the fixes in place**, which are defects rather than
+onboarding. **All are applied as of 2026-08-30**; the table is kept as the
+record of what was changed and why, since each row is the only place its reason
+is written down.
 
 | Fix | File |
 | --- | --- |
