@@ -272,6 +272,38 @@ claimed it, and a locus with no owner is how a locus gets forgotten.
 Do not stamp the whole file. `gate-build` created it and other gates install
 into it; a stamp at the top would claim their blocks as SEC-001's.
 
+**Write the `# renovate:` annotation directly above the version, exactly as
+`templates/ci-steps.yaml` does for the workflow.** A version literal in a shell
+script is the one case no Dependabot manager covers, so without the annotation
+this pin is not stale — it is unmanaged, and nothing will ever propose moving
+it while SUP-002 stays green over it:
+
+```bash
+# renovate: datasource=github-releases depName=<TOOL_REPO>
+TOOL_VERSION="<version>"
+```
+
+`UPPER_SNAKE_CASE` and the quotes both matter and for different reasons: the
+quotes are what `shellcheck` wants, and the case is what the custom manager
+matches (`[A-Z_]+=`). The checker is blind to both — `tool_versions_match_register`
+is case-insensitive and takes an optional quote — so nothing but this
+instruction holds the spelling the bot needs.
+
+**Then record the site in the register.** If the file you just wrote into is not
+already in `tools.<tool>.pinned_at`, append it — the path you wrote, nothing
+else, and never remove one that is there. Say in the narration which path you
+added and to which tool.
+
+That is the one field of `controls.yaml` this gate may write, and it is
+permitted by [ADR 0045](https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0045-a-gate-records-where-it-installed-a-tool.md):
+`pinned_at` records where a repository keeps a file rather than what conformant
+means, adding a path can only widen what is compared, and you know exactly which
+file you wrote. **Write no other field, and no stamp** — the register is not a
+deployed artefact, so stamping it would claim it as this gate's output. If the
+register cannot be written, say so and name the path you would have added; do
+not fall back to asking the user in a comment, which is the failure that ADR
+replaced.
+
 ---
 
 ## Step 3.6 — Ignore the files that hold fetched credentials

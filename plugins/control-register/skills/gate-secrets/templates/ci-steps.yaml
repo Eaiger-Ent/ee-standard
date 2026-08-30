@@ -9,7 +9,9 @@
 # The version appears twice in the repository once this is written — here and in
 # the developer environment — which is why the register records those sites in
 # `tools.{{TOOL}}.pinned_at` and `tool_versions_match_register` fails the build
-# when one drifts. Add this workflow's path there if it is not already listed.
+# when one drifts. The gate adds this workflow's path there itself (ADR 0045) —
+# it is not a step left to the reader, which is what it used to be and why an
+# adopter's pin went uncompared.
       # ee-control: SEC-001  ee-skill: gate-secrets@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
       - name: Install {{TOOL}}
         run: |

@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "gates": {
     "gate-secrets": {
-      "contractVersion": 6,
+      "contractVersion": 7,
       "controls": [
         "SEC-001",
         "SEC-002",
