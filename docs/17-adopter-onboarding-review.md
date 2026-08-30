@@ -425,7 +425,7 @@ carries the evidence for its claim — that is what makes it trustworthy for a
 reviewer, and it is exactly what a junior cannot read on day one. Two readers,
 two documents, one of them deriving from the other.
 
-**Proposed: `docs/17-first-adoption.md`** — the happy path, and nothing else.
+**Proposed: `docs/18-first-adoption.md`** — the happy path, and nothing else.
 
 1. **Before you start.** The Mac statement in the first sentence. Every tool in
    § A's table with an install command, and the one check that proves each
@@ -447,6 +447,9 @@ quickstart that copies is theme **T-2** with a friendlier tone. Where it needs a
 value, it derives it the way § 2.0 does, and the commands it prints should be
 executed by a test the way `tests/test_devcontainer_placeholders.py` executes
 § 2.0's.
+
+§ The template below is that plan as a skeleton, so writing it is assembly
+rather than discovery.
 
 **And separately, four fixes in place**, which are defects rather than
 onboarding:
@@ -483,6 +486,172 @@ comment is the weakest link in the supply-chain chain.
 
 Both have an ADR's shape. Raise them; do not decide either in a documentation
 change.
+
+## The template
+
+The skeleton for `docs/18-first-adoption.md`, with the research from § A, § D
+and § J already filled in. Everything in angle brackets is a blank to fill;
+everything else is the shape to keep.
+
+### The five rules it is written to
+
+Stated first because they are what makes it short, and a reviewer should be able
+to reject a passage by pointing at one of them.
+
+1. **One reader.** The junior in § The reader this assumes. Anyone who wants to
+   know *why* is a different reader and is served by a link.
+2. **Never explain in place.** Every "because" is a link into
+   [`08-adopting.md`](08-adopting.md). If a passage cannot be replaced by a
+   link, it is a step and belongs in a step block.
+3. **No value that another file owns.** No version, no digest, no tag, no
+   ruleset name. Derive it or link to it. A quickstart that copies is theme
+   **T-2** with a friendlier tone.
+4. **Every step ends in evidence.** Not "run this" — "run this, and you should
+   see that". A step with no observable outcome is a step a junior cannot tell
+   they have finished.
+5. **Nothing is conditional that the template makes unconditional.** § J is the
+   whole reason this rule is here.
+
+### The repeating unit
+
+Every numbered step is exactly this, and a step that needs more than this is two
+steps:
+
+````markdown
+### N — <imperative, five words or fewer>
+
+<One sentence. What this does, not why.>
+
+```bash
+<the commands, copy-pasteable as a block, no placeholders to think about>
+```
+
+**Done when:** <the one observable thing. A verdict, a file, a returned list.>
+
+**If it fails:** <only failures that have actually happened. Each one sentence.>
+
+**Why this exists:** [`08-adopting.md` § <n>](08-adopting.md#<anchor>)
+````
+
+Four lines of scaffolding around one block of commands. A step whose **Done
+when** cannot be written in one line is not understood well enough to be written
+at all.
+
+### The skeleton
+
+```markdown
+# Your first adoption
+
+<One paragraph: who this is for, what they will have at the end, and roughly
+how long it takes. State the macOS assumption in the first sentence — § B.>
+
+## Before you start
+
+### What this assumes
+
+<macOS + Docker, said plainly. One sentence on what a Linux or Windows reader
+should do instead, linking to 08-adopting.md § 2.0's contract for a replacement
+fetch-secrets.sh. Do not restate that contract.>
+
+### Install these
+
+| Tool | Install | You have it when |
+| --- | --- | --- |
+| Homebrew | <brew.sh> | `brew --version` |
+| Docker Desktop | <cask or download> | `docker info` succeeds |
+| VS Code | <cask> | `code --version` |
+| node and npm | <cask or brew> | `npm --version` |
+| `devcontainer` CLI | `npm i -g @devcontainers/cli` | `devcontainer --version` |
+| GitHub CLI | <brew>, then `gh auth login` | `gh auth status` |
+| Claude Code | <VERIFY on a Mac — see below> | `claude --version` |
+
+### Get these credentials
+
+| What | Where you make it | Scope it needs | Where it goes |
+| --- | --- | --- | --- |
+| Claude Code OAuth token | `claude setup-token` | — | Keychain, `CLAUDE_OAUTH_TOKEN` |
+| A token for `gh` (optional) | <settings page> | read on the repo | Keychain, `GITHUB_TOKEN` |
+| An admin token | <settings page> | `Administration: write` | used once, not stored |
+| The CI token | <settings page> | `Administration: read` | an environment secret — 08 § 4.3 |
+
+<One line on the classic-vs-fine-grained trap from § D: the `ghp_` shape in the
+Keychain example is a classic token, and SEC-003 rejects one in CI. Say which of
+the four rows may be classic and which may not.>
+
+## What you are about to do
+
+<Six one-line rows: the step, and roughly how long. This exists so the reader
+can see the shape before they are inside it, and so they can stop at a sensible
+place.>
+
+## 1 — Install the plugin
+## 2 — Get the register
+## 3 — The steps only you can do
+## 4 — The container
+## 5 — Run the adoption
+## 6 — Turn the bots on
+
+<Each one is the repeating unit above. Nothing else.>
+
+## You are done when
+
+<The checklist, but only the rows a first adoption reaches. Say plainly that
+exit 3 without a platform token is the expected first success and not a
+failure, and that turning on --require-complete is a second sitting with its
+own order — link 08 § 4.2 and § 4.3, do not restate the order.>
+
+## When it goes wrong
+
+<Only failures that have actually happened. The three from Phase 4, plus the
+uv-placeholder one from § E. Each: symptom, one-line cause, fix.>
+```
+
+### What each step must contain
+
+The parts the writer would otherwise have to rediscover. This is the output of
+the review, not a suggestion:
+
+| Step | Must contain | From |
+| --- | --- | --- |
+| Before you start | Every row of both tables above, each with a check that proves it | § A, § D |
+| 1 — the plugin | The marketplace add and install, and the cache path, since step 4 copies out of it | § I on `--scope` |
+| 2 — the register | The tag resolution, and **a note that the schema check waits until step 5** | § C |
+| 3 — platform | Visibility, ruleset, push protection. Each with its `gh` verification | § 1 |
+| 4 — the container | Copy, delete the README **first**, substitute, build. The substitution commands must be the working ones | § E |
+| 5 — the adoption | `claude --permission-mode acceptEdits`, then `/register-adopt`. Say the sensitive-file prompt is expected | § 0 |
+| 6 — the bots | Dependabot **and** Renovate, as a step and never a conditional. The annotation, a working config, the dashboard count | § J, § L |
+| You are done when | Exit `3` is the expected first success | § 0 |
+
+Step 6 is the one most likely to be written as an aside, and § J is what happens
+when it is. It is a numbered step with the same weight as the container.
+
+### What must be executed, not typed
+
+The guide has a working pattern for this and the new document should use it from
+the first commit rather than earning it later. `tests/test_devcontainer_placeholders.py`
+extracts the fenced commands from `08-adopting.md` § 2.0 and **runs them**,
+because a reimplementation in a test is a second copy free to keep working after
+the documented commands have stopped.
+
+At minimum, a `tests/test_first_adoption.py` should hold:
+
+- Every fenced `bash` block that extracts a value from the register runs, and
+  yields a non-empty result. This is § E's defect, and the reason it is first.
+- No fenced block reaches the checker off `PATH` — the check
+  `tests/test_adopter_guide.py` already has, pointed at the new file. Both files
+  should share it rather than each carrying a copy.
+- Every tool named in the prerequisites table has both an install cell and a
+  check cell, neither empty. A table with a blank is how § A happened.
+- The document names no version, digest or tag literally. The inverse of
+  `tests/test_plugin.py`'s rule for `plugins/`.
+
+### What the writer cannot settle from here
+
+Two cells are marked `<VERIFY on a Mac>` on purpose. The Claude Code install
+command and whether `sort -V` behaves on a stock macOS (§ I) are facts about a
+machine this container is not, and guessing them would put this document in the
+same class as the one it replaces. Write them from a real Mac or leave them
+marked; do not infer them.
 
 ## What no file check can close
 
