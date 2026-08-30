@@ -70,8 +70,9 @@ be one.
 
 ## How drift becomes visible
 
-Every artefact a gate writes carries an `ee-control:` provenance stamp naming the
-control, the gate, the gate's deployment contract, and the register version. So
+Every artefact a gate writes carries a **provenance stamp** — a comment naming
+the control, the gate, the gate's deployment contract, and the register version.
+So
 *never deployed*, *deployed and current*, and *deployed and stale* are three
 computable states rather than three things somebody has to remember.
 `register-check deployments` reads them.
