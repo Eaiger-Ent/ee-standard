@@ -94,8 +94,24 @@ Actions job, so a developer's own token settles nothing about the credential CI
 carries. A `0` here would mean something had been skipped that should not have
 been. A `1` is a real violation and fails the criterion.
 
-Then: both workflows green on push and pull_request, and `register-check
-deployments` reporting no stamp *ahead* of an installed gate.
+Then: both workflows green on push and pull_request, and no provenance stamp
+*ahead* of the gate that wrote it.
+
+**Ask that in the form the consumer's checker can answer.** `register-check
+deployments` is the spelling used in this repository and it need not exist
+there: the consumer is pinned to the checker tag its register names, and the
+subcommand arrived with [ADR 0038](adr/0038-the-stamp-records-the-deployment-contract.md).
+**Do not decide that from the register contract** — ADR 0038 landed *at*
+contract 30, which is also the contract `v0.5.0` ships, so a consumer and this
+repository can agree on the contract number and disagree about whether the
+subcommand exists. Run `register-check --help` and look. Where it is absent,
+read the state from each control's `deployed_by` and the provenance stamps in
+the files those gates wrote. It is a weaker question — a stamp says what was deployed, `deployments`
+reconciles that against what is *installed*
+([ADR 0043](adr/0043-a-declination-is-reconciled-against-the-installed-skill.md))
+— so record which of the two you asked. A consumer behind this repository is
+not a defect; it is what pinning to a tagged ref
+([ADR 0032](adr/0032-the-checker-is-installed-from-a-tagged-ref.md)) means.
 
 ## What would fail the criterion
 
@@ -115,3 +131,21 @@ away:
 is the last chance to find something before an adopter does, which is the reason
 this criterion was not closed by the plugin installing cleanly on a developer's
 machine.
+
+## Where the record goes
+
+Two places, and they are not copies of each other. The first run of this runbook
+recorded only the first, which left the evidence for a criterion of *this*
+repository legible only in another one.
+
+| Where | What it holds | Whose voice |
+| --- | --- | --- |
+| The consumer's `README.md` § Adoption record | What happened to **that** repository: what was installed, what the gates did, what the checker reported | The operator's, on the machine that ran it |
+| [`15-phase-6-review.md`](15-phase-6-review.md), as a slice | What the run **proves** about the standard, and anything it found that no criterion asked about | This repository's |
+
+The second **cites** the first and does not copy it — pinned to the consumer's
+merge commit rather than to a pull request number, because a commit is
+git-tracked and immutable where a pull request page is neither. Two records of
+one run, each free to drift from the other, is the duplication this repository
+exists to prevent; and an issue is not a third option, being untracked by git
+and outside the docs tree `tests/test_file_map.py` holds true.
