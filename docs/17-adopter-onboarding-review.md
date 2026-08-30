@@ -414,6 +414,44 @@ loud and immediate rather than a green control over a false property. It is
 listed because a junior meets it as a control failing on a file nobody told them
 to write, at the point they were expecting their first green run.
 
+## N — The quickstart would not be found by the person it is for
+
+The plan below originally proposed `docs/18-first-adoption.md`. That is the
+wrong home, and the reason generalises past this one file.
+
+**A new reader opens `README.md`, and then at most one more file.** They do not
+browse a folder, and they do not scan a numbered list for the number that means
+*start*. A high number reads as *the eighteenth thing*, which is what somebody
+who already knows the repository reaches for.
+
+Three facts, and each is independently enough:
+
+**1. The README routes at line 47.** Before it does, the junior reads
+§ The problem — a retrospective on `generate-ee-slides` and a five-row table of
+failure themes T-1 to T-5 — and § The approach. That is the argument for the
+standard, and it is the right first section for the reader deciding whether to
+adopt it. It is the wrong first section for the reader who has already been told
+to.
+
+**2. What it routes to is the 1,963-line reference.** The routing line itself is
+good — *"**Adopting the standard for your own repository** → `docs/08-adopting.md`"*
+— and it points at a specification. Adding a quickstart under `docs/` fixes the
+destination and leaves the discovery problem exactly where it was.
+
+**3. The adopter may never see the repository root at all.** They arrive through
+`claude plugin install`, and the plugin ships `LICENSE`, `README.md`,
+`reference/`, `skills/` and `templates/` — **no `docs/`**. So the only entry
+point a marketplace adopter has is `plugins/control-register/README.md`, which
+§ F and § G already show is stale and off-`PATH`, and which links to no adoption
+route at all. Any link it carries to a quickstart must be an **absolute URL** to
+the public repository: a relative one resolves in this tree and dangles in every
+installation, which is the constraint [ADR 0036](adr/0036-shared-skill-prose-has-one-home.md)
+already records for the shared reference files.
+
+So the quickstart needs three things rather than one: a home a stranger finds, a
+first screen in `README.md` that points at it above the argument, and a link
+from inside the plugin for the reader who never sees the repository.
+
 ## The doc plan
 
 The deferred question was whether to write something new or restructure
@@ -425,7 +463,16 @@ carries the evidence for its claim — that is what makes it trustworthy for a
 reviewer, and it is exactly what a junior cannot read on day one. Two readers,
 two documents, one of them deriving from the other.
 
-**Proposed: `docs/18-first-adoption.md`** — the happy path, and nothing else.
+**Proposed: `START-HERE.md`, at the repository root** — the happy path, and
+nothing else. At the root rather than in `docs/`, and named rather than
+numbered, for § N's reasons: a stranger finds a root file with an unambiguous
+name, and finds nothing by counting to eighteen.
+
+It costs one thing worth knowing in advance. `tests/test_file_map.py` fails a
+tracked root entry that `docs/14-file-map.md` does not name, in both directions,
+so adding it means adding a row to the map. That is the repository's own
+machinery working, not an obstacle — but it is the kind of surprise that stops
+an implementation mid-change.
 
 1. **Before you start.** The Mac statement in the first sentence. Every tool in
    § A's table with an install command, and the one check that proves each
@@ -465,6 +512,8 @@ onboarding:
 | Write the `# renovate:` annotation beside the gitleaks install, as the CI template already does (§ L) | `gate-secrets` Step 3.5 |
 | Ship a `.python-version`, or make § 2 a step that writes one (§ M) | the devcontainer template, `08-adopting.md` § 2 |
 | Give the plugin-cache path beside the clone path (§ I) | `08-adopting.md` § 4.5 |
+| Put the two-line triage above § The problem (§ N) | `README.md` |
+| Link the adoption route absolutely, from the first screen (§ N) | `plugins/control-register/README.md` |
 
 The second row is the one that keeps the first fixed.
 
@@ -489,8 +538,8 @@ change.
 
 ## The template
 
-The skeleton for `docs/18-first-adoption.md`, with the research from § A, § D
-and § J already filled in. Everything in angle brackets is a blank to fill;
+The skeleton for `START-HERE.md`, with the research from § A, § D and § J
+already filled in. Everything in angle brackets is a blank to fill;
 everything else is the shape to keep.
 
 ### The five rules it is written to
@@ -540,7 +589,7 @@ at all.
 ### The skeleton
 
 ```markdown
-# Your first adoption
+# Start here
 
 <One paragraph: who this is for, what they will have at the end, and roughly
 how long it takes. State the macOS assumption in the first sentence — § B.>
@@ -625,6 +674,20 @@ the review, not a suggestion:
 Step 6 is the one most likely to be written as an aside, and § J is what happens
 when it is. It is a numbered step with the same weight as the container.
 
+### How it is reached
+
+Three edits, and the document is worth nothing without them — § N.
+
+| Edit | What it says |
+| --- | --- |
+| `README.md`, above § The problem | Two lines. *Adopting this into your repository? → `START-HERE.md`. Working on this repository? → `docs/06-devcontainer-setup.md`.* Nothing else moves |
+| `plugins/control-register/README.md` | An **absolute** link to `START-HERE.md` on the public repository, in the first screen. Relative dangles in every installation |
+| `docs/14-file-map.md` | A row for the new root entry, or `tests/test_file_map.py` fails the build |
+
+The README edit is two lines and is the highest-value change in this review. It
+is worth doing whether or not `START-HERE.md` is ever written, pointed at
+`docs/08-adopting.md` in the meantime.
+
 ### What must be executed, not typed
 
 The guide has a working pattern for this and the new document should use it from
@@ -633,7 +696,7 @@ extracts the fenced commands from `08-adopting.md` § 2.0 and **runs them**,
 because a reimplementation in a test is a second copy free to keep working after
 the documented commands have stopped.
 
-At minimum, a `tests/test_first_adoption.py` should hold:
+At minimum, a `tests/test_start_here.py` should hold:
 
 - Every fenced `bash` block that extracts a value from the register runs, and
   yields a non-empty result. This is § E's defect, and the reason it is first.
