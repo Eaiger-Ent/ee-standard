@@ -1,347 +1,21 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code in this repository.
 
-## What this repo is
+**What this repo is.** A control register for Equal Experts repositories:
+`controls.yaml` defines what "conformant" means, a family of Claude skills
+deploys the gates, and `register-check` (`src/register_check/`) audits them.
+[`HOW-IT-WORKS.md`](HOW-IT-WORKS.md) is the mechanism in one screen;
+[`docs/14-file-map.md`](docs/14-file-map.md) answers *which file*.
 
-A control register for Equal Experts repositories: `controls.yaml` defines what
-"conformant" means, a family of Claude skills deploys the gates, and a checker
-(`register-check`, in `src/register_check/`) audits them.
+**Every phase is complete.** `uv run python scripts/plan_progress.py` is the
+derived view and `docs/04-build-plan.md` is the only list of outstanding work.
+Never keep a second copy of that status here.
 
-Current status: **Phase 5 is complete** as of 2026-08-28, over eight slices —
-ADR 0038 was the first and ADR 0043 the seventh; the eighth is a checker fix at
-contract 35 with no ADR. **Phase 6 is complete** as of 2026-08-30, closed by
-two runs on a macOS Docker host — the marketplace re-adoption and the first
-`devcontainer up` of the shipped template since Phase 4
-(`docs/16-marketplace-readoption.md` is the run sheet for both). **No phase has
-open criteria.** Phases 0, **0.5, 1 and 1.5 are all complete** as of 2026-08-18,
-with no re-opened criteria outstanding. **Phase 3 is complete** as of
-2026-08-24, and **Phases 2 and 4 are both complete** as of 2026-08-26 — Phase 4
-with one criterion retired rather than met (ADR 0037). The register is at
-contract 35.
-`docs/04-build-plan.md` is the only list of outstanding work and `uv run python scripts/plan_progress.py` is its
-derived view — never keep a second copy of that status here. The slice-by-slice
-record, and the evidence behind every criterion each phase ticks, lives in
-`docs/10-phase-2-review.md` — including § Where Phase 2 finished, the closing
-audit run over the register rather than over the ledger, and § What the second
-review found — in `docs/11-phase-3-review.md`, including what each slice
-deliberately left open, and in `docs/12-phase-4-review.md`.
-
-**The devcontainer template has been built.** Phase 4 built it on 2026-08-25, in
-`Eaiger-Ent/ee-standard-consumer`, on a macOS host with Docker — which is what
-that criterion was deferred to Phase 4 to wait for, and it closed there. It did
-not build first time, and the three defects it exposed are the reason a file
-test could not have closed it: the container had no Claude Code and no node, so
-it could not run the skill that is the published route into this standard; it
-had no uv, while its own `setup.sh` called `uv sync --frozen`
-([ADR 0034](docs/adr/0034-the-template-bootstraps-uv.md)); and `devcontainer up`
-on an existing container left the lock file covering one feature of two.
-
-**Phase 2 is closed.** Its last criterion — *every SKILL.md passes preflight
-P1–P11*, re-opened by Phase 4 — was re-closed 2026-08-26 on a re-run over all
-eight skills. It did not pass first time: `gate-quality` failed P1 at 510 lines,
-and the 56 lines over the ceiling were two sections pasted into every skill they
-governed, so the fix was ADR 0036 below and not an edit to the longest file.
-
-**Work in the container, not on the host.** Phase 4's first deployment run was
-driven from the macOS host and cost three things no verdict showed: the host's
-uv was 0.8.13 where the register pins 0.12.5, so the run was green about a
-version it was not using; the bind-mounted `.venv` is host-built or
-container-built and never both, so switching destroys and rebuilds it; and the
-pre-commit hook was never installed while every gate reported that locus wired.
-Only four steps are genuinely the host's — `claude setup-token` and the Keychain
-entries, `fetch-secrets.sh` (it **is** `initializeCommand`), `devcontainer
-build`/`up`, and copying the template in before a container exists.
-`docs/08-adopting.md` § 2.0a is that split as a table.
-
-**A wired locus is not an installed hook.** `.pre-commit-config.yaml` states
-intent; `.git/hooks/pre-commit` is whether anything runs, and every gate reads
-the first. The template now installs the hook on the config's own presence
-rather than on the tail of a lockfile branch, and `check-auth.sh` **reports** a
-missing one — reported, never repaired, which is that script's rule. It cannot
-be a control: `.git/hooks/` is untracked and CI has no hooks installed, which is
-the honest boundary of what the register can check.
-
-Read `docs/09-phase-1.5-review.md` before touching `src/register_check/`:
-it records what each assert was wrong about and why, and Phase 2 copies that
-assert layer into six gate skills. Do not treat a ticked box in an earlier phase
-as settled without checking it — **eight** boxes have been re-opened after being
-ticked, four of them on 2026-08-18 by the review recorded as
-`docs/09-phase-1.5-review.md` § H, which found GOV-001 passing a workflow that
-ran on neither push nor pull_request, a tool compared only at filenames the
-checker itself named, and ADR 0018 recorded as implemented with one of its
-ratified moves never made.
-
-Per [ADR 0027](docs/adr/0027-the-interpreter-is-a-pinned-tool.md) (**Accepted**
-and implemented 2026-08-23, register contract 20), the interpreter the gates run
-on is a pinned tool, and `.python-version` is its authority. `tools:` gained a
-third `source` — `toolchain` — because both existing values would be false: the
-value does not live in the register to be repeated (`literal`) and no package
-manager produced the file (`lockfile`). **A support floor is not a pin.**
-`requires-python` stays a floor and stays a support claim; narrowing it to force
-the environment would tell an adopter that `register-check` does not work on a
-newer interpreter. `[tool.ruff] target-version` is deliberately absent — ruff
-derives it from `requires-python`, and writing it out was a third copy that had
-already drifted. The gap was invisible because there was no second copy to spot:
-the devcontainer ran 3.13.15 and CI ran 3.14.7 from the same three files.
-
-Per [ADR 0028](docs/adr/0028-the-support-floor-is-what-we-run.md) (**Accepted**
-and implemented 2026-08-24) the pin and the support floor are both **3.14**:
-`.python-version` reads 3.14 and `requires-python` reads `>=3.14`, so ruff's
-derived target is 3.14 too — it moved with the floor and nobody edited it, which
-is what deleting the written-out `target-version` bought. The floor was raised
-because nobody had ever decided it; `>=3.13` was the number the container
-happened to have. **An adopter on 3.13 can no longer install `register-check`**,
-and that is the accepted cost, cheap to reverse.
-
-Per [ADR 0029](docs/adr/0029-the-editor-locus-is-configured-by-the-repository.md)
-(**Accepted** 2026-08-24, **partly implemented**), the editor locus is
-configured by **`.vscode/settings.json`**, a tracked file, and not by
-`devcontainer.json`. The reason is the specification's: the containers.dev merge
-table gives one instruction for `customizations` — *"Merging is left to the
-tools"* — where every other property states a rule, so a binding written in
-`devcontainer.json` lands in the same machine-scoped file as a feature's and
-competes on undefined terms. Workspace scope wins by documented rule instead.
-`devcontainer.json` installs the extension and keeps container concerns;
-`.vscode/settings.json` decides which tool holds a gated file type; neither
-restates the other. The file was hand-written and carries an LNT-001 stamp from
-contract 21, when `gate-quality` learned to write it — adopted first and stamped
-when its gate caught up, the order the DEV-001 and LNT-001 regions of
-`devcontainer.json` went in.
-
-**A feature's VS Code customizations are an untrusted default**, and DEV-001's
-digest pin does not reach them: it governs what a feature installs, never what
-it configures. That is how `python:1` came to bind Python files to autopep8 in a
-repository whose LNT-001 pins ruff, with `linter-wired-at-all-loci` reporting
-PASS the whole time: it asked whether the pinned extension was *present*, and
-presence does not exclude — `charliermarsh.ruff` was installed throughout.
-
-Points 3 and 4 of that ADR are **implemented at register contract 21**. Gates
-carry an `editor_binding` — a `language` and the `setting` that holds it — and
-the assert fails three states: another extension holding the language, **nobody**
-holding it, and the binding restated in `devcontainer.json`. The middle one is
-the case that occurred and the reason an absent binding is a violation rather
-than a default: the autopep8 binding came from a feature, so no tracked file
-said anything, and an assert objecting only to a wrong value would have passed
-it. The third fails on agreement too, because the merge rule is undefined and
-agreeing today is luck. The typescript lint gate declares **no** binding —
-eslint is not TypeScript's formatter — and that absence is a statement, like
-`coverage_key`'s. What is still not closed is what ADR 0029 § Consequences said
-would not be: an extension may use its bundled binary, and on a fresh container
-create the environment does not exist when the extension host starts.
-
-Per [ADR 0030](docs/adr/0030-uv-is-bootstrapped-from-a-pinned-release.md)
-(**Accepted** and implemented 2026-08-24) that feature is **gone**. It existed
-to provide a `python3` that ran one line — `pip install uv==0.12.5` — after
-which uv owned everything and the feature's interpreter was never used again.
-What it charged for that line was three VS Code extensions and two settings, one
-of which bound Python files to **autopep8** while LNT-001 pins ruff. uv is a
-static binary that needs no Python and can fetch the interpreter itself, so
-`setup.sh` installs it from its pinned release tarball against the published
-sha256 — the shape it already uses for gitleaks a few lines below — and
-`uv sync` fetches the interpreter `.python-version` names. `tools.uv` gained
-`release_repo` and `sha256`, the pair `tools.gitleaks` already carried; no
-control's `rung`, `verify`, `variance` or `applies_to` changed, so the contract
-stayed at 20.
-**The base image is not the problem and must not be swapped**: `base:trixie`
-declares no `customizations` and contributes zero extensions and zero bindings,
-and it is where BLD-001's non-root `vscode` user comes from. It does contribute
-an interpreter, which the rebuild uncovered and ADR 0030 revision 2 records:
-`base:trixie` installs `python3-minimal`, so `/usr/bin/python3` is Python
-**3.13.5** and a bare `python3` still answers. Do not try to fix that — trixie
-has no 3.14 to upgrade to, a matching number would be a second copy of the pin,
-and the package has no `venv`, `ctypes`, `sqlite3` or `http`, so nothing here
-could run on it at any version. Removing it is a leaf `apt-get remove`, and was
-considered and rejected in the same revision. `node:2` stays —
-DOC-001 needs it, and it binds nothing. Pylance goes with the feature, which is
-the accepted cost. **The rebuild was run on 2026-08-24** and everything above
-held — uv from the tarball, `uv run python -V` at 3.14.7, no `python:1` in the
-lock, DEV-001 passing, no `ms-python.*` extension installed — so the Phase 0.5
-criterion it opened is closed, with the evidence recorded in that ADR's
-§ Consequences beside the prediction it settles. It closed the lock file too:
-the CLI writes `devcontainer-lock.json` on every `build` and `up`, so the
-rebuild regenerated it, and it wrote back exactly what the hand edit said —
-whose three `resolved` digests were then checked against what `ghcr.io` serves
-for the declared tags. **`devcontainer upgrade` is not needed** and never was
-the only route; it moves pins forward without building. The one thing the
-rebuild did **not** close is the shipped template at
-`plugins/control-register/templates/devcontainer/`, a different artefact — different
-features, `{{PROJECT_NAME}}` placeholders to substitute — that nobody has
-built.
-
-**The shebang repair stays, and is not about that feature.** While the feature
-existed it was left at 3.13 on the grounds that it ran no gate, which was true
-of gates and false of everything else: a shebang resolves against `PATH`, and in
-a login shell `python3` was that feature's interpreter — so
-`./scripts/plan_progress.py` ran on 3.13.15 while mypy and ruff checked it at
-3.14 (ADR 0028 revision 2). Two repairs were made, and either alone would have
-closed it: every tracked script reads `#!/usr/bin/env -S uv run python`, with
-`tests/test_toolchain_pin.py` failing any that resolves from `PATH`, and the
-feature was raised to match. ADR 0030 has since removed the second — which
-uncovered a third, the base image's `python3-minimal`, so a bare `python3` still
-answers and still answers below the floor. Keep the first: it is now the whole
-defence rather than one of two.
-**`.python-version` binds only what goes through uv**, and a shebang resolving
-from `PATH` is wrong wherever it happens — including on a host where a tracked
-script is run outside this container entirely.
-
-**The sweep is two scheduled runs, not one** (Phase 5).
-`.github/workflows/register-check.yml` gained a `schedule:` trigger because
-several controls can start failing with **no commit**: SUP-004 reads what a
-project published, GOV-003 expires on a date, and SEC-001's and SEC-003's remote
-blocks read platform state an administrator can change.
-`.github/workflows/conformance-sweep.yml` runs `register-check deployments` —
-the report with no other home — writes the job summary every run, and keeps
-**one** tracking issue, opened/edited/closed as the condition changes. It runs
-`deployments` and **not** the full audit on purpose: the audit needs gitleaks
-and markdownlint, and installing them there is a second copy of the conformance
-workflow's setup. It **does not fail on findings** — a red scheduled workflow is
-a notification people learn to dismiss — only when the sweep could not run.
-`PLATFORM_READ_TOKEN` gained `schedule` in its `triggers:` for it, which is the
-safest of its three events: a schedule fires only on the default branch. Neither
-workflow may enter CI-001's `required_checks:`.
-
-`.github/workflows/support-floor.yml` verifies the floor when it differs from
-the pin, and today it does not, so the job reads both files and **skips itself**
-rather than running the suite twice on one interpreter. It is kept because the
-two diverge again the moment either moves — pinning ahead of the floor is the
-ordinary case. It is **not** a gate and must never enter CI-001's
-`required_checks:`. It is also the only place `UV_PYTHON` is set, which is the
-one thing that outranks `.python-version`.
-
-`kind: remote` reads platform API state (`src/register_check/remote.py`,
-`asserts_remote.py`, `rulesets.py`), reasoned in
-[ADR 0021](docs/adr/0021-how-remote-verification-authenticates.md). It has
-four outcomes, and only two are about the repository: **no token** is
-`SKIPPED (no credentials)`; a token that was **rejected, under-scoped or shown
-an answer that does not settle the control** is `UNCLASSIFIED`; only an actual
-answer is `PASS`/`FAIL`. GitHub omits `security_and_analysis` for a caller
-without admin, so reading its absence as "push protection is off" would report a
-violation produced by not having looked — the asserts raise instead. The mirror
-holds too: an effective-rules response of `[]` **is** an answer, and fails.
-Tests must never depend on ambient auth — `tests/conftest.py` strips
-`GITHUB_TOKEN`/`GH_TOKEN` autouse.
-
-Per [ADR 0022](docs/adr/0022-a-platform-token-ci-carries.md) (**Accepted**
-2026-08-23), **a platform token in CI is governed rather than forbidden**, and
-its absence is what still blocks the `--require-complete` flip: the Actions
-`GITHUB_TOKEN` cannot read `security_and_analysis`, so SEC-001's remote block is
-`UNCLASSIFIED` in CI while passing locally. **From contract 23 SEC-003's remote
-block is a second one**, and for a different reason — the Actions token reports
-no expiry header at all (observed 2026-08-24, `docs/11-phase-3-review.md` § The
-fourth slice). Both close together the moment ADR 0022's Option 1 token exists,
-which is why they are one problem rather than two.
-
-**Requirements 1 and 2 of that ADR § What the register must gain land before any
-token** — the one ordering it rules out absolutely — and they **landed on
-2026-08-24 at register contract 22**. SEC-002 could not see a platform token:
-`no-static-cloud-keys` reads `cloud_credentials:` and every name in it is a
-cloud provider key, so a `GH_ADMIN_TOKEN` secret would have left SEC-002 green
-over a standing administrative credential. **SEC-003** asks the register's
-question instead, reading the new `platform_credentials:` block, and it is an
-**allow-list where `cloud_credentials:` is a deny-list**: a name a deny-list has
-not heard of passes, a name an allow-list has not heard of fails, so omitting
-the block permits no secret at all rather than checking none. That asymmetry is
-why the control could be added before any credential exists. An entry's
-`triggers` — `any`, or a list of events — is what makes Option 3 checkable: a
-branch that adds `pull_request:` to reach a standing secret fails in the
-register, which is not the file the pull request is editing. `GITHUB_TOKEN` is
-the only entry, at `triggers: any`, because GitHub expires it with the job.
-**Requirement 3 landed at contract 23**: SEC-003 gained a `kind: remote` block,
-`platform_token_expires_within`, which reads the
-`github-authentication-token-expiration` header against the largest
-`max_lifetime_hours` the register permits. Two absences that look alike are kept
-apart — no header on a **classic** token means it never expires and fails, while
-on a fine-grained or installation token the header is how expiry is reported at
-all, so its absence is GitHub declining to answer and the block is
-`UNCLASSIFIED`. **The block answers only inside a GitHub Actions job**, because
-SEC-003's locus is `ci` and a developer's own token is a different credential;
-the accepted cost is that a **local `register-check` run now exits `3` rather
-than `0`**, which is the honest report rather than a regression. **Requirement 4 landed at contract 24**: a second remote block,
-`platform_token_is_not_classic`, fails on the **presence** of `X-OAuth-Scopes`
-— the header GitHub returns for a classic personal access token and for no
-other kind. Presence rather than value, because a scopeless classic token
-returns it empty. It reads the instrument, never the scope: no API lets a
-fine-grained token enumerate its own permissions, so "scoped to this repository,
-`Administration: read` only" stays a human act recorded at issue time, and
-reading it as *the register verifies the token is minimal* is the substitution
-ADR 0022 warned about. Two blocks rather than one because in CI the expiry
-question has no answer and the instrument question does. **Requirement 6 landed on 2026-08-24**, and
-implementing it found that the register had been carrying this repository's
-posture since contract 22: the comment introducing `platform_credentials:` said
-which option this repository chose, which is a fact about this repository read
-by every repository the register reaches. It now states the rule and points at
-the ADR. `tests/test_posture.py` fails the build if the posture reaches
-`controls.yaml` or anything under `plugins/`, if a shipped workflow fragment
-reaches a secret without an `environment:` gate, or **if the record in
-`docs/04-build-plan.md` § The one place this repository does not do what it asks
-of everyone else is deleted** — an undocumented divergence is indistinguishable
-from an oversight. **Every requirement that precedes the token is now closed**
-(ADR 0022 § Applied — pass 4), and **the token exists**: `PLATFORM_READ_TOKEN`,
-a repository secret set 2026-08-24, named in the register at contract 25 and
-handed to `register-check` by the conformance workflow with a
-`|| github.token` fallback for pull requests from forks, which receive no
-repository secret. Its `max_lifetime_hours: 2184` is a **permission rather than
-a measurement** — the longest life the register allows a standing credential,
-not a description of the token. The policy is ninety days; the number is
-ninety-one, because the block failed on its first live run by forty-four minutes
-against a ceiling of 2160: a token issued for "90 days" had 2160.73 hours left
-when the run read it, since an expiry is a timestamp and not a count of hours
-from the moment anything looks. That extra day is what the policy costs to state
-in hours, not slack granted to make a report green — and it raises the ceiling
-`platform_token_expires_within` compares against for every credential, because
-that assert reads the largest lifetime any entry permits and no API response
-says which credential a run carries.
-
-**GOV-001's remote half landed at contract 26 and its `partial:` is gone** —
-verified rather than waived. The meta-control reads which status checks GitHub
-enforces on the default branch and fails one the register requires and the
-platform does not, so the chain from a control to a blocked merge is read end to
-end rather than in two pieces nothing joins. To do it, a meta-control gained a
-third input, the resolved platform target, handed in by the runner exactly as it
-is handed to a control's blocks — never resolved inside, or two verdicts in one
-report could describe different repositories. Without a token GOV-001 reports
-`SKIPPED (no credentials)` **and says which half it did verify**, because a bare
-skip would throw away the file-level chain that was read.
-
-**The `--require-complete` flip was taken on 2026-08-24**, with the fork
-carve-out described above under the verdict vocabulary.
-
-This repository takes **Option 1** — a fine-grained token scoped to this
-repository, `Administration: read`, held as an ordinary repository secret —
-because the six accounts that could read it are organisation owners who already
-hold admin here, and classic PATs are not in use. **An adopter takes Option 3**,
-the deployment-environment gate, because its contributors are not organisation
-owners. That is a posture difference rather than an exception, and **it must
-never reach `controls.yaml` or anything under `plugins/`**, which is what an
-adopter installs (ADR 0022 requirement 6). Note also that a `pull_request` run
-receives repository secrets unless the pull request comes from a fork, and that
-a guard written in a workflow file is a guard the pull request is editing.
-
-Per [ADR 0014](docs/adr/0014-satisfying-remote-locus-controls.md) (**Accepted**
-and implemented 2026-08-17), this repository **is public**: write nothing that
-assumes privacy, and treat anything committed as publishable. CI-001 and SEC-001
-stay Tier 1 — do not re-tier a control to make a report green.
-
-Per [ADR 0016](docs/adr/0016-exit-codes-for-unverifiable-controls.md) and
-[ADR 0017](docs/adr/0017-partial-verification-is-reported.md) (both **Accepted**
-2026-08-17, both **implemented**), the checker's verdict vocabulary is settled:
-exit `3` means no violation was found but something could not be verified, `1`
-means a verified violation, `0` means every applicable control was verified, and
-`--require-complete` promotes `3` to `1`. A control whose tool is absent is
-`UNCLASSIFIED`, not `FAIL`. A verification block declares its own partial
-implementation **in the register**, with an expiry — never in the checker.
-
-**The `Conformance` workflow passes `--require-complete` from 2026-08-24**, which
-ended ADR 0016's ratified tolerance (that ADR's revision 5). A run that cannot
-verify a control fails rather than printing that it could not and passing. **One
-case survives and must not be widened**: a pull request from a fork receives no
-repository secret, so SEC-001's remote block cannot answer, and that run
-tolerates `3` and only `3` — a verified violation still fails it. The carve-out
-is bounded by a fact about the platform rather than by a phase, and
-`tests/test_conformance_step.py` runs the step's own script with the checker
-stubbed and asserts both branches, because a tolerance nobody exercises is one
-that quietly becomes general.
+**Do not treat a ticked box as settled.** Eight have been re-opened after being
+ticked. `docs/09-phase-1.5-review.md` § A–§ H records what each assert was wrong
+about; read it before touching `src/register_check/`. **`§ A`–`§ H` anywhere in
+this repo refers to that file.**
 
 ## Commands
 
@@ -427,39 +101,34 @@ strictness, `rationale_adr` existence and the Tier-1 baseline rule are
 properties of the register format, not of any repository. An unreasoned rule in
 the checker is the failure, not an exception to it.
 
-## Vocabulary you need before editing anything
+## The gotchas that cost the most
 
-Defined in `docs/00-concepts.md`; the schema is `docs/01-register-schema.md`.
+Each of these has been paid for once. None is derivable from the code.
 
-- **Rung** (enforcement ladder): `advisory` → `warn` → `blocking` →
-  `blocking (baselined)`. Promotion is only by explicit recorded decision.
-- **Locus**: where a control runs — `editor`, `pre-commit`, `ci`, `remote`.
-  Discipline is *pin once, reference many*: same tool version, same config, at
-  every locus.
-- **Predicates**: a control whose `applies_to` predicate the repo doesn't
-  satisfy is SKIPPED, not failed. Predicates are evaluated against files, never
-  self-declared.
-- **Baseline**: shrink-only tolerated-violation list (GOV-002 fails if one
-  grows). All Tier-1 controls carry `baseline: null` by design.
-- **Verification kinds**: `command` (an external tool; exit code is the verdict),
-  `file` (an in-process assertion over repository files), `remote` (platform API
-  state). The kind names what performs the verification, not which module
-  implements it — declaring an in-process assertion as `kind: command` is a
-  schema error, because GOV-001 reads `kind: command` blocks and the
-  miscategorisation decided its verdict. **One exception, bounded by the
-  validator**: a meta-control verifies itself with
-  `run: register-check meta GOV-NNN`, which runs in-process. The shape is forced
-  — a meta-control returns a three-valued `Verdict` and a `kind: file` assert
-  returns a boolean — and it decides nothing, since GOV-001 never reads
-  `meta_controls`. A control using that spelling, or a meta-control naming
-  another's id, is rejected (`docs/01-register-schema.md` § The one exception).
-- **Partial**: any verify block may declare itself not fully implemented, naming
-  the unverified property and an expiry date. GOV-003 fails an expired one, and
-  a partial block denies the run a `0` exit.
-- **Variance**: `forbidden` or `narrowing-only`. Deployed artefacts may tighten
-  a narrowing-only control but never loosen it; loosening requires updating the
-  control's entry in the register first (as was done for DOC-001's 250-char
-  line ceiling).
+- **Work in the container, not on the host.** Only four steps are the host's:
+  `claude setup-token` and the Keychain entries, `fetch-secrets.sh` (it **is**
+  `initializeCommand`), `devcontainer build`/`up`, and copying a template in
+  before a container exists. A host run once reported green about a uv version
+  it was not using. `docs/08-adopting.md` § 2.0a is the split.
+- **A wired locus is not an installed hook.** `.pre-commit-config.yaml` states
+  intent; `.git/hooks/pre-commit` is whether anything runs, and every gate reads
+  the first. It cannot become a control — `.git/hooks/` is untracked and CI has
+  none.
+- **A support floor is not a pin.** `.python-version` selects (3.14);
+  `requires-python` constrains. `[tool.ruff] target-version` is deliberately
+  absent — ruff derives it, and writing it out was a third copy that drifted.
+- **A shebang resolves from `PATH`.** Every tracked script reads
+  `#!/usr/bin/env -S uv run python`; `tests/test_toolchain_pin.py` fails one
+  that does not. The base image still ships a `python3` below the floor.
+- **This repository is public.** Write nothing that assumes privacy.
+- **Do not invoke a gate casually.** All eight skills are model-invocable here
+  and they write into this repository.
+- **Never fill in a provenance stamp by hand**, and never refresh one with no
+  run behind it. A stamp behind the register is staleness and is never enforced;
+  a stamp ahead of it is a defect and fails.
+- **Exit `3` is not a failure.** No violation found, something unverified.
+  `uv run register-check` exits `3` locally, permanently, because SEC-003's
+  remote blocks answer only inside an Actions job.
 
 ## Rules for editing `controls.yaml`
 
@@ -472,567 +141,61 @@ Defined in `docs/00-concepts.md`; the schema is `docs/01-register-schema.md`.
   criterion — keep the closed set in sync with the checker when it exists).
 - Meta-controls (GOV-001/002/003) check the register itself, not the code.
 
-## Deployed artefacts and skills
-
-Files deployed by ee-skills plugins carry an `ee-control:` provenance header
-naming the control, the deploying skill and version, the register version **and
-the register contract** — `docs/00-concepts.md` § The provenance stamp has the
-format, one parser lives at `src/register_check/provenance.py` (never write a
-second), and `tests/test_provenance_stamps.py` checks every stamp parses and
-names a real control. Twelve files carry one: `.markdownlint.yaml`,
-`.markdownlint-cli2.yaml`, `.github/workflows/lint.yml`,
-`.claude/hooks/md-lint.py`, `.github/workflows/register-check.yml`,
-`.devcontainer/devcontainer.json`, `.vscode/settings.json` — the second of
-`gate-quality`'s two editor-locus artefacts, added at contract 21, because
-installing an extension and that extension holding a file type are separate
-claims — `.github/dependabot.yml` — the one file whose
-stamp sits at the top, because every line of it belongs to SUP-002 —
-`.devcontainer/setup.sh`, whose every stamp belongs to a gate other than the
-`gate-build` that owns the file, `.github/rulesets/default-branch.json` — the
-one artefact that enforces nothing by existing, being a record of what the
-platform is asked to enforce — and, with one stamp per hook it owns rather than
-one at the top of the file, `.pre-commit-config.yaml`, and — from contract 18,
-stamped per region for the same reason — `.gitignore`, whose two credential
-lines are the only stamped artefact that runs nothing and installs nothing.
-A control whose artefacts a gate writes names it in
-`deployed_by`, and `provenance_stamp_present` reads back a stamp naming **that
-control** — not merely one naming its gate, which credited a gate's three
-controls for any stamp it had written anywhere. The control's id reaches the
-assert from the runner, and the schema rejects a register that writes it into
-`args:` itself, or one where `deployed_by` and the stamp block disagree. Keep the header when editing such
-files, note the edit in it, and respect the control's variance direction.
-
-A stamp *behind* the register is staleness, which is never enforced and — until
-Phase 5's sweep exists — is not reported either: `gate-secrets`' and
-`gate-quality`'s older stamps read contracts 11 and 12 against a register at 19,
-deliberately, because nothing they wrote here needs rewriting and doing it by
-hand would record a redeployment that did not happen. Nothing in the checker says
-so, and that is Phase 5's job rather than a defect. A stamp *ahead* of the
-register is a defect, and fails. An exemption
-in a deployed config is judged by what it hides
-([ADR 0019](docs/adr/0019-exemptions-cannot-hide-tracked-files.md)): excluding a
-path git does not track scopes the tool, excluding a path git tracks weakens the
-control, and no `narrowing-only` control with `baseline: null` — which is all of
-them — admits the second. `markdown_gate_wired_at_all_loci` checks it, so it is
-a build failure rather than something to remember. `lint-md` owns the whole DOC-001
-lifecycle — this repo does not write its own markdown gate, and `lint-md`'s
-shape (pre-flight → install → write config → wire every locus → migrate →
-verify) is the template every future gate skill copies (`docs/02-skill-family.md`).
-
-Per [ADR 0042](docs/adr/0042-a-deploying-skill-reads-local-configuration.md)
-(**Accepted** 2026-08-27, **shipped upstream in `lint-md` 1.0.8**) the route out
-of the `lint-md` impasse is a contract rather than an argument: **a skill that
-deploys artefacts takes the values it writes as input**, reading them from a
-repository-local `.claude/skill-config.yaml` keyed by skill name, with an absent
-file meaning today's behaviour. The two disputed rows are about *values*, and
-arguing values one at a time is a standing tax that does not generalise.
-
-**It is no longer a proposal.** 1.0.8 ships `skills/lint-md/local-config.md`:
-the file, the key, read at pre-flight, and both rows as inputs — a present key
-replaces the default entirely rather than merging with it, which is what makes
-`ignores: []` mean *ignore nothing*. The **defaults are unchanged**, so 1.0.8
-still writes `npx --no-install` and `.claude/**` where nothing configures it;
-what shipped is the mechanism, not the values. `.claude/skill-config.yaml` now
-exists here and holds both.
-
-**Revision 2 (same day) adds where a declination is recorded:
-`deployment-decisions.yaml`, at the repository root beside `controls.yaml`** —
-the counterpart to the provenance stamps, since a stamp records what *was*
-deployed and this records what deliberately was not. It is **not** the register
-(posture, ADR 0022 requirement 6), not `deploys.json` (the plugin's), and not
-`.claude/skill-config.yaml` (ee-skills' to name). Two rules keep it a record
-rather than an opt-out and both are checked: an entry covers **the version it
-names and no later one**, and it **expires**. `register-check deployments` reads
-it, and the asymmetry matters — a stale *deployment* is a recommendation and
-exits `0`; a stale *record* (expired, superseded, or naming a skill nothing
-stamps) exits `1`, and a malformed file exits `2` rather than reading as no
-declinations.
-
-**`/lint-md` was re-run at 1.0.8 on 2026-08-28, and the declination went with
-it.** `deployment-decisions.yaml` is `declined: []` and `register-check
-deployments` is back to exit `0`. The impasse is over: the two disputed values
-now come from `.claude/skill-config.yaml`, so `entry:` in the pre-commit hook
-and the CI step's invocation are **configured rather than corrected** — they had
-been hand-edits since Phase 1.
-
-That run left one artefact diverging from what the release writes:
-`local-config.md` said `invocation` reaches *"every locus … the PostToolUse
-hook"*, but Step 3a was a plain `cp` of a script with npx hardcoded, so the
-configured value never arrived there, and the shipped script's
-`#!/usr/bin/env python3` is a shebang `tests/test_toolchain_pin.py` fails. Both
-were filed as
-[ee-skills-incubator#627](https://github.com/EqualExperts/ee-skills-incubator/issues/627).
-
-**#627 shipped in `lint-md` 1.0.9, and `/lint-md` was re-run against it the same
-day.** All five DOC-001 artefacts are now stamped `lint-md@1.0.9` at register
-contract 35, and **`.claude/hooks/md-lint.py` is the release's own script for
-the first time**: 1.0.9 ships the `-S uv run python` shebang and the
-memory-file skip, its script passes `uv run ruff check` and `uv run mypy` here
-unedited, and Step 3a now substitutes `invocation` into it and verifies the
-value landed. The four divergences that file used to carry are all upstream, so
-**it is a deployment rather than a reconciliation** — the first time that stamp
-has meant the plain thing. Everything else hit its skip branch; `.markdownlint.yaml`
-was overwritten under the Step 1 prompt and came back byte-identical below the
-stamp, as it did at 1.0.8. **ADR 0020's row is closed at every locus here** and
-is no longer held open by a hand-edit anywhere.
-
-**From register contract 35 it is verified rather than remembered.** The editor
-locus has **two** artefacts and `markdown_gate_wired_at_all_loci` read one:
-whether an editor configuration installs the extension. So the hook was
-unchecked, and this repository's ran `npx` against a register pinning the
-lockfile's binary from Phase 1 until 2026-08-28 — described accurately in its
-own provenance comment the whole time, and reported wired throughout, which is
-`docs/09-phase-1.5-review.md` § A again. The assert now reads every
-`PostToolUse` script `.claude/settings.json` names and fails one that runs the
-tool by another route. **A comment is not an invocation**: a Python hook is
-parsed and its string constants taken, so the prose in that file explaining
-which spelling it replaced cannot satisfy the check — the accident § F records
-about a `node_modules` grep, refused by construction. The hook's path is
-**derived** from `.claude/settings.json` rather than named in `args:`, which
-would be a second copy of a path that already exists. A script that never
-mentions the tool is not judged, and a repository with no hook at all is not in
-violation — this verifies the locus the control already claims rather than
-adding a requirement.
-
-A stamp naming a release on a file that release did not write is deliberate
-where the file's comment qualifies it: the stamp records the release the
-artefact was **reconciled against**, and this repository's stamps have always
-carried their hand-edits. Four of the five DOC-001 stamps are still that kind,
-refreshed by the 1.0.9 run over files it skipped. What is forbidden is
-refreshing one with no run behind it.
-
-Per [ADR 0044](docs/adr/0044-the-adopter-installs-from-the-public-marketplace.md)
-(**Accepted** and implemented 2026-08-29) **the adopter installs from the public
-marketplace, and promotion adds a publication rather than replacing an
-instruction.** `EqualExperts/ee-skills` is private, so `docs/08-adopting.md`
-§ 0.0 goes on naming `Eaiger-Ent/ee-standard` before promotion and after it;
-`tests/test_adopter_guide.py` derives that address from
-`tools.register-check.install.repository` and fails a guide that names another,
-because the substitution is a one-line edit made while thinking about the
-destination rather than about who cannot reach it. Its second part is the one
-that closes a criterion: **a control whose deploying skill an adopter cannot
-install is satisfied by hand and verified by the register.** DOC-001 is the
-instance and today the only one — `lint-md` owns its lifecycle and lives behind
-that door — and `08-adopting.md` § 3's six steps are the supported route rather
-than the stopgap they were written as, because `register-check run --control
-DOC-001` runs the same two blocks over a hand-wired gate as over a deployed one.
-**Write no stamp naming `lint-md`** for a deployment it did not make. Copying the
-skill and adding a DOC-001 gate here were both rejected; asking that `lint-md` be
-reachable is submission 7 and nothing waits on the answer. No control changed, so
-the contract stayed at 35.
-
-Per [ADR 0043](docs/adr/0043-a-declination-is-reconciled-against-the-installed-skill.md)
-(**Accepted** and implemented 2026-08-28) a declination is reconciled against
-the **installed** skill, not only against the stamped one. ADR 0042 revision 2's
-first rule — *an entry covers the version it names and no later one* — was
-stated in the record's header, printed under every entry in the report, and
-checked by nothing: `decision_problems` compared the declined version against
-the stamp, so `lint-md` moving to 1.0.8 left the 1.0.7 entry reading as live at
-exit `0`. A rule stated and not applied is worse than one not stated, because
-the sentence reads as a check that has been made. The version comes from the
-harness's own inventory, `plugins/installed_plugins.json` under
-`$CLAUDE_CONFIG_DIR` (default `~/.claude`), read as a file rather than through
-`claude plugin list` — a checker that needed the CLI on `PATH` to read a JSON
-file would fail wherever the file is present and the binary is not. **Absence is
-a third state**: no inventory, no entry for the skill, or a version that does
-not parse is reported as unreconciled and leaves the exit code alone, because CI
-has no plugins installed and a rule reading *not found* as *still covered* would
-be right only where nobody could check it. `tests/conftest.py` now redirects
-`CLAUDE_CONFIG_DIR` autouse for the same reason it strips `GITHUB_TOKEN`.
-
-Per [ADR 0045](docs/adr/0045-a-gate-records-where-it-installed-a-tool.md)
-(**Accepted** 2026-08-30, **not yet implemented**) a deploying gate **writes
-`tools.<tool>.pinned_at`** for a tool it has just installed at a path not
-already listed — the first and only exception to *a gate writes artefacts and
-the register is what it reads*. It holds because `pinned_at` is not policy:
-`rung`, `verify`, `variance`, `applies_to` and `tier` decide what conformant
-means, and two conformant repositories legitimately differ on where their files
-live. Three constraints are the whole permission and all three are load-bearing
-— **additive only** (adding a path can only widen what is compared, the
-`narrowing-only` direction; removing one is a loosening a gate must never
-perform), **that field only**, and **only for a path it wrote** (never a survey
-of the repository). **No stamp is written**: a stamp names a control and the
-register is not a deployed artefact, so stamping it would claim the register as
-a gate's output — ADR 0032's reasoning for `register-install`. The manual
-instruction it replaces goes: `gate-secrets`' CI-steps template told the adopter
-*"Add this workflow's path there if it is not already listed"* in a code comment,
-and an adopter's workflow is never already listed, so their gitleaks pin drifted
-uncompared while SUP-001 and SUP-004 both passed. **The checker-scans-for-strays
-alternative was rejected and is not closed** — it needs a heuristic for *installs
-this tool*, which false-positives on a changelog quoting a version, and a false
-failure on a Tier-1 `blocking` control is expensive. Implementing it bumps
-`gates.gate-secrets.contractVersion` from 6, so every existing `gate-secrets`
-stamp reads stale until re-run, which is ADR 0038 working rather than a cost.
-
-Enforcement is never Claude: gates are pinned binaries reading pinned configs;
-a skill may install or explain a gate but cannot be one.
-
-Which model an agent or sub-agent runs on is decided by
-[ADR 0023](docs/adr/0023-smallest-model-a-task-can-be-trusted-to.md)
-(**Accepted** 2026-08-23, **not implemented**): three classes, a floor per
-class, and `CLAUDE_CODE_SUBAGENT_MODEL` forbidden because it outranks every one
-of them. Do not restate the floors here — the register's `agent_models:` block
-is the source once it lands, and `.claude/agents/*.md` frontmatter is the only
-copy the harness reads.
-
 ## Documents
 
-Read `docs/00-concepts.md` first for the vocabulary, then:
+Read `docs/00-concepts.md` first for the vocabulary, then `docs/14-file-map.md`
+for where anything lives. Both are more current than any list kept here.
 
-| Document | What it is for |
+| Document | For |
 | --- | --- |
+| `HOW-IT-WORKS.md` | The mechanism, one screen |
+| `START-HERE.md` | Adopting the standard, six steps |
 | `docs/00-concepts.md` | The vocabulary every other document assumes |
-| `docs/01-register-schema.md` | Field-by-field specification of `controls.yaml` |
-| `docs/02-skill-family.md` | How the standard reaches a repo, and stays current |
-| `docs/03-devcontainer.md` | What the shipped devcontainer template must be |
-| `docs/04-build-plan.md` | The phase exit criteria that define "done" for any implementation work, and the only list of outstanding work |
-| `docs/08-adopting.md` | What a repository that did not author the standard must do to satisfy it. **Every phase owes this file the adopter-facing steps it introduces** — see `04-build-plan.md` § A standing requirement |
-| `docs/05-promotion.md` | The route to the `ee-skills` marketplace |
-| `docs/06-devcontainer-setup.md` | Operator guide for this repo's own container |
-| `docs/07-inherited-conventions.md` | What the predecessor repo knew, sorted by whether it transfers — including what must **not** be copied |
-| `docs/09-phase-1.5-review.md` | Record of the Phase 1.5 review, and of § H, the review of the closed phase that re-opened four of its criteria. **`§ A`–`§ H` anywhere in this repo — asserts, tests, ADRs — refer to this file**, not to the build plan |
-| `docs/10-phase-2-review.md` | Record of Phase 2 slice by slice, and the evidence behind every criterion it ticks |
-| `docs/11-phase-3-review.md` | Record of Phase 3 slice by slice, including what each slice deliberately left open |
-| `docs/12-phase-4-review.md` | Record of Phase 4 — the first adoption by a repository that did not author the standard, and the twenty-six things it found |
-| `docs/13-phase-5-review.md` | Record of Phase 5 slice by slice, and what each one deliberately left open |
-| `docs/14-file-map.md` | **Where everything is.** Which file to open, and why `controls.yaml`, `deployment-decisions.yaml` and `.claude/skill-config.yaml` are three files rather than one. Held true by `tests/test_file_map.py`, in both directions at the top level |
-| `docs/15-phase-6-review.md` | Record of Phase 6 slice by slice. § The transport changed is why `05-promotion.md` no longer says a submission is an issue |
-| `docs/16-marketplace-readoption.md` | **The runbook for Phase 6's last criterion.** What the macOS Docker host must have, which of the two marketplaces to install from and why they differ, and what passing looks like — exit `3`, not `0` |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). Everything in this directory is `Accepted` and in force, so `ls docs/adr/` is the list of live decisions. There are no open decisions |
-| `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
+| `docs/01-register-schema.md` | Field-by-field spec of `controls.yaml` |
+| `docs/04-build-plan.md` | The only list of outstanding work |
+| `docs/08-adopting.md` | The adoption reference. Every phase owes it the steps it introduces |
+| `docs/14-file-map.md` | Which file, and why three config files are three |
+| `docs/adr/` | Every decision in force. `ls docs/adr/` is the list; `archive/` holds the retired |
+| `docs/09`–`docs/17` | Phase records and reviews, in order |
 
-`README.md` § "The register at a glance" lists the fifteen Tier-1 controls, with
-the three meta-controls described below the table.
+## Decisions in force
 
-**An ADR is written once and stands on its own** ([ADR 0026](docs/adr/0026-an-adr-stands-on-its-own.md)).
-Editing an accepted one is the exception, permitted only where the decision is
-unchanged **and** the record has become factually false — ADR 0016 asserting a
-bound that had stopped holding is the model case. Anything that changes *what
-was decided* is a new ADR that supersedes, however small it looks; when in
-doubt, supersede. Recording implementation (`## Applied — pass N`) is not
-amendment and needs no revision. Do not read the seven amended ADRs as a norm:
-they are this repo amending its own process in one week.
+Every ADR in `docs/adr/` is Accepted and binding. **Read the ADR rather than a
+summary** — a restatement here is a second copy, which is the failure this
+repository exists to prevent, and this file has already carried a drifted one.
 
-Where that exception does apply, the ADR is **amended in place** rather than
-superseded ([ADR 0024](docs/adr/0024-variance-vocabulary-is-direction-only.md)) —
-superseding would restate a correct decision to change one clause, which is the
-second copy this repo exists to prevent. Per
-[ADR 0025](docs/adr/0025-an-amendment-is-a-recorded-revision.md) an amendment is
-a **numbered revision**: every ADR carries `**Revision:** N`, and one above 1
-carries a `## Revision History` table giving each revision's date, a one-line
-summary and its ratifier. `grep -L '\*\*Revision:\*\* 1' docs/adr/*.md` lists
-the amended ones. `tests/test_adr_revisions.py` holds the form — the count must
-equal the rows and a count above 1 must be matched by an amendment in the body,
-so the two halves fail each other. It is a test rather than a control because it
-governs how this repository records its own decisions, not what a conformant
-repository contains (ADR 0022 requirement 6). It does **not** check that a
-summary is accurate; that is recorded as the residual risk, not covered.
-`adr-toolkit@0.1.13` models no revision or approver at all, so `/adr-check` and
-`/adr-consistency` neither check these fields nor object to them — re-checked on
-2026-08-27 against the release itself, whose rule files are byte-identical to
-0.1.11's. The version here moves with the installed plugin and the claim is
-re-read when it does; the `@0.1.11` in ADRs 0025 and 0026 stays, because an ADR
-is a dated record of what was true when it was written.
+The ones most likely to catch you out, by what they govern:
 
-An ADR reaching a terminal status moves to `docs/adr/archive/` **keeping its
-number**, which is never reused — only its path changes. The same test checks
-status and location agree **in both directions**, so the directory cannot
-disagree with the header; it also fails a live control whose `rationale_adr`
-cites an archived ADR, because a control's stated reasoning may not be a
-decision the corpus has retired. Archiving breaks inbound links: rewrite them in
-the same change. Note the cost — `adr-toolkit` globs `docs/adr/*.md`, so an
-archived ADR leaves the corpus `/adr-consistency` scans.
+| If you are touching | Read |
+| --- | --- |
+| A control's verdict or exit code | ADRs 0016, 0017 |
+| `kind: remote`, tokens, CI credentials | ADRs 0021, 0022 |
+| The register/checker boundary — before adding a rule to Python | **ADR 0018** |
+| The devcontainer, uv, or the interpreter | ADRs 0027, 0028, 0030, 0034, 0037 |
+| The editor locus | ADR 0029 |
+| A gate skill, or shared skill prose | ADRs 0033, 0035, 0036, 0038 |
+| `pinned_at`, or a gate writing the register | **ADR 0045** |
+| Loci, pins, digests, or a bot's config | ADRs 0020, 0039, 0041 |
+| Writing or amending an ADR | ADRs 0024, 0025, 0026 |
+| The adopter's route, or the marketplace | ADRs 0032, 0042, 0043, 0044 |
 
-Per [ADR 0031](docs/adr/0031-the-plugin-is-named-for-the-register.md)
-(**Accepted** 2026-08-24, revision 2, **move 1 implemented** 2026-08-25 at
-register contract 27) the plugin, the checker and the non-gate skills are named
-for the **register**: the plugin is `control-register`, the checker is
-`register-check`, and the skills are `register-adopt`, `register-install` and —
-when Phase 5 builds it — `register-variance`. The gates keep their names and no
-provenance stamp changed, because a stamp names a control and a gate, never the
-checker. **The repository is not renamed**: `Eaiger-Ent/ee-standard` is still
-its address, and `ee-standard` in a path, a URL, a volume name or the
-`EE_STANDARD` secret prefix means the repository rather than the plugin.
+**Naming (ADR 0031).** The plugin is `control-register`, the checker is
+`register-check`, the non-gate skills are `register-*`. The gates keep their
+names. The **repository** is not renamed: `ee-standard` in a path, URL or secret
+prefix means the repository. Outside `docs/adr/`,
+`grep -rn 'standard[-_]check'` returning nothing is the finish condition.
 
-**Move 2 landed 2026-08-25 at register contract 28**, and it is worth knowing
-why it needed a change of its own. The required status check's name is one
-string in four places — CI-001's `required_checks:`, the context in
-`.github/rulesets/default-branch.json`, the gating job's id in
-`.github/workflows/register-check.yml`, and the ruleset GitHub enforces — and
-only the last is not a file. GOV-001 fails a check the register requires and the
-platform does not enforce, so no part of it could move ahead of the others: the
-pull request moved three, a confirmed `/gate-repo` PUT moved the fourth, and the
-pull request's first check run failed GOV-001 until that call was made. A
-**transitional job** reporting the old name was tried and is wrong — GOV-001
-asks which job the blocking controls' steps are reached from, so a job that only
-mirrors another's result is a required check with no gate behind it. The ADR's
-revision 2 records this.
+**Enforcement is never Claude.** Gates are pinned binaries reading pinned
+configs. A skill may install or explain a gate; it cannot be one.
 
-Outside `docs/adr/`, `grep -rn 'standard[-_]check'` returning nothing is the
-finish condition. **Inside it, the old name stays** — an ADR is a dated record,
-and rewriting ten of them would spend the revision machinery on a
-find-and-replace.
+**Model selection** is ADR 0023's: three classes, a floor per class, and
+`CLAUDE_CODE_SUBAGENT_MODEL` forbidden. Do not restate the floors here —
+`.claude/agents/*.md` frontmatter is the only copy the harness reads.
 
-Per [ADR 0032](docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md)
-(**Accepted** 2026-08-24, **implemented** 2026-08-25 at register contract 29)
-the checker reaches an adopting repository as a dependency pinned to a **tagged
-git ref** of this public repository, placed by `register-install`, which owns
-nothing else and which `register-adopt` dispatches **before its own pre-flight**
-— a pre-flight that verifies through an instrument it does not have verifies
-nothing. Not `gate-supply-chain` — no control names *the checker is installed* —
-which is also why it is the one skill in the plugin that writes **no provenance
-stamp**: a stamp names a control, and there is none to name.
+## One thing this repository does not do
 
-The address is split across two register sections on purpose.
-`tools.register-check.install` holds `repository` and `ref`, because a fork or
-an internal mirror is a thing a repository differs on; `ecosystems.<name>.git_dependency`
-holds the spelling that joins them to a package name, because PEP 440's direct
-reference is a fact about Python. Composed in one field, moving to a mirror
-would mean restating the grammar. `git_dependency` is declared by **python
-alone**, and its absence elsewhere is a verdict — the skill stops rather than
-inventing an idiom that would fail in the adopter's repository instead of here.
-
-**`v0.1.0` exists** (cut 2026-08-25 on `055336d`), and the discipline ADR 0032
-predicted would be skipped is a test rather than an intention:
-`tests/test_register_install.py` fails the build if the register pins a tag this
-repository has not cut, or one whose commit declares a different
-`pyproject.toml` version. It deliberately does **not** compare the tag against
-the working tree — `install.ref` is the last *released* checker and the version
-in the tree is what the next release will be, so those legitimately differ.
-Whether a bot proposes a bump for a tagged git dependency is **not verified**
-and is recorded as unverified, not assumed.
-
-Per [ADR 0033](docs/adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md)
-(**Accepted** and implemented 2026-08-25) each skill is also reachable at
-`.claude/skills/<name>`, as a **tracked symlink** into the plugin — `120000` in
-the index, not a copy. `/skill-submit-new` resolves `<name>/SKILL.md` in the
-project's Claude skills directory and this repository uses the marketplace's
-plugin layout, so without the links the submission tool cannot see any of the
-eight skills. A copy made at submission time was rejected: nine of them, by
-hand, diverging from the plugin between submissions. **The transport changed on
-2026-08-28** — `/skill-submit-new` and `/skill-submit-amend` now push a branch
-and open a pull request rather than filing an issue, so there is an
-iterate-in-review loop, but the incubator's gates run before the push and a
-failing submission is never filed at all. The decision does not move with it,
-and ADR 0033 is not edited: an ADR is a dated record. See
-`docs/15-phase-6-review.md` § The transport changed.
-`tests/test_skill_links.py` derives the set from the plugin in both directions,
-so a ninth skill without a link is a build failure. The side effect is
-deliberate — every gate is now invocable here as `/gate-secrets` and the rest.
-That ADR's revision 2 corrects what made it safe: **seven of the eight no longer
-carry `disable-model-invocation: true`**, per
-[ADR 0035](docs/adr/0035-a-dispatched-skill-is-reachable.md)
-(**Accepted** and implemented 2026-08-25). `register-adopt` dispatches them and a
-callee carrying that flag cannot be reached at all, so the documented front door
-had never been able to take its first step — Phase 4 found it at Step 0 of the
-first adoption outside this repository. `register-adopt` keeps the flag, so the
-entry point is still a person's; each callee's `README.md` says it is dispatched
-and that the flag must not come back, which is the fix preflight P9 itself
-prescribes. What guards `gate-repo`'s platform mutations is its own per-call
-confirmation, enumerated by `tests/test_gate_repo_confirmation.py`, and never
-this frontmatter key. **Do not invoke a gate here casually** — they are now
-model-invocable and they write into this repository.
-**`LICENSE` now exists**, at the root and in the plugin, byte-identical and held
-so by the same test; `check_plugin_license.py` fails a plugin without one.
-
-Per [ADR 0034](docs/adr/0034-the-template-bootstraps-uv.md) (**Accepted** and
-implemented 2026-08-25) the shipped template installs **uv** from the pinned
-release tarball against the published sha256, with `{{UV_VERSION}}`,
-`{{UV_SHA256_X86_64}}` and `{{UV_SHA256_AARCH64}}` substituted out of the
-register the adopter is adopting. It is the one install no gate can make, because
-a gate verifies itself with `uv run register-check` and would be running its own
-verification on the tool it had not installed yet. **A placeholder is not a pin**
-— the register holds the number and the file references it — so Phase 2's *"the
-template pins no tool version by hand"* criterion stays closed on its own terms,
-and the grep in `tests/test_devcontainer_template.py` is stricter after the
-change than before: a `FOO_VERSION=` assignment still fails and one whose value
-is a placeholder passes, with both directions asserted. **Quoting the substituted value is fine**,
-and was not always: `tool_versions_match_register` matched a tool name and a
-version across `@`, `=`, `:` or whitespace only, so a quote landed where it
-looked for the separator and the pin was reported missing. *Substitute unquoted*
-was the instruction that came of it — this checker's brittleness written up as a
-rule for every repository to follow, which the template test had already stopped
-believing, since it asserts `UV_VERSION="{{UV_VERSION}}"` passes. The assert
-takes an optional quote from 2026-08-29, and reaches a JSON pin it could never
-read. Found when an upstream `shellcheck-clean` commit quoted the placeholders
-in the **published** copy of this template, which nothing here would have
-noticed.
-
-**A placeholder is only as good as its source, and from 2026-08-30 that join is
-tested.** The dependency runs one way — the register holds the version and the
-template references it — so there is **no reconciliation task between
-`.devcontainer/` and `controls.yaml`** to invent when either changes; Renovate
-moves the register and SUP-004 reconciles what it moved. What nothing covered
-was whether a placeholder still *has* a value:
-`tests/test_devcontainer_template.py` substitutes only `{{PROJECT_NAME}}` and
-leaves the three uv placeholders in, so a renamed `tools.uv.sha256` or a
-placeholder no field backs surfaced at `sha256sum -c` during container create in
-somebody else's repository. `tests/test_devcontainer_placeholders.py` holds three
-claims: the template's placeholders and their declared sources agree in both
-directions, each register-sourced one resolves to a value of the right shape, and
-**`08-adopting.md` § 2.0's own extraction commands are executed rather than
-re-typed** — the shape `tests/test_conformance_step.py` uses, because a
-reimplementation is a second copy free to keep working after the commands an
-adopter runs have stopped. That has already failed once: § 2.0's first version
-used `grep -A4`, which never reached `version:` because the register comments
-that block, and it returned empty at exit `0`. It builds nothing and cannot —
-that is Phase 6's last criterion and it needs a Docker host, so the cadence is
-**file-level reconciliation on every change, a real build at release cadence**.
-
-**From register contract 30 a control's `rationale_adr` may be an `http(s)`
-citation as well as a path.** It resolves against the register's own directory,
-so a register fetched into a repository that did not author it failed **every**
-control on a `docs/` tree it was never going to have — which is what stopped the
-first real adoption at Step 1. The shipped register cites
-`.../blob/main/docs/adr/…`, and the renamed-ADR check the path form bought lives
-in `tests/test_rationale_citations.py`, which holds every citation to the address
-`tools.register-check.install.repository` names **and** to a file in this tree.
-It is a test rather than a control for ADR 0022 requirement 6's reason. Never
-pin a tag in those URLs: the tag has one home, `install.ref`, and fourteen copies
-of a release number is the drift this register exists to prevent.
-
-**The register a tag ships must name that same tag.** `v0.1.0` was cut one
-contract before `tools.register-check.install` existed, so the only obtainable
-register could not install the checker it describes. `install.ref` and
-`pyproject.toml`'s version are now set in the commit the tag names, which makes
-the checker and the register one artefact rather than two that can disagree.
-
-Per [ADR 0036](docs/adr/0036-shared-skill-prose-has-one-home.md)
-(**Accepted** and implemented 2026-08-26) **prose more than one skill must
-follow is shipped once**, under `plugins/control-register/reference/`, and read
-at runtime through `${CLAUDE_PLUGIN_ROOT}`; the skill carries a pointer and
-nothing more. Two files exist — `pre-commit-runner.md` and
-`write-narration.md` — and they were twelve pasted copies of two rules until a
-preflight line count found them. Do not paste a shared section back into a
-SKILL.md: `tests/test_shared_reference.py` fails that, and fails a pointer to a
-file the plugin does not ship. The reference files cite ADR 0036 in prose rather
-than by link, because `docs/` is not shipped and a relative link out of the
-plugin resolves here and dangles in every installation.
-
-Per [ADR 0037](docs/adr/0037-the-template-is-the-whole-devcontainer-step.md)
-(**Accepted** and implemented 2026-08-26) **`project-init` is not part of this
-standard's adoption route.** The shipped template produces a *configured*
-`.devcontainer/` — image pinned by digest, features declared, lock file covering
-them — so there is no configure-it-for-the-stack step and no skill that performs
-one. Where the template's image does not fit, **the adopter changes it by hand**
-and `gate-build` pins what it finds; the gate still never chooses. The decision
-was forced by measurement rather than taste: `project-init` Step 4 replaces the
-digest pin with a floating tag below the register's floor and adds a second,
-conflicting node feature, and its precondition makes it run *after* the template
-is copied. `docs/08-adopting.md` § 2.0 had already dropped it in Phase 2 while
-eight other places still described a division of labour with it — two of them
-shipped. **The composition exit criterion is retired, not met**, and
-`docs/04-build-plan.md` § Phase 4 records why. Do not re-add `project-init` to a
-prior-art table: each of the four that lost it says in one line that it did.
-
-Per [ADR 0038](docs/adr/0038-the-stamp-records-the-deployment-contract.md)
-(**Accepted** and implemented 2026-08-26) a provenance stamp carries a fifth
-field, **`gate-contract`** — `gates.<gate>.contractVersion` from the plugin's
-`deploys.json`, read by the gate as it writes. Until then the sidecar declared a
-number nothing compared: `02-skill-family.md` said redeployment is recommended
-*"when the installed contract version is ahead of the one stamped in the repo"*,
-and no stamp held one. **The skill version cannot stand in for it** — eight
-skills share `plugin.json`'s version, so a rule keyed to it moves six gates
-whenever one ships, which is the plugin-wide contract the per-gate sidecar
-exists to avoid. The field is **optional in the parser and its absence is a
-state**: every stamp in this repository predates it and reports `UNRECORDED`,
-neither current nor stale, until each gate is re-run. **Do not fill one in by
-hand** — that records a redeployment that did not happen, which Phase 5's exit
-criteria name specifically as not one of the outcomes. Adding the field bumped
-**every** gate's `contractVersion`, because a stamp is output and every gate's
-output moved. `register-check deployments` is the reader; six states, and two
-the plan did not name are `UNRECORDED` and `NOT APPLICABLE` — a gate none of
-whose controls' predicates hold is owed nothing, or the report invents work in
-the name of preventing noise.
-
-Per [ADR 0039](docs/adr/0039-a-push-is-a-locus.md) (**Accepted** and
-implemented 2026-08-27 over contracts 31 and 32) `locus:` has a fourth value,
-**`pre-push`**, and TST-001, SUP-001, SUP-002 and SEC-002 declare it. Each had
-`ci` as its only locus, so the test suite, two supply-chain controls and the one
-forbidding a static cloud key in a workflow were verified nowhere a developer
-could reach. **SEC-002 gained `deployed_by` with the locus**, leaving
-`register-adopt`'s *checked, not deployed* row after two phases in it: a locus is
-something a gate installs, so it is now `gate-secrets`' first SEC-002 artefact.
-SEC-003 stays in that row — `register-check run --control SEC-003` exits `3`
-here, measured, so a hook running it would refuse every push. **The test for
-whether a control can take this locus is whether the machine at that locus can
-*finish* verifying it.** **It shares a file with `pre-commit`** — both
-are hooks in `.pre-commit-config.yaml` — and a hook's `stages:` key is what says
-which moment it serves. The checker resolves stages the way pre-commit does
-(the hook's own, else `default_stages`, else every stage), which closed a latent
-hole: until then every hook in the file answered every local locus, so a
-pre-push-only hook would have satisfied a `pre-commit` claim. This repository
-sets `default_stages: [pre-commit]` so a hook that says nothing is a pre-commit
-hook. **The pre-push hook names its controls and must not be a full audit**: a
-full local run exits `3` for SEC-003's remote blocks — permanently, since they
-answer only inside an Actions job — so a hook running it would refuse every
-push, and both escapes (a wrapper mapping `3` to `0`, a flag skipping
-`kind: remote`) are the substitutions ADR 0016 refuses. `uv sync --frozen` is
-deliberately **not** wired: every `uv run` above it re-locks on disk before
-`--frozen` is reached, so at that locus it would pass on a machine whose
-`uv.lock` is rewritten and uncommitted. **A wired locus is still not an
-installed hook** — `setup.sh` installs both types, `check-auth.sh` reports
-either missing, and no control can check `.git/hooks/`. The criterion that prompted it **is ticked**, and narrowed on the way:
-*what CI runs* is unreachable literally, so it closed as *every control whose
-verification this machine can finish now has a local locus*. SEC-001's and
-SEC-003's remote blocks, CI-001 and the three meta-controls stay CI's alone. **A
-green push is a promise about the controls that name a local locus, not that the
-conformance job will pass.**
-
-Per [ADR 0040](docs/adr/0040-a-declined-classification-is-a-verdict.md)
-(**Accepted** and implemented 2026-08-27, register contract 33) a config delta
-gets a **direction** — `register-check variance`, reported by the
-`register-variance` skill. **Declining is a verdict the mechanism produces, not
-a case it falls through**: three shapes are classifiable — membership of a
-mapping or list, a scalar whose key `variance.polarity` names, and nothing else
-— and `01-register-schema.md`'s three `UNCLASSIFIED` cases each fall out of one
-of them. Only the second is fixable, in one line of register, and the report
-says which case it hit so the two are not confused. **A mixed delta is a
-loosening**, never a wash. **It is not a gate** — the asserts that fail a build
-over a weakening still do, and moving one here would trade a build failure for a
-remembered command. The delta is read between two git revisions rather than
-against a rendered template, because rendering one inside the checker would be a
-second copy of the gate's substitution living in the auditor. Exit codes are ADR
-0016's: `1` loosening, `3` declined, `0` otherwise; it is **not** part of a
-conformance run. Two bugs the tests caught before it shipped are worth
-remembering: `git show <ref>:<glob>` prints the *commit* rather than failing, and
-`isinstance(False, int)` is `True` in Python — a ceiling turned `off` compared as
-`False < 100` and reported a narrowing.
-
-Per [ADR 0041](docs/adr/0041-a-pinned-digest-is-checked-against-what-was-published.md)
-(**Accepted** and implemented 2026-08-27, register contract 34) **SUP-004**
-checks that every pinned sha256 is the one the project published. Renovate's uv
-bump ([#74](https://github.com/Eaiger-Ent/ee-standard/pull/74)) moved the version
-at all four sites and left all three digests behind, and everything passed. Two
-halves: an offline reconciliation across `pinned_at` in **both** directions, and
-a comparison against the release's published manifest. **Only the second fails
-the actual shape of #74** — that bump left the register and `setup.sh` agreeing
-with each other. `tools.<tool>.checksums` names a **manifest**, not a per-asset
-`.sha256`, because gitleaks publishes only the first (measured: the per-asset URL
-404s) — and a manifest lists every architecture, so **the aarch64 digests are now
-compared too**, closing a gap `09-phase-1.5-review.md` recorded as permanent.
-**It is a control of its own with `locus: [ci]`, and that is forced**: every
-other supply-chain control declares `pre-push`, so a remote block on one would
-put a network fetch in front of every push and refuse one taken offline. The
-runner learned one thing for it — `PUBLIC_REMOTE_ASSERTS`, remote blocks that
-answer without a credential, because reporting `SKIPPED (no credentials)` over a
-public manifest is declining a question it could have answered. **A tool
-publishing no manifest passes and says so**; failing a repository for someone
-else's release process would make its run unpassable. The cost, accepted: a
-conformance run now depends on a release endpoint, and under
-`--require-complete` an unreachable network is exit `1`.
-
-Gate skills live in `plugins/control-register/skills/` — `gate-secrets`,
-`gate-quality`, `gate-supply-chain`, `gate-build`, `gate-iac` and `gate-repo`,
-the whole family, plus `register-adopt`, the dispatcher that ships no templates
-because it writes no artefacts of its own, and `register-install`, which ships
-none because the one thing it writes — a dependency pin — belongs to no control. A gate verifies itself with
-`register-check run --control <ID>` and never by reading its own files back —
-that command runs the control's verify blocks through the same `run_control` the
-full audit calls, which is what makes "one assert implementation" true rather
-than intended. A gate holds **no** pinned version of its own; templates carry
-placeholders and `tests/test_plugin.py` fails if any value the register pins
-appears anywhere under `plugins/`. `.claude-plugin/deploys.json` carries one
-`contractVersion` **per gate**, not per plugin — a shared number would
-recommend redeploying every gate whenever any one of them changed, which is the
-noise Phase 5's first two criteria exist to prevent.
+`docs/04-build-plan.md` § The one place this repository does not do what it asks
+of everyone else records a posture divergence, and `tests/test_posture.py` fails
+the build if that record is deleted, or if the posture reaches `controls.yaml`
+or anything under `plugins/`. An undocumented divergence is indistinguishable
+from an oversight.
