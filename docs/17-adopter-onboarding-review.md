@@ -568,9 +568,9 @@ from a rule to a blocked merge is read end to end rather than in pieces nothing
 joins.
 
 **What it costs.** A Mac with Docker, admin on the repository, and a plan where
-rulesets are available — public, or paid. A first adoption takes about
-<MEASURE — nothing in this repository records an elapsed time, and Phase 4 was
-the only adoption outside it>.
+rulesets are available — public, or paid. Most of it you do alone in one
+sitting; two steps wait on somebody else, and the document says which and where
+to stop.
 
 **Start:** `START-HERE.md`
 ```
@@ -579,9 +579,15 @@ The cost paragraph is not a disclaimer. This repository's whole style is stating
 what a thing costs beside what it gives, and an adoption pitch with no cost
 reads as one that has not been done.
 
-The angle bracket is deliberate. No document here records how long an adoption
-took — `12-phase-4-review.md` records twenty-six findings and no elapsed time —
-so the number has to be measured on the next one rather than estimated now.
+**It states blocking rather than duration, deliberately.** An earlier draft of
+this section said *"a first adoption takes about `<n>`"*, and that number should
+not be written. It is dominated by what the document cannot control — waiting
+on an org owner to install the Renovate app, a token approval, a first image
+pull, whether the repository is already public — so it ranges from a morning to
+several days and an average would be true of nobody. Worse, it is a claim with
+no check behind it: nothing would re-measure it, and it would rot the way
+§ H's status section did. What the reader actually needs is *can I finish this
+now, and if not where do I stop* — which is structural, stable, and answerable.
 
 ## The doc plan
 
@@ -726,10 +732,9 @@ at all.
 ```markdown
 # Start here
 
-<One paragraph: who this is for, what they will have at the end **named
-concretely** — not "a conformant repository" but the four outcomes from § P —
-and roughly how long it takes. State the macOS assumption in the first
-sentence — § B.>
+<One paragraph: who this is for, and what they will have at the end **named
+concretely** — not "a conformant repository" but the four outcomes from § P.
+State the macOS assumption in the first sentence — § B. No duration — § P.>
 
 ## How this works
 
@@ -775,9 +780,10 @@ the four rows may be classic and which may not.>
 
 ## What you are about to do
 
-<Six one-line rows: the step, and roughly how long. This exists so the reader
-can see the shape before they are inside it, and so they can stop at a sensible
-place.>
+<A six-row table: the step, whether it needs anyone but you, and whether you can
+stop after it. Not how long — see § P. Two rows need somebody else (an admin for
+the ruleset, an org owner for the Renovate app) and saying so up front is what
+lets a reader start today instead of discovering it at step 3.>
 
 ## 1 — Install the plugin
 ## 2 — Get the register
