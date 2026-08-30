@@ -1395,7 +1395,14 @@ document that described it.
       one-line difference in someone else's repository and no criterion depends
       on it, so it is a follow-up rather than a re-opening
 - [ ] The consumer repo re-adopts from the *marketplace* copy and still passes —
-      proving the plugin works when installed, not only when developed
+      proving the plugin works when installed, not only when developed.
+      **The runbook is [`16-marketplace-readoption.md`](16-marketplace-readoption.md)**:
+      what the host must have, which of the two marketplaces to install from and
+      why they are different artefacts, the expected result (**exit `3`, not
+      `0`** — SEC-003's remote blocks answer only inside an Actions job), and the
+      four outcomes that would fail it. It does not restate the adoption steps;
+      those stay in [`08-adopting.md`](08-adopting.md), because a second copy of
+      the guide an adopter follows is free to drift from it
 - [x] **DOC-001 has a route for an adopter who cannot see `ee-skills`.** Added
       2026-08-25 by Phase 4, which found that the marketplace holding `lint-md`
       is **private**: every plan this repository produces rows DOC-001 as
