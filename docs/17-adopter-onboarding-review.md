@@ -1043,7 +1043,24 @@ workflow is not named `register-check.yml`, so it is never already listed.
 checker guess at what a human meant. Whether a gate may write to the register is
 the real question inside it, and that is an ADR.
 
-**Question: A, B or C — and if B, is a gate allowed to edit `controls.yaml`?**
+**Answered: B, and the gate is allowed — written up as
+[ADR 0045](adr/0045-a-gate-records-where-it-installed-a-tool.md), Accepted
+2026-08-30, not yet implemented.** It is the first exception to *a gate writes
+artefacts and the register is what it reads*, and it holds because `pinned_at`
+is not policy: two conformant repositories legitimately differ on where their
+files live. Three constraints are the permission — additive only, that field
+only, only for a path the gate wrote — and the first is what makes a wrong write
+a loud false failure rather than a silent false pass.
+
+Option A is **rejected but not closed**: if it is ever taken it will be as a
+second, independent check rather than a replacement, and its cost is unchanged
+— a heuristic for *installs this tool* false-positives on a changelog quoting a
+version, or on this review.
+
+One part of § K stays open deliberately. A file that installs a pinned tool and
+was written by a **human** rather than by a gate is still invisible to the
+allow-list. ADR 0045 closes the path the standard itself creates, which is the
+one it is responsible for.
 
 ### Decision 4 — where the "how it works" explanation lives
 

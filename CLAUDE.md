@@ -640,6 +640,30 @@ has no plugins installed and a rule reading *not found* as *still covered* would
 be right only where nobody could check it. `tests/conftest.py` now redirects
 `CLAUDE_CONFIG_DIR` autouse for the same reason it strips `GITHUB_TOKEN`.
 
+Per [ADR 0045](docs/adr/0045-a-gate-records-where-it-installed-a-tool.md)
+(**Accepted** 2026-08-30, **not yet implemented**) a deploying gate **writes
+`tools.<tool>.pinned_at`** for a tool it has just installed at a path not
+already listed — the first and only exception to *a gate writes artefacts and
+the register is what it reads*. It holds because `pinned_at` is not policy:
+`rung`, `verify`, `variance`, `applies_to` and `tier` decide what conformant
+means, and two conformant repositories legitimately differ on where their files
+live. Three constraints are the whole permission and all three are load-bearing
+— **additive only** (adding a path can only widen what is compared, the
+`narrowing-only` direction; removing one is a loosening a gate must never
+perform), **that field only**, and **only for a path it wrote** (never a survey
+of the repository). **No stamp is written**: a stamp names a control and the
+register is not a deployed artefact, so stamping it would claim the register as
+a gate's output — ADR 0032's reasoning for `register-install`. The manual
+instruction it replaces goes: `gate-secrets`' CI-steps template told the adopter
+*"Add this workflow's path there if it is not already listed"* in a code comment,
+and an adopter's workflow is never already listed, so their gitleaks pin drifted
+uncompared while SUP-001 and SUP-004 both passed. **The checker-scans-for-strays
+alternative was rejected and is not closed** — it needs a heuristic for *installs
+this tool*, which false-positives on a changelog quoting a version, and a false
+failure on a Tier-1 `blocking` control is expensive. Implementing it bumps
+`gates.gate-secrets.contractVersion` from 6, so every existing `gate-secrets`
+stamp reads stale until re-run, which is ADR 0038 working rather than a cost.
+
 Enforcement is never Claude: gates are pinned binaries reading pinned configs;
 a skill may install or explain a gate but cannot be one.
 
@@ -674,7 +698,7 @@ Read `docs/00-concepts.md` first for the vocabulary, then:
 | `docs/14-file-map.md` | **Where everything is.** Which file to open, and why `controls.yaml`, `deployment-decisions.yaml` and `.claude/skill-config.yaml` are three files rather than one. Held true by `tests/test_file_map.py`, in both directions at the top level |
 | `docs/15-phase-6-review.md` | Record of Phase 6 slice by slice. § The transport changed is why `05-promotion.md` no longer says a submission is an issue |
 | `docs/16-marketplace-readoption.md` | **The runbook for Phase 6's last criterion.** What the macOS Docker host must have, which of the two marketplaces to install from and why they differ, and what passing looks like — exit `3`, not `0` |
-| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **43** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0044 because 0015 is archived. There are no open decisions |
+| `docs/adr/` | One ADR per control, plus the cross-cutting decisions (0014 onward). All **44** in this directory are `Accepted` — the count is of files here, not of ADR numbers, which reach 0045 because 0015 is archived. There are no open decisions |
 | `docs/adr/archive/` | ADRs no longer in force — `Superseded` or `Deprecated` only. Today: 0015 alone. `ls docs/adr/` is therefore the list of decisions in force |
 
 `README.md` § "The register at a glance" lists the fifteen Tier-1 controls, with
