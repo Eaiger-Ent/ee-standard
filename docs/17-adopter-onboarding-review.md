@@ -698,7 +698,8 @@ exists, `gate-secrets` telling an adopter to edit their register in a code
 comment is the weakest link in the supply-chain chain.
 
 Both have an ADR's shape. Raise them; do not decide either in a documentation
-change.
+change. § The four decisions states them, and the other two, with the options
+and what each costs.
 
 ## The template
 
@@ -788,7 +789,7 @@ fetch-secrets.sh. Do not restate that contract.>
 | node and npm | <cask or brew> | `npm --version` |
 | `devcontainer` CLI | `npm i -g @devcontainers/cli` | `devcontainer --version` |
 | GitHub CLI | <brew>, then `gh auth login` | `gh auth status` |
-| Claude Code | <VERIFY on a Mac — see below> | `claude --version` |
+| Claude Code | <https://docs.claude.com/en/docs/claude-code/setup> | `claude --version` |
 
 ### Get these credentials
 
@@ -885,13 +886,137 @@ At minimum, a `tests/test_start_here.py` should hold:
 - The document names no version, digest or tag literally. The inverse of
   `tests/test_plugin.py`'s rule for `plugins/`.
 
+### Link, never restate, another project's install
+
+The prerequisites table gives a `brew` line where one is short and stable, and a
+**link** for Claude Code and Docker Desktop. That is not laziness about the two
+hardest rows — it is the same rule as everything else here. An install command
+copied out of another project's documentation is a second copy of a fact that
+project owns, free to drift the day they change it, and it would sit in a table
+nobody re-checks. Theme **T-2**, with the drift outside this repository's control
+entirely.
+
+So the row says *what they need* and *where the instructions live*, and never
+*how*. `https://docs.claude.com/en/docs/claude-code/setup` resolves, as does
+`claude.com/claude-code`; both were checked on 2026-08-30, which is the standard
+the register already holds every citation to.
+
 ### What the writer cannot settle from here
 
-Two cells are marked `<VERIFY on a Mac>` on purpose. The Claude Code install
-command and whether `sort -V` behaves on a stock macOS (§ I) are facts about a
-machine this container is not, and guessing them would put this document in the
-same class as the one it replaces. Write them from a real Mac or leave them
-marked; do not infer them.
+One item, down from two. Whether `sort -V` behaves on a stock macOS (§ I) is a
+fact about a machine this container is not. It is also avoidable rather than
+merely unverified: § 0.1 uses it to pick the newest tag, and the newest tag can
+be read without sorting at all. Note that
+`https://api.github.com/repos/Eaiger-Ent/ee-standard/releases/latest` returns
+**404** — this repository has tags and no GitHub *Releases* — so `gh release
+view` and any "latest release" idiom fail here and are not the replacement.
+Either verify `sort -V` on a Mac or replace the resolution with something that
+does not sort.
+
+## The four decisions
+
+Written out because a fix table row saying *settle the spelling* is not something
+anybody can answer. Each is: what is true now, what is broken, the question, and
+what each answer costs.
+
+### Decision 1 — how the uv pin is spelled in the shipped template
+
+**Today.** Two files pin uv and they are spelled differently:
+
+| File | Line |
+| --- | --- |
+| this repository's `.devcontainer/setup.sh` | `UV_VERSION=0.12.7`, under a `# renovate:` annotation |
+| the shipped template's `setup.sh` | `uv_version="{{UV_VERSION}}"`, with no annotation |
+
+Renovate finds a version literal by regex, and this repository's requires
+`[A-Z_]+=` followed immediately by a digit. The template's line matches on
+neither count — lowercase, and a quote where the digit is expected — so it is
+invisible to the bot (§ J).
+
+**The quotes are not in play.** They arrived in an upstream `shellcheck-clean`
+commit, and `tool_versions_match_register` was taught to accept an optional quote
+on 2026-08-29 rather than the template being unquoted. Removing them now would
+regress a lint fix to satisfy a regex.
+
+**So the question is only the case**, and there are two ways to close it:
+
+| Option | Change | Cost |
+| --- | --- | --- |
+| **A** — uppercase the template | `UV_VERSION="{{UV_VERSION}}"` in the template's `setup.sh` | A shipped artefact changes. One repository has already adopted the old spelling and would drift from the template until re-copied |
+| **B** — widen the regex | `[A-Za-z_]+` in the `renovate.json` this repository ships as an example | Every adopter's config carries a looser pattern, matching more things than intended. Harder to read, and it is a config nobody ships yet |
+
+**Recommendation: A.** The template is the thing being fixed, one adopter is a
+cheap migration, and B widens a pattern in a file that does not exist yet to
+accommodate a spelling we control.
+
+**Question: A or B?**
+
+### Decision 2 — should SUP-002 fail a pin that no bot covers?
+
+**Today.** SUP-002 says *dependency updates are proposed automatically*. Its
+check reads `.github/dependabot.yml` and asks whether it covers the package
+ecosystems present. It never asks whether a version literal in a shell script is
+covered by a Renovate custom manager, because nothing in the register connects
+`source: literal` tools to a bot.
+
+**What that permits.** An adopter with a correct `dependabot.yml` passes SUP-002
+while the uv their entire toolchain runs on is pinned forever, unproposed. That
+is § J's end state, and it is the theme this repository exists to prevent —
+enforcement claimed, not performed.
+
+| Option | Behaviour | Cost |
+| --- | --- | --- |
+| **A** — fail it | SUP-002 fails when a `source: literal` tool has a `pinned_at` site no custom manager matches | Repositories conformant today start failing, including this one until the template and `renovate.json` land. The check must parse `renovate.json` and match regexes against files — real machinery, and a `blocking` Tier-1 control is a hard place to put it |
+| **B** — report it | `register-check deployments` lists uncovered literal pins; no control fails | Nothing breaks, the report has a natural home, and it is a recommendation people can ignore — which is what staleness reporting already accepts |
+| **C** — leave it | Guidance in `08-adopting.md` § 1.1 only | § J recurs for every adopter, and the guidance is already there and already did not work |
+
+**Recommendation: B, then A later.** B closes the invisibility without a flag day
+and gives the evidence for whether A is worth its machinery. C is what produced
+the finding.
+
+**Question: A, B or C?**
+
+### Decision 3 — is `pinned_at` checked in both directions?
+
+**Today.** `tools.<tool>.pinned_at` lists the files that repeat a tool's version.
+Both reconciliation checks iterate that list. A file that installs a
+register-pinned tool and is **not** in the list is compared by nothing (§ K).
+
+**Why it bites an adopter and not this repository.** Here the register and the
+files were written together. An adopter is told to add their own workflow's path
+by hand — in a comment inside a template `gate-secrets` writes — and their
+workflow is not named `register-check.yml`, so it is never already listed.
+
+| Option | Behaviour | Cost |
+| --- | --- | --- |
+| **A** — scan for strays | The checker looks for files that install a register-pinned tool and are not in `pinned_at`, and fails them | Needs a heuristic for *installs this tool*, and a heuristic false-positives: a changelog quoting `gitleaks 8.30.1` is not a pin. A false failure on a Tier-1 blocking control is expensive |
+| **B** — make the gate do it | `gate-secrets` **edits the register's `pinned_at`** when it writes an install into a new file, instead of leaving a comment asking the human to | No heuristic and no false positives; the gate knows exactly which file it just wrote. But a gate writing into `controls.yaml` is new — gates write artefacts, and the register is the thing they read |
+| **C** — leave it | The comment stays | The allow-list keeps the invisibility [ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md) names, one level up from exemptions |
+
+**Recommendation: B.** It removes the human step that fails rather than making a
+checker guess at what a human meant. Whether a gate may write to the register is
+the real question inside it, and that is an ADR.
+
+**Question: A, B or C — and if B, is a gate allowed to edit `controls.yaml`?**
+
+### Decision 4 — where the "how it works" explanation lives
+
+**Today.** No single document explains the mechanism. `00-concepts.md` calls
+itself a vocabulary in its second line and defines nine terms. The only end-to-end
+synthesis is `CLAUDE.md` — 1,014 lines, addressed to an agent, unlinked from
+`README.md` (§ O).
+
+| Option | Change | Cost |
+| --- | --- | --- |
+| **A** — a synopsis atop `00-concepts.md` | Add a short *how this fits together* section above the definitions; README's third triage line points there | Changes what that document is for. Every other document opens by telling the reader to read it first *for vocabulary* |
+| **B** — a new document | A short `HOW-IT-WORKS.md`, at the root beside `START-HERE.md` | A tenth root-level entry and another file to keep true. § N's objection to numbering does not apply at the root |
+| **C** — `START-HERE.md` only | Its one `## How this works` section is the whole answer; deeper readers get `00-concepts.md` as it is | Cheapest. A reader who wants the model but is not adopting has nowhere addressed to them |
+
+**Recommendation: A.** The content mostly exists and is in the right file; what
+is missing is a paragraph above it saying how the nine terms relate. B adds a
+file that would drift from the concepts it summarises.
+
+**Question: A, B or C?**
 
 ## What no file check can close
 
