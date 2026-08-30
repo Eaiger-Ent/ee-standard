@@ -452,6 +452,59 @@ So the quickstart needs three things rather than one: a home a stranger finds, a
 first screen in `README.md` that points at it above the argument, and a link
 from inside the plugin for the reader who never sees the repository.
 
+## O — There is no synopsis, and no single document to point at
+
+Two questions worth asking of the entry point, and both currently answer *no*.
+
+**Does anything give a working synopsis of how this operates?** `README.md`
+explains *why* — § The problem's retrospective and the five failure themes — and
+*what* — fifteen controls in a table. It does not explain *how*. Nothing in it
+says what a locus is, what runs at commit, at push and in CI, how a gate reaches
+a repository, or that everything runs through `uv` inside a container. § The
+approach is three bullets of principle, which is the argument rather than the
+mechanism.
+
+**Is there a single document that explains it in more detail?** No. There is a
+**twelve-row table**, which is the opposite of a single pointer, and its two
+"start here" lines route by *audience* rather than by *depth*. A reader who
+wants to understand the machine has no row addressed to them.
+
+The closest candidate is [`00-concepts.md`](00-concepts.md), and it declares
+itself something else in its second line — *"The vocabulary every other document
+in this repo uses"* — then defines nine terms. A glossary is what you consult
+once you have a model, not what gives you one.
+
+**The only artefact that synthesises the whole mechanism end to end is
+`CLAUDE.md`.** It is 1,014 lines, it is addressed to an agent, and `README.md`
+does not link it. `docs/14-file-map.md` is the only file that names it, as
+*"the same ground for an agent, plus every decision in force"*. So the most
+complete explanation of how this repository works is written for a machine and
+is unreachable from the page a person lands on.
+
+**This also breaks the template above, and the fault is mine.** Rule 2 says
+*never explain in place — every "because" is a link*. That rule assumes a
+destination. With none, it produces a junior executing six steps with no model
+of what they are building, which is cargo-culting with good evidence lines. The
+rule needs a bounded exception rather than removal, and the template below now
+carries one.
+
+**Recommended, in order of value:**
+
+1. **`START-HERE.md` opens with one `## How this works` section**, before the
+   steps — around 200 words: the register is one file, everything derives from
+   it, a control is verified at every locus it names, a gate is a pinned binary
+   and never a model, and the whole thing runs through `uv` in a container. One
+   section, explicitly the single exception to rule 2.
+2. **README's triage gains a third line** — *Want to understand how it works? →*
+   — pointing at whatever answers question two.
+3. **`00-concepts.md` gains a short synopsis above its definitions**, and becomes
+   the named destination. Not a new numbered document: that would repeat exactly
+   the mistake § N diagnoses.
+
+The third is a decision rather than an edit. Turning the vocabulary file into the
+explanation changes what that document is for, and every other document opens by
+telling the reader to read it first.
+
 ## The doc plan
 
 The deferred question was whether to write something new or restructure
@@ -549,9 +602,11 @@ to reject a passage by pointing at one of them.
 
 1. **One reader.** The junior in § The reader this assumes. Anyone who wants to
    know *why* is a different reader and is served by a link.
-2. **Never explain in place.** Every "because" is a link into
-   [`08-adopting.md`](08-adopting.md). If a passage cannot be replaced by a
-   link, it is a step and belongs in a step block.
+2. **Never explain in place, with one exception.** Every "because" is a link
+   into [`08-adopting.md`](08-adopting.md); if a passage cannot be replaced by
+   a link, it is a step and belongs in a step block. The exception is
+   § How this works, once, at the top — § O is why it exists and why it is
+   bounded to one section. A second explanatory section is the rule failing.
 3. **No value that another file owns.** No version, no digest, no tag, no
    ruleset name. Derive it or link to it. A quickstart that copies is theme
    **T-2** with a friendlier tone.
@@ -593,6 +648,15 @@ at all.
 
 <One paragraph: who this is for, what they will have at the end, and roughly
 how long it takes. State the macOS assumption in the first sentence — § B.>
+
+## How this works
+
+<Around 200 words, and the only explanatory section in the file — § O. It needs
+to leave the reader able to answer: what is the register, why does everything
+else derive from it, what is a locus, what actually blocks a merge, and what
+runs where. Ends with one link to the fuller explanation. No history, no
+retrospective, no failure themes — the argument for the standard is README's
+job and this reader has already been sent here.>
 
 ## Before you start
 
@@ -680,11 +744,11 @@ Three edits, and the document is worth nothing without them — § N.
 
 | Edit | What it says |
 | --- | --- |
-| `README.md`, above § The problem | Two lines. *Adopting this into your repository? → `START-HERE.md`. Working on this repository? → `docs/06-devcontainer-setup.md`.* Nothing else moves |
+| `README.md`, above § The problem | Three lines. *Adopting this into your repository? → `START-HERE.md`. Working on this repository? → `docs/06-devcontainer-setup.md`. Want to know how it works? → `docs/00-concepts.md`.* Nothing else moves — § N, § O |
 | `plugins/control-register/README.md` | An **absolute** link to `START-HERE.md` on the public repository, in the first screen. Relative dangles in every installation |
 | `docs/14-file-map.md` | A row for the new root entry, or `tests/test_file_map.py` fails the build |
 
-The README edit is two lines and is the highest-value change in this review. It
+The README edit is three lines and is the highest-value change in this review. It
 is worth doing whether or not `START-HERE.md` is ever written, pointed at
 `docs/08-adopting.md` in the meantime.
 
