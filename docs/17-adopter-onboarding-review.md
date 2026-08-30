@@ -505,6 +505,84 @@ The third is a decision rather than an edit. Turning the vocabulary file into th
 explanation changes what that document is for, and every other document opens by
 telling the reader to read it first.
 
+## P — Nothing states the benefit, at any of the three doors
+
+§ N asked where the reader arrives. This asks what they read when they get
+there, and the answer at all three doors is the mechanism rather than the offer.
+
+**Door 1 — the marketplace listing.** These are the first words about this
+project that an adopter ever sees, in a list where they are deciding whether to
+install anything at all:
+
+```text
+Deploys and verifies the Equal Experts control standard. The register in
+controls.yaml defines what conformant means; the gate skills write the
+artefacts, and register-check audits them.
+```
+
+Three internal nouns — `controls.yaml`, gate skills, `register-check` — and no
+benefit. It describes the machine to somebody who does not yet know the machine
+exists, and gives no reason to want it.
+
+**Door 2 — the plugin README.** Its first substantive line is *"The authority is
+not here."* An accurate and important statement about where the register lives,
+and it opens by telling the reader where the thing is not.
+
+**Door 3 — the repository README.** It opens with § The problem: a retrospective
+on `generate-ee-slides`, a repository the reader has never heard of, and a
+five-row table of failure themes. That is the authors' reason for building this.
+It is not the reader's reason for adopting it.
+
+**The benefit already exists in the repository, written well, and filed as an
+inventory.** § The register at a glance lists fifteen controls as *properties* —
+*"A commit containing a secret cannot reach the remote"*, *"The default branch
+requires review and passing checks"*, *"A failing test fails the build"*. Those
+are outcomes, and they are the offer. They sit at line 75 under a heading that
+presents them as a catalogue of the register's contents.
+
+So this is not a writing job so much as a promotion: the answer is in the file,
+below the argument for it.
+
+### The answer, drafted
+
+Offered so the question is settled rather than delegated. Four parts, and the
+fourth is what makes the first three credible:
+
+```markdown
+**What you get.** Fifteen security and quality properties that actually hold in
+your repository, and one command that proves which ones do.
+
+- Secrets cannot reach the remote, and CI carries no long-lived cloud credential
+- Dependencies install frozen, updates arrive as reviewable proposals, actions
+  are pinned to a SHA, and every pinned digest is checked against what the
+  project published
+- Lint, types and tests block in the editor, at commit, at push and in CI — the
+  same pinned versions at every one
+- The default branch requires review and passing checks, verified against what
+  GitHub *actually enforces* rather than what a file claims
+
+**Why not a policy document.** A lint workflow can exist, be believed in, and
+not be a required check — and nothing about the repository on disk reveals it.
+Here one file is the control and everything else derives from it, so the chain
+from a rule to a blocked merge is read end to end rather than in pieces nothing
+joins.
+
+**What it costs.** A Mac with Docker, admin on the repository, and a plan where
+rulesets are available — public, or paid. A first adoption takes about
+<MEASURE — nothing in this repository records an elapsed time, and Phase 4 was
+the only adoption outside it>.
+
+**Start:** `START-HERE.md`
+```
+
+The cost paragraph is not a disclaimer. This repository's whole style is stating
+what a thing costs beside what it gives, and an adoption pitch with no cost
+reads as one that has not been done.
+
+The angle bracket is deliberate. No document here records how long an adoption
+took — `12-phase-4-review.md` records twenty-six findings and no elapsed time —
+so the number has to be measured on the next one rather than estimated now.
+
 ## The doc plan
 
 The deferred question was whether to write something new or restructure
@@ -565,7 +643,9 @@ onboarding:
 | Write the `# renovate:` annotation beside the gitleaks install, as the CI template already does (§ L) | `gate-secrets` Step 3.5 |
 | Ship a `.python-version`, or make § 2 a step that writes one (§ M) | the devcontainer template, `08-adopting.md` § 2 |
 | Give the plugin-cache path beside the clone path (§ I) | `08-adopting.md` § 4.5 |
-| Put the two-line triage above § The problem (§ N) | `README.md` |
+| Lead with what you get, and move § The problem below it (§ P) | `README.md` |
+| Replace both descriptions with the offer rather than the mechanism (§ P) | `.claude-plugin/marketplace.json` |
+| Put the three-line triage above § The problem (§ N) | `README.md` |
 | Link the adoption route absolutely, from the first screen (§ N) | `plugins/control-register/README.md` |
 
 The second row is the one that keeps the first fixed.
@@ -646,8 +726,10 @@ at all.
 ```markdown
 # Start here
 
-<One paragraph: who this is for, what they will have at the end, and roughly
-how long it takes. State the macOS assumption in the first sentence — § B.>
+<One paragraph: who this is for, what they will have at the end **named
+concretely** — not "a conformant repository" but the four outcomes from § P —
+and roughly how long it takes. State the macOS assumption in the first
+sentence — § B.>
 
 ## How this works
 
