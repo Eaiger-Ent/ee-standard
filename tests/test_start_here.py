@@ -97,7 +97,7 @@ def test_every_prerequisite_row_has_an_install_and_a_check() -> None:
     `docs/17-adopter-onboarding-review.md` § A: the route named seven tools and
     gave an install command for none of them.
     """
-    section = TEXT.split("### Install these", 1)[1].split("###", 1)[0]
+    section = TEXT.split("### B — Install these tools", 1)[1].split("\n### ", 1)[0]
     rows = [
         [c.strip() for c in row.split("|")]
         for row in _TABLE_ROW.findall(section)
@@ -133,9 +133,9 @@ def test_it_says_where_the_commands_run() -> None:
     wrong one leaves a register in the reader's home folder and a
     `.devcontainer/` nothing will use. Cheap to state, invisible when missing.
     """
-    where = TEXT.split("## Where to run these", 1)
+    where = TEXT.split("### C — Get a repository, and stand in it", 1)
     assert len(where) == 2, "START-HERE.md no longer says where its commands run"
-    section = where[1].split("\n## 1 ", 1)[0]
+    section = where[1].split("\n### ", 1)[0]
     assert "cd " in section, "the section does not actually tell the reader to cd"
 
 
@@ -151,7 +151,7 @@ def test_it_handles_the_reader_who_has_no_repository_yet() -> None:
     assumed one and offered no route to getting one, so the first `git` command
     read as a broken instruction rather than a missing precondition.
     """
-    where = TEXT.split("## Where to run these", 1)[1].split("\n## 1 ", 1)[0]
+    where = TEXT.split("### C — Get a repository, and stand in it", 1)[1].split("\n### ", 1)[0]
     assert "not a git repository" in where, (
         "START-HERE.md does not name the error a reader without a repository actually sees"
     )
@@ -246,7 +246,7 @@ def test_the_private_repository_constraint_surfaces_before_the_work() -> None:
     skipping them, so an adopter on a free private plan gets exit 1, not 3.
     """
     before = TEXT.split("## Before you start", 1)[1].split("\n## What you are about to do", 1)[0]
-    assert "Is your repository private?" in before, (
+    assert "What your repository can support" in before, (
         "the plan constraint is not raised before the steps"
     )
     tail = TEXT.split("## If your plan has no rulesets", 1)
@@ -365,7 +365,7 @@ def test_the_github_token_has_a_route_not_just_a_destination() -> None:
     one people miss and it fails late — `gate-repo` stops at its pre-flight
     rather than writing half a deployment.
     """
-    section = TEXT.split("### Creating the GitHub token", 1)
+    section = TEXT.split("#### Creating the GitHub token", 1)
     assert len(section) == 2, "there is no section on creating the token"
     body = section[1].split("\n## ", 1)[0]
     for needed in ("fine-grained", "Only select repositories", "Metadata", "Contents"):
@@ -385,7 +385,43 @@ def test_it_does_not_ask_for_three_github_tokens() -> None:
     env-file, so it is the admin token rather than a separate one. The other
     goes to Actions and never leaves the platform.
     """
-    before = TEXT.split("### Get these credentials", 1)[1].split("\n## ", 1)[0]
+    before = TEXT.split("### E — Get these credentials", 1)[1].split("\n#### ", 1)[0]
     assert "Two GitHub tokens, not three" in before, (
         "the credentials table no longer states how many GitHub tokens are needed"
+    )
+
+
+def test_preparation_comes_before_the_thing_it_prepares_for() -> None:
+    """Reported by a reader starting again: "how do I run § Is your repository
+    private? when I have not created the repository yet?"
+
+    The section asked a question about a repository, and the section that gets
+    you a repository was two headings further down, past the credentials and the
+    step overview. For a reader new to software engineering there is nothing to
+    infer from — the commands simply fail.
+
+    The fix is ordering, so the test is ordering: get a repository, then ask
+    what it can support, then get credentials for it.
+    """
+    get_repo = TEXT.index("### C — Get a repository")
+    can_support = TEXT.index("### D — What your repository can support")
+    credentials = TEXT.index("### E — Get these credentials")
+    first_step = TEXT.index("## 1 — Install the plugin")
+    assert get_repo < can_support, (
+        "the guide asks what the repository can support before telling the reader "
+        "how to have one"
+    )
+    assert can_support < credentials < first_step, (
+        "preparation is out of order — each of A to E is needed by the one after it"
+    )
+
+
+def test_the_preparation_letters_do_not_collide_with_the_step_numbers() -> None:
+    """A to E prepare, 1 to 6 do the work. Numbering both 1..n gave a reader two
+    different things called "step 3"."""
+    before = TEXT.split("## Before you start", 1)[1].split("\n## What you are about to do", 1)[0]
+    for letter in "ABCDE":
+        assert f"### {letter} — " in before, f"preparation step {letter} is missing"
+    assert "### 1 — " not in before, (
+        "a preparation heading is numbered, which collides with the six steps below"
     )

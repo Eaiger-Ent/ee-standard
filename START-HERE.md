@@ -7,8 +7,8 @@ default branch whose protection is verified against what GitHub actually
 enforces — with one command that tells you which of those hold.
 
 **Two of those need a paid GitHub plan if your repository is private.** Check
-before you start rather than at step 3 — § Is your repository private? is one
-command and it decides what you can reach.
+before you start rather than at step 3 — § D is one command and it decides
+what you can reach.
 
 Most of this you do alone. Two steps wait on somebody else, and § What you are
 about to do says which, so you can raise them today and carry on.
@@ -37,7 +37,18 @@ Fuller explanation: [`HOW-IT-WORKS.md`](HOW-IT-WORKS.md).
 
 ## Before you start
 
-### What this assumes
+Five things, **in this order** — each is needed by the one after it, and the
+lettering is to keep them apart from steps 1 to 6, which come later.
+
+| | |
+| --- | --- |
+| **A** | What this assumes about your machine |
+| **B** | Install the tools |
+| **C** | Get a repository and stand in it — everything after this happens inside it |
+| **D** | Find out what your repository can support |
+| **E** | Get the credentials |
+
+### A — What this assumes
 
 macOS, with Docker running. The container's secrets are fetched from the macOS
 Keychain by a script that runs *before* the container exists, so on Linux or
@@ -45,7 +56,7 @@ Windows that script is what you adapt first —
 [`docs/08-adopting.md`](docs/08-adopting.md) § 2.0 states the contract a
 replacement owes.
 
-### Install these
+### B — Install these tools
 
 | Tool | Install | You have it when |
 | --- | --- | --- |
@@ -71,7 +82,43 @@ cannot be installed
 ([ADR 0032](docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md) records
 this as known and unsolved). Worth knowing now rather than at the last step.
 
-### Is your repository private?
+### C — Get a repository, and stand in it
+
+Everything from § 1 onward writes files into whatever directory you are in, so
+this comes before all of it. **The one exception is step 1**, which installs a
+plugin into `~/.claude/` and touches no project — you can run that from
+anywhere.
+
+**If somebody has already made the repository**, clone it and go in:
+
+```bash
+gh repo clone <owner>/<repo>    # angle brackets: replace these
+cd <repo>
+```
+
+**If you are starting from nothing**, make one:
+
+```bash
+mkdir -p my-project
+cd my-project
+git init -b main
+git commit -q --allow-empty -m "Initial commit"
+gh repo create my-project --private --source=. --remote=origin --push
+```
+
+**Done when** both of these print something — a path, and a URL:
+
+```bash
+git rev-parse --show-toplevel   # the repository root; cd here if it differs
+git remote get-url origin       # the GitHub repository these controls will protect
+```
+
+`fatal: not a git repository` means you are in an ordinary folder and one of the
+two blocks above has not been run yet. Nothing below works until this does:
+§ 2 commits a file, § 3 asks GitHub about *this* repository, and the secrets and
+branch-protection controls read what git tracks and what GitHub enforces.
+
+### D — What your repository can support
 
 If it is, run this before anything else. It decides whether two of the fifteen
 controls are reachable at all, and finding that out at step 3 wastes the four
@@ -95,7 +142,7 @@ types, tests, the pinned devcontainer, dependency proposals. Two cannot, and
 you should know exactly which and what they cost before you begin:
 § If your plan has no rulesets, at the end.
 
-### Get these credentials
+### E — Get these credentials
 
 | Credential | Where to create it | Where it goes | Needed for |
 | --- | --- | --- | --- |
@@ -108,7 +155,7 @@ your Keychain and is used *by you and by the gates*, from inside the container.
 The other is given to GitHub Actions and never leaves the platform — that one is
 a later sitting and [`docs/08-adopting.md`](docs/08-adopting.md) § 4.3 covers it.
 
-### Creating the GitHub token
+#### Creating the GitHub token
 
 Go to <https://github.com/settings/personal-access-tokens> → **Generate new
 token**. Choose **fine-grained**, not classic: a classic token in CI is a
@@ -175,46 +222,6 @@ GH_TOKEN=$(security find-generic-password -a "$USER" -s "GITHUB_TOKEN" -w) \
 state, so a first sitting that ends at step 4 has cost nothing — pick it up
 later from where you stopped.
 
-## Where to run these
-
-**Step 1 runs anywhere. Everything from step 2 runs in your repository's root.**
-
-Installing the plugin is a change to your machine, not to any project — it lands
-in `~/.claude/` and writes nothing into a repository. Step 2 onward writes files
-where you are standing: `controls.yaml`, `.devcontainer/`, `renovate.json`. Run
-them in the wrong directory and you get a stray register in your home folder and
-a container config nothing will use.
-
-```bash
-cd /path/to/your-repository
-git rev-parse --show-toplevel   # the repository root — cd here if it differs
-git remote get-url origin       # the GitHub repository these controls will protect
-```
-
-**If the first command says `fatal: not a git repository`, stop here** — you are
-in an ordinary folder, and there is nothing for this standard to make conformant
-yet. Almost everything below needs a repository *and* a GitHub remote: step 2
-commits a file, step 3 calls `gh api repos/{owner}/{repo}/...`, and the secrets and
-branch-protection controls read what git tracks and what GitHub enforces.
-
-### If you do not have a repository yet
-
-```bash
-# A new project: create it locally, then create it on GitHub and push.
-mkdir -p my-project && cd my-project
-git init -b main
-git commit -q --allow-empty -m "Initial commit"
-gh repo create my-project --private --source=. --remote=origin --push
-```
-
-```bash
-# An existing GitHub repository somebody else set up: clone it.
-gh repo clone <owner>/<repo> && cd <repo>   # angle brackets: replace these
-```
-
-**Done when:** both commands at the top of this section print something — a path
-and a URL.
-
 ## 1 — Install the plugin
 
 Everything below arrives in it, including the devcontainer you copy at step 4.
@@ -258,7 +265,7 @@ check needs the checker, which does not exist until step 5.
 ## 3 — The platform steps
 
 **Private repository without rulesets? This step is one command, and then you go
-to step 4.** § Is your repository private? is where you found that out. Run this
+to step 4.** § D — What your repository can support is where you found that out. Run this
 to record what your plan gives you, and skip the rest of this step:
 
 ```bash
