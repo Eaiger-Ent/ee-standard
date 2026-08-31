@@ -205,6 +205,24 @@ check needs the checker, which does not exist until step 5.
 
 ## 3 — The platform steps
 
+**Private repository without rulesets? This step is one command, and then you go
+to step 4.** § Is your repository private? is where you found that out. Run this
+to record what your plan gives you, and skip the rest of this step:
+
+```bash
+gh api "repos/{owner}/{repo}/rulesets" 2>&1 | tail -2
+```
+
+Expect a `403` saying *"Upgrade to GitHub Pro or make this repository public"*.
+Secret scanning is a paid feature on private repositories too, so Settings →
+Code security will not offer push protection either — **there is no setting to
+find, and nothing here you have failed to do.** Read § If your plan has no
+rulesets for what that costs and how to record it, then **go to step 4**.
+
+Everyone else, continue.
+
+---
+
 None of this is code and none of it is visible to a `git clone`. It needs the
 admin token.
 
@@ -237,15 +255,9 @@ the moment it returns, so it is not something to do twice or by accident.
 compare against after step 5 — expect the ruleset list to be empty and
 `.protected` to be `false` now, and both to change then.
 
-**On a private repository without rulesets, none of this is available and that
-is the expected result.** The listing `403`s, and secret scanning is a paid
-feature too, so Settings → Code security will not offer push protection either.
-Record what you saw, read § If your plan has no rulesets, and go to step 4 —
-there is nothing here you have failed to do.
-
-**If it fails:** a `403` on the ruleset listing means the repository is private
-on a plan without them — see § If your plan has no rulesets. A `403` on write
-with a `200` on read is a token scope problem, not a syntax one.
+**If it fails:** a `403` on write with a `200` on read is a token scope problem,
+not a syntax one. A `403` on the *listing* means you should have taken the
+branch at the top of this step.
 
 **Why this exists:** [`docs/08-adopting.md`](docs/08-adopting.md) § 1
 

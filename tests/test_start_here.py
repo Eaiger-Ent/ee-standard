@@ -306,3 +306,26 @@ def test_the_python_constraint_is_raised_before_the_steps() -> None:
         "the ecosystem constraint is not raised before the work"
     )
     assert "0032" in before, "it states the limit without citing where it is recorded"
+
+
+def test_step_three_branches_before_it_asks_for_anything() -> None:
+    """Reported mid-run: nothing told a private-repo reader to skip to step 4.
+
+    The first fix put that in **Done when**, which the reader reaches only after
+    following the instruction to enable push protection — so they had already
+    gone looking for a Settings page that does not exist on their plan. A branch
+    that arrives after the work is not a branch.
+
+    So the constrained path is the *first* thing in the step, and the test
+    checks position rather than presence: the escape must come before the
+    instruction it excuses the reader from.
+    """
+    step = TEXT.split("## 3 — The platform steps", 1)[1].split("\n## 4 ", 1)[0]
+    skip = step.find("go to step 4")
+    push_protection = step.find("enable secret-scanning push protection")
+    assert skip != -1, "step 3 never tells a constrained reader where to go"
+    assert push_protection != -1, "step 3 no longer names the one manual act"
+    assert skip < push_protection, (
+        "the skip-to-step-4 branch comes after the push-protection instruction, so a "
+        "reader on a plan without it goes hunting for the setting first"
+    )
