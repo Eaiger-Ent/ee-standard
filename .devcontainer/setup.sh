@@ -118,11 +118,11 @@ if [ -f .pre-commit-config.yaml ]; then
   fi
 fi
 
-# ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  register: v0.15.0  register-contract: 15
+# ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  gate-contract: 7  register: v0.29.0  register-contract: 35
 #
 # The third of SEC-001's three sites for this version, and the one the Phase 2
 # review recorded as belonging to no gate. `gate-secrets` writes and stamps it;
-# `gate-build`, which owns the file, leaves it alone.
+# `gate-build`, which owns the file, leaves it alone. The gate was re-run 2026-08-31 at gate contract 7, which rewrote this stamp and found the block already correct.
 #
 # gitleaks at SEC-001's shared pin, verified by checksum (a pinned release
 # artefact — preference 3 in docs/03-devcontainer.md). Same version as CI.

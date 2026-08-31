@@ -31,12 +31,13 @@ repos:
         entry: node_modules/.bin/markdownlint-cli2
         language: system
         types: [markdown]
-      # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  register: v0.11.0  register-contract: 11
+      # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  gate-contract: 7  register: v0.29.0  register-contract: 35
       #
       # Adopted rather than deployed from nothing: this hook was hand-wired in
       # Phase 0.5, before there was a gate to write it, and the stamp records
       # that rather than claiming a deployment that never happened. Its content
-      # is byte-identical to what templates/precommit-hook.yaml renders.
+      # is byte-identical to what templates/precommit-hook.yaml renders, and the
+      # gate was re-run 2026-08-31 at gate contract 7, which rewrote this stamp and found the block already correct.
       #
       # SEC-001 — same pinned binary as .devcontainer/setup.sh and CI.
       - id: gitleaks
@@ -143,10 +144,10 @@ repos:
         always_run: true
         stages: [pre-push]
 
-      # ee-control: SEC-002  ee-skill: gate-secrets@0.1.0  gate-contract: 6  register: v0.26.0  register-contract: 32
+      # ee-control: SEC-002  ee-skill: gate-secrets@0.1.0  gate-contract: 7  register: v0.29.0  register-contract: 35
       #
-      # Hand-written, not deployed — the gate's template carries this block and
-      # the gate was not re-run.
+      # Hand-written first, then confirmed: the gate's template carries this
+      # block, and the gate was re-run 2026-08-31 at gate contract 7, which rewrote this stamp and found the block already correct.
       #
       # SEC-002's pre-push locus, and a hook of its own rather than a control
       # added to the one below: `gate-secrets` owns this control and
