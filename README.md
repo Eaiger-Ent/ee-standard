@@ -3,6 +3,34 @@
 A control register for Equal Experts repositories, the skills that deploy it, and
 the checker that audits it.
 
+**Adopting this into your repository?** → [`START-HERE.md`](START-HERE.md)
+**Want to know how it works?** → [`HOW-IT-WORKS.md`](HOW-IT-WORKS.md)
+**Working on this repository?** → [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md)
+
+## What you get
+
+Fifteen security and quality properties that actually hold in your repository,
+and one command that proves which ones do.
+
+- Secrets cannot reach the remote, and CI carries no long-lived cloud credential
+- Dependencies install frozen, updates arrive as reviewable proposals, actions
+  are pinned to a SHA, and every pinned digest is checked against what the
+  project published
+- Lint, types and tests block in the editor, at commit, at push and in CI — the
+  same pinned versions at every one
+- The default branch requires review and passing checks, verified against what
+  GitHub *actually enforces* rather than what a file claims
+
+**Why not a policy document.** A lint workflow can exist, be believed in, and not
+be a required check — and nothing about the repository on disk reveals it. Here
+one file is the control and everything else derives from it, so the chain from a
+rule to a blocked merge is read end to end rather than in pieces nothing joins.
+
+**What it costs.** A Mac with Docker, admin on the repository, and a plan where
+rulesets are available — public, or paid. Most of it you do alone in one sitting;
+two steps wait on somebody else, and [`START-HERE.md`](START-HERE.md) says which
+and where to stop.
+
 ## The problem
 
 A retrospective on `generate-ee-slides` found tooling that was individually good
@@ -70,6 +98,13 @@ files.
 | [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md) | **Start here if you are working on this repo.** Standing up its container, and the macOS values it needs. |
 | [`docs/07-inherited-conventions.md`](docs/07-inherited-conventions.md) | What the predecessor repo already knew, and which half of it transfers. |
 | [`docs/09-phase-1.5-review.md`](docs/09-phase-1.5-review.md) | Record of the Phase 1.5 review — the findings `§ A`–`§ H` the code cites, and the evidence behind each tick. |
+| [`docs/10-phase-2-review.md`](docs/10-phase-2-review.md) | Record of Phase 2, slice by slice, and the evidence behind every criterion. |
+| [`docs/11-phase-3-review.md`](docs/11-phase-3-review.md) | Record of Phase 3, including what each slice deliberately left open. |
+| [`docs/12-phase-4-review.md`](docs/12-phase-4-review.md) | The first adoption outside this repository, and the twenty-six things it found. |
+| [`docs/13-phase-5-review.md`](docs/13-phase-5-review.md) | Record of Phase 5 — staleness and the sweep. |
+| [`docs/15-phase-6-review.md`](docs/15-phase-6-review.md) | Record of Phase 6 — promotion to the marketplace. |
+| [`docs/16-marketplace-readoption.md`](docs/16-marketplace-readoption.md) | The run sheet for a macOS Docker host: re-adopting from the marketplace, and building the shipped template. |
+| [`docs/17-adopter-onboarding-review.md`](docs/17-adopter-onboarding-review.md) | What a junior adopter could not do, and the decisions that came of it. |
 | [`controls.yaml`](controls.yaml) | The register itself. |
 
 ## The register at a glance
@@ -104,35 +139,15 @@ was verified before it was committed.
 
 ## Status
 
-Phase 0 complete — the register exists, with a rationale ADR per control in
-[`docs/adr/`](docs/adr/).
+**Every phase is complete.** Phases 0, 0.5, 1, 1.5, 2, 3, 4, 5 and 6 — 91 exit
+criteria, all met. `uv run python scripts/plan_progress.py` is the derived view
+and [`docs/04-build-plan.md`](docs/04-build-plan.md) is the source; this section
+states no count of its own, because a number here is a second copy that rots.
 
-Phase 0.5 complete — this repo's own devcontainer, digest-pinned and verified.
-Operator guide: [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md).
-
-Phase 1 built — `register-check` exists (`uv run register-check`) and this repo
-satisfies every control the checker can verify.
-
-Phase 1.5, remediation, is complete as of 2026-08-18 — 26 exit criteria, seven of
-which were ticked and later found false before closing properly. It existed
-because Phase 2 copies the assert layer into six gate skills, so a defect left
-in the checker becomes six. The findings, the five decisions they needed, and the
-evidence behind every tick are in
-[`docs/09-phase-1.5-review.md`](docs/09-phase-1.5-review.md).
-
-Phase 2, the gates, is 11 criteria of 12 — the whole `gate-*` family plus
-`register-adopt` ship in [`plugins/control-register/`](plugins/control-register/), and the
-one open criterion needs an operator with Docker
-([`docs/10-phase-2-review.md`](docs/10-phase-2-review.md)).
-
-**Phase 3 is in progress.** `kind: remote` is implemented as of 2026-08-22, so
-the two controls that verify GitHub's own state — a protected default branch and
-secret scanning push protection — are checked rather than skipped. Give the
-checker a `GITHUB_TOKEN` and they answer; without one they report
-`SKIPPED (no credentials)`, which is never a pass
-([`docs/11-phase-3-review.md`](docs/11-phase-3-review.md)).
-
-The outstanding work is [`docs/04-build-plan.md`](docs/04-build-plan.md).
+Phase 4 was the first adoption by a repository that did not author the standard,
+and Phase 6 published the plugin to the `ee-skills` marketplace while keeping
+the public route as the one an adopter follows
+([ADR 0044](docs/adr/0044-the-adopter-installs-from-the-public-marketplace.md)).
 
 ## Relationship to existing ee-skills plugins
 

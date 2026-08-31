@@ -158,8 +158,8 @@ def test_every_register_sourced_placeholder_has_a_value(name: str) -> None:
     assert shape.match(value), f"{where} is {value!r}, which is not the shape {{{{{name}}}}} needs"
 
 
-def _guide_extraction_script() -> str:
-    """§ 2.0's own extraction commands, with the two that need the network cut.
+def _extraction_script(source: Path) -> str:
+    """A document's own extraction commands, with the two that need the network cut.
 
     Running the guide's text rather than a re-typing of it is the whole point:
     a reimplementation here would be a second copy of the commands, free to keep
@@ -171,14 +171,15 @@ def _guide_extraction_script() -> str:
     checked by SUP-004, and the fetch itself by the operator run sheet. What is
     covered here is the pair the register holds.
     """
-    text = ADOPTING_GUIDE.read_text(encoding="utf-8")
+    text = source.read_text(encoding="utf-8")
     blocks = [
         block
         for block in re.findall(r"```bash\n(.*?)```", text, re.DOTALL)
         if "uv_block()" in block
     ]
     assert len(blocks) == 1, (
-        f"expected exactly one § 2.0 bash block defining uv_block(), found {len(blocks)}"
+        f"expected exactly one bash block defining uv_block() in {source.name}, "
+        f"found {len(blocks)}"
     )
     lines = [
         line
@@ -203,7 +204,7 @@ def test_the_guides_own_extraction_commands_still_find_the_values(tmp_path: Path
     register = a_register()
     shutil.copy(REPO_ROOT / "controls.yaml", tmp_path / "controls.yaml")
     result = subprocess.run(
-        ["bash", "-c", _guide_extraction_script()],
+        ["bash", "-c", _extraction_script(ADOPTING_GUIDE)],
         cwd=tmp_path,
         capture_output=True,
         text=True,
@@ -253,7 +254,62 @@ def test_substituting_from_the_register_leaves_no_placeholder(tmp_path: Path) ->
     # somewhere in the tree. The version is quoted from 2026-08-29, which the
     # register's own assert learned to read at the same time (an upstream
     # `shellcheck-clean` commit quoted the placeholders in the published copy).
+    #
+    # The name is asserted in UPPER_SNAKE_CASE, and that is load-bearing rather
+    # than tidy: Renovate's custom manager matches `[A-Z_]+=`, so a lowercase
+    # pin here is one no bot ever proposes an upgrade for. The checker accepts
+    # either — `tool_versions_match_register` is case-insensitive — which is
+    # exactly why the case needs a test of its own. See
+    # `tests/test_shell_conventions.py`.
     setup = (target / "setup.sh").read_text(encoding="utf-8")
-    assert f'uv_version="{values["UV_VERSION"]}"' in setup
+    assert f'UV_VERSION="{values["UV_VERSION"]}"' in setup
     assert values["UV_SHA256_X86_64"] in setup
     assert values["UV_SHA256_AARCH64"] in setup
+
+
+def test_the_template_readmes_own_extraction_commands_still_find_the_values(
+    tmp_path: Path,
+) -> None:
+    """The same check, pointed at the README that ships inside the template.
+
+    This is the gap `docs/17-adopter-onboarding-review.md` § E found. The guide
+    was fixed when `grep -A4` was discovered to return empty; the template's own
+    README kept the broken form for months, and the test written for exactly
+    that failure did not reach it — its only coverage of this file was
+    `test_every_placeholder_is_named_in_the_readme`, which checks that each
+    placeholder *name* appears in the prose.
+
+    It matters because the README is read before it is deleted (§ 2.0's first
+    instruction is `rm .devcontainer/README.md`), and because it is the file a
+    reader browsing the plugin's install cache finds first.
+    """
+    register = a_register()
+    shutil.copy(REPO_ROOT / "controls.yaml", tmp_path / "controls.yaml")
+    result = subprocess.run(
+        ["bash", "-c", _extraction_script(TEMPLATE / "README.md")],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    version, sha_x86 = result.stdout.splitlines()
+    assert version == getattr(_uv(register), "version", None), result.stdout
+    assert sha_x86 == getattr(_uv(register), "sha256", None), result.stdout
+
+
+def test_both_documents_agree_on_the_variable_names() -> None:
+    """A reader who follows one and then the other must not meet two spellings.
+
+    § E recorded the template README extracting into `uv_sha` where the guide
+    used `uv_sha_x86`. Neither was wrong on its own; together they are two
+    names for one value in two documents describing one procedure.
+    """
+    guide = ADOPTING_GUIDE.read_text(encoding="utf-8")
+    readme = (TEMPLATE / "README.md").read_text(encoding="utf-8")
+    for name in ("uv_version", "uv_sha_x86", "uv_sha_arm"):
+        assert name in guide, f"{ADOPTING_GUIDE.name} no longer uses {name}"
+        assert name in readme, (
+            f"the template README does not use {name}, which "
+            f"{ADOPTING_GUIDE.name} does — one procedure, two spellings"
+        )

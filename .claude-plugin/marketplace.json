@@ -5,12 +5,12 @@
     "email": "nathan.carney@equalexperts.com"
   },
   "metadata": {
-    "description": "The Equal Experts control register: one plugin carrying the register, the checker and the gate skills that deploy it."
+    "description": "Fifteen security and quality controls that actually hold in your repository, and one command that proves which ones do."
   },
   "plugins": [
     {
       "name": "control-register",
-      "description": "Deploys and verifies the Equal Experts control standard. The register in controls.yaml defines what conformant means; the gate skills write the artefacts, and register-check audits them.",
+      "description": "Make your repository refuse commits carrying secrets, install dependencies frozen and get upgrade proposals for them, block on lint, types and tests at every locus, and protect its default branch \u2014 then verify all of it against what GitHub actually enforces. One command reports which controls hold and which cannot be checked.",
       "category": "governance",
       "author": {
         "name": "Equal Experts",

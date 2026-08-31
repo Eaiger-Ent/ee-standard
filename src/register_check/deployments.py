@@ -24,6 +24,7 @@ from __future__ import annotations
 import datetime
 import json
 import os
+import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -401,6 +402,13 @@ class Report:
     #: each with the reason. Not a problem and not agreement — the third state
     #: ADR 0043 part 2 keeps apart from both.
     unreconciled: tuple[str, ...] = ()
+    #: `source: literal` pins at sites no dependency bot is configured to
+    #: propose an upgrade for. Reported here rather than failing SUP-002
+    #: (`docs/17-adopter-onboarding-review.md` Decision 2): the property is real
+    #: — an unmanaged pin never moves — but the check needs a `renovate.json`
+    #: parser, and a Tier-1 `blocking` control is a hard place to put one before
+    #: anybody knows how often it fires.
+    unmanaged_pins: tuple[str, ...] = ()
 
     @property
     def owed(self) -> list[GateReport]:
@@ -498,6 +506,65 @@ def _classify(gate: Gate, deployed: list[int | None], applicable: bool) -> State
     return State.CURRENT
 
 
+#: A `# renovate:` annotation, which is what a custom manager matches against.
+#: Renovate finds a literal by regex and the regex anchors on this comment, so a
+#: pin without one is not stale — it is unmanaged, and nothing will ever propose
+#: moving it.
+_RENOVATE_ANNOTATION = re.compile(r"^\s*#\s*renovate:\s*datasource=", re.MULTILINE)
+
+#: Where a repository may configure Renovate. Dependabot is not consulted: it
+#: has no custom manager, which is the whole reason this check exists.
+_RENOVATE_CONFIGS = (
+    "renovate.json",
+    "renovate.json5",
+    ".github/renovate.json",
+    ".github/renovate.json5",
+    ".renovaterc",
+    ".renovaterc.json",
+)
+
+
+def unmanaged_literal_pins(repo: Repo, register: Register) -> tuple[str, ...]:
+    """`source: literal` pins that no bot is configured to propose an upgrade for.
+
+    Two conditions, and both must hold before anything is reported. The
+    repository has no Renovate configuration at all, **or** a `pinned_at` site
+    carries no `# renovate:` annotation — in either case the version sitting
+    there is one nothing will move.
+
+    This is a *report*, never a verdict. `docs/17-adopter-onboarding-review.md`
+    § J is the finding it comes from: the shipped devcontainer template puts
+    `UV_VERSION="..."` in a shell script, which is exactly the case Dependabot
+    has no manager for, so every adopter of that template has at least one such
+    pin and SUP-002 stays green over it. Failing the control was considered and
+    deferred (Decision 2) — this exists to measure how often it happens before
+    anyone decides whether a Tier-1 control should refuse it.
+
+    A repository whose register pins no literal tool gets an empty tuple and no
+    line in the report, which is the right answer rather than a silence.
+    """
+    literal = [t for t in register.tools.values() if t.source == "literal"]
+    if not literal:
+        return ()
+    configured = any(repo.exists(path) for path in _RENOVATE_CONFIGS)
+    findings: list[str] = []
+    for tool in literal:
+        for path in tool.pinned_at:
+            if not repo.exists(path):
+                continue  # a declared site that is absent is SUP-004's finding
+            if not configured:
+                findings.append(
+                    f"{tool.name} at {path} — no Renovate configuration in this "
+                    "repository, and Dependabot has no manager for a literal"
+                )
+            elif not _RENOVATE_ANNOTATION.search(repo.read(path)):
+                findings.append(
+                    f"{tool.name} at {path} — no `# renovate:` annotation, so no "
+                    "custom manager matches this pin"
+                )
+    return tuple(findings)
+
+
 def build(
     repo: Repo,
     plugin: Path,
@@ -516,6 +583,7 @@ def build(
     """
     gates = load_gates(plugin)
     stamps = stamps_by_file(repo)
+    unmanaged = unmanaged_literal_pins(repo, register)
     known = {gate.name for gate in gates}
     reports = []
     for gate in gates:
@@ -562,6 +630,7 @@ def build(
         declined=declined,
         stale_decisions=tuple(problems),
         unreconciled=tuple(unreconciled(declined, inventory)),
+        unmanaged_pins=unmanaged,
     )
 
 
@@ -634,6 +703,14 @@ def render(report: Report, register: Register) -> str:
         lines.append("")
         lines.append("  The record itself has stopped describing reality:")
         lines.extend(f"    ✗ {problem}" for problem in report.stale_decisions)
+    if report.unmanaged_pins:
+        lines.append("")
+        lines.append("  Pinned, and no bot will ever propose moving it:")
+        lines.extend(f"    ! {finding}" for finding in report.unmanaged_pins)
+        lines.append(
+            "    An unmanaged pin does not drift — it never moves, and the "
+            "supply-chain controls stay green over it. Reported, not enforced."
+        )
     owed, defective = report.owed, report.defective
     lines += [
         "",

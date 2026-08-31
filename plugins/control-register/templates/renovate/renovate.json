@@ -1,0 +1,72 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+
+  "description": [
+    "Renovate's job in this standard is narrow and it is not the same job as",
+    "Dependabot's. Dependabot covers the package ecosystems it understands, from",
+    ".github/dependabot.yml. What it has no manager for is a version literal",
+    "embedded in a shell script or a workflow step -- and the devcontainer",
+    "template guarantees you have at least one, because setup.sh installs uv from",
+    "a pinned release. A pin no bot can see does not drift; it simply never",
+    "moves, and SUP-002 stays green over it.",
+    "enabledManagers is custom.regex ALONE so the two bots do not both propose",
+    "the same ecosystem upgrade. Widening it produces duplicate pull requests,",
+    "which is how a real proposal gets ignored.",
+    "Each managed site needs a `# renovate:` annotation directly above the pin.",
+    "The annotation is what the manager matches -- these patterns find nothing",
+    "without it, and the Dependency Dashboard issue Renovate opens is the only",
+    "external evidence they match anything. Derive the expected count from your",
+    "own pinned_at entries and check it."
+  ],
+  "enabledManagers": ["custom.regex"],
+
+  "customManagers": [
+    {
+      "description": "PyPI-published tools pinned as a literal, e.g. uv in setup.sh",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^controls\\.yaml$/",
+        "/^\\.devcontainer/setup\\.sh$/",
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>pypi) depName=(?<depName>\\S+)\\s+[^\\n]*?==\"?(?<currentValue>\\d+\\.\\d+\\.\\d+)",
+        "# renovate: datasource=(?<datasource>pypi) depName=(?<depName>\\S+)\\s+version:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\"",
+        "# renovate: datasource=(?<datasource>pypi) depName=(?<depName>\\S+)\\s+[A-Z_]+=\"?(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ]
+    },
+    {
+      "description": "GitHub-release tools pinned as a literal, e.g. the secret scanner",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^controls\\.yaml$/",
+        "/^\\.devcontainer/setup\\.sh$/",
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>github-releases) depName=(?<depName>\\S+)\\s+[A-Z_]+=\"?v?(?<currentValue>\\d+\\.\\d+\\.\\d+)",
+        "# renovate: datasource=(?<datasource>github-releases) depName=(?<depName>\\S+)\\s+version:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "description": "The interpreter, whose authority is a toolchain file (ADR 0027)",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.python-version$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>python-version) depName=(?<depName>\\S+)\\s+(?<currentValue>\\d+\\.\\d+)\\s*$"
+      ]
+    }
+  ],
+
+  "packageRules": [
+    {
+      "description": "A checksum-verified tool needs its digests moved by hand",
+      "matchPackageNames": ["!*"],
+      "prBodyNotes": [
+        "**If this tool is verified by `sha256sum -c`, this PR does not update its checksums.** Move every digest the register records in `tools.<tool>.sha256` and every copy at a `pinned_at` site before merging. Leaving them stale fails the install step rather than passing silently, which is the intended direction -- but it fails the build, so do it here."
+      ]
+    }
+  ]
+}

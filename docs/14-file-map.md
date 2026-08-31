@@ -33,6 +33,8 @@ One file cannot hold both policies.
 | --- | --- |
 | `controls.yaml` | The register — see above |
 | `deployment-decisions.yaml` | Declined deployments — see above |
+| `START-HERE.md` | **The adoption quickstart.** The happy path for a junior with a Mac and nothing else: what to install, which credentials, six steps. Held runnable by `tests/test_start_here.py` |
+| `HOW-IT-WORKS.md` | The mechanism in one screen, for a person deciding whether to adopt or reading a verdict. Links `docs/00-concepts.md` for every term rather than restating one |
 | `README.md` | What this repository is, for a person arriving cold |
 | `CLAUDE.md` | The same ground for an agent, plus every decision in force |
 | `LICENSE` | Held byte-identical with `plugins/control-register/LICENSE` |

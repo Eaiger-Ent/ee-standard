@@ -1,9 +1,25 @@
 # control-register
 
-The plugin that deploys the Equal Experts control standard into a repository,
-and the skills that keep it deployed.
+**What you get.** Fifteen security and quality properties that actually hold in
+your repository, and one command that proves which ones do — secrets that cannot
+reach the remote, dependencies installed frozen and updated by proposal, lint and
+types and tests blocking at every locus, and a default branch whose protection is
+verified against what GitHub *actually enforces* rather than what a file claims.
 
-The authority is not here. It is `controls.yaml` in the
+**Why not a policy document.** A lint workflow can exist, be believed in, and not
+be a required check — and nothing about the repository on disk reveals it. Here
+one file is the control and everything else derives from it, so the chain from a
+rule to a blocked merge is read end to end.
+
+**Start here:**
+<https://github.com/Eaiger-Ent/ee-standard/blob/main/START-HERE.md> — what to
+install, which credentials you need, and six steps. It is an absolute link on
+purpose: `docs/` does not ship inside this plugin, so a relative one would
+resolve only in the repository that authors the standard.
+
+## Where the authority lives
+
+Not here. It is `controls.yaml` in the
 [ee-standard repository](https://github.com/Eaiger-Ent/ee-standard) — a register
 entry **is** the control, and every artefact these skills write derives from it
 rather than restating it. Each skill reads the register at run time; none of
@@ -20,12 +36,14 @@ them carries a pinned version, a tool name or a rule of its own.
 | `gate-iac` | IAC-001 | **Built** — the only gate whose controls may legitimately not apply |
 | `gate-repo` | CI-001 | **Built** — the only gate whose effect is not a file. Records the ruleset, then applies it |
 | `register-adopt` | dispatcher | **Built** — the front door. Writes no gate configuration of its own |
-| `register-check` | installs and wraps the checker | Phase 3 |
+| `register-install` | none — it installs the checker | **Built** — dispatched by `register-adopt` before its own pre-flight ([ADR 0032](https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md)) |
 | `register-variance` | classifies local deltas | **Built** — reports a direction, and says why when it declines to |
 
-All six gates and the dispatcher shipped in Phase 2, and `register-variance` in
-Phase 5. The one unbuilt row is a later phase's by the build plan rather than a
-leftover from this one: `register-check` waits on `kind: remote`.
+All nine are built. `register-install` deploys no control and therefore writes no
+provenance stamp: a stamp names a control, and none says *the checker is
+installed*. It is listed because everything else here needs it — every gate
+verifies itself with `register-check`, so a plan computed without it is computed
+without its instrument.
 
 Gates are grouped by the artefact they write, not one per control:
 `gate-quality` writes one pre-commit config and one CI workflow covering three
@@ -52,9 +70,13 @@ Each gate's last step runs the conformance checker against the control it just
 deployed, through the same code path that audits the repository:
 
 ```bash
-register-check run --control SEC-001
-register-check run --control LNT-001 --control TYP-001 --control TST-001
+uv run register-check run --control SEC-001
+uv run register-check run --control LNT-001 --control TYP-001 --control TST-001
 ```
+
+`uv run`, never a bare `register-check`: a bare name resolves against `PATH` and
+would report success against some other copy entirely
+([ADR 0020](https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0020-a-locus-reaches-the-pinned-artefact.md)).
 
 Writing a config and confirming the config works are different claims, and only
 the second is worth anything.

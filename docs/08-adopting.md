@@ -44,6 +44,77 @@ verify something (§ 4.3). That order is not a preference — turning on
 `--require-complete` before CI has a credential fails every run on controls that
 hold, and a check that fails for reasons nobody can act on gets ignored.
 
+## 0 — Before you start
+
+**This route is macOS-only.** Not by preference — `fetch-secrets.sh` reads the
+macOS Keychain, and `initializeCommand` runs it before a container exists, so on
+Linux or Windows the failure arrives before there is a container to read the
+message in. § 2.0 states the contract a replacement owes; adapt that script
+first, and everything below then applies.
+
+### 0.a — What must already be on the machine
+
+Nothing here is installed by any step below, and the first failure without it is
+`claude: command not found` before this document's first command.
+
+| Tool | Install | You have it when |
+| --- | --- | --- |
+| Homebrew | <https://brew.sh> | `brew --version` |
+| Docker Desktop | <https://www.docker.com/products/docker-desktop/> | `docker info` succeeds |
+| Claude Code | <https://docs.claude.com/en/docs/claude-code/setup> | `claude --version` |
+| node and npm | `brew install node` | `npm --version` |
+| `devcontainer` CLI | `npm i -g @devcontainers/cli` | `devcontainer --version` |
+| GitHub CLI | `brew install gh`, then `gh auth login` | `gh auth status` |
+| VS Code | `brew install --cask visual-studio-code` | `code --version` |
+
+`git` and `curl` ship with macOS. Give Docker Desktop **8 GB** of memory
+(Settings → Resources → Memory); the default is tight once a Python and a node
+toolchain are both installed.
+
+Two rows deliberately link rather than give a command. An install line copied
+out of another project's documentation is a second copy of a fact that project
+owns, free to drift the day they change it — theme **T-2**, with the drift
+outside this repository's control entirely.
+
+### 0.b — The four credentials, and where each is made
+
+They are four different things, they are needed at four different points, and
+three of them are GitHub tokens that are **not interchangeable**. Collected here
+because meeting them one at a time is how the third one surprises you.
+
+| What | Where you make it | Scope | Where it goes | Needed at |
+| --- | --- | --- | --- | --- |
+| Claude Code OAuth token | `claude setup-token` | — | Keychain, `CLAUDE_OAUTH_TOKEN` | § 2.0 — the container will not start without it |
+| A token for `gh` | <https://github.com/settings/personal-access-tokens> | read on the repository | Keychain, `GITHUB_TOKEN` | § 1, and convenience thereafter |
+| An admin token | <https://github.com/settings/personal-access-tokens> | `Administration: **write**` | used once, not stored | § 1 — creating the ruleset |
+| The CI token | <https://github.com/settings/personal-access-tokens> | `Administration: **read**` | an environment secret | § 4.3 |
+
+**Make the last two fine-grained, not classic.** SEC-003's
+`platform_token_is_not_classic` block fails on the `X-OAuth-Scopes` header a
+classic token returns, so a classic one in CI is a verified violation rather
+than an inconvenience. The `ghp_...` shape in § 2.0's Keychain example is a
+*classic* token and is fine there — that entry is your own `gh` convenience and
+never reaches CI — but do not carry the shape across to row four.
+
+The admin token and the CI token are separate because their scopes are: one
+writes a ruleset once, the other reads platform state on every run, and a
+standing credential with `Administration: write` is what
+[ADR 0022](adr/0022-a-platform-token-ci-carries.md) exists to avoid.
+
+### 0.c — What you are about to do, and where you can stop
+
+| # | Step | Needs anyone but you? | Can you stop after? |
+| --- | --- | --- | --- |
+| § 0 | Install the plugin, fetch the register | no | yes |
+| § 1 | Repository visibility, ruleset, push protection | **an org or repo admin** | yes |
+| § 1.1 | Install the Renovate app | **an org owner**, usually | yes |
+| § 2 | Copy the template, substitute, build the container | no | yes |
+| § 3 | Run `/register-adopt` | no | yes |
+| § 4 | Run the checker, then credential CI | no | — |
+
+The two rows that need somebody else are named here so you can start today and
+raise them in parallel, rather than meeting them at § 1 and stopping.
+
 ## 0 — The front door
 
 `/register-adopt` is the only entry point you need. It reads the register, works
@@ -117,11 +188,16 @@ curl -fsSL -o controls.yaml \
 git add controls.yaml
 ```
 
-**How you know it worked**, and this is worth doing before anything else:
+**How you know it worked.** The second line works now; the first needs `uv` and
+`register-check`, which do not exist until § 2.0 builds the container and § 2.3
+installs the checker. Run the grep now and come back for the `schema` command
+after § 2.3 — it is the check that matters and it is worth returning for:
 
 ```bash
-uv run register-check --repo . --register ./controls.yaml schema
 grep -A2 '^    install:' controls.yaml     # `ref:` names the tag you just fetched
+
+# After § 2.3, inside the container:
+uv run register-check --repo . --register ./controls.yaml schema
 ```
 
 The second line is the check that matters, and it is checking an invariant
@@ -265,11 +341,36 @@ Renovate is a **GitHub App**, so it must be installed through the web at
 repository. No token can do this for you, which is why it belongs in this section
 rather than in a script.
 
-If you run both bots, narrow Renovate to the gap so they do not duplicate each
-other:
+**You will run both bots, and it is not conditional.** The devcontainer template
+installs uv from a pinned release, so after § 2.0's substitution your
+`.devcontainer/setup.sh` holds `UV_VERSION="..."` — a version literal in a shell
+script, which is exactly the case above that Dependabot cannot see. Every adopter
+of this template has at least one. Treat § 1.1 as a step, not a maybe.
 
-```json
-{ "enabledManagers": ["custom.regex"] }
+**Copy the config rather than writing one.** A working `renovate.json` ships with
+the plugin, narrowed to the gap so the two bots do not duplicate each other:
+
+```bash
+# Installed from the marketplace in § 0.0.
+cp ~/.claude/plugins/cache/ee-standard/control-register/*/templates/renovate/renovate.json .
+
+# From a clone of the standard instead.
+cp path/to/ee-standard/plugins/control-register/templates/renovate/renovate.json .
+```
+
+`{ "enabledManagers": ["custom.regex"] }` on its own — which earlier versions of
+this section gave — enables the custom-regex manager and defines **no custom
+manager for it to run**, so it matches nothing while looking configured. The
+shipped file carries the three managers, and the patterns that go with them.
+
+**A pattern needs an annotation to match.** `gate-secrets` writes one above every
+literal it pins, and the devcontainer template ships one above `UV_VERSION`. If
+you pin a tool by hand, write the annotation yourself, in `UPPER_SNAKE_CASE`
+because the manager matches `[A-Z_]+=`:
+
+```bash
+# renovate: datasource=github-releases depName=owner/tool
+TOOL_VERSION="1.2.3"
 ```
 
 Four things about Renovate cost this repository time. They are cheap to avoid
@@ -446,10 +547,40 @@ returned empty, `sed` substituted nothing, and the placeholders survived into a
 container that then failed at `sha256sum -c`. An extraction that quietly yields
 nothing is worse than one that errors.
 
-**Substitute them unquoted.** `tool_versions_match_register` matches a tool name
-followed by a version across `@`, `=`, `:` or whitespace, so `uv_version="0.12.5"`
-puts a quote where it looks for the separator and the pin is reported missing —
-a file that reconciles against nothing while looking correct.
+**Substitute them as they are, quotes and all.** The template ships
+`UV_VERSION="{{UV_VERSION}}"` quoted because that is what `shellcheck` wants,
+and both readers of that line take it: `tool_versions_match_register` matches an
+optional quote after the separator and is case-insensitive, and the
+`# renovate:` annotation above the pin is read by a custom manager whose pattern
+accepts one too. An earlier version of this section said to substitute
+*unquoted*, which was true of the assert for one week in August 2026 and has not
+been true since — following it now would mean deleting quotes the template put
+there deliberately.
+
+**Do not change the case either.** Script-level shell variables in this template
+are `UPPER_SNAKE_CASE`, and that is the one spelling Renovate's custom manager
+matches (`[A-Z_]+=`). The checker does not care; the bot does, and a pin the bot
+cannot see never moves.
+
+**If your repository has a Python ecosystem, write `.python-version` now.** The
+template is language-agnostic — `setup.sh` branches on `package-lock.json`,
+`uv.lock` and `poetry.lock` — so it ships no toolchain file, and
+`tools.python` in the register declares `source: toolchain` with
+`toolchain: .python-version`. `tool_versions_match_register` fails a
+toolchain-sourced tool whose file git does not track, so without it SUP-001
+fails on a file nothing has told you to write:
+
+```bash
+echo "3.14" > .python-version      # the version your project runs on
+git add .python-version
+uv run register-check run --control SUP-001   # after § 2.3
+```
+
+Pin it rather than relying on `requires-python`: a support floor constrains and
+a toolchain file **selects**
+([ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md)). Repositories with no
+Python ecosystem write nothing here — the register records the file for the tool
+it names, and a tool your repository does not have is not checked.
 
 Then run `/gate-build` to pin what you chose and stamp it.
 
@@ -1892,8 +2023,18 @@ on:
     - cron: "23 5 * * 1"
 ```
 
-**Then copy the sweep**, from
-`plugins/control-register/templates/sweep/conformance-sweep.yml`. It runs
+**Then copy the sweep.** Where it is depends on how you got the plugin, the same
+split § 2.0 draws for the devcontainer template:
+
+```bash
+# Installed from the marketplace in § 0.0.
+cp ~/.claude/plugins/cache/ee-standard/control-register/*/templates/sweep/conformance-sweep.yml \
+   .github/workflows/
+
+# From a clone of the standard instead.
+cp path/to/ee-standard/plugins/control-register/templates/sweep/conformance-sweep.yml \
+   .github/workflows/
+``` It runs
 `register-check deployments` — the report with no other home, since conformance
 already runs on every pull request — writes it to the job summary, and keeps
 **one** tracking issue: opened when something is owed, edited while it persists,
