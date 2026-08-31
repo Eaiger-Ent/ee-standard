@@ -1,7 +1,7 @@
 {
   "name": "ee-standard Dev Environment",
 
-  // ee-control: DEV-001  ee-skill: gate-build@0.1.0  register: v0.15.0  register-contract: 15
+  // ee-control: DEV-001  ee-skill: gate-build@0.1.0  gate-contract: 3  register: v0.29.0  register-contract: 35
   //
   // Adopted, not deployed: hand-written in Phase 0.5 and stamped when the gate
   // that owns it was built. One stamp per key rather than one at the top of the
@@ -76,7 +76,7 @@
   "postCreateCommand": "bash .devcontainer/setup.sh",
   "postStartCommand": "bash .devcontainer/check-auth.sh",
 
-  // ee-control: BLD-001  ee-skill: gate-build@0.1.0  register: v0.15.0  register-contract: 15
+  // ee-control: BLD-001  ee-skill: gate-build@0.1.0  gate-contract: 3  register: v0.29.0  register-contract: 35
   //
   // BLD-001 — the container's final user is not root. Stated rather than
   // inherited: relying on the base image's default is the declared-but-
@@ -89,7 +89,7 @@
 
   "customizations": {
     "vscode": {
-      // ee-control: LNT-001  ee-skill: gate-quality@0.1.0  register: v0.12.0  register-contract: 12
+      // ee-control: LNT-001  ee-skill: gate-quality@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
       //
       // Adopted, not deployed — and the only artefact `gate-quality` writes
       // that is not a hook or a workflow step. LNT-001 is the one control of

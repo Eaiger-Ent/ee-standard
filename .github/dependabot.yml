@@ -6,7 +6,7 @@
 # that owns it was built. The stamp is at the top of the file rather than at
 # each entry, which is right here and wrong in `.pre-commit-config.yaml`: every
 # line of this file belongs to SUP-002.
-# ee-control: SUP-002  ee-skill: gate-supply-chain@0.1.0  register: v0.14.0  register-contract: 14
+# ee-control: SUP-002  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
 version: 2
 updates:
   - package-ecosystem: github-actions

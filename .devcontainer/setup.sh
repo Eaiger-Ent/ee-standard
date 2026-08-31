@@ -39,7 +39,7 @@ done
 # enforces that it is committed and installed frozen.
 npm ci --no-audit --no-fund
 
-# ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  register: v0.15.0  register-contract: 15
+# ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
 #
 # `gate-build` owns this file; each gate writes and stamps its own region inside
 # it, exactly as three gates write their own hooks into one
