@@ -111,11 +111,13 @@ taken.
 | Nothing at all | The first block below |
 | Somebody else made it | Clone it: the third block below |
 
-**Starting from nothing** — the name comes from the directory, so the two always
-match:
+**Starting from nothing.** Run this from where you keep projects — `~/git`, or
+wherever that is — **not from inside another repository**. The first line stops
+you if you are:
 
 ```bash
-mkdir -p my-project && cd my-project
+git rev-parse --show-toplevel 2>/dev/null && { echo "STOP: already inside a repository — cd out first"; }
+mkdir -p my-new-project && cd my-new-project     # choose the name; it becomes the repository's
 git init -b main
 git commit -q --allow-empty -m "Initial commit"
 gh repo create "$(basename "$PWD")" --private --source=. --remote=origin --push
@@ -127,20 +129,24 @@ gh repo create "$(basename "$PWD")" --private --source=. --remote=origin --push
 gh repo create "$(basename "$PWD")" --private --source=. --remote=origin --push
 ```
 
-**Somebody else made it** — clone rather than create:
+**It is already on GitHub — clone it, do not recreate it.** This covers both
+"somebody else made it" and "I made it on an earlier attempt", and they are the
+same situation:
 
 ```bash
 gh repo clone <owner>/<repo>    # angle brackets: replace these
 cd <repo>
 ```
 
-**If `gh repo create` says `Name already exists on this account`**, the
-repository is already on GitHub and your local copy just does not know about it.
-Connect the two instead of making a second:
+**If `gh repo create` says `Name already exists on this account`**, that is the
+row above: the repository is on GitHub already. **Clone it.** Do not attach a new
+empty local repository to it — if the remote has any commits you do not have,
+the push is rejected with *"Updates were rejected because the remote contains
+work that you do not have locally"*, and you are further from working than when
+you started.
 
 ```bash
-git remote add origin "https://github.com/$(gh api user --jq .login)/$(basename "$PWD").git"
-git push -u origin main
+gh repo list --limit 100 | grep "$(basename "$PWD")"   # find what is already there
 ```
 
 **Done when** both of these print something — a path, and a URL:

@@ -428,32 +428,46 @@ def test_the_preparation_letters_do_not_collide_with_the_step_numbers() -> None:
 
 
 def test_getting_a_repository_handles_a_second_attempt() -> None:
-    """Reported by a reader recreating a repository they had made before:
+    """Two rounds of this, and the second was my own fix being wrong.
+
+    Round one, from a reader recreating a repository:
 
         warning: re-init: ignored --initial-branch=main
         GraphQL: Name already exists on this account (createRepository)
 
-    The block assumed a clean slate. `git init` in an existing repository
-    silently ignores `-b main` — so a repository whose branch is not `main` stays
-    that way while the reader believes otherwise — and `gh repo create` fails
-    outright on a name already taken.
+    Round two, from following the fix for round one:
 
-    It also hardcoded `my-project` in three places, so a reader working in a
-    directory of any other name would have created a GitHub repository whose name
-    did not match their folder. That is the OWNER/REPO shape again: a literal in
-    a block the document promises is copy-pasteable.
+        ! [rejected] main -> main (fetch first)
+        Updates were rejected because the remote contains work that you do not
+        have locally.
+
+    Attaching a fresh local repository to a remote that already has commits does
+    not work, and the advice to do it made things worse. When the name is taken
+    the repository exists — the answer is to **clone** it, and "somebody else
+    made it" and "I made it last time" are the same situation.
+
+    The `mkdir` also still said `my-project` after the commit that claimed to
+    have derived every name from the directory, so a reader standing inside an
+    existing repository got a nested one.
     """
     section = TEXT.split("### C — Get a repository", 1)[1].split("\n### ", 1)[0]
     assert "Name already exists on this account" in section, (
         "the section does not name the error a second attempt produces"
     )
-    assert "git remote add origin" in section, (
-        "it diagnoses the collision but gives no way out of it"
+    assert "Clone it." in section, (
+        "a taken name means the repository exists; the section must send the reader "
+        "to clone rather than to attach a local repository to it"
+    )
+    assert "remote add origin" not in section, (
+        "attaching a new local repository to an existing remote is back — it is "
+        "rejected the moment the remote has any commits"
+    )
+    assert "already inside a repository" in section, (
+        "nothing stops a reader creating a repository nested inside another"
+    )
+    assert 'basename "$PWD"' in section, (
+        "the repository name is not derived from the directory, so the two can disagree"
     )
     assert "Do not run a block that does not match" in section, (
         "the section offers several blocks without telling the reader to pick one"
-    )
-    assert 'basename "$PWD"' in section, (
-        "the repository name is still a literal rather than derived from the "
-        "directory, so the two can disagree"
     )
