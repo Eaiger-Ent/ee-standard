@@ -1,0 +1,164 @@
+# ADR 0047: A Plan Limit Is Recorded, Not Tolerated
+
+**Status:** Proposed
+**Date:** 2026-08-31
+**Revision:** 1
+
+## Background
+
+Two of CI-001's and SEC-001's requirements are things GitHub sells rather than
+things a repository configures. Repository rulesets on a **private** repository
+are, in GitHub's own words, *"for customers on GitHub Team and GitHub Enterprise
+plans"*; secret-scanning push protection on a private repository likewise needs
+a paid tier.
+
+A repository that is private on a plan without them cannot satisfy either
+control, and the checker's verdict today is not *unverifiable* — it is **FAIL**:
+
+| Control | Block | Today | Why |
+| --- | --- | --- | --- |
+| CI-001 | `default_branch_ruleset_satisfies` | **FAIL** | The effective-rules endpoint returns `[]`, which is a *list* and therefore an answer. It reaches `requirement_problems` and fails, exactly as the register intends for a repository that simply has no ruleset |
+| SEC-001 | `github_push_protection_enabled` | **FAIL** | A reported status of `disabled` fails. Only an *absent* `security_and_analysis` is `Unreadable`, and that is the token-cannot-see case rather than the plan-does-not-offer case |
+
+So the run exits `1`. And a repository in that state is indistinguishable, in the
+report, from one that could have protected its default branch and did not.
+
+**The cost is not the two controls.** It is the other thirteen. A conformance
+run that can never be green is one people stop reading, and the standard's own
+sweep design already names that failure — *"a red scheduled workflow is a
+notification people learn to dismiss"*. A permanently-failing gate degrades every
+control that does hold, which is a worse outcome than the two that do not.
+
+Thirteen do hold, and they are not the trivial ones: the secret scanner at every
+local locus, frozen lockfile installs, SHA-pinned actions, published-digest
+reconciliation, lint, types, tests, the digest-pinned devcontainer, and
+automated dependency proposals.
+
+## Decision
+
+**A repository records a platform limitation, and the checker reports it as
+`UNAVAILABLE (plan)` rather than failing the control.** The record lives in
+`deployment-decisions.yaml` under a new `platform_limits:` key, beside
+`declined:`, because both are the same kind of fact: a dated statement of
+something this repository does not have, read by `register-check`, going stale on
+its own terms.
+
+```yaml
+platform_limits:
+  - control: CI-001
+    assert: default_branch_ruleset_satisfies
+    plan: github-free-private
+    lacks: repository rulesets are GitHub Team and Enterprise only
+    review_by: 2026-11-30
+```
+
+Six rules make it a record rather than an opt-out, and every one is load-bearing.
+
+**1. It downgrades to `UNAVAILABLE (plan)`, never to `PASS`.** The control does
+not hold, and no arrangement of files makes it hold. A run carrying one exits
+`3` at best. Nothing here is a claim that a branch is protected.
+
+**2. It names a `kind: remote` block, never a control and never a file block.**
+A file block asks what the repository contains, and a plan cannot stop a
+repository containing a thing. CI-001's `ruleset_recorded_matches_register` must
+still pass: the adopter still records the ruleset they would enforce, so the day
+the plan changes it is one API call rather than a fresh decision.
+
+**3. It expires**, and an expired entry **fails** the run rather than reverting
+to reporting the limitation. A plan is a commercial state that changes on a
+renewal date, and an entry with no expiry is a permanent exemption wearing a
+record's clothes. This is GOV-003's rule and `deployment-decisions.yaml`'s,
+applied to a third kind of staleness.
+
+**4. `--require-complete` still promotes it to `1`.** The flag means *fail if
+anything could not be verified*, and this is the case it was written for. A
+repository in this state does not turn the flag on, and that is the visible cost
+rather than a hole in it. The narrow exception already in the conformance
+workflow — a fork pull request tolerating `3` and only `3` — is the shape a
+repository may copy if it decides to, with the same requirement that a test
+exercise both branches.
+
+**5. Every run prints it.** Not a footnote in a summary line: the control's row
+says `UNAVAILABLE (plan)`, the entry's `lacks` text is printed under it, and the
+`review_by` date is shown. A limitation nobody sees is an exemption.
+
+**6. The register never carries one.** `platform_limits:` is posture — a fact
+about one repository's billing — and ADR 0022 requirement 6 forbids posture in
+`controls.yaml` or anything under `plugins/`. `tests/test_posture.py` should
+grow this case.
+
+## What this cannot verify, stated rather than implied
+
+**The checker cannot confirm that the limitation is real.** A `403` carrying
+*"Upgrade to GitHub Pro or make this repository public"* is evidence; an empty
+effective-rules list is not, because that is also what a Team repository with no
+ruleset configured looks like. So an entry claiming a plan limit that does not
+exist would be accepted.
+
+That is the honest boundary and it must not be papered over. What stands against
+misuse is that the entry is **written down, dated, printed on every run, and
+fails when it expires** — social rather than mechanical. Where this standard can
+usually say *the checker refuses it by construction*, here it can only say *the
+report will not let you forget*.
+
+It follows that this mechanism is the weakest thing in the register, and its
+narrowness is what keeps it safe: one block at a time, remote only, expiring,
+never a pass.
+
+## Alternatives considered
+
+**A `baseline` entry.** Rejected. Baselines are shrink-only lists of tolerated
+violations, and every Tier-1 control carries `baseline: null` *by design* — the
+register's own phrase is *"birth conditions, true from the first commit, never
+baselined"*. Opening that is the general opt-out this whole design refuses, and
+it would apply to file blocks too.
+
+**Re-tier the control, or lower its rung.** Rejected, and it is already refused
+in as many words by `08-adopting.md`: *"do not re-tier a control to make a report
+green."* It would also change the standard for every adopter to accommodate one
+adopter's invoice.
+
+**A predicate — `applies_to: [rulesets-available]`.** Rejected on two counts.
+Predicates are evaluated against files and never self-declared, and a billing
+tier is not a file. And a predicate makes a control **SKIP**, which is invisible:
+the report would stop mentioning branch protection at all, which is the opposite
+of what a repository running without it needs to see.
+
+**Do nothing and let them run red.** Rejected as the worst option available. It
+does not make the branch any safer, and it costs the thirteen controls that hold
+their audience.
+
+**Tell them to make the repository public.** Not a decision this standard gets to
+take on somebody's behalf, and for most customers not a decision at all.
+
+## Consequences
+
+A private repository on a plan without rulesets can adopt this standard, get
+thirteen of fifteen controls genuinely enforced, and see the remaining two named
+in every report with a date attached — rather than choosing between a red build
+and no standard at all.
+
+**The risks that record stands for are real and should be written beside it.**
+On such a repository the default branch is advisory: anyone with write access can
+push to it directly, no review or passing check is required, and history can be
+rewritten. The secret scanner still runs at pre-commit, pre-push and CI, but all
+three are on the contributor's side of the boundary — `--no-verify` skips the
+first two, a fresh clone has neither until `pre-commit install` runs, and CI
+catches a secret only *after* it has reached the remote, by which point it is
+disclosed and must be rotated. Push protection is the only stop that is not.
+
+`docs/08-adopting.md` gains that paragraph, because a mechanism that makes a gap
+comfortable without stating what is in the gap is worse than no mechanism.
+
+**One question is open and it changes this ADR's scope.** GitHub Pro offers
+classic branch protection on private repositories while rulesets remain Team and
+above. Whether the effective-rules endpoint CI-001 reads also reports rules
+originating from *classic* branch protection is **untested** — this repository is
+public and ruleset-protected, so it cannot answer it. If it does, GitHub Pro
+satisfies CI-001 and this mechanism is needed only on Free; if it does not, the
+checker has a gap that should be closed on its own merits rather than waived
+here. Test it on any Pro private repository before implementing this.
+
+This ADR is **Proposed** rather than Accepted for that reason and one other: it
+is the first mechanism in the register that lets a Tier-1 control not hold, and
+that deserves a second reader before it exists.

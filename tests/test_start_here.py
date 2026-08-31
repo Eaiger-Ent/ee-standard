@@ -123,3 +123,145 @@ def test_the_document_owns_no_value_another_file_owns(pattern: re.Pattern[str], 
     hits = {m.group(0) for m in pattern.finditer(TEXT)}
     hits -= {"0.0", "1.1", "2.0", "4.2", "4.3"}  # section references
     assert not hits, f"START-HERE.md carries {what} it does not own: {sorted(hits)}"
+
+
+def test_it_says_where_the_commands_run() -> None:
+    """A junior asked "run step 1 from where?" and the document had no answer.
+
+    Step 1 is directory-independent — `claude plugin install` writes only into
+    `~/.claude/`. Every step after it writes into the working directory, so the
+    wrong one leaves a register in the reader's home folder and a
+    `.devcontainer/` nothing will use. Cheap to state, invisible when missing.
+    """
+    where = TEXT.split("## Where to run these", 1)
+    assert len(where) == 2, "START-HERE.md no longer says where its commands run"
+    section = where[1].split("\n## 1 ", 1)[0]
+    assert "cd " in section, "the section does not actually tell the reader to cd"
+
+
+def test_it_handles_the_reader_who_has_no_repository_yet() -> None:
+    """Measured on a real Mac: `git status` in an ordinary folder, and a dead end.
+
+        nathan@Nathans-MacBook-Pro-3 git % git status
+        fatal: not a git repository (or any of the parent directories): .git
+
+    Everything from step 2 needs a repository *and* a GitHub remote — step 2
+    commits the register, step 3 calls `gh api repos/OWNER/REPO/...`, SEC-001
+    reads what git tracks and CI-001 reads what GitHub enforces. The guide
+    assumed one and offered no route to getting one, so the first `git` command
+    read as a broken instruction rather than a missing precondition.
+    """
+    where = TEXT.split("## Where to run these", 1)[1].split("\n## 1 ", 1)[0]
+    assert "not a git repository" in where, (
+        "START-HERE.md does not name the error a reader without a repository actually sees"
+    )
+    assert "git init" in where and "gh repo create" in where, (
+        "it diagnoses the missing repository but gives no route to having one"
+    )
+    assert "gh repo clone" in where, (
+        "it covers the new-project case but not the far commoner one — a repository "
+        "somebody else already set up"
+    )
+
+
+def test_it_names_the_session_file_that_must_not_be_committed() -> None:
+    """`.claude/settings.local.json` holds per-developer state and may hold an `env`.
+
+    The shipped template's `.gitignore` cannot carry the rule — it is copied to
+    `.devcontainer/.gitignore`, where the path would resolve one directory down
+    and ignore nothing — so the document is the only place it can be said.
+    """
+    assert ".claude/settings.local.json" in TEXT, (
+        "START-HERE.md does not tell the reader to gitignore their local settings"
+    )
+    assert ".gitignore" in TEXT, "it names the file but not where the rule goes"
+
+
+def test_the_step_overview_names_rights_rather_than_people() -> None:
+    """A reader who is an admin does step 3 themselves.
+
+    The first version headed this column "Needs anyone but you?" — a yes/no
+    question whose cells answered with a noun — and the proposed replacement,
+    "Who can do this?", reads as *not you* for a reader who holds the rights.
+    Naming the right is accurate either way.
+    """
+    section = TEXT.split("## What you are about to do", 1)[1].split("\n## ", 1)[0]
+    assert "Rights needed" in section, "the step overview no longer names rights"
+    assert "Can you stop after" not in section, (
+        "a column whose every cell read 'yes' has come back — it is one sentence, "
+        "not a column"
+    )
+    assert "stop after any" in section, (
+        "dropping the column also dropped the fact it carried"
+    )
+
+
+def test_no_command_block_carries_a_placeholder_to_fill_in() -> None:
+    """Measured on a real Mac: the block was pasted verbatim, as promised.
+
+        % gh api repos/OWNER/REPO/rulesets
+        {"message": "Not Found", ... "status": "404"}
+
+    The repeating unit promises "copy-pasteable as a block, no placeholders to
+    think about", and step 3 shipped `OWNER/REPO`. `gh` resolves `{owner}` and
+    `{repo}` from the local remote, so the promise is keepable rather than
+    aspirational.
+
+    `<owner>/<repo>` in angle brackets is allowed and is not the same thing: it
+    appears only in `gh repo clone`, which by definition runs outside the
+    repository it names, where nothing can resolve it.
+    """
+    for block in _FENCED_BASH.findall(TEXT):
+        for token in ("OWNER/REPO", "repos/O/R", "/BRANCH"):
+            assert token not in block, (
+                f"a command block carries {token!r}, which a reader will paste verbatim"
+            )
+
+
+def test_the_platform_checks_look_up_the_default_branch() -> None:
+    """`{branch}` resolves to the branch you are *on*, not the default one.
+
+    The quieter half of the same finding. An adopter running step 3 from a
+    feature branch gets `.protected: false` and an empty effective-rule list for
+    a branch that is correctly protected — an answer shaped exactly like a real
+    one. Measured here: `false` and `[]` from a feature branch, `true` and four
+    rule types from the default.
+    """
+    step = TEXT.split("## 3 — The platform steps", 1)[1].split("\n## ", 1)[0]
+    assert "default_branch" in step, (
+        "step 3 does not look the default branch up — it will answer about "
+        "whichever branch the reader happens to be on"
+    )
+    assert "/branches/{branch}" not in step, (
+        "step 3 uses gh's {branch}, which resolves to the current branch"
+    )
+
+
+def test_the_private_repository_constraint_surfaces_before_the_work() -> None:
+    """Two controls need a paid plan, and finding that out at step 3 wastes four steps.
+
+    The same argument as § B of the review: a platform assumption belongs on the
+    first screen, not at the point where it fails. And the section it points at
+    must state today's behaviour — the checker *fails* these two rather than
+    skipping them, so an adopter on a free private plan gets exit 1, not 3.
+    """
+    before = TEXT.split("## Before you start", 1)[1].split("\n## What you are about to do", 1)[0]
+    assert "Is your repository private?" in before, (
+        "the plan constraint is not raised before the steps"
+    )
+    tail = TEXT.split("## If your plan has no rulesets", 1)
+    assert len(tail) == 2, "there is no section explaining what a plan without rulesets costs"
+    assert "exits `1`" in tail[1], (
+        "the section does not say the checker fails these controls rather than skipping them"
+    )
+
+
+def test_it_does_not_promise_a_mechanism_that_is_only_proposed() -> None:
+    """ADR 0047 is Proposed. A guide that reads as though it were built is worse
+    than one that does not mention it, because the reader plans around it."""
+    if "0047" not in TEXT:
+        return
+    section = TEXT.split("## If your plan has no rulesets", 1)[1]
+    assert "proposed and not" in section or "not built" in section, (
+        "START-HERE.md cites ADR 0047 without saying it is unbuilt"
+    )
