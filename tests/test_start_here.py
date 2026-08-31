@@ -425,3 +425,35 @@ def test_the_preparation_letters_do_not_collide_with_the_step_numbers() -> None:
     assert "### 1 — " not in before, (
         "a preparation heading is numbered, which collides with the six steps below"
     )
+
+
+def test_getting_a_repository_handles_a_second_attempt() -> None:
+    """Reported by a reader recreating a repository they had made before:
+
+        warning: re-init: ignored --initial-branch=main
+        GraphQL: Name already exists on this account (createRepository)
+
+    The block assumed a clean slate. `git init` in an existing repository
+    silently ignores `-b main` — so a repository whose branch is not `main` stays
+    that way while the reader believes otherwise — and `gh repo create` fails
+    outright on a name already taken.
+
+    It also hardcoded `my-project` in three places, so a reader working in a
+    directory of any other name would have created a GitHub repository whose name
+    did not match their folder. That is the OWNER/REPO shape again: a literal in
+    a block the document promises is copy-pasteable.
+    """
+    section = TEXT.split("### C — Get a repository", 1)[1].split("\n### ", 1)[0]
+    assert "Name already exists on this account" in section, (
+        "the section does not name the error a second attempt produces"
+    )
+    assert "git remote add origin" in section, (
+        "it diagnoses the collision but gives no way out of it"
+    )
+    assert "Do not run a block that does not match" in section, (
+        "the section offers several blocks without telling the reader to pick one"
+    )
+    assert 'basename "$PWD"' in section, (
+        "the repository name is still a literal rather than derived from the "
+        "directory, so the two can disagree"
+    )

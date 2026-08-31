@@ -89,21 +89,58 @@ this comes before all of it. **The one exception is step 1**, which installs a
 plugin into `~/.claude/` and touches no project — you can run that from
 anywhere.
 
-**If somebody has already made the repository**, clone it and go in:
+**Start by finding out what you already have.** These print `yes` or `no` and
+change nothing:
+
+```bash
+git rev-parse --show-toplevel >/dev/null 2>&1 && echo "git repository: yes" || echo "git repository: no"
+git remote get-url origin 2>/dev/null || echo "origin remote: no"
+gh repo view "$(basename "$PWD")" --json nameWithOwner -q .nameWithOwner 2>/dev/null \
+  || echo "on GitHub under this name: no"
+```
+
+Then take the one row that matches. **Do not run a block that does not match
+you** — `git init` in an existing repository prints a confusing warning and
+silently ignores `-b main`, and `gh repo create` fails outright if the name is
+taken.
+
+| What you have | What to do |
+| --- | --- |
+| All three `yes` | **Nothing.** You are ready — go to § D |
+| A repository, no `origin` | Publish it: the second block below |
+| Nothing at all | The first block below |
+| Somebody else made it | Clone it: the third block below |
+
+**Starting from nothing** — the name comes from the directory, so the two always
+match:
+
+```bash
+mkdir -p my-project && cd my-project
+git init -b main
+git commit -q --allow-empty -m "Initial commit"
+gh repo create "$(basename "$PWD")" --private --source=. --remote=origin --push
+```
+
+**A repository already, but nothing on GitHub:**
+
+```bash
+gh repo create "$(basename "$PWD")" --private --source=. --remote=origin --push
+```
+
+**Somebody else made it** — clone rather than create:
 
 ```bash
 gh repo clone <owner>/<repo>    # angle brackets: replace these
 cd <repo>
 ```
 
-**If you are starting from nothing**, make one:
+**If `gh repo create` says `Name already exists on this account`**, the
+repository is already on GitHub and your local copy just does not know about it.
+Connect the two instead of making a second:
 
 ```bash
-mkdir -p my-project
-cd my-project
-git init -b main
-git commit -q --allow-empty -m "Initial commit"
-gh repo create my-project --private --source=. --remote=origin --push
+git remote add origin "https://github.com/$(gh api user --jq .login)/$(basename "$PWD").git"
+git push -u origin main
 ```
 
 **Done when** both of these print something — a path, and a URL:
@@ -113,9 +150,9 @@ git rev-parse --show-toplevel   # the repository root; cd here if it differs
 git remote get-url origin       # the GitHub repository these controls will protect
 ```
 
-`fatal: not a git repository` means you are in an ordinary folder and one of the
-two blocks above has not been run yet. Nothing below works until this does:
-§ 2 commits a file, § 3 asks GitHub about *this* repository, and the secrets and
+`fatal: not a git repository` means you are in an ordinary folder and none of the
+blocks above has been run yet. Nothing below works until this does: § 2 commits a
+file, § 3 asks GitHub about *this* repository, and the secrets and
 branch-protection controls read what git tracks and what GitHub enforces.
 
 ### D — What your repository can support
