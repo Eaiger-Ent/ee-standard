@@ -276,3 +276,33 @@ def test_the_plan_waiver_is_never_described_as_a_pass() -> None:
         "the guide does not say the entry expires, which is what stops it being "
         "a permanent exemption"
     )
+
+
+def test_it_says_where_the_checker_comes_from() -> None:
+    """Reported from a real run: "register-check isn't available in claude".
+
+    The guide named `uv run register-check` twice, both at the very end, and
+    never said that step 5 installs it, that it is a command rather than a slash
+    command, or that it runs inside the container. Three ways to be stuck, and
+    the document distinguished none of them.
+    """
+    done = TEXT.split("## You are done when", 1)[1].split("\n## ", 1)[0]
+    assert "Step 5 is what put the checker there" in done, (
+        "the guide does not say where register-check comes from"
+    )
+    assert "not a slash command" in done, (
+        "the guide does not head off the commonest reading — that it is a /command"
+    )
+    assert "inside the container" in done, "it does not say where to run it"
+
+
+def test_the_python_constraint_is_raised_before_the_steps() -> None:
+    """The checker installs as a Python dependency and only python declares the
+    spelling. A non-Python adopter gets gates that enforce and no command that
+    verifies — which decides whether the route is worth starting, so it belongs
+    on the first screen rather than at the last one."""
+    before = TEXT.split("## Before you start", 1)[1].split("\n## What you are about to do", 1)[0]
+    assert "Is it a Python project?" in before, (
+        "the ecosystem constraint is not raised before the work"
+    )
+    assert "0032" in before, "it states the limit without citing where it is recorded"

@@ -176,6 +176,33 @@ That distinction is the difference between this mechanism and an opt-out, and it
 is the one thing a reviewer of an entry should check first: *is the platform
 refusing, or is the checker not looking?*
 
+## Measured 2026-08-31 — the open question narrows
+
+The endpoint's own refusal names a different tier from the documentation:
+
+```text
+% gh api repos/{owner}/{repo}/rulesets
+{"message": "Upgrade to GitHub Pro or make this repository public to enable
+ this feature.", "status": "403"}
+```
+
+GitHub's ruleset documentation says rulesets are *"for customers on GitHub Team
+and GitHub Enterprise plans"*; the API says **Pro**. Taking the API as the
+authority on its own behaviour, the tier at which this mechanism is needed is
+**Free**, not everything below Team, and the population it serves is smaller than
+this ADR assumed when it was written.
+
+That does not change the decision — a repository on Free still cannot buy the
+control, and still should not run permanently red — but it changes who should be
+told about it, and it makes the § What this cannot verify guard sharper rather
+than softer: an entry recorded by a **Pro** repository would very likely be
+waiving a capability the plan does offer.
+
+It also does not settle the other half. Whether the effective-rules endpoint
+reports rules originating from *classic* branch protection is still untested, and
+still decides whether a Pro repository that uses classic protection instead of a
+ruleset passes CI-001 honestly or fails it through a checker gap.
+
 ## Applied — pass 1
 
 Implemented 2026-08-31. `src/register_check/platform_limits.py` reads

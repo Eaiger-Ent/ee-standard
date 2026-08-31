@@ -63,6 +63,14 @@ Give Docker Desktop 8 GB of memory (Settings → Resources → Memory).
 makes an existing repository conformant; it does not create one. § Where to run
 these has the check and the one-liner if you are starting from nothing.
 
+**Is it a Python project?** The checker installs as a Python dependency, and the
+register declares the spelling for that ecosystem and no other. In a Python
+repository you get the gates *and* `register-check`, which is what verifies them.
+In any other, the gates deploy and enforce but the command that audits them
+cannot be installed
+([ADR 0032](docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md) records
+this as known and unsolved). Worth knowing now rather than at the last step.
+
 ### Is your repository private?
 
 If it is, run this before anything else. It decides whether two of the fifteen
@@ -364,9 +372,43 @@ the first time the hook runs.
 
 ## You are done when
 
+**Step 5 is what put the checker there.** `register-check` does not exist before
+it: `/register-adopt` dispatches `/register-install`, which adds it to your
+project as a dependency pinned to a tagged release. Two things follow, and both
+have caught people out:
+
+- **It is a command, not a slash command.** There is no `/register-check` in
+  Claude Code. Run it in a terminal.
+- **Run it inside the container.** Everything after step 4 goes inside —
+  `devcontainer exec --workspace-folder . uv run register-check`, or open a
+  shell in the container and run it there.
+
 ```bash
 uv run register-check
 ```
+
+**If it says the command is not found**, one of three things is true, and they
+are quick to tell apart:
+
+```bash
+ls pyproject.toml                                  # a Python project at all?
+grep -c register-check pyproject.toml uv.lock      # the dependency, and the pin
+```
+
+| What you see | What it means |
+| --- | --- |
+| No `pyproject.toml` | Your repository is not a Python project — see the note below |
+| It exists, no `register-check` in it | Step 5 did not get as far as installing the checker. Re-run `/register-adopt` |
+| Both present, still not found | You are on the host rather than in the container |
+
+**The checker is installed as a Python dependency, and today only a Python
+project can hold one.** The register declares the `git+` spelling for `python`
+and for no other ecosystem, so `/register-install` stops rather than inventing
+one — [ADR 0032](docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md)
+§ The non-Python adopter is not solved records that as known. The gates still
+deploy and still enforce; what you do not get is the command that verifies them.
+If your repository is not Python, say so when you raise this — you are the
+adopter that ADR says reopens the question.
 
 **Exit `3` is the expected first success, not a failure.** It means nothing was
 found in violation but something could not be verified — some controls read
