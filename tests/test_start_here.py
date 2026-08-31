@@ -123,3 +123,30 @@ def test_the_document_owns_no_value_another_file_owns(pattern: re.Pattern[str], 
     hits = {m.group(0) for m in pattern.finditer(TEXT)}
     hits -= {"0.0", "1.1", "2.0", "4.2", "4.3"}  # section references
     assert not hits, f"START-HERE.md carries {what} it does not own: {sorted(hits)}"
+
+
+def test_it_says_where_the_commands_run() -> None:
+    """A junior asked "run step 1 from where?" and the document had no answer.
+
+    Step 1 is directory-independent — `claude plugin install` writes only into
+    `~/.claude/`. Every step after it writes into the working directory, so the
+    wrong one leaves a register in the reader's home folder and a
+    `.devcontainer/` nothing will use. Cheap to state, invisible when missing.
+    """
+    where = TEXT.split("## Where to run these", 1)
+    assert len(where) == 2, "START-HERE.md no longer says where its commands run"
+    section = where[1].split("\n## ", 1)[0]
+    assert "cd " in section, "the section does not actually tell the reader to cd"
+
+
+def test_it_names_the_session_file_that_must_not_be_committed() -> None:
+    """`.claude/settings.local.json` holds per-developer state and may hold an `env`.
+
+    The shipped template's `.gitignore` cannot carry the rule — it is copied to
+    `.devcontainer/.gitignore`, where the path would resolve one directory down
+    and ignore nothing — so the document is the only place it can be said.
+    """
+    assert ".claude/settings.local.json" in TEXT, (
+        "START-HERE.md does not tell the reader to gitignore their local settings"
+    )
+    assert ".gitignore" in TEXT, "it names the file but not where the rule goes"
