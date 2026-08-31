@@ -326,9 +326,28 @@ Then build:
 devcontainer up --workspace-folder . --remove-existing-container
 ```
 
-**Done when:** the `grep` prints nothing and
-`devcontainer exec --workspace-folder . uv --version` reports the version you
-substituted.
+**Done when:** the `grep` prints nothing, the build ends with
+`"outcome":"success"`, and the environment report at the end shows `uv` at the
+version you substituted, built for your architecture.
+
+**One `✗` is expected here** if you skipped the optional `gh` credential:
+
+```text
+✗ GitHub CLI — not authenticated.
+```
+
+That report never blocks the build, and the container is fine. It matters at
+step 5 — `gate-repo` and the remote checks talk to GitHub — so fix it on the
+**host** rather than inside:
+
+```bash
+security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "<a token>"
+devcontainer up --workspace-folder . --remove-existing-container
+```
+
+`gh auth login` inside the container works too and does not survive a rebuild:
+the only persistent volume is `/home/vscode/.claude`, and `gh` keeps its
+credentials in `~/.config/gh`.
 
 **If it fails:** an empty value from the extraction is caught by the `echo` — do
 not skip it. A container that starts with no uv in it means the substitution
