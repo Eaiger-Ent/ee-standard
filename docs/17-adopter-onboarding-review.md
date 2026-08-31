@@ -754,7 +754,10 @@ steps:
 <One sentence. What this does, not why.>
 
 ```bash
-<the commands, copy-pasteable as a block, no placeholders to think about>
+<the commands, copy-pasteable as a block, no placeholders to think about —
+ a reader will paste it verbatim, so derive every value rather than leaving
+ OWNER/REPO for them to fill in, and look up anything context-sensitive rather
+ than trusting a shortcut that silently answers about the wrong thing>
 ```
 
 **Done when:** <the one observable thing. A verdict, a file, a returned list.>

@@ -106,7 +106,7 @@ git remote get-url origin       # the GitHub repository these controls will prot
 **If the first command says `fatal: not a git repository`, stop here** — you are
 in an ordinary folder, and there is nothing for this standard to make conformant
 yet. Almost everything below needs a repository *and* a GitHub remote: step 2
-commits a file, step 3 calls `gh api repos/OWNER/REPO/...`, and the secrets and
+commits a file, step 3 calls `gh api repos/{owner}/{repo}/...`, and the secrets and
 branch-protection controls read what git tracks and what GitHub enforces.
 
 ### If you do not have a repository yet
@@ -121,7 +121,7 @@ gh repo create my-project --private --source=. --remote=origin --push
 
 ```bash
 # An existing GitHub repository somebody else set up: clone it.
-gh repo clone OWNER/REPO && cd REPO
+gh repo clone <owner>/<repo> && cd <repo>   # angle brackets: replace these
 ```
 
 **Done when:** both commands at the top of this section print something — a path
@@ -173,10 +173,20 @@ None of this is code and none of it is visible to a `git clone`. It needs the
 admin token.
 
 ```bash
-gh api repos/OWNER/REPO/rulesets                       # a list, not a 403
-gh api repos/OWNER/REPO/branches/BRANCH --jq .protected # true
-gh api repos/OWNER/REPO --jq '.security_and_analysis.secret_scanning_push_protection.status'
+default=$(gh api "repos/{owner}/{repo}" --jq .default_branch)
+gh api "repos/{owner}/{repo}/rulesets" --jq '.[].name'
+gh api "repos/{owner}/{repo}/branches/$default" --jq .protected
+gh api "repos/{owner}/{repo}/rules/branches/$default" --jq '[.[].type] | unique'
+gh api "repos/{owner}/{repo}" --jq '.security_and_analysis.secret_scanning_push_protection.status'
 ```
+
+`{owner}` and `{repo}` are **not placeholders to fill in** — `gh` replaces them
+from the repository you are standing in, so this block runs as written.
+
+**The default branch is looked up rather than assumed, and that matters.** `gh`
+also accepts `{branch}`, but it resolves to the branch you are *on* — so running
+these from a feature branch reports an unprotected branch and an empty rule
+list, which looks like a real answer and is not.
 
 Create a default-branch ruleset requiring a pull request and passing checks with
 no bypass actors, and enable secret-scanning push protection.

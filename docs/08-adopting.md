@@ -105,7 +105,7 @@ standing credential with `Administration: write` is what
 
 **You need a git repository with a GitHub remote before § 0.1.** Everything
 below assumes one: § 0.1 commits the register, § 1 calls
-`gh api repos/OWNER/REPO/…`, SEC-001 reads what git tracks and CI-001 reads what
+`gh api repos/{owner}/{repo}/…`, SEC-001 reads what git tracks and CI-001 reads what
 GitHub enforces on a default branch. A folder that is not a repository fails at
 the first `git` command with `fatal: not a git repository`, which reads as a
 broken instruction rather than a missing precondition — so check first:
@@ -352,9 +352,9 @@ part usually missing from instructions — **how you know it worked**.
 
 | Control | What you must do | How you know it worked |
 | --- | --- | --- |
-| CI-001, SEC-001 | The repository must be **public**, or on a plan whose rulesets and secret scanning are available to private repositories | `gh api repos/OWNER/REPO/rulesets` returns a list. A `403 "Upgrade to GitHub Pro or make this repository public"` means neither condition holds |
-| CI-001 | Create a **default-branch ruleset** requiring a pull request and passing status checks, with no bypass actors | `gh api repos/OWNER/REPO/rulesets --jq '.[].name'` names it, and `gh api repos/OWNER/REPO/branches/BRANCH --jq .protected` is `true` — note that is the *branch* endpoint; the repository object has no such field. Then try a direct push to the default branch and watch it be refused: a ruleset nobody has seen refuse anything is not known to work |
-| SEC-001 | Enable **secret scanning push protection** | `gh api repos/OWNER/REPO --jq '.security_and_analysis.secret_scanning_push_protection.status'` is `enabled`. A `null` `security_and_analysis` means the plan does not offer it, or your token cannot see it |
+| CI-001, SEC-001 | The repository must be **public**, or on a plan whose rulesets and secret scanning are available to private repositories | `gh api "repos/{owner}/{repo}/rulesets"` returns a list. A `403 "Upgrade to GitHub Pro or make this repository public"` means neither condition holds |
+| CI-001 | Create a **default-branch ruleset** requiring a pull request and passing status checks, with no bypass actors | `gh api "repos/{owner}/{repo}/rulesets" --jq '.[].name'` names it, and `gh api "repos/{owner}/{repo}/branches/$(gh api "repos/{owner}/{repo}" --jq .default_branch)" --jq .protected` is `true` — note that is the *branch* endpoint; the repository object has no such field. Then try a direct push to the default branch and watch it be refused: a ruleset nobody has seen refuse anything is not known to work |
+| SEC-001 | Enable **secret scanning push protection** | `gh api "repos/{owner}/{repo}" --jq '.security_and_analysis.secret_scanning_push_protection.status'` is `enabled`. A `null` `security_and_analysis` means the plan does not offer it, or your token cannot see it |
 | SUP-002 | Install a bot that proposes dependency updates, and configure it — see § 1.1 | Its first proposal, or its dashboard. Not the presence of a config file |
 
 **The token you use matters.** Creating a ruleset needs a token with
@@ -363,7 +363,7 @@ fine-grained PATs, do not have it — this repository's own ruleset was blocked 
 exactly that for a day. Check before you plan around it:
 
 ```bash
-gh api repos/OWNER/REPO/rulesets --method POST --input /dev/null 2>&1 | head -2
+gh api "repos/{owner}/{repo}/rulesets" --method POST --input /dev/null 2>&1 | head -2
 ```
 
 A `403` on write with a `200` on read is a permission problem, not a syntax one.
@@ -1746,7 +1746,7 @@ is not a pass, and `--require-complete` (§ 4.3) turns it into a failed check.
 uv run register-check meta GOV-001
 
 # What GitHub actually enforces on your default branch, in its own words.
-gh api "repos/OWNER/REPO/rules/branches/BRANCH" \
+gh api "repos/{owner}/{repo}/rules/branches/$default" \
   --jq '[.[] | select(.type == "required_status_checks")
         | .parameters.required_status_checks[].context]'
 ```
@@ -2124,9 +2124,9 @@ Each row is done when its evidence exists, not when the step has been performed.
 | # | Step | Evidence |
 | --- | --- | --- |
 | 0 | The checker is installed, pinned and locked | `uv run register-check --version` runs, and your lockfile names `register-check` at the tag the register pins (§ 2.3). Nothing below can be evidenced without it |
-| 1 | Repository visibility or plan allows rulesets | `gh api repos/O/R/rulesets` returns a list |
-| 2 | Default-branch ruleset created | `repos/O/R/branches/BRANCH --jq .protected` is `true`, and a direct push is refused |
-| 3 | Secret scanning push protection on | `.security_and_analysis.secret_scanning_push_protection.status` is `enabled` |
+| 1 | Repository visibility or plan allows rulesets | `gh api "repos/{owner}/{repo}/rulesets"` returns a list |
+| 2 | Default-branch ruleset created | `gh api "repos/{owner}/{repo}/branches/$(gh api "repos/{owner}/{repo}" --jq .default_branch)" --jq .protected` is `true`, and a direct push is refused |
+| 3 | Secret scanning push protection on | `gh api "repos/{owner}/{repo}" --jq '.security_and_analysis…status'` is `enabled` |
 | 4 | `.github/dependabot.yml` covers every ecosystem present | A Dependabot pull request appears |
 | 5 | Renovate installed, if any version is a literal or a toolchain file | Its Dependency Dashboard lists the expected number of sites |
 | 5a | The interpreter is pinned by a toolchain file, not by a support floor | `uv run register-check run --control SUP-001` passes, and the version your CI log reports is the one the file names |

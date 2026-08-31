@@ -194,3 +194,44 @@ def test_the_step_overview_names_rights_rather_than_people() -> None:
     assert "stop after any" in section, (
         "dropping the column also dropped the fact it carried"
     )
+
+
+def test_no_command_block_carries_a_placeholder_to_fill_in() -> None:
+    """Measured on a real Mac: the block was pasted verbatim, as promised.
+
+        % gh api repos/OWNER/REPO/rulesets
+        {"message": "Not Found", ... "status": "404"}
+
+    The repeating unit promises "copy-pasteable as a block, no placeholders to
+    think about", and step 3 shipped `OWNER/REPO`. `gh` resolves `{owner}` and
+    `{repo}` from the local remote, so the promise is keepable rather than
+    aspirational.
+
+    `<owner>/<repo>` in angle brackets is allowed and is not the same thing: it
+    appears only in `gh repo clone`, which by definition runs outside the
+    repository it names, where nothing can resolve it.
+    """
+    for block in _FENCED_BASH.findall(TEXT):
+        for token in ("OWNER/REPO", "repos/O/R", "/BRANCH"):
+            assert token not in block, (
+                f"a command block carries {token!r}, which a reader will paste verbatim"
+            )
+
+
+def test_the_platform_checks_look_up_the_default_branch() -> None:
+    """`{branch}` resolves to the branch you are *on*, not the default one.
+
+    The quieter half of the same finding. An adopter running step 3 from a
+    feature branch gets `.protected: false` and an empty effective-rule list for
+    a branch that is correctly protected — an answer shaped exactly like a real
+    one. Measured here: `false` and `[]` from a feature branch, `true` and four
+    rule types from the default.
+    """
+    step = TEXT.split("## 3 — The platform steps", 1)[1].split("\n## ", 1)[0]
+    assert "default_branch" in step, (
+        "step 3 does not look the default branch up — it will answer about "
+        "whichever branch the reader happens to be on"
+    )
+    assert "/branches/{branch}" not in step, (
+        "step 3 uses gh's {branch}, which resolves to the current branch"
+    )
