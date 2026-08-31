@@ -53,7 +53,7 @@ jobs:
           # renovate: datasource=pypi depName=uv
           pip install uv==0.12.7
 
-      # ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  register: v0.14.0  register-contract: 14
+      # ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
       #
       # Adopted, not deployed: hand-written in Phase 0.5 and stamped when the
       # gate that owns it was built. It sits above every other gate's steps
@@ -63,11 +63,12 @@ jobs:
         # SUP-001 — install from the committed lockfile, never re-resolve.
         run: uv sync --frozen
 
-      # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  register: v0.11.0  register-contract: 11
+      # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  gate-contract: 7  register: v0.29.0  register-contract: 35
       #
       # Adopted, not deployed: hand-written in Phase 0.5 and stamped when the
       # gate that owns it was built. The version and digest below are the
-      # register's, and `tool_versions_match_register` holds them to it.
+      # register's, and `tool_versions_match_register` holds them to it. The
+      # gate was re-run 2026-08-31 at gate contract 7, which rewrote this stamp and found the block already correct.
       - name: Install gitleaks
         # SEC-001 — same pinned version as .devcontainer/setup.sh.
         run: |
@@ -85,7 +86,7 @@ jobs:
         # package-lock.json; `npm ci` is also SUP-001's frozen node install.
         run: npm ci --no-audit --no-fund
 
-      # ee-control: LNT-001  ee-skill: gate-quality@0.1.0  register: v0.12.0  register-contract: 12
+      # ee-control: LNT-001  ee-skill: gate-quality@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
       #
       # Adopted, not deployed. The three steps below are one gate's ci locus:
       # `gate-quality` writes them together because they share a workflow and a
@@ -95,28 +96,29 @@ jobs:
       - name: Lint
         run: uv run ruff check .
 
-      # ee-control: TYP-001  ee-skill: gate-quality@0.1.0  register: v0.12.0  register-contract: 12
+      # ee-control: TYP-001  ee-skill: gate-quality@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
       - name: Type check
         run: uv run mypy
 
-      # ee-control: TST-001  ee-skill: gate-quality@0.1.0  register: v0.12.0  register-contract: 12
+      # ee-control: TST-001  ee-skill: gate-quality@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
       - name: Tests
         run: uv run pytest
 
-      # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  register: v0.11.0  register-contract: 11
+      # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  gate-contract: 7  register: v0.29.0  register-contract: 35
       - name: Secret scan
         run: gitleaks detect --no-banner --redact
 
-      # ee-control: SUP-003  ee-skill: gate-supply-chain@0.1.0  register: v0.14.0  register-contract: 14
-      # ee-control: SUP-004  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.28.0  register-contract: 34
+      # ee-control: SUP-003  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
+      # ee-control: SUP-004  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
       #
       # SUP-003's ci locus, and SUP-004's. No step of its own: this full audit
       # runs the checker with no `--control`, so it reaches every applicable
       # control including both, and a second step would be the same check twice.
       # The gate checks for exactly this before writing one.
       #
-      # SUP-004's stamp is hand-written, not deployed — the gate's template
-      # carries it and the gate was not re-run. It is here rather than on a step
+      # SUP-004's stamp was hand-written from the gate's template, and the gate
+      # was re-run 2026-08-31 at gate contract 6, which rewrote it and found the
+      # step already correct. It is here rather than on a step
       # of its own because this control's ci locus *is* this step, and a stamp
       # names the artefact that serves the control's locus.
       - name: Conformance

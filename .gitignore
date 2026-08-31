@@ -10,7 +10,7 @@
 # lines instead of a comment claiming it depended on them. One stamp per region
 # rather than one at the top — the rest of this file is build output and editor
 # droppings that belong to no control, and a whole-file stamp would claim them.
-# ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  register: v0.18.0  register-contract: 18
+# ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  gate-contract: 7  register: v0.29.0  register-contract: 35
 .devcontainer/.env
 .devcontainer/.env.docker
 

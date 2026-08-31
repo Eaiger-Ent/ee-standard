@@ -98,6 +98,63 @@ def stamps_in(text: str) -> list[Stamp]:
     ]
 
 
+#: A Markdown code-fence delimiter: three or more backticks or tildes, indented
+#: by at most three spaces. CommonMark's rule, and the whole basis of ADR 0046 —
+#: a fence is how Markdown says *display this text* rather than *this text is in
+#: force*.
+_FENCE = re.compile(r"^ {0,3}(?P<char>`{3,}|~{3,})(?P<info>.*)$")
+
+#: Documents this repository writes. A stamp quoted in one of these is an
+#: example when it sits inside a fence; anywhere else it is a live comment in an
+#: artefact. ADR 0046 § What this does not do records why the rule stops here.
+_MARKDOWN_SUFFIXES = (".md", ".markdown")
+
+
+def _closes(match: re.Match[str], opening: str) -> bool:
+    """Whether this fence closes `opening`.
+
+    Same character, at least as long, and no info string — the third is what
+    makes ```` ```bash ```` an opening rather than a close.
+    """
+    fence = match.group("char")
+    return (
+        not match.group("info").strip()
+        and fence[0] == opening[0]
+        and len(fence) >= len(opening)
+    )
+
+
+def without_fenced_blocks(text: str) -> str:
+    """`text` with every fenced code block blanked, lines preserved.
+
+    Blanked rather than deleted so a caller reporting a line number still gets
+    the right one. The opening fence closes only on a fence of the same
+    character and at least the same length, which is what keeps a ``` inside a
+    ```` block from ending it early — `docs/17-adopter-onboarding-review.md`
+    nests them exactly that way.
+
+    An unclosed fence runs to the end of the file. That is the conservative
+    direction: the alternative reads a truncated document's example as a
+    deployed artefact, which is the failure ADR 0046 exists to stop.
+    """
+    out: list[str] = []
+    closing: str | None = None
+    for line in text.splitlines():
+        match = _FENCE.match(line)
+        if closing is None:
+            # An opening fence may carry an info string; a closing one may not.
+            if match:
+                closing = match.group("char")
+                out.append("")
+                continue
+            out.append(line)
+        else:
+            if match and _closes(match, closing):
+                closing = None
+            out.append("")
+    return "\n".join(out)
+
+
 def _files_with_marker(repo: Repo) -> list[str]:
     """Tracked files containing the marker, found by git rather than by reading.
 
@@ -127,6 +184,13 @@ def stamps_by_file(repo: Repo) -> dict[str, list[Stamp]]:
             text = repo.read(path)
         except OSError, UnicodeDecodeError:
             continue  # a binary or unreadable file carries no stamp
+        if path.endswith(_MARKDOWN_SUFFIXES):
+            # A document explaining the stamp format is not a deployment
+            # (ADR 0046). This repository's own ADR 0038 must show a stamp
+            # without a `gate-contract` to explain the field it adds, and
+            # counting it kept `gate-secrets` at UNRECORDED for ever — and let
+            # SEC-001's read-back pass on prose alone, which was the worse half.
+            text = without_fenced_blocks(text)
         stamps = stamps_in(text)
         if stamps:
             found[path] = stamps

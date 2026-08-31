@@ -1,5 +1,5 @@
 {
-  // ee-control: LNT-001  ee-skill: gate-quality@0.1.0  register: v0.19.0  register-contract: 21
+  // ee-control: LNT-001  ee-skill: gate-quality@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
   //
   // Adopted, not deployed: hand-written when ADR 0029 point 1 landed, and
   // stamped at contract 21 when points 3 and 4 made it an artefact the gate

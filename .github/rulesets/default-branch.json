@@ -25,7 +25,7 @@
 // carry its own stamp. `gate-repo` strips the comment lines before POSTing,
 // because GitHub's API takes strict JSON.
 {
-  // ee-control: CI-001  ee-skill: gate-repo@0.1.0  register: v0.22.0  register-contract: 28
+  // ee-control: CI-001  ee-skill: gate-repo@0.1.0  gate-contract: 4  register: v0.29.0  register-contract: 35
   "name": "default-branch-protection",
   "target": "branch",
   "enforcement": "active",
