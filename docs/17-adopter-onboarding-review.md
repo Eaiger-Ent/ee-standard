@@ -821,10 +821,19 @@ the four rows may be classic and which may not.>
 
 ## What you are about to do
 
-<A six-row table: the step, whether it needs anyone but you, and whether you can
-stop after it. Not how long — see § P. Two rows need somebody else (an admin for
-the ruleset, an org owner for the Renovate app) and saying so up front is what
-lets a reader start today instead of discovering it at step 3.>
+<A six-row table: the step, and the **rights** it needs — "Yours", "Admin on the
+repository", "Owner on the organisation". Not how long (§ P), and not *who* can
+do it: a reader who happens to be an admin does step 3 themselves, so naming the
+person reads as "not you" and is wrong half the time. Naming the right is
+accurate either way.
+
+Two rows need rights the reader may not hold, and saying so up front is what
+lets them start today and raise those in parallel instead of discovering them at
+step 3.
+
+**Do not add a "can you stop after?" column.** The first draft had one and every
+cell read "yes" — a column of identical values is noise wearing the costume of
+information. It is one sentence under the table.>
 
 ## 1 — Install the plugin
 ## 2 — Get the register

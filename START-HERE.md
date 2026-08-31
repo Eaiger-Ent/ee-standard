@@ -61,7 +61,7 @@ these has the check and the one-liner if you are starting from nothing.
 
 ### Get these credentials
 
-| What | Where you make it | Scope | Where it goes |
+| Credential | Where to create it | Scope | Where it goes |
 | --- | --- | --- | --- |
 | Claude Code OAuth token | `claude setup-token` | — | Keychain, `CLAUDE_OAUTH_TOKEN` |
 | A token for `gh` | <https://github.com/settings/personal-access-tokens> | read on the repository | Keychain, `GITHUB_TOKEN` |
@@ -74,14 +74,18 @@ verified violation — SEC-003 fails on a header only classic tokens return. The
 
 ## What you are about to do
 
-| # | Step | Needs anyone but you? | Can you stop after? |
-| --- | --- | --- | --- |
-| 1 | Install the plugin | no | yes |
-| 2 | Get the register | no | yes |
-| 3 | The platform steps | **an admin on the repository** | yes |
-| 4 | The container | no | yes |
-| 5 | Run the adoption | no | yes |
-| 6 | Turn the bots on | **an org owner**, for Renovate | yes |
+| # | Step | Rights needed |
+| --- | --- | --- |
+| 1 | Install the plugin | Yours |
+| 2 | Get the register | Yours |
+| 3 | The platform steps | **Admin on the repository** |
+| 4 | The container | Yours |
+| 5 | Run the adoption | Yours |
+| 6 | Turn the bots on | **Owner on the organisation**, to install Renovate |
+
+**You can stop after any of them.** Each step leaves the repository in a working
+state, so a first sitting that ends at step 4 has cost nothing — pick it up
+later from where you stopped.
 
 ## Where to run these
 

@@ -175,3 +175,22 @@ def test_it_names_the_session_file_that_must_not_be_committed() -> None:
         "START-HERE.md does not tell the reader to gitignore their local settings"
     )
     assert ".gitignore" in TEXT, "it names the file but not where the rule goes"
+
+
+def test_the_step_overview_names_rights_rather_than_people() -> None:
+    """A reader who is an admin does step 3 themselves.
+
+    The first version headed this column "Needs anyone but you?" — a yes/no
+    question whose cells answered with a noun — and the proposed replacement,
+    "Who can do this?", reads as *not you* for a reader who holds the rights.
+    Naming the right is accurate either way.
+    """
+    section = TEXT.split("## What you are about to do", 1)[1].split("\n## ", 1)[0]
+    assert "Rights needed" in section, "the step overview no longer names rights"
+    assert "Can you stop after" not in section, (
+        "a column whose every cell read 'yes' has come back — it is one sentence, "
+        "not a column"
+    )
+    assert "stop after any" in section, (
+        "dropping the column also dropped the fact it carried"
+    )
