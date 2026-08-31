@@ -237,6 +237,12 @@ the moment it returns, so it is not something to do twice or by accident.
 compare against after step 5 — expect the ruleset list to be empty and
 `.protected` to be `false` now, and both to change then.
 
+**On a private repository without rulesets, none of this is available and that
+is the expected result.** The listing `403`s, and secret scanning is a paid
+feature too, so Settings → Code security will not offer push protection either.
+Record what you saw, read § If your plan has no rulesets, and go to step 4 —
+there is nothing here you have failed to do.
+
 **If it fails:** a `403` on the ruleset listing means the repository is private
 on a plan without them — see § If your plan has no rulesets. A `403` on write
 with a `200` on read is a token scope problem, not a syntax one.
