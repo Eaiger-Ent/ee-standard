@@ -424,8 +424,26 @@ to prevent: a check that runs and blocks nothing is theme **T-3**.
   merge, but it can tell you, and a report nobody reads is the failure after
   this one.
 
-**A mechanism to record this rather than run permanently red is proposed and not
-built** — [ADR 0047](docs/adr/0047-a-plan-limit-is-recorded-not-tolerated.md). It
-would report the two blocks as `UNAVAILABLE (plan)` with an expiry date instead
-of failing them. Until it is accepted and implemented, exit `1` is what you get,
-and nothing in this document pretends otherwise.
+**You can record this rather than run permanently red**
+([ADR 0047](docs/adr/0047-a-plan-limit-is-recorded-not-tolerated.md)). Add an
+entry to `deployment-decisions.yaml` naming the control, the block, your plan and
+what it lacks, with a review date:
+
+```yaml
+platform_limits:
+  - control: CI-001
+    assert: default_branch_ruleset_satisfies
+    plan: github-free-private
+    lacks: rulesets on a private repository are GitHub Team and Enterprise only
+    review_by: 2026-11-30
+```
+
+The block then reports `UNAVAILABLE (plan)` instead of failing, and the run exits
+`3` rather than `1`. **It is a record, not a pass** — the control does not hold,
+the reason and the date print on every run, and an entry past its `review_by`
+fails the build rather than going on covering. `--require-complete` still turns
+it into a failure, so a repository in this state does not turn that flag on.
+
+Only record a capability your plan genuinely does not offer. If GitHub offers it
+by some route the checker fails to read, that is a defect to report rather than
+something to waive.

@@ -256,12 +256,23 @@ def test_the_private_repository_constraint_surfaces_before_the_work() -> None:
     )
 
 
-def test_it_does_not_promise_a_mechanism_that_is_only_proposed() -> None:
-    """ADR 0047 is Proposed. A guide that reads as though it were built is worse
-    than one that does not mention it, because the reader plans around it."""
-    if "0047" not in TEXT:
-        return
+def test_the_plan_waiver_is_never_described_as_a_pass() -> None:
+    """ADR 0047 rule 1, guarded in the document a reader acts from.
+
+    This test began as its own inverse — it held that the guide must not read as
+    though the mechanism existed while ADR 0047 was Proposed. The mechanism is
+    now built, so the risk changed rather than went away: a waiver described as
+    though it satisfied the control is worse than one described as unbuilt,
+    because the reader stops looking for the gap.
+    """
     section = TEXT.split("## If your plan has no rulesets", 1)[1]
-    assert "proposed and not" in section or "not built" in section, (
-        "START-HERE.md cites ADR 0047 without saying it is unbuilt"
+    assert "UNAVAILABLE (plan)" in section, (
+        "the guide does not tell a constrained reader what the report will say"
+    )
+    assert "not a pass" in section, (
+        "the guide offers the waiver without saying the control still does not hold"
+    )
+    assert "review_by" in section and "fails the build" in section, (
+        "the guide does not say the entry expires, which is what stops it being "
+        "a permanent exemption"
     )
