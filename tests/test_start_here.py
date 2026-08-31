@@ -329,3 +329,26 @@ def test_step_three_branches_before_it_asks_for_anything() -> None:
         "the skip-to-step-4 branch comes after the push-protection instruction, so a "
         "reader on a plan without it goes hunting for the setting first"
     )
+
+
+def test_the_keychain_step_expects_an_existing_entry() -> None:
+    """Reported mid-run, and it hits every second project on a machine:
+
+        security: SecKeychainItemCreateFromContent (<default>): The specified
+        item already exists in the keychain.
+
+    The service names carry no project prefix on purpose — one credential store
+    serves every ee project — so an existing entry is the expected state for
+    anybody who has done this before, and `add-generic-password` refuses to
+    overwrite. `docs/06-devcontainer-setup.md` has documented the delete-first
+    rotation since Phase 0.5; the adopter route did not, which is § A's shape
+    again: the contributor guide knows and the adopter guide does not.
+    """
+    step = TEXT.split("## 4 — The container", 1)[1].split("\n## 5 ", 1)[0]
+    assert "find-generic-password" in step, (
+        "step 4 does not let the reader check whether the credential is already set"
+    )
+    assert "will not overwrite" in step, (
+        "step 4 does not warn that add-generic-password fails on an existing entry"
+    )
+    assert "delete-generic-password" in step, "step 4 gives no way to replace one"

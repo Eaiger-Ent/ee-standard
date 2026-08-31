@@ -645,9 +645,17 @@ there is no Claude Code OAuth token, so the container never starts and the
 message arrives before you have a container to read it in:
 
 ```bash
+# These service names carry no project prefix, so one credential store serves
+# every ee project on the machine — a second adoption finds them already set.
+security find-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w >/dev/null \
+  && echo "already set" || echo "not set"
+
+# `add-generic-password` will not overwrite: on an existing entry it fails with
+# "The specified item already exists in the keychain." Delete first to replace.
 claude setup-token
-security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "sk-ant-oat01-..."
-security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "ghp_..."   # optional, but `gh` needs it
+security delete-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" 2>/dev/null
+security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "<paste it here>"
+security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "<a token>"   # optional, but `gh` needs it
 ```
 
 Either name may be prefixed with your checkout directory in `UPPER_SNAKE_CASE`

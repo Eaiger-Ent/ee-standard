@@ -295,8 +295,34 @@ sed -i.bak -e "s/{{PROJECT_NAME}}/$(basename "$PWD")/g" .devcontainer/devcontain
 sed -i.bak -e "s/{{UV_VERSION}}/${uv_version}/g" -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86}/g" -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm}/g" .devcontainer/setup.sh
 rm .devcontainer/*.bak
 grep -rl '{{' .devcontainer
-claude setup-token
-security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "sk-ant-oat01-..."
+```
+
+**That `grep` must print nothing.** A surviving placeholder is what fails the
+build later, at `sha256sum -c`, with no clue why.
+
+**Check before you write.** The Keychain service names carry no project prefix
+by design — one credential serves every ee project on the machine — so if you
+have set one up before, the entry is already there and you need do nothing:
+
+```bash
+security find-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w >/dev/null \
+  && echo "already set — nothing to do" \
+  || echo "not set — add it below"
+```
+
+`add-generic-password` **will not overwrite**: on an existing entry it fails with
+*"The specified item already exists in the keychain."* To replace one, delete it
+first.
+
+```bash
+claude setup-token   # prints the token; copy it
+security delete-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" 2>/dev/null
+security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "<paste it here>"
+```
+
+Then build:
+
+```bash
 devcontainer up --workspace-folder . --remove-existing-container
 ```
 
