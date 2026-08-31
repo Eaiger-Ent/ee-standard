@@ -55,6 +55,10 @@ replacement owes.
 
 Give Docker Desktop 8 GB of memory (Settings → Resources → Memory).
 
+**And a repository to work on**, on GitHub and cloned locally. This standard
+makes an existing repository conformant; it does not create one. § Where to run
+these has the check and the one-liner if you are starting from nothing.
+
 ### Get these credentials
 
 | What | Where you make it | Scope | Where it goes |
@@ -91,8 +95,33 @@ a container config nothing will use.
 
 ```bash
 cd /path/to/your-repository
-git status          # you should be on a branch you can open a pull request from
+git rev-parse --show-toplevel   # the repository root — cd here if it differs
+git remote get-url origin       # the GitHub repository these controls will protect
 ```
+
+**If the first command says `fatal: not a git repository`, stop here** — you are
+in an ordinary folder, and there is nothing for this standard to make conformant
+yet. Almost everything below needs a repository *and* a GitHub remote: step 2
+commits a file, step 3 calls `gh api repos/OWNER/REPO/...`, and the secrets and
+branch-protection controls read what git tracks and what GitHub enforces.
+
+### If you do not have a repository yet
+
+```bash
+# A new project: create it locally, then create it on GitHub and push.
+mkdir -p my-project && cd my-project
+git init -b main
+git commit -q --allow-empty -m "Initial commit"
+gh repo create my-project --private --source=. --remote=origin --push
+```
+
+```bash
+# An existing GitHub repository somebody else set up: clone it.
+gh repo clone OWNER/REPO && cd REPO
+```
+
+**Done when:** both commands at the top of this section print something — a path
+and a URL.
 
 ## 1 — Install the plugin
 

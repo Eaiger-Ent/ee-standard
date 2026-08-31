@@ -135,8 +135,33 @@ def test_it_says_where_the_commands_run() -> None:
     """
     where = TEXT.split("## Where to run these", 1)
     assert len(where) == 2, "START-HERE.md no longer says where its commands run"
-    section = where[1].split("\n## ", 1)[0]
+    section = where[1].split("\n## 1 ", 1)[0]
     assert "cd " in section, "the section does not actually tell the reader to cd"
+
+
+def test_it_handles_the_reader_who_has_no_repository_yet() -> None:
+    """Measured on a real Mac: `git status` in an ordinary folder, and a dead end.
+
+        nathan@Nathans-MacBook-Pro-3 git % git status
+        fatal: not a git repository (or any of the parent directories): .git
+
+    Everything from step 2 needs a repository *and* a GitHub remote — step 2
+    commits the register, step 3 calls `gh api repos/OWNER/REPO/...`, SEC-001
+    reads what git tracks and CI-001 reads what GitHub enforces. The guide
+    assumed one and offered no route to getting one, so the first `git` command
+    read as a broken instruction rather than a missing precondition.
+    """
+    where = TEXT.split("## Where to run these", 1)[1].split("\n## 1 ", 1)[0]
+    assert "not a git repository" in where, (
+        "START-HERE.md does not name the error a reader without a repository actually sees"
+    )
+    assert "git init" in where and "gh repo create" in where, (
+        "it diagnoses the missing repository but gives no route to having one"
+    )
+    assert "gh repo clone" in where, (
+        "it covers the new-project case but not the far commoner one — a repository "
+        "somebody else already set up"
+    )
 
 
 def test_it_names_the_session_file_that_must_not_be_committed() -> None:

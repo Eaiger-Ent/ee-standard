@@ -103,6 +103,24 @@ standing credential with `Administration: write` is what
 
 ### 0.b2 — Where each step runs, and what a session leaves behind
 
+**You need a git repository with a GitHub remote before § 0.1.** Everything
+below assumes one: § 0.1 commits the register, § 1 calls
+`gh api repos/OWNER/REPO/…`, SEC-001 reads what git tracks and CI-001 reads what
+GitHub enforces on a default branch. A folder that is not a repository fails at
+the first `git` command with `fatal: not a git repository`, which reads as a
+broken instruction rather than a missing precondition — so check first:
+
+```bash
+git rev-parse --show-toplevel   # the repository root
+git remote get-url origin       # the GitHub repository these controls protect
+```
+
+Starting from nothing, `git init -b main` followed by
+`gh repo create <name> --source=. --remote=origin --push` produces both. This
+standard makes an existing repository conformant; creating one is not its job,
+and doing it silently would put a repository on somebody's account that they did
+not ask for.
+
 **§ 0.0 runs anywhere; everything from § 0.1 runs in your repository's root.**
 Installing the plugin changes your machine rather than any project — it lands in
 `~/.claude/` and writes nothing into a repository. From § 0.1 onward the commands
