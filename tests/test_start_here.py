@@ -352,3 +352,40 @@ def test_the_keychain_step_expects_an_existing_entry() -> None:
         "step 4 does not warn that add-generic-password fails on an existing entry"
     )
     assert "delete-generic-password" in step, "step 4 gives no way to replace one"
+
+
+def test_the_github_token_has_a_route_not_just_a_destination() -> None:
+    """Asked mid-run: "where is the optional gh credential configured?"
+
+    The table named the credential, its scope in three words, and the Keychain
+    service — and nothing about creating it. § A's shape once more: a thing the
+    reader needs, with no route to having it.
+
+    The permissions are checked by name because `Administration: write` is the
+    one people miss and it fails late — `gate-repo` stops at its pre-flight
+    rather than writing half a deployment.
+    """
+    section = TEXT.split("### Creating the GitHub token", 1)
+    assert len(section) == 2, "there is no section on creating the token"
+    body = section[1].split("\n## ", 1)[0]
+    for needed in ("fine-grained", "Only select repositories", "Metadata", "Contents"):
+        assert needed in body, f"the token section does not mention {needed!r}"
+    assert "Administration" in body and "Read and write" in body, (
+        "the section does not say Administration must be writable, which gate-repo needs"
+    )
+    assert "add-generic-password" in body, "it says what to create and not where to put it"
+    assert "find-generic-password" in body, "it gives no way to check the token works"
+
+
+def test_it_does_not_ask_for_three_github_tokens() -> None:
+    """Working out how to document the `gh` token showed the table implied three.
+
+    There are two. One lives in the Keychain and is used by the reader *and by
+    the gates* from inside the container — `gate-repo` reads it from the same
+    env-file, so it is the admin token rather than a separate one. The other
+    goes to Actions and never leaves the platform.
+    """
+    before = TEXT.split("### Get these credentials", 1)[1].split("\n## ", 1)[0]
+    assert "Two GitHub tokens, not three" in before, (
+        "the credentials table no longer states how many GitHub tokens are needed"
+    )

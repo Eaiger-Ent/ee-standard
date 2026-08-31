@@ -97,16 +97,68 @@ you should know exactly which and what they cost before you begin:
 
 ### Get these credentials
 
-| Credential | Where to create it | Scope | Where it goes |
+| Credential | Where to create it | Where it goes | Needed for |
 | --- | --- | --- | --- |
-| Claude Code OAuth token | `claude setup-token` | — | Keychain, `CLAUDE_OAUTH_TOKEN` |
-| A token for `gh` | <https://github.com/settings/personal-access-tokens> | read on the repository | Keychain, `GITHUB_TOKEN` |
-| An admin token | <https://github.com/settings/personal-access-tokens> | `Administration: write` | used once, not stored |
-| The CI token | <https://github.com/settings/personal-access-tokens> | `Administration: read` | an environment secret, at step 6 |
+| Claude Code OAuth token | `claude setup-token` | Keychain, `CLAUDE_OAUTH_TOKEN` | The container will not start without it |
+| A GitHub token | see § Creating the GitHub token | Keychain, `GITHUB_TOKEN` | `gh` and every gate that talks to GitHub |
+| The CI token | the same page, a **second** token | a GitHub environment secret, later | Step § 4.3 of the reference, a second sitting |
 
-**Make the last two fine-grained, not classic.** A classic token in CI is a
-verified violation — SEC-003 fails on a header only classic tokens return. The
-`gh` row may be classic; it never reaches CI.
+**Two GitHub tokens, not three, and they are not interchangeable.** One lives in
+your Keychain and is used *by you and by the gates*, from inside the container.
+The other is given to GitHub Actions and never leaves the platform — that one is
+a later sitting and [`docs/08-adopting.md`](docs/08-adopting.md) § 4.3 covers it.
+
+### Creating the GitHub token
+
+Go to <https://github.com/settings/personal-access-tokens> → **Generate new
+token**. Choose **fine-grained**, not classic: a classic token in CI is a
+verified violation, SEC-003 fails on a header only classic tokens return, and
+there is no reason to keep two habits.
+
+| Field | Value |
+| --- | --- |
+| Resource owner | The account or organisation that owns the repository |
+| Repository access | **Only select repositories** → the one you are adopting |
+| Expiration | 90 days or less. You will be asked to rotate it; that is the point |
+
+Then under **Repository permissions**, set exactly these and nothing else:
+
+| Permission | Level | Why |
+| --- | --- | --- |
+| Metadata | Read-only | Mandatory for every fine-grained token |
+| Contents | Read-only | `gh` reading the repository |
+| Administration | **Read and write** | `gate-repo` creates the branch ruleset at step 5, and SEC-001 reads push-protection status — GitHub hides that field from a caller without it |
+
+`Administration: write` is the one people miss, and it fails late: `gate-repo`
+stops at its pre-flight rather than writing half a deployment.
+
+**Store it in the Keychain**, which is the only place it lives — nothing commits
+it and nothing else reads it:
+
+```bash
+security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "<paste the token>"
+```
+
+Scoped to this project instead of every project on the machine — the name is
+your checkout directory in `UPPER_SNAKE_CASE`, and it is checked first:
+
+```bash
+security add-generic-password -a "$USER" -s "MY_PROJECT_GITHUB_TOKEN" -w "<paste the token>"
+```
+
+**How it reaches the container.** You never export it and never put it in a
+file yourself. `.devcontainer/fetch-secrets.sh` runs **on the host** before the
+container exists, reads the Keychain, and writes `.devcontainer/.env` and
+`.env.docker`; `devcontainer.json` passes the second in with `--env-file`.
+Inside, `$GITHUB_TOKEN` is set and `gh` uses it with no configuration of its own.
+Both files are gitignored, and SEC-001 reads those two lines.
+
+**Check it before you rely on it:**
+
+```bash
+GH_TOKEN=$(security find-generic-password -a "$USER" -s "GITHUB_TOKEN" -w) \
+  gh api "repos/{owner}/{repo}" --jq .full_name
+```
 
 ## What you are about to do
 
