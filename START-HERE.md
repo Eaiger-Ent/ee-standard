@@ -6,6 +6,10 @@ them, run lint, types and tests at every locus that declares them, and have a
 default branch whose protection is verified against what GitHub actually
 enforces — with one command that tells you which of those hold.
 
+**Two of those need a paid GitHub plan if your repository is private.** Check
+before you start rather than at step 3 — § Is your repository private? is one
+command and it decides what you can reach.
+
 Most of this you do alone. Two steps wait on somebody else, and § What you are
 about to do says which, so you can raise them today and carry on.
 
@@ -58,6 +62,30 @@ Give Docker Desktop 8 GB of memory (Settings → Resources → Memory).
 **And a repository to work on**, on GitHub and cloned locally. This standard
 makes an existing repository conformant; it does not create one. § Where to run
 these has the check and the one-liner if you are starting from nothing.
+
+### Is your repository private?
+
+If it is, run this before anything else. It decides whether two of the fifteen
+controls are reachable at all, and finding that out at step 3 wastes the four
+steps before it.
+
+```bash
+gh api "repos/{owner}/{repo}" --jq .visibility
+gh api "repos/{owner}/{repo}/rulesets" >/dev/null && echo "rulesets: available" \
+  || echo "rulesets: NOT available on this repository's plan"
+```
+
+**Public repository:** everything below applies. Skip to the credentials.
+
+**Private, rulesets available** (GitHub Team or Enterprise): everything below
+applies too.
+
+**Private, rulesets not available:** you can still adopt this, and **thirteen of
+the fifteen controls will hold** — the secret scanner at every local locus,
+frozen lockfile installs, SHA-pinned actions, published-digest checks, lint,
+types, tests, the pinned devcontainer, dependency proposals. Two cannot, and
+you should know exactly which and what they cost before you begin:
+§ If your plan has no rulesets, at the end.
 
 ### Get these credentials
 
@@ -188,15 +216,22 @@ also accepts `{branch}`, but it resolves to the branch you are *on* — so runni
 these from a feature branch reports an unprotected branch and an empty rule
 list, which looks like a real answer and is not.
 
-Create a default-branch ruleset requiring a pull request and passing checks with
-no bypass actors, and enable secret-scanning push protection.
+That block only *reads*. One thing here you must do by hand, because no gate
+does it: **enable secret-scanning push protection**, in the repository's
+Settings → Code security. It is the only stop that is not on a contributor's
+machine.
 
-**Done when:** the second command prints `true`, the third prints `enabled`, and
-a direct push to the default branch is refused.
+**You do not create the ruleset here.** Step 5 does, through `gate-repo`, which
+asks its own confirmation before the call — the ruleset is in force for everyone
+the moment it returns, so it is not something to do twice or by accident.
 
-**If it fails:** a `403` on the first means the repository is private on a plan
-without rulesets — make it public or upgrade. A `403` on write with a `200` on
-read is a token scope problem, not a syntax one.
+**Done when:** the last command prints `enabled`. The rest are a baseline to
+compare against after step 5 — expect the ruleset list to be empty and
+`.protected` to be `false` now, and both to change then.
+
+**If it fails:** a `403` on the ruleset listing means the repository is private
+on a plan without them — see § If your plan has no rulesets. A `403` on write
+with a `200` on read is a token scope problem, not a syntax one.
 
 **Why this exists:** [`docs/08-adopting.md`](docs/08-adopting.md) § 1
 
@@ -338,6 +373,9 @@ found in violation but something could not be verified — some controls read
 platform state and only answer inside a GitHub Actions job. Exit `1` is a real
 violation.
 
+**On a private repository without rulesets you will get `1`, and it is real.**
+CI-001 and SEC-001's remote block fail rather than skip. See the next section.
+
 Two things are a second sitting, and their order matters — giving CI a
 credential comes *before* making the run fail on anything unverified, or every
 run fails on controls that actually hold:
@@ -351,3 +389,43 @@ run fails on controls that actually hold:
 | Every gate says its pre-commit locus is wired, nothing runs on commit | A wired locus is not an installed hook | `ls -l .git/hooks/pre-commit`; `uv run pre-commit install` |
 | A gate is green about a tool version you are not running | You ran it on the host, not in the container | Everything after step 4 goes inside |
 | `sha256sum -c` fails during container create | A placeholder survived, or an architecture digest is wrong | `grep -rl '{{' .devcontainer` should print nothing |
+
+## If your plan has no rulesets
+
+Repository rulesets on a **private** repository are, in GitHub's words, *"for
+customers on GitHub Team and GitHub Enterprise plans"*, and secret-scanning push
+protection on a private repository likewise needs a paid tier. If you have
+neither, two controls cannot hold and **the checker fails them rather than
+skipping them** — `uv run register-check` exits `1`, and it is telling the truth.
+
+**Adopt anyway.** Thirteen of fifteen controls hold, and they are not the
+trivial ones. What you do not get is the *server-side boundary*, and it is worth
+being exact about what that leaves open:
+
+| Risk | What it means in practice |
+| --- | --- |
+| **Your default branch is advisory** | Anyone with write access can push straight to it. No review, no passing check. Every gate still runs; nothing makes a red one stop a merge |
+| **History can be rewritten** | Force-push to the default branch is possible, which removes the audit trail everything else here relies on |
+| **A secret that reaches a commit reaches the remote** | The scanner runs at pre-commit, pre-push and CI — but all three are on the contributor's side. `--no-verify` skips two, a fresh clone has neither until `pre-commit install` runs, and CI catches it *after* the push, by which point it is disclosed and must be rotated |
+| **No alerts on what is already there** | A credential committed before you adopted is never flagged |
+
+The first two are one thing said twice, and it is the one this standard exists
+to prevent: a check that runs and blocks nothing is theme **T-3**.
+
+**What to do about it, honestly:**
+
+- **The cheapest fix is the plan.** Two of fifteen controls, and both are the
+  boundary ones. If the repository holds anything you would mind being pushed to
+  unreviewed, that is what you are buying.
+- **Until then, install the hooks and mean it.** `uv run pre-commit install`
+  after every clone, by every contributor. It is bypassable and per-machine —
+  that is precisely why it is not a control — but it is what you have.
+- **Keep the conformance workflow red-if-broken and read it.** It cannot block a
+  merge, but it can tell you, and a report nobody reads is the failure after
+  this one.
+
+**A mechanism to record this rather than run permanently red is proposed and not
+built** — [ADR 0047](docs/adr/0047-a-plan-limit-is-recorded-not-tolerated.md). It
+would report the two blocks as `UNAVAILABLE (plan)` with an expiry date instead
+of failing them. Until it is accepted and implemented, exit `1` is what you get,
+and nothing in this document pretends otherwise.

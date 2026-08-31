@@ -235,3 +235,33 @@ def test_the_platform_checks_look_up_the_default_branch() -> None:
     assert "/branches/{branch}" not in step, (
         "step 3 uses gh's {branch}, which resolves to the current branch"
     )
+
+
+def test_the_private_repository_constraint_surfaces_before_the_work() -> None:
+    """Two controls need a paid plan, and finding that out at step 3 wastes four steps.
+
+    The same argument as § B of the review: a platform assumption belongs on the
+    first screen, not at the point where it fails. And the section it points at
+    must state today's behaviour — the checker *fails* these two rather than
+    skipping them, so an adopter on a free private plan gets exit 1, not 3.
+    """
+    before = TEXT.split("## Before you start", 1)[1].split("\n## What you are about to do", 1)[0]
+    assert "Is your repository private?" in before, (
+        "the plan constraint is not raised before the steps"
+    )
+    tail = TEXT.split("## If your plan has no rulesets", 1)
+    assert len(tail) == 2, "there is no section explaining what a plan without rulesets costs"
+    assert "exits `1`" in tail[1], (
+        "the section does not say the checker fails these controls rather than skipping them"
+    )
+
+
+def test_it_does_not_promise_a_mechanism_that_is_only_proposed() -> None:
+    """ADR 0047 is Proposed. A guide that reads as though it were built is worse
+    than one that does not mention it, because the reader plans around it."""
+    if "0047" not in TEXT:
+        return
+    section = TEXT.split("## If your plan has no rulesets", 1)[1]
+    assert "proposed and not" in section or "not built" in section, (
+        "START-HERE.md cites ADR 0047 without saying it is unbuilt"
+    )
