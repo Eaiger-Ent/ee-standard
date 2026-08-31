@@ -20,11 +20,13 @@ Reporting the stale-but-valid case is Phase 5's sweep.
 from __future__ import annotations
 
 import subprocess
+from pathlib import Path
 
 import pytest
 
-from conftest import REPO_ROOT, a_register
-from register_check.provenance import EXPECTED, MARKER, stamps_in
+from conftest import REPO_ROOT, a_register, make_repo
+from register_check.provenance import EXPECTED, MARKER, stamps_by_file, stamps_in
+from register_check.repo import Repo
 
 
 def _stamped_files() -> list[str]:
@@ -173,3 +175,64 @@ def test_stamp_is_well_formed_and_names_a_real_control(path: str) -> None:
             f"{path}: stamp claims register contract {stamp.register_contract}, "
             f"but the register is at {register.register_contract}"
         )
+
+
+def test_a_stamp_in_a_code_fence_is_not_a_deployment(tmp_path: Path) -> None:
+    """A document explaining the format is not an artefact (ADR 0046).
+
+    Measured before the fix: a repository containing one Markdown file that
+    explains what a stamp looks like, and **no gate deployed at all**, passed
+    SEC-001's `provenance_stamp_present` — the report even named the document
+    as the artefact. A Tier-1 blocking control satisfied by prose describing the
+    thing it verifies.
+
+    This is `docs/09-phase-1.5-review.md` § F's shape, and the fix is the same
+    one: refuse it by construction rather than remember it.
+    """
+    repo = make_repo(
+        tmp_path,
+        {
+            "docs/concepts.md": (
+                "# Concepts\n\nThe provenance stamp looks like this:\n\n"
+                "```text\n"
+                "# ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  "
+                "gate-contract: 5  register: v0.23.0  register-contract: 30\n"
+                "```\n"
+            )
+        },
+    )
+    assert stamps_by_file(repo) == {}, (
+        "a stamp inside a fenced code block was read as a deployed artefact"
+    )
+
+
+def test_a_stamp_outside_a_fence_still_counts(tmp_path: Path) -> None:
+    """The rule is about fences, not about Markdown.
+
+    Without this, 'strip Markdown' would pass the test above by ignoring `.md`
+    files wholesale — a broader rule than ADR 0046 took, and one that would hide
+    a real artefact if a gate ever stamped a Markdown file.
+    """
+    repo = make_repo(
+        tmp_path,
+        {
+            "artefact.md": (
+                "<!-- ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  "
+                "gate-contract: 7  register: v0.29.0  register-contract: 35 -->\n"
+            )
+        },
+    )
+    assert "artefact.md" in stamps_by_file(repo), (
+        "a stamp outside any fence was dropped — the rule is fences, not file type"
+    )
+
+
+def test_the_repositorys_own_examples_are_not_counted() -> None:
+    """The three that prompted ADR 0046, held so they cannot come back.
+
+    ADR 0038 must show a stamp with no `gate-contract` to explain the field it
+    adds, so this is not a defect in the documentation to be tidied away — it is
+    a permanent property of a corpus that records format changes.
+    """
+    counted = [p for p in stamps_by_file(Repo(REPO_ROOT)) if p.startswith("docs/")]
+    assert not counted, f"documentation counted as deployed artefacts: {counted}"
