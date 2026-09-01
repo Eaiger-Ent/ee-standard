@@ -11,6 +11,7 @@ why neither can be allowed to read as agreement.
 
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -85,6 +86,65 @@ def test_this_repository_pins_its_interpreter(tmp_path: Path) -> None:
     assert python.source == "toolchain"
     assert python.toolchain == ".python-version"
     assert python.version is None, "the file is the authority; a copy here would drift from it"
+
+
+#: Adopter-facing prose that hands someone an interpreter version to type. The
+#: register cannot supply this number — it records the *file* under
+#: `tools.python`, not the version in it — so a document that tells a new
+#: adopter which interpreter to start on has to write one down.
+_ADOPTER_DOCS = ("START-HERE.md", "docs/08-adopting.md")
+
+#: `uv init --python 3.14`, `echo "3.14" > .python-version`, and anything else
+#: that spells a two-part CPython version next to those two commands.
+_PINNED_IN_PROSE = re.compile(
+    r"(?:uv init[^\n`]*--python\s+|\.python-version[^\n`]*?|echo\s+\"?)(3\.\d+)"
+)
+
+
+def test_the_adopter_docs_name_the_interpreter_this_repository_pins() -> None:
+    """One number, and a test rather than the hope that two files agree.
+
+    An adopter cannot derive it. `tools.python` in the register records
+    `.python-version` — the *file* — which a repository starting from nothing
+    does not have yet, so START-HERE has to state a version outright and
+    `08-adopting.md` already did. Two prose copies of a number is exactly the
+    drift this repository exists to prevent, so the copies are held to the one
+    file that is authoritative here: this repository's own `.python-version`.
+
+    It has already gone wrong once in the other direction. An adopter ran
+    `uv init` without `--python`, got 3.13, and `uv add --dev register-check`
+    refused: the checker requires 3.14, and `requires-python = ">=3.13"` is
+    resolved from its lowest version rather than its highest.
+    """
+    pinned = (REPO_ROOT / ".python-version").read_text(encoding="utf-8")
+    expected = next(
+        line.strip() for line in pinned.splitlines() if line.strip() and not line.startswith("#")
+    )
+    wrong: list[str] = []
+    for name in _ADOPTER_DOCS:
+        text = (REPO_ROOT / name).read_text(encoding="utf-8")
+        wrong += [
+            f"{name}: names Python {found}"
+            for found in _PINNED_IN_PROSE.findall(text)
+            if found != expected
+        ]
+    assert not wrong, (
+        f"this repository pins Python {expected} in .python-version, and an adopter "
+        "document hands out a different one:\n" + "\n".join(wrong)
+    )
+
+
+def test_the_adopter_docs_name_it_at_all() -> None:
+    """A regex that matches nothing would pass the test above in silence."""
+    found = [
+        name
+        for name in _ADOPTER_DOCS
+        if _PINNED_IN_PROSE.search((REPO_ROOT / name).read_text(encoding="utf-8"))
+    ]
+    assert found == list(_ADOPTER_DOCS), (
+        f"no interpreter version found in {set(_ADOPTER_DOCS) - set(found)} — the "
+        "pattern has gone stale, or the guidance has moved"
+    )
 
 
 def test_comments_do_not_answer_for_the_version() -> None:
