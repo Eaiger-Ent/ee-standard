@@ -1788,7 +1788,7 @@ can be mistaken for a pass — but they ask different things of you:
 | --- | --- | --- |
 | `SKIPPED (no credentials)` | No token in the environment | Supply one |
 | `UNCLASSIFIED`, *token was rejected* | 401 — invalid or expired | Fix the token |
-| `UNCLASSIFIED`, *lacks the scope* | 403 | Grant the scope in the table above |
+| `UNCLASSIFIED`, *answered 403* | Either the token lacks administration access, or the plan does not sell the feature — a private repository has neither rulesets nor push protection below a paid tier | Read GitHub's own sentence, which the report quotes. *Upgrade to GitHub Pro* is a plan limit, recorded in `deployment-decisions.yaml` ([ADR 0047](adr/0047-a-plan-limit-is-recorded-not-tolerated.md), and `START-HERE.md` § If your plan has no rulesets); anything else is the scope in the table above |
 | `UNCLASSIFIED`, *not visible to this token* | 404 — the repository does not exist, or the token cannot see it | Check the slug and the token's access |
 | `UNCLASSIFIED`, *says nothing about* | The answer came back without the setting | Use a token with administration read |
 | `FAIL` | GitHub answered, and the branch is not protected as the register requires | Fix the platform state — this one **is** about your repository |

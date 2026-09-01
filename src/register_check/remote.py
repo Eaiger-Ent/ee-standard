@@ -156,7 +156,9 @@ class GitHub:
                 body = response.read().decode("utf-8")
                 received = {str(k).lower(): str(v) for k, v in response.headers.items()}
         except urllib.error.HTTPError as exc:
-            raise Unreadable(_http_explanation(exc.code, path, self.slug)) from exc
+            raise Unreadable(
+                _http_explanation(exc.code, path, self.slug, _api_message(exc))
+            ) from exc
         except urllib.error.URLError as exc:
             raise Unreadable(f"could not reach {self.api}{path}: {exc.reason}") from exc
         except TimeoutError as exc:
@@ -195,14 +197,55 @@ def fetch_text(url: str) -> str:
     return body
 
 
-def _http_explanation(code: int, path: str, slug: str) -> str:
+#: Enough of an error body to carry GitHub's sentence, and not enough for a
+#: server having a bad day to fill a report with.
+_MESSAGE_LIMIT = 400
+
+
+def _api_message(exc: urllib.error.HTTPError) -> str:
+    """GitHub's own `message` for a failed request, or an empty string.
+
+    Read because **the checker cannot tell a plan limit from a scope problem
+    and GitHub can**. Both answer `403` on the rulesets endpoints: a repository
+    whose token lacks administration access, and a private repository on a plan
+    that does not sell rulesets at all. Only the body distinguishes them, and it
+    says so in as many words — *"Upgrade to GitHub Pro or make this repository
+    public to enable this feature."*
+
+    This is quoted rather than matched. A substring test would be the checker
+    deciding which cause it was, and
+    [ADR 0047](../../docs/adr/0047-a-plan-limit-is-recorded-not-tolerated.md) is
+    explicit that a `403` saying *upgrade* is **evidence** an operator records,
+    not a verdict the checker reaches on its own. Reading the body off a failure
+    never raises: an error path that can fail is one that hides the error it
+    came to report.
+    """
+    try:
+        body = exc.read().decode("utf-8", errors="replace")
+        message = json.loads(body).get("message", "")
+    except Exception:
+        # See the docstring: an error path that can fail hides the error it
+        # came to report, so every way a body can disappoint returns "".
+        return ""
+    if not isinstance(message, str):
+        return ""
+    return " ".join(message.split())[:_MESSAGE_LIMIT]
+
+
+def _http_explanation(code: int, path: str, slug: str, message: str = "") -> str:
     """What an operator has to do about this status, not merely what it was.
 
     401 and 403 are UNCLASSIFIED rather than SKIPPED (no credentials) on
     purpose. A token that was presented and rejected is a different fact from no
     token: the first needs the token fixed, the second needs one supplied, and
     collapsing them tells the operator to do the wrong thing.
+
+    A `403` has **two** causes and this cannot choose between them, so it names
+    both and quotes GitHub. Asserting the scope was the whole answer sent a real
+    adopter after a token that was already correct, on a private repository
+    whose plan does not sell rulesets at all.
     """
+    quoted = f' — GitHub says: "{message}"' if message else ""
     if code == 401:
         return (
             f"the token was rejected for {path} (401) — it is invalid or expired; "
@@ -210,8 +253,12 @@ def _http_explanation(code: int, path: str, slug: str) -> str:
         )
     if code == 403:
         return (
-            f"the token lacks the scope for {path} (403) — reading {slug}'s protection "
-            "state needs a token with repository administration read access"
+            f"{path} answered 403{quoted}. Either the token lacks repository "
+            f"administration read access for {slug}, or this repository's plan does "
+            "not offer the feature — a private repository has neither rulesets nor "
+            "push protection below a paid tier. GitHub's wording above tells you "
+            "which; a plan limit is recorded in deployment-decisions.yaml (ADR 0047), "
+            "never fixed with a bigger token"
         )
     if code == 404:
         return (

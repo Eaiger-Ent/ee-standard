@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import datetime
 import email.message
+import io
 import json
 import subprocess
 import urllib.error
@@ -182,6 +183,85 @@ def test_every_http_failure_is_unreadable_never_a_violation(
     monkeypatch.setattr(urllib.request, "urlopen", raising)
     with pytest.raises(Unreadable):
         GitHub("acme/widget", "t").get("/repos/acme/widget")
+
+
+def _http_error(code: int, body: bytes | None) -> urllib.error.HTTPError:
+    """An `HTTPError` whose body can be read, as urllib hands one over."""
+    return urllib.error.HTTPError(
+        "https://api.github.com/x",
+        code,
+        "no",
+        {},  # type: ignore[arg-type]
+        io.BytesIO(body) if body is not None else None,
+    )
+
+
+def _explanation(code: int, body: bytes | None, monkeypatch: pytest.MonkeyPatch) -> str:
+    def raising(*_: Any, **__: Any) -> Any:
+        raise _http_error(code, body)
+
+    monkeypatch.setattr(urllib.request, "urlopen", raising)
+    with pytest.raises(Unreadable) as caught:
+        GitHub("acme/widget", "t").get("/repos/acme/widget/rules/branches/main")
+    return str(caught.value)
+
+
+def test_a_403_names_both_causes_rather_than_asserting_the_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A 403 on a rulesets endpoint has two causes and this cannot choose.
+
+    A token without administration access and a private repository on a plan
+    that does not sell rulesets answer identically. Naming only the scope sent a
+    real adopter after a token that was already correct.
+    """
+    message = _explanation(403, b'{"message": "Upgrade to GitHub Pro"}', monkeypatch)
+    assert "administration read access" in message
+    assert "plan" in message
+    assert "deployment-decisions.yaml" in message
+
+
+def test_a_403_quotes_github_because_only_github_knows_which_cause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The body is the evidence ADR 0047 asks an operator to record.
+
+    Quoted rather than matched: deciding from it which cause it was would be the
+    checker reaching the verdict the ADR reserves for a recorded, dated entry.
+    """
+    body = b'{"message": "Upgrade to GitHub Pro or make this repository public."}'
+    assert "Upgrade to GitHub Pro or make this repository public." in _explanation(
+        403, body, monkeypatch
+    )
+
+
+@pytest.mark.parametrize(
+    "body",
+    [None, b"", b"<html>502</html>", b'{"message": 17}', b"[]"],
+    ids=["no body", "empty", "not json", "not a string", "not an object"],
+)
+def test_an_unreadable_body_still_explains_the_status(
+    monkeypatch: pytest.MonkeyPatch, body: bytes | None
+) -> None:
+    """Reading the body may not fail: it would hide the error it came to report."""
+    message = _explanation(403, body, monkeypatch)
+    assert "403" in message
+    assert "GitHub says" not in message
+
+
+def test_a_quoted_message_cannot_run_away_with_the_report(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A server having a bad day does not get to fill a control's report."""
+    body = json.dumps({"message": "x" * 5_000}).encode()
+    assert len(_explanation(403, body, monkeypatch)) < 1_000
+
+
+def test_a_401_is_still_a_token_to_fix(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The other statuses did not become ambiguous — only 403 has two causes."""
+    message = _explanation(401, b'{"message": "Bad credentials"}', monkeypatch)
+    assert "invalid or expired" in message
+    assert "plan" not in message
 
 
 def test_a_network_failure_is_unreadable(monkeypatch: pytest.MonkeyPatch) -> None:
