@@ -17,11 +17,12 @@ cp -R ~/.claude/plugins/cache/<marketplace>/control-register/<version>/templates
 cp -R path/to/ee-standard/plugins/control-register/templates/devcontainer .devcontainer
 ```
 
-Then, in this order:
+Then, in this order — this file documents the template rather than your
+project, and the grep lists every placeholder still to substitute:
 
 ```bash
-rm .devcontainer/README.md              # this file documents the template, not your project
-grep -rl '{{' .devcontainer             # every placeholder still to substitute
+rm .devcontainer/README.md
+grep -rl '{{' .devcontainer
 ```
 
 **Delete this file first, and the order is the point.** The grep matches any

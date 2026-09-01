@@ -170,11 +170,12 @@ below assumes one: § 0.1 commits the register, § 1 calls
 `gh api repos/{owner}/{repo}/…`, SEC-001 reads what git tracks and CI-001 reads what
 GitHub enforces on a default branch. A folder that is not a repository fails at
 the first `git` command with `fatal: not a git repository`, which reads as a
-broken instruction rather than a missing precondition — so check first:
+broken instruction rather than a missing precondition. The first line prints
+the repository root, the second the GitHub repository these controls protect:
 
 ```bash
-git rev-parse --show-toplevel   # the repository root
-git remote get-url origin       # the GitHub repository these controls protect
+git rev-parse --show-toplevel
+git remote get-url origin
 ```
 
 Starting from nothing, `git init -b main` followed by
@@ -301,12 +302,13 @@ becomes yours the moment you edit it (§ 3.7).
 
 Take it from a tag, and **resolve which tag rather than being told one**. A
 release number written into this sentence is a copy that ages the day after it
-is written, and the reader has no way to tell a current one from a stale one:
+is written, and the reader has no way to tell a current one from a stale one.
+The `echo` must print something: an empty `tag` fetches nothing.
 
 ```bash
 repo=https://github.com/Eaiger-Ent/ee-standard
 tag=$(git ls-remote --tags --refs "$repo" | awk -F/ '{print $NF}' | sort -V | tail -1)
-echo "$tag"                       # non-empty, or nothing below fetches anything
+echo "$tag"
 curl -fsSL -o controls.yaml \
   "https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/${tag}/controls.published.yaml"
 git add controls.yaml
@@ -317,10 +319,11 @@ git add controls.yaml
 installs the checker. Run the grep now and come back for the `schema` command
 after § 2.3 — it is the check that matters and it is worth returning for:
 
-```bash
-grep -A2 '^    install:' controls.yaml     # `ref:` names the tag you just fetched
+In the grep's output, `ref:` names the tag you just fetched. The `schema` line
+is for after § 2.3, inside the container:
 
-# After § 2.3, inside the container:
+```bash
+grep -A2 '^    install:' controls.yaml
 uv run register-check --repo . --register ./controls.yaml schema
 ```
 
@@ -548,10 +551,12 @@ destroys and rebuilds it. And the pre-commit hook was never installed, while
 every gate reported its `pre-commit` locus wired, because the gates read
 `.pre-commit-config.yaml` and a hook is a different thing.
 
+How you know which one you are in — the first line reports the pinned `uv`, the
+second whatever your host has:
+
 ```bash
-# How you know which one you are in.
-devcontainer exec --workspace-folder . uv --version   # the pinned one
-uv --version                                          # whatever your host has
+devcontainer exec --workspace-folder . uv --version
+uv --version
 ```
 
 If the two disagree, the container is right.
@@ -562,9 +567,12 @@ is whether anything runs before a commit, and **every gate reads the first**.
 So a repository can have six gates reporting their `pre-commit` locus wired and
 nothing at all running at it.
 
+An absent hook means nothing runs before a commit; the second line is what puts
+it there:
+
 ```bash
-ls -l .git/hooks/pre-commit          # absent means nothing runs
-uv run pre-commit install            # what puts it there
+ls -l .git/hooks/pre-commit
+uv run pre-commit install
 ```
 
 The template's `setup.sh` runs that install on the config's presence, so a
@@ -598,9 +606,12 @@ lines it carries are read by SEC-001.
 
 Then, **in this order**:
 
+The README documents the template rather than your project; the grep lists
+every placeholder still to substitute:
+
 ```bash
-rm .devcontainer/README.md            # documents the template, not your project
-grep -rl '{{' .devcontainer           # every placeholder still to substitute
+rm .devcontainer/README.md
+grep -rl '{{' .devcontainer
 ```
 
 Delete the README first, and the order is the point: the grep matches any file
@@ -658,8 +669,10 @@ sed -i.bak \
   -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm}/g" \
   .devcontainer/setup.sh
 rm .devcontainer/*.bak
-grep -rl '{{' .devcontainer          # expect no output
+grep -rl '{{' .devcontainer
 ```
+
+The final grep should print nothing.
 
 `-i.bak` and the `rm` are there for portability rather than caution: BSD `sed`,
 which is what a macOS host has, requires an argument to `-i` where GNU `sed`
@@ -694,10 +707,12 @@ template is language-agnostic — `setup.sh` branches on `package-lock.json`,
 toolchain-sourced tool whose file git does not track, so without it SUP-001
 fails on a file nothing has told you to write:
 
+Write the version your project runs on. The last line is for after § 2.3:
+
 ```bash
-echo "3.14" > .python-version      # the version your project runs on
+echo "3.14" > .python-version
 git add .python-version
-uv run register-check run --control SUP-001   # after § 2.3
+uv run register-check run --control SUP-001
 ```
 
 Pin it rather than relying on `requires-python`: a support floor constrains and
@@ -724,8 +739,10 @@ security find-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w >/dev/null 
 claude setup-token
 security delete-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" 2>/dev/null
 security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "<paste it here>"
-security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "<a token>"   # optional, but `gh` needs it
+security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "<a token>"
 ```
+
+The last line is optional, but `gh` needs it.
 
 Either name may be prefixed with your checkout directory in `UPPER_SNAKE_CASE`
 to scope it to one project. `check-auth.sh` reports which entry answered on
@@ -803,12 +820,16 @@ by removing it.
 
 **How you know it worked**, in this order:
 
+The grep should print nothing, the `uv --version` line proves the bootstrap
+actually ran, and the last control checks the `.gitignore` that came with the
+copy:
+
 ```bash
-grep -rl '{{' .devcontainer          # expect no output
+grep -rl '{{' .devcontainer
 devcontainer build --workspace-folder .
-devcontainer exec --workspace-folder . uv --version    # the bootstrap actually ran
+devcontainer exec --workspace-folder . uv --version
 uv run register-check run --control BLD-001 --control DEV-001
-uv run register-check run --control SEC-001   # the .gitignore that came with the copy
+uv run register-check run --control SEC-001
 ```
 
 The `uv --version` line is there because Phase 4 built a container that reported
@@ -923,8 +944,10 @@ is what a developer meets: open a Python file, run *Format Document*, and check
 the status bar names ruff.
 
 ```bash
-code --status | grep -i autopep8   # installed is fine; formatting is not
+code --status | grep -i autopep8
 ```
+
+Installed is fine; formatting is not.
 
 The extension staying installed is expected — `devcontainer.json` offers no way
 to remove what a feature contributes, and this is a configuration fix rather
@@ -1091,10 +1114,11 @@ matters where a stamp is read, and here nothing reads one. **Do not write a
 stamp naming `lint-md`**: a stamp names the skill that deployed the artefact, and
 recording a deployment that did not happen is worse than recording none.
 
-Six steps, done and verified in Phase 4's consumer repository:
+Six steps, done and verified in Phase 4's consumer repository. The lockfile is
+the pin:
 
 ```bash
-npm init -y && npm install --save-dev markdownlint-cli2   # the lockfile is the pin
+npm init -y && npm install --save-dev markdownlint-cli2
 ```
 
 1. `package-lock.json` — commit it. The register declares this tool
@@ -1638,11 +1662,13 @@ answer differently without either being misconfigured. This repository ran its
 own gates on 3.13 locally and 3.14 in CI for exactly that reason, with nothing
 reporting it, until [ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md).
 
+The gap, in your own repository: the first line is what a local gate runs on,
+the second what CI ran on. If they disagree, nothing is wrong with your
+configuration — there is no configuration, which is the problem.
+
 ```bash
-# The gap, in your own repository. If these two disagree, nothing is wrong with
-# your configuration — there is no configuration, which is the problem.
-uv run python -V                                     # what a local gate runs on
-gh run view --log | grep -iE 'Using CPython|platform linux'   # what CI ran on
+uv run python -V
+gh run view --log | grep -iE 'Using CPython|platform linux'
 ```
 
 Commit the toolchain file, keep the support floor honest, and let the linter
@@ -1666,18 +1692,24 @@ If `register-check` is not there, it is not installed — § 2.3 is the step tha
 puts it there, and it is a step rather than an assumption.
 
 ```bash
-uv run register-check                    # the whole register
-uv run register-check run --tier 1       # Tier 1 only — note the `run`
-uv run register-check run --control SEC-001   # one control — what a gate verifies through
-uv run register-check explain SEC-001    # why a control exists, and what it checks
-uv run register-check schema             # validate the register itself
-uv run register-check --repo ../other    # `--repo` goes before the subcommand
-
-# Checking a repository that has no register of its own — every adopter, until
-# they commit one. Without `--register`, the checker looks for
-# `../other/controls.yaml` and reports that it cannot read it.
+uv run register-check
+uv run register-check run --tier 1
+uv run register-check run --control SEC-001
+uv run register-check explain SEC-001
+uv run register-check schema
+uv run register-check --repo ../other
 uv run register-check --repo ../other --register ./controls.yaml
 ```
+
+| Line | What it runs |
+| --- | --- |
+| `register-check` | The whole register |
+| `run --tier 1` | Tier 1 only — note the `run` |
+| `run --control SEC-001` | One control — what a gate verifies through |
+| `explain SEC-001` | Why a control exists, and what it checks |
+| `schema` | Validate the register itself |
+| `--repo ../other` | `--repo` goes before the subcommand |
+| `--repo ../other --register ./controls.yaml` | A repository with no register of its own — every adopter, until they commit one. Without `--register`, the checker looks for `../other/controls.yaml` and reports that it cannot read it |
 
 ### 4.1 — Remote checks: what they need, and what they refuse to guess
 
@@ -1691,9 +1723,11 @@ asks when the credential CI carries expires. Everything below is
 is read from `gh`'s configuration and no binary has to be installed. The token
 is sent as a bearer header, never in a URL.
 
+In a local shell, export a token and the remote blocks answer:
+
 ```bash
-export GITHUB_TOKEN=$(gh auth token)   # a local shell
-uv run register-check                  # remote blocks now answer
+export GITHUB_TOKEN=$(gh auth token)
+uv run register-check
 ```
 
 **In CI you must pass it explicitly.** GitHub Actions does *not* put
@@ -2166,7 +2200,9 @@ cp ~/.claude/plugins/cache/ee-standard/control-register/*/templates/sweep/confor
 # From a clone of the standard instead.
 cp path/to/ee-standard/plugins/control-register/templates/sweep/conformance-sweep.yml \
    .github/workflows/
-``` It runs
+```
+
+It runs
 `register-check deployments` — the report with no other home, since conformance
 already runs on every pull request — writes it to the job summary, and keeps
 **one** tracking issue: opened when something is owed, edited while it persists,

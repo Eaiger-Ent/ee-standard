@@ -113,11 +113,12 @@ taken.
 
 **Starting from nothing.** Run this from where you keep projects — `~/git`, or
 wherever that is — **not from inside another repository**. The first line stops
-you if you are:
+you if you are, and `my-new-project` is yours to name — it becomes the
+repository's name:
 
 ```bash
 git rev-parse --show-toplevel 2>/dev/null && { echo "STOP: already inside a repository — cd out first"; }
-mkdir -p my-new-project && cd my-new-project     # choose the name; it becomes the repository's
+mkdir -p my-new-project && cd my-new-project
 git init -b main
 git commit -q --allow-empty -m "Initial commit"
 gh repo create "$(basename "$PWD")" --private --source=. --remote=origin --push
@@ -131,10 +132,10 @@ gh repo create "$(basename "$PWD")" --private --source=. --remote=origin --push
 
 **It is already on GitHub — clone it, do not recreate it.** This covers both
 "somebody else made it" and "I made it on an earlier attempt", and they are the
-same situation:
+same situation. Replace the angle-bracketed parts with your own:
 
 ```bash
-gh repo clone <owner>/<repo>    # angle brackets: replace these
+gh repo clone <owner>/<repo>
 cd <repo>
 ```
 
@@ -145,15 +146,19 @@ the push is rejected with *"Updates were rejected because the remote contains
 work that you do not have locally"*, and you are further from working than when
 you started.
 
+To find what is already there:
+
 ```bash
-gh repo list --limit 100 | grep "$(basename "$PWD")"   # find what is already there
+gh repo list --limit 100 | grep "$(basename "$PWD")"
 ```
 
-**Done when** both of these print something — a path, and a URL:
+**Done when** both of these print something — the repository root, and the
+GitHub repository these controls will protect. If the path differs from where
+you are, `cd` to it:
 
 ```bash
-git rev-parse --show-toplevel   # the repository root; cd here if it differs
-git remote get-url origin       # the GitHub repository these controls will protect
+git rev-parse --show-toplevel
+git remote get-url origin
 ```
 
 `fatal: not a git repository` means you are in an ordinary folder and none of the
@@ -445,10 +450,10 @@ security find-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w >/dev/null 
 
 `add-generic-password` **will not overwrite**: on an existing entry it fails with
 *"The specified item already exists in the keychain."* To replace one, delete it
-first.
+first. The first line prints the token; copy it, and paste it into the third.
 
 ```bash
-claude setup-token   # prints the token; copy it
+claude setup-token
 security delete-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" 2>/dev/null
 security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "<paste it here>"
 ```
@@ -657,9 +662,12 @@ uv run register-check
 **If it says the command is not found**, one of three things is true, and they
 are quick to tell apart:
 
+The first line answers whether this is a Python project at all; the second
+counts the dependency and its pin:
+
 ```bash
-ls pyproject.toml                                  # a Python project at all?
-grep -c register-check pyproject.toml uv.lock      # the dependency, and the pin
+ls pyproject.toml
+grep -c register-check pyproject.toml uv.lock
 ```
 
 | What you see | What it means |
