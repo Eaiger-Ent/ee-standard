@@ -386,8 +386,12 @@ def test_it_does_not_ask_for_three_github_tokens() -> None:
     goes to Actions and never leaves the platform.
     """
     before = TEXT.split("### E — Get these credentials", 1)[1].split("\n#### ", 1)[0]
-    assert "Two GitHub tokens, not three" in before, (
-        "the credentials table no longer states how many GitHub tokens are needed"
+    assert "not interchangeable" in before, (
+        "the credentials section no longer distinguishes the two GitHub tokens"
+    )
+    assert "not three" not in before, (
+        "the section is explaining an earlier draft to a reader who never saw it — "
+        "say what they need, not what the document used to say"
     )
 
 
@@ -471,3 +475,40 @@ def test_getting_a_repository_handles_a_second_attempt() -> None:
     assert "Do not run a block that does not match" in section, (
         "the section offers several blocks without telling the reader to pick one"
     )
+
+
+def test_the_project_scoped_keychain_name_is_derived() -> None:
+    """Asked directly: can the project variable be pulled from the repository?
+
+    It can, and it must — the name was `MY_PROJECT_GITHUB_TOKEN` as a literal to
+    hand-edit, which is the shape this document has removed everywhere else. The
+    command must use the same transformation `fetch-secrets.sh` uses to look the
+    entry up, or the reader stores a key nothing reads.
+    """
+    section = TEXT.split("#### Creating the GitHub token", 1)[1].split("\n## ", 1)[0]
+    assert "MY_PROJECT_GITHUB_TOKEN" not in section, (
+        "the project-scoped name is still a literal for the reader to edit"
+    )
+    assert """basename "$PWD" | tr '[:lower:]-' '[:upper:]_'""" in section, (
+        "the name is not derived with the transformation fetch-secrets.sh uses, so "
+        "the guide can store an entry the container never looks for"
+    )
+
+
+def test_the_derivation_matches_the_script_that_reads_it() -> None:
+    """One transformation, two places. Held together rather than hoped about.
+
+    `fetch-secrets.sh` computes PROJECT_PREFIX and looks up the prefixed name
+    first; START-HERE tells the reader how to store one. If those ever differ,
+    the reader stores a credential the container silently ignores and falls back
+    to the shared one — which works, until two projects need different tokens.
+    """
+    script = (
+        REPO_ROOT / "plugins/control-register/templates/devcontainer/fetch-secrets.sh"
+    ).read_text(encoding="utf-8")
+    transformation = """basename "$PWD" | tr '[:lower:]-' '[:upper:]_'"""
+    assert transformation in script, (
+        "fetch-secrets.sh no longer computes the prefix this way — START-HERE.md "
+        "must be changed with it"
+    )
+    assert transformation in TEXT, "START-HERE.md does not use the script's transformation"

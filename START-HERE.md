@@ -193,10 +193,11 @@ you should know exactly which and what they cost before you begin:
 | A GitHub token | see § Creating the GitHub token | Keychain, `GITHUB_TOKEN` | `gh` and every gate that talks to GitHub |
 | The CI token | the same page, a **second** token | a GitHub environment secret, later | Step § 4.3 of the reference, a second sitting |
 
-**Two GitHub tokens, not three, and they are not interchangeable.** One lives in
-your Keychain and is used *by you and by the gates*, from inside the container.
-The other is given to GitHub Actions and never leaves the platform — that one is
-a later sitting and [`docs/08-adopting.md`](docs/08-adopting.md) § 4.3 covers it.
+**The two GitHub tokens are not interchangeable.** One lives in your Keychain
+and is used by you *and by the gates*, from inside the container — that is the
+one you need now. The other is given to GitHub Actions, never leaves the
+platform, and belongs to a later sitting;
+[`docs/08-adopting.md`](docs/08-adopting.md) § 4.3 covers it when you get there.
 
 #### Creating the GitHub token
 
@@ -229,12 +230,20 @@ it and nothing else reads it:
 security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "<paste the token>"
 ```
 
-Scoped to this project instead of every project on the machine — the name is
-your checkout directory in `UPPER_SNAKE_CASE`, and it is checked first:
+**Scoped to this project** instead of every project on the machine. Run this
+from your repository root — the name is derived rather than typed, using the
+same transformation `fetch-secrets.sh` uses to look it up, so the two cannot
+disagree:
 
 ```bash
-security add-generic-password -a "$USER" -s "MY_PROJECT_GITHUB_TOKEN" -w "<paste the token>"
+prefix=$(basename "$PWD" | tr '[:lower:]-' '[:upper:]_')
+echo "storing as ${prefix}_GITHUB_TOKEN"
+security add-generic-password -a "$USER" -s "${prefix}_GITHUB_TOKEN" -w "<paste the token>"
 ```
+
+A checkout in `my-app` becomes `MY_APP_GITHUB_TOKEN`, and the prefixed name is
+checked **before** the plain one — so a project-scoped token wins wherever both
+exist.
 
 **How it reaches the container.** You never export it and never put it in a
 file yourself. `.devcontainer/fetch-secrets.sh` runs **on the host** before the
@@ -246,9 +255,14 @@ Both files are gitignored, and SEC-001 reads those two lines.
 **Check it before you rely on it:**
 
 ```bash
-GH_TOKEN=$(security find-generic-password -a "$USER" -s "GITHUB_TOKEN" -w) \
-  gh api "repos/{owner}/{repo}" --jq .full_name
+prefix=$(basename "$PWD" | tr '[:lower:]-' '[:upper:]_')
+token=$(security find-generic-password -a "$USER" -s "${prefix}_GITHUB_TOKEN" -w 2>/dev/null \
+     || security find-generic-password -a "$USER" -s "GITHUB_TOKEN" -w)
+GH_TOKEN="$token" gh api "repos/{owner}/{repo}" --jq .full_name
 ```
+
+That tries the project-scoped name first and falls back to the shared one, which
+is exactly what happens inside the container.
 
 ## What you are about to do
 
