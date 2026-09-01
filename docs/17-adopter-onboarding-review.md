@@ -663,6 +663,53 @@ is five contracts behind: `v0.5.0` ships register v0.24.0 at contract 30, and
 what an adopter gets. `tests/test_register_install.py` holds the tag to a real
 release; nothing holds a release to being recent.
 
+## T — The register assumes a repository that already looks like this one
+
+§ S is about paths. These two are about *shape*, and they come from the same
+run: a new repository cannot satisfy controls that describe a mature one, and
+neither failure says so.
+
+**A repository with no tests cannot push.** `TST-001`'s hook runs `uv run
+pytest`, pytest exits **5** when it collects no tests, and nothing distinguishes
+that from a failure. So a freshly adopted repository is blocked at `git push`
+until somebody writes a test — measured, not predicted:
+
+```console
+$ uv init --no-workspace && uv run pytest; echo $?
+5
+```
+
+The control's own `enforces` is *a failing test fails the build*. **No tests is
+not a failing test**, and conflating them means the gate's first act in a new
+repository is to refuse work for a reason its own sentence does not cover. Two
+readings are defensible and the register picks neither on purpose today:
+
+- *A repository must have tests.* Then say so — that is a stronger control than
+  the one written, and the message should read "TST-001: this repository has no
+  tests" rather than a pytest exit code.
+- *An empty suite passes.* Then exit 5 is tolerated, and the hook says so where
+  a reader can see it.
+
+Either is fine. Silently mapping "nothing to run" onto "the build is broken" is
+not, and it is what happens now.
+
+**`markdownlint-cli2` is pinned to a node lockfile.** The register declares it
+`source: lockfile` on `package-lock.json`, and `tool_versions_match_register`
+fails a lockfile-sourced tool whose lockfile git does not track. So an adopter
+with no node project fails SUP-001 permanently, on a tool they cannot install
+anyway — `lint-md` lives behind the private marketplace ADR 0044 records.
+
+Three things compound into one unfixable verdict: DOC-001's tool is pinned in
+the shipped register, its lockfile assumes an ecosystem the adopter may not be
+in, and the skill that would deploy it is unreachable. The adopter can act on
+none of the three.
+
+**Both are the same shape as § S.** The register was written by a repository that
+is Python *and* node, has four workflows, and has tests — and it ships as though
+every adopter is too. § 3.7 says the adopter edits `ecosystems:` and
+`pinned_at`; it does not say they may need to delete a `tools:` entry for a tool
+they will never install, and nothing in the adoption route prompts it.
+
 ## The doc plan
 
 The deferred question was whether to write something new or restructure
