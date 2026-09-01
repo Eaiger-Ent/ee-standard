@@ -286,6 +286,33 @@ GH_TOKEN="$token" gh api "repos/{owner}/{repo}" --jq .full_name
 That tries the project-scoped name first and falls back to the shared one, which
 is exactly what happens inside the container.
 
+**If it prints `gh: Not Found (HTTP 404)`**, the token authenticated and the
+answer was *no*. GitHub returns 404 rather than 403 for a repository a token
+cannot see, so a permissions problem and a missing repository read identically
+here. These four lines tell them apart:
+
+```bash
+git remote -v
+printf '%s\n' "${token:0:11}"
+GH_TOKEN="$token" gh api user --jq .login
+gh api "repos/{owner}/{repo}" --jq .full_name
+```
+
+| Line | What it tells you |
+| --- | --- |
+| `git remote -v` | The slug `{owner}/{repo}` resolves to. A remote pointing somewhere you never created is the whole answer |
+| `${token:0:11}` | `github_pat_` is fine-grained and correct; `ghp_` is classic, and SEC-003 fails a classic token in CI |
+| `gh api user` | Whether the token authenticates at all, and as whom. A 401 here means it is revoked or expired, not misscoped |
+| The last line | The same call using `gh`'s own login rather than the Keychain token. **If this works and the block above did not, the repository is fine and the token is the problem** |
+
+Then reopen the token at
+<https://github.com/settings/personal-access-tokens>. Two settings 404 a token
+that looks correct in every other way: **Resource owner** must be the account or
+organisation that owns the repository, and **Repository access** must list this
+repository by name. If the owner is an organisation, fine-grained tokens also
+need that organisation to have approved them — until an owner approves, every
+request answers 404.
+
 ## What you are about to do
 
 | # | Step | Rights needed |
