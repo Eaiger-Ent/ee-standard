@@ -323,7 +323,7 @@ yours the moment you edit it.
 repo=https://github.com/Eaiger-Ent/ee-standard
 tag=$(git ls-remote --tags --refs "$repo" | awk -F/ '{print $NF}' | sort -V | tail -1)
 echo "${tag:?}"
-curl -fsSL -o controls.yaml "https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/${tag}/controls.yaml"
+curl -fsSL -o controls.yaml "https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/${tag}/controls.published.yaml"
 git add controls.yaml
 ```
 

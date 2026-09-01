@@ -1,6 +1,6 @@
 # ADR 0048: The Published Register Is Derived
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-09-01
 **Revision:** 1
 
@@ -166,7 +166,29 @@ itself.
 rather than refusing. A repository that later adds a second gating job adds it
 to its own register, which is § 3.7's remaining case.
 
-This ADR is **Proposed**: it changes how the register is published, the marker
-syntax is a judgement nobody has reviewed, and there is a cheaper partial fix
-(the second alternative) that is worth taking regardless of whether this is
-accepted.
+**Accepted 2026-09-01.** The cheaper alternative — a legible failure message —
+is not made redundant by this and should still be taken: an adopter who edits
+their own register can still name a path that does not exist, and the message
+they get for it is the same unhelpful one.
+
+## Applied — pass 1
+
+Implemented 2026-09-01. `src/register_check/publish.py` derives,
+`register-check publish` writes `controls.published.yaml`, and both adopter
+documents fetch that file rather than `controls.yaml` — a derivation nobody
+fetches would have changed nothing.
+
+**The marker is a trailing comment, not a line above the entry.** This ADR's
+example showed the latter. In a file where nearly every entry already carries
+explanatory comments above it, a preceding marker has to be bound to something
+and that binding is ambiguous to a reader and fragile to an edit; a trailing
+marker is on the line it governs. `required_checks` moved from flow style to
+block style so its entries can carry one, which changes no value.
+
+`tests/test_published_register.py` holds all three rules and two consequences:
+the published file is current (a stale one fails the build, like a lock file),
+it still loads as a register, no `required_checks` list became empty, every
+marker sits on a field § 3.7 names, every published `pinned_at` path is one the
+template or a gate creates — and, last, that this repository still pins uv at
+all four of its own sites. That final test is the cost this ADR refused to pay,
+made into something that fails rather than something remembered.

@@ -37,6 +37,7 @@ from register_check.deployments import (
     read_inventory,
 )
 from register_check.deployments import build as build_deployments
+from register_check.publish import publish
 from register_check.deployments import render as render_deployments
 from register_check.meta import META_CHECKS
 from register_check.register import Control, Register, load_register
@@ -133,6 +134,10 @@ def _parser() -> argparse.ArgumentParser:
             "an extra config file to classify, for gated config the register's "
             "`stacks:` does not name — repeatable"
         ),
+    )
+    sub.add_parser(
+        "publish",
+        help="write the adopter-facing register, derived from this one (ADR 0048)",
     )
     deployments = sub.add_parser(
         "deployments", help="which gates are deployed here, and which are owed a re-run"
@@ -460,6 +465,18 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
 
+def _cmd_publish(repo_path: Path) -> int:
+    """Write the adopter-facing register beside the source one (ADR 0048).
+
+    Not part of a conformance run and never failing one. It is a build step, and
+    `tests/test_published_register.py` is what makes a stale output a failure —
+    the same shape as a lock file.
+    """
+    written = publish(repo_path)
+    print(f"wrote {written.relative_to(repo_path)} — derived from controls.yaml")
+    return 0
+
+
 def _dispatch(args: argparse.Namespace, repo_path: Path, register_path: Path | None) -> int:
     match args.command:
         case None:
@@ -489,6 +506,8 @@ def _dispatch(args: argparse.Namespace, repo_path: Path, register_path: Path | N
             return _cmd_deployments(
                 repo_path, register_path, args.plugin, args.decisions, args.installed
             )
+        case "publish":
+            return _cmd_publish(repo_path)
         case "variance":
             return _cmd_variance(repo_path, register_path, args.against, args.path)
     raise AssertionError(f"unhandled command {args.command!r}")

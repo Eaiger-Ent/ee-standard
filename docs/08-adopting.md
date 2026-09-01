@@ -308,7 +308,7 @@ repo=https://github.com/Eaiger-Ent/ee-standard
 tag=$(git ls-remote --tags --refs "$repo" | awk -F/ '{print $NF}' | sort -V | tail -1)
 echo "$tag"                       # non-empty, or nothing below fetches anything
 curl -fsSL -o controls.yaml \
-  "https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/${tag}/controls.yaml"
+  "https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/${tag}/controls.published.yaml"
 git add controls.yaml
 ```
 
