@@ -114,7 +114,8 @@ taken.
 **Starting from nothing.** Run this from where you keep projects — `~/git`, or
 wherever that is — **not from inside another repository**. The first line stops
 you if you are, and `my-new-project` is yours to name — it becomes the
-repository's name:
+repository's name. This leaves you with an empty repository, which is a
+repository but not yet a project: **§ C2 is what step 5 needs on top of it.**
 
 ```bash
 git rev-parse --show-toplevel 2>/dev/null && { echo "STOP: already inside a repository — cd out first"; }
@@ -165,6 +166,45 @@ git remote get-url origin
 blocks above has been run yet. Nothing below works until this does: § 2 commits a
 file, § 3 asks GitHub about *this* repository, and the secrets and
 branch-protection controls read what git tracks and what GitHub enforces.
+
+### C2 — What has to be in the repository already
+
+**This standard cannot be adopted by an empty repository.** It gates a project,
+and three of its controls need one to exist before they have anything to say.
+Follow § C's *starting from nothing* branch and stop there and step 5 fails —
+not with a diagnosis you can act on quickly, but by writing nothing at all.
+
+| What is needed | Which step needs it | What happens without it |
+| --- | --- | --- |
+| A project manifest and lockfile | Step 5 — `/register-install` pins the checker *as a dependency* | It stops, having written nothing: no manifest means no `add_dev_dependency` command and no lockfile to record the pin in. An unrecorded pin is not one |
+| At least one passing test | TST-001, at every locus | `pytest` exits `5` on a suite that collects nothing, and a runner that collects nothing is not a passing one. Your first `git push` is refused |
+| A tracked `.python-version` | SUP-001 | The register declares the interpreter `source: toolchain`, and a toolchain-sourced tool whose file git does not track fails |
+
+**Python is the only ecosystem the checker can install into today.** The register
+declares a `git+` dependency spelling for `python` and for no other, so
+`/register-install` stops rather than inventing one —
+[ADR 0032](docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md) § The
+non-Python adopter is not solved records that as known. The gates still deploy
+and still enforce on any repository; what you do not get is the command that
+verifies them.
+
+**If you are starting from nothing**, this is the smallest project that satisfies
+all three. Run it in your repository root before step 5:
+
+```bash
+uv init --name "$(basename "$PWD" | tr '_' '-')"
+uv add --dev pytest
+mkdir -p tests
+printf 'def test_it_runs() -> None:\n    assert True\n' > tests/test_smoke.py
+git add pyproject.toml uv.lock .python-version tests/
+```
+
+The `-> None` is not decoration. TYP-001 runs mypy in strict mode, which fails an
+unannotated function, and an adopter met exactly that on the first test they
+wrote.
+
+**If you already have a project**, you need none of this — check what you have
+against the table above and move on.
 
 ### D — What your repository can support
 
@@ -707,7 +747,7 @@ grep -c register-check pyproject.toml uv.lock
 
 | What you see | What it means |
 | --- | --- |
-| No `pyproject.toml` | Your repository is not a Python project — see the note below |
+| No `pyproject.toml` | Your repository has no project in it — § C2, or the note below if it is not a Python one |
 | It exists, no `register-check` in it | Step 5 did not get as far as installing the checker. Re-run `/register-adopt` |
 | Both present, still not found | You are on the host rather than in the container |
 
