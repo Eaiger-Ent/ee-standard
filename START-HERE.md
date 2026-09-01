@@ -172,6 +172,14 @@ If it is, run this before anything else. It decides whether two of the fifteen
 controls are reachable at all, and finding that out at step 3 wastes the four
 steps before it.
 
+**Paste `{owner}` and `{repo}` literally.** They are `gh`'s own placeholders,
+and it fills them in from the git remote in the directory you are standing in.
+The two bracket styles in this document mean opposite things: `<owner>/<repo>`
+in angle brackets is yours to replace, `{owner}/{repo}` in braces is `gh`'s to
+resolve. To see what it resolved, run
+`gh repo view --json nameWithOwner --jq .nameWithOwner`. Only `gh` does this —
+`curl` treats braces as URL globbing and would request the word `owner`.
+
 ```bash
 gh api "repos/{owner}/{repo}" --jq .visibility
 gh api "repos/{owner}/{repo}/rulesets" >/dev/null && echo "rulesets: available" \

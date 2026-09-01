@@ -134,10 +134,17 @@ permission an endpoint requires in an `x-accepted-github-permissions` header, so
 each row above was read off the live API:
 
 ```bash
-curl -sS -o /dev/null -D - -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
-  https://api.github.com/repos/{owner}/{repo}/rulesets | grep -i x-accepted-github
-# x-accepted-github-permissions: administration=write
+gh api -i -X POST "repos/{owner}/{repo}/rulesets" 2>&1 | grep -i x-accepted-github
 ```
+
+It answers `x-accepted-github-permissions: administration=write`. The `POST`
+creates nothing: it carries no body, so GitHub rejects it as invalid and returns
+the header anyway, which is the whole point of asking this way.
+
+**`gh api` is what resolves `{owner}` and `{repo}`**, from the git remote where
+you run it. `curl` does not: it reads braces as URL globbing and would request
+`/repos/owner/repo/rulesets` literally, and answer 404 about a repository nobody
+owns. Against `api.github.com` directly, substitute the real slug.
 
 Re-derive them the same way rather than trusting this table — it is a second
 copy of something GitHub states authoritatively, and the register's own rule
