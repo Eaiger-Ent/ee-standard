@@ -726,12 +726,39 @@ platform state and only answer inside a GitHub Actions job. Exit `1` is a real
 violation.
 
 **On a private repository without rulesets you will get `1`, and it is real.**
-CI-001 and SEC-001's remote block fail rather than skip. See the next section.
+CI-001 and SEC-001's remote block fail rather than skip. See
+§ If your plan has no rulesets, at the end.
 
-Two things are a second sitting, and their order matters — giving CI a
-credential comes *before* making the run fail on anything unverified, or every
-run fails on controls that actually hold:
-[`docs/08-adopting.md`](docs/08-adopting.md) § 4.2 then § 4.3.
+## Your first full report, and what each failure means
+
+**A correct adoption's first report is not green, and nothing has gone wrong.**
+Every gate this standard deploys is a file you now have; the failures left are
+*platform* state and one gate you have not deployed yet. They arrive in a
+predictable set, and the order you clear them in matters.
+
+| The report says | What it means | What clears it |
+| --- | --- | --- |
+| `DOC-001 FAIL` — *no tracked markdownlint configuration file* | The markdown gate is the one gate no skill deploys for you | The six steps in [`docs/08-adopting.md`](docs/08-adopting.md) § 3 |
+| `SUP-001 FAIL` — *markdownlint-cli2 is sourced from package-lock.json, which is not tracked* | **The same cause**, not a second one. The register pins that tool from a lockfile you do not have yet | Committing `package-lock.json` in the step above |
+| `SEC-001 FAIL` — *push protection is 'disabled'* | The local blocks pass — the scanner runs at every locus. This is the server-side stop, and only GitHub can turn it on | Settings → Code security → enable push protection. Admin, and one click |
+| `CI-001 FAIL` — *not protected as the register requires* | Note its file block **passed**: you have *recorded* the ruleset. Recording is intent; this block asks what GitHub enforces, and the answer is nothing | `/gate-repo`, which applies the recorded ruleset through the API |
+| `GOV-001 FAIL` — *a merge waits for no check at all* | Not a separate problem. Every blocking control is credited to a CI job nothing requires, which is CI-001's failure seen from the other end | Clearing CI-001 clears this |
+| `SEC-003 UNCLASSIFIED` | Permanent, and correct. Those blocks answer only inside a GitHub Actions job; your own token settles nothing about what CI carries | Nothing. This is why a local run cannot exit `0` |
+
+**Clear them in that order, and there is a reason.** DOC-001 needs commits, and
+committing is easiest while you can still push to the default branch. CI-001 is
+last because applying the ruleset is what takes that away.
+
+**Do not make `register-check` a required check before you have watched that job
+pass.** The workflow you were given runs `register-check --require-complete`,
+which fails the run on anything it could not verify — a missing CI credential,
+for instance. Require the check first and the merge queue waits for a job that
+cannot pass, on a branch you can no longer push to directly. Nothing merges,
+including the fix. Push, watch the job go green, *then* run `/gate-repo`.
+
+If the job exits `1` on incompleteness rather than on a violation, it wants the
+credential: [`docs/08-adopting.md`](docs/08-adopting.md) § 4.2 then § 4.3, in
+that order.
 
 ## When it goes wrong
 
