@@ -514,7 +514,22 @@ above.
 
 ---
 
-Now, in that container shell:
+**Install the plugin again, inside.** This is not a mistake in step 1 and not a
+mistake here: the container's `~/.claude` is a **named volume**, not your Mac's
+home directory, so the plugin you installed at step 1 is not in it. Step 1's
+install is still needed — step 4 copied the devcontainer template out of it —
+and this one is needed to run the skills.
+
+```bash
+claude plugin marketplace add Eaiger-Ent/ee-standard
+claude plugin install control-register@ee-standard
+```
+
+**Done when** `claude plugin list | grep control-register` prints a row. The
+volume survives rebuilds, so this is once per project rather than once per
+container.
+
+Then, in that same container shell:
 
 ```bash
 claude --permission-mode acceptEdits

@@ -585,3 +585,25 @@ def test_step_five_says_how_to_get_into_the_container() -> None:
     assert "everything since step 4 has been" not in step, (
         "the step still claims step 4 ran inside the container; it ran on the host"
     )
+
+
+def test_the_plugin_is_installed_inside_the_container_too() -> None:
+    """Reported at step 5: `Unknown command: /register-adopt`.
+
+    Step 1 installs the plugin on the host, and the container mounts its own
+    `~/.claude` as a named volume — so the plugin is not there. Both installs are
+    needed and neither is redundant: step 4 copies the devcontainer template out
+    of the host's cache, and step 5 runs the skills out of the container's.
+
+    Nothing in the template installs it, so the guide is the only place this can
+    be said.
+    """
+    step = TEXT.split("## 5 — Run the adoption", 1)[1].split("\n## 6 ", 1)[0]
+    assert "claude plugin install" in step, (
+        "step 5 never installs the plugin inside the container, so /register-adopt "
+        "is an unknown command there"
+    )
+    assert "named volume" in step, (
+        "the step does not say why a second install is needed, so it reads as a "
+        "duplicated instruction somebody will skip"
+    )

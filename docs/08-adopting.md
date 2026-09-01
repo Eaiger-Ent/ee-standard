@@ -232,6 +232,13 @@ than during it.
 what runs where, and this is the first row of it in practice: the template you
 are about to copy lives in that cache, and there is nothing to copy it into yet.
 
+**And install it again inside the container, once that exists.** The devcontainer
+mounts its own `~/.claude` as a named volume, so a plugin installed on the host
+is not there — `/register-adopt` reports `Unknown command` and nothing explains
+why. Neither install is redundant: the host's supplies the devcontainer template
+copied in § 2.0, and the container's supplies the skills that deploy the gates.
+The volume outlives a rebuild, so the second install is once per project.
+
 ### 0.1 — Where `./controls.yaml` comes from
 
 That command names a register, and until you have one there is nothing to plan
