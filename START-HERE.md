@@ -240,16 +240,6 @@ afterwards, and it is easier to set them now than to come back.
 
 Leave everything else at **No access**.
 
-**Three of these fail late** — after the gates have written their files — so
-they are worth checking twice before you start:
-
-- **Workflows** is separate from Contents. Without it, the push that carries
-  `.github/workflows/register-check.yml` is rejected.
-- **Administration** is what `gate-repo` looks for; it stops rather than
-  half-deploying.
-- **Pull requests** you will not miss until the ruleset exists and you cannot
-  push to `main` any more.
-
 **Store it in the Keychain**, which is the only place it lives — nothing commits
 it and nothing else reads it:
 
@@ -700,6 +690,7 @@ run fails on controls that actually hold:
 | Every gate says its pre-commit locus is wired, nothing runs on commit | A wired locus is not an installed hook | `ls -l .git/hooks/pre-commit`; `uv run pre-commit install` |
 | A gate is green about a tool version you are not running | You ran it on the host, not in the container | Everything after step 4 goes inside |
 | `sha256sum -c` fails during container create | A placeholder survived, or an architecture digest is wrong | `grep -rl '{{' .devcontainer` should print nothing |
+| `refusing to allow a Personal Access Token to create or update workflow` | The token has no **Workflows** permission — it is separate from Contents | Add it, re-store the token, and rebuild |
 
 ## If your plan has no rulesets
 

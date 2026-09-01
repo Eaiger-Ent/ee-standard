@@ -609,6 +609,28 @@ def test_the_plugin_is_installed_inside_the_container_too() -> None:
     )
 
 
+def test_a_failure_is_documented_where_its_message_does_not_name_the_fix() -> None:
+    """The permissions table tells the reader what to set; a warning above it that
+    three of the nine matter more tells them to double-check rows they are
+    already setting, which is an author hedging rather than a reader needing.
+
+    One survives, in troubleshooting rather than before the work: GitHub's
+    workflow-push rejection names neither the permission nor that it is separate
+    from Contents. The other two name their own fix — `gate-repo` says which
+    permission is missing, and being unable to push to the default branch is
+    CI-001 working, explained where the token is described.
+    """
+    trouble = TEXT.split("## When it goes wrong", 1)[1].split("\n## ", 1)[0]
+    assert "refusing to allow a Personal Access Token" in trouble, (
+        "the one permission failure whose error names no fix is undocumented"
+    )
+    section = TEXT.split("#### Creating the GitHub token", 1)[1].split("\n## ", 1)[0]
+    assert "fail late" not in section, (
+        "the permissions section warns about rows the reader is already being told "
+        "to set — the table is the instruction"
+    )
+
+
 def test_the_pat_covers_using_the_repository_not_just_adopting_it() -> None:
     """Two findings from the run, and the second is the larger.
 
