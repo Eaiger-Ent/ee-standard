@@ -113,11 +113,12 @@ taken.
 
 **Starting from nothing.** Run this from where you keep projects — `~/git`, or
 wherever that is — **not from inside another repository**. The first line stops
-you if you are:
+you if you are, and `my-new-project` is yours to name — it becomes the
+repository's name:
 
 ```bash
 git rev-parse --show-toplevel 2>/dev/null && { echo "STOP: already inside a repository — cd out first"; }
-mkdir -p my-new-project && cd my-new-project     # choose the name; it becomes the repository's
+mkdir -p my-new-project && cd my-new-project
 git init -b main
 git commit -q --allow-empty -m "Initial commit"
 gh repo create "$(basename "$PWD")" --private --source=. --remote=origin --push
@@ -131,10 +132,10 @@ gh repo create "$(basename "$PWD")" --private --source=. --remote=origin --push
 
 **It is already on GitHub — clone it, do not recreate it.** This covers both
 "somebody else made it" and "I made it on an earlier attempt", and they are the
-same situation:
+same situation. Replace the angle-bracketed parts with your own:
 
 ```bash
-gh repo clone <owner>/<repo>    # angle brackets: replace these
+gh repo clone <owner>/<repo>
 cd <repo>
 ```
 
@@ -145,15 +146,19 @@ the push is rejected with *"Updates were rejected because the remote contains
 work that you do not have locally"*, and you are further from working than when
 you started.
 
+To find what is already there:
+
 ```bash
-gh repo list --limit 100 | grep "$(basename "$PWD")"   # find what is already there
+gh repo list --limit 100 | grep "$(basename "$PWD")"
 ```
 
-**Done when** both of these print something — a path, and a URL:
+**Done when** both of these print something — the repository root, and the
+GitHub repository these controls will protect. If the path differs from where
+you are, `cd` to it:
 
 ```bash
-git rev-parse --show-toplevel   # the repository root; cd here if it differs
-git remote get-url origin       # the GitHub repository these controls will protect
+git rev-parse --show-toplevel
+git remote get-url origin
 ```
 
 `fatal: not a git repository` means you are in an ordinary folder and none of the
@@ -166,6 +171,14 @@ branch-protection controls read what git tracks and what GitHub enforces.
 If it is, run this before anything else. It decides whether two of the fifteen
 controls are reachable at all, and finding that out at step 3 wastes the four
 steps before it.
+
+**Paste `{owner}` and `{repo}` literally.** They are `gh`'s own placeholders,
+and it fills them in from the git remote in the directory you are standing in.
+The two bracket styles in this document mean opposite things: `<owner>/<repo>`
+in angle brackets is yours to replace, `{owner}/{repo}` in braces is `gh`'s to
+resolve. To see what it resolved, run
+`gh repo view --json nameWithOwner --jq .nameWithOwner`. Only `gh` does this —
+`curl` treats braces as URL globbing and would request the word `owner`.
 
 ```bash
 gh api "repos/{owner}/{repo}" --jq .visibility
@@ -280,6 +293,33 @@ GH_TOKEN="$token" gh api "repos/{owner}/{repo}" --jq .full_name
 
 That tries the project-scoped name first and falls back to the shared one, which
 is exactly what happens inside the container.
+
+**If it prints `gh: Not Found (HTTP 404)`**, the token authenticated and the
+answer was *no*. GitHub returns 404 rather than 403 for a repository a token
+cannot see, so a permissions problem and a missing repository read identically
+here. These four lines tell them apart:
+
+```bash
+git remote -v
+printf '%s\n' "${token:0:11}"
+GH_TOKEN="$token" gh api user --jq .login
+gh api "repos/{owner}/{repo}" --jq .full_name
+```
+
+| Line | What it tells you |
+| --- | --- |
+| `git remote -v` | The slug `{owner}/{repo}` resolves to. A remote pointing somewhere you never created is the whole answer |
+| `${token:0:11}` | `github_pat_` is fine-grained and correct; `ghp_` is classic, and SEC-003 fails a classic token in CI |
+| `gh api user` | Whether the token authenticates at all, and as whom. A 401 here means it is revoked or expired, not misscoped |
+| The last line | The same call using `gh`'s own login rather than the Keychain token. **If this works and the block above did not, the repository is fine and the token is the problem** |
+
+Then reopen the token at
+<https://github.com/settings/personal-access-tokens>. Two settings 404 a token
+that looks correct in every other way: **Resource owner** must be the account or
+organisation that owns the repository, and **Repository access** must list this
+repository by name. If the owner is an organisation, fine-grained tokens also
+need that organisation to have approved them — until an owner approves, every
+request answers 404.
 
 ## What you are about to do
 
@@ -445,10 +485,10 @@ security find-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w >/dev/null 
 
 `add-generic-password` **will not overwrite**: on an existing entry it fails with
 *"The specified item already exists in the keychain."* To replace one, delete it
-first.
+first. The first line prints the token; copy it, and paste it into the third.
 
 ```bash
-claude setup-token   # prints the token; copy it
+claude setup-token
 security delete-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" 2>/dev/null
 security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "<paste it here>"
 ```
@@ -657,9 +697,12 @@ uv run register-check
 **If it says the command is not found**, one of three things is true, and they
 are quick to tell apart:
 
+The first line answers whether this is a Python project at all; the second
+counts the dependency and its pin:
+
 ```bash
-ls pyproject.toml                                  # a Python project at all?
-grep -c register-check pyproject.toml uv.lock      # the dependency, and the pin
+ls pyproject.toml
+grep -c register-check pyproject.toml uv.lock
 ```
 
 | What you see | What it means |

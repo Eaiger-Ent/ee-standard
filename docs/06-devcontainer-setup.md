@@ -78,10 +78,11 @@ store serves every ee project on the machine.
 | `CLAUDE_OAUTH_TOKEN` | `CLAUDE_CODE_OAUTH_TOKEN` | Claude Code auth on subscription billing |
 
 Without it `fetch-secrets.sh` exits `1` and **the container never builds**. Set
-it before your first "Reopen in Container":
+it before your first "Reopen in Container". Run `claude setup-token` on the
+Mac; it prints an `sk-ant-oat01-...` token to paste into the second command:
 
 ```bash
-claude setup-token          # on the Mac; prints sk-ant-oat01-...
+claude setup-token
 
 security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" \
   -w "sk-ant-oat01-..."
@@ -249,8 +250,10 @@ and `--frozen-lockfile` fails rather than rewriting; use neither.
 `devcontainer upgrade` is a different job — moving the pins forward to the
 current tags without building:
 
+The upgrade rewrites `devcontainer-lock.json`:
+
 ```bash
-devcontainer upgrade --workspace-folder .   # rewrites devcontainer-lock.json
+devcontainer upgrade --workspace-folder .
 git add .devcontainer/devcontainer-lock.json
 ```
 
@@ -275,11 +278,11 @@ curl -sI \
 # The image reference contains a digest at all
 grep -q '@sha256:' .devcontainer/devcontainer.json && echo "image pinned"
 
-# The lock file exists and names every feature
-grep -c '"resolved"' .devcontainer/devcontainer-lock.json   # expect 3
+# The lock file exists and names every feature. Expect 3.
+grep -c '"resolved"' .devcontainer/devcontainer-lock.json
 
-# Neither secrets file has ever been committed
-git log --all --oneline -- .devcontainer/.env .devcontainer/.env.docker  # expect empty
+# Neither secrets file has ever been committed. Expect no output.
+git log --all --oneline -- .devcontainer/.env .devcontainer/.env.docker
 ```
 
 For reference, the digests resolved on 2026-08-16:
