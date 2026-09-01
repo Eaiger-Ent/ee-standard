@@ -699,10 +699,14 @@ fails a lockfile-sourced tool whose lockfile git does not track. So an adopter
 with no node project fails SUP-001 permanently, on a tool they cannot install
 anyway — `lint-md` lives behind the private marketplace ADR 0044 records.
 
-Three things compound into one unfixable verdict: DOC-001's tool is pinned in
-the shipped register, its lockfile assumes an ecosystem the adopter may not be
-in, and the skill that would deploy it is unreachable. The adopter can act on
-none of the three.
+**Corrected on inspection: this is legibility, not structure.** § 3 of the
+reference tells an adopter `npm init -y && npm install --save-dev
+markdownlint-cli2`, which creates the lockfile — so `source: lockfile` on it is
+right, and the failure means DOC-001 has not been deployed yet rather than that
+the register assumes an ecosystem the adopter lacks. What is wrong is that one
+message covers two situations: a missing lockfile reads as a broken supply chain
+when the fix is to deploy a different control. `tool_versions_match_register`
+now names the control the tool belongs to and who deploys it.
 
 **Both are the same shape as § S.** The register was written by a repository that
 is Python *and* node, has four workflows, and has tests — and it ships as though

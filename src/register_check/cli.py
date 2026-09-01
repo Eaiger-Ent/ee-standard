@@ -37,9 +37,9 @@ from register_check.deployments import (
     read_inventory,
 )
 from register_check.deployments import build as build_deployments
-from register_check.publish import publish
 from register_check.deployments import render as render_deployments
 from register_check.meta import META_CHECKS
+from register_check.publish import publish
 from register_check.register import Control, Register, load_register
 from register_check.remote import resolve as resolve_remote
 from register_check.repo import NotAGitRepository, Repo, git, require_git_repo

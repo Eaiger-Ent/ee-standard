@@ -149,3 +149,23 @@ def test_this_repository_still_compares_everything_it_did_before() -> None:
             "version, so dropping it stops a real site being compared"
         )
         assert (REPO_ROOT / path).is_file(), f"{path} is pinned here but does not exist"
+
+
+def test_a_lockfile_failure_names_the_control_that_wants_the_tool() -> None:
+    """An absent lockfile reads as a broken supply chain and usually is not.
+
+    Measured on the first adoption outside this repository: SUP-001 reported
+    `markdownlint-cli2 is sourced from package-lock.json, which is not tracked`,
+    and the fix was to deploy DOC-001. One message, two very different
+    situations.
+    """
+    from conftest import a_register
+    from register_check.asserts_file import _who_needs
+
+    register = a_register()
+    said = _who_needs("markdownlint-cli2", register)
+    assert "DOC-001" in said, "the message does not name the control that wants the tool"
+    assert "lint-md" in said, "nor who deploys it, which is where the reader goes next"
+    assert _who_needs("not-a-tool-any-control-names", register) == "", (
+        "a tool no control names should add nothing rather than guess"
+    )

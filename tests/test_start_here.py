@@ -714,3 +714,22 @@ def test_the_permissions_are_listed_as_github_lists_them() -> None:
             f"{path.name} lists permissions as {rows} — GitHub's form is alphabetical, "
             "and a reader works down it once rather than searching it nine times"
         )
+
+
+def test_it_says_a_test_suite_is_required_before_the_first_push() -> None:
+    """Reported from the run: TST-001's hook exits 5 in a repository with no tests.
+
+    That is the control working — `applies_to: always` has always meant every
+    repository has at least one test — but the guide let the reader meet it as a
+    refused push rather than as a requirement. The register's `enforces` now says
+    it too; this holds the half the reader sees first.
+    """
+    step = TEXT.split("## 5 — Run the adoption", 1)[1].split("\n## 6 ", 1)[0]
+    assert "Write one test first" in step, (
+        "step 5 does not warn that a repository with no tests cannot push"
+    )
+    trouble = TEXT.split("## When it goes wrong", 1)[1].split("\n## ", 1)[0]
+    assert "no tests ran" in trouble, "exit 5 has no troubleshooting row"
+    assert "markdownlint-cli2 is sourced" in trouble, (
+        "the lockfile failure that means DOC-001 is undeployed has no row"
+    )

@@ -564,6 +564,14 @@ prompts that matter.
 
 **Done when:** it reports every control planned and verified, and commits.
 
+**Write one test first if you have none.** TST-001 requires a test suite to
+exist — a runner that collects nothing exits non-zero, so `git push` is refused
+until there is something to run. Any real test will do; an empty file will not:
+
+```bash
+mkdir -p tests && printf 'def test_it_runs():\n    assert True\n' > tests/test_smoke.py
+```
+
 **If it fails:** it will still prompt for `.devcontainer/devcontainer.json` —
 that is a sensitive file and no permission mode silences it. `gate-repo` asks its
 own question before each platform change; that is the skill's, not the harness's,
@@ -691,6 +699,8 @@ run fails on controls that actually hold:
 | A gate is green about a tool version you are not running | You ran it on the host, not in the container | Everything after step 4 goes inside |
 | `sha256sum -c` fails during container create | A placeholder survived, or an architecture digest is wrong | `grep -rl '{{' .devcontainer` should print nothing |
 | `refusing to allow a Personal Access Token to create or update workflow` | The token has no **Workflows** permission — it is separate from Contents | Add it, re-store the token, and rebuild |
+| `git push` refused, and `pytest` said `no tests ran` (exit 5) | TST-001 requires a test suite to exist, and a runner that collects nothing exits non-zero | Write one test. An empty suite is not a passing one |
+| SUP-001: *"markdownlint-cli2 is sourced from package-lock.json, which is not tracked"* | You have not deployed DOC-001 yet — that tool is its, not a supply-chain fault | [`docs/08-adopting.md`](docs/08-adopting.md) § 3 |
 
 ## If your plan has no rulesets
 

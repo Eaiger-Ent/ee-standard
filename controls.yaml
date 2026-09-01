@@ -1668,8 +1668,22 @@ controls:
   - id: TST-001
     title: A failing test fails the build
     enforces: >
-      The test command runs before a push and in CI, its exit code is the
-      verdict at each, and no step in the chain swallows a non-zero status.
+      A test suite exists; the test command runs before a push and in CI, its
+      exit code is the verdict at each; and no step in the chain swallows a
+      non-zero status.
+    # A runner that collects nothing exits non-zero, and that is a failure
+    # rather than an oversight. `applies_to: always` has meant "every repository
+    # has at least one test" since this control was written — but the sentence
+    # above said only that the exit code is the verdict, so an adopter met the
+    # requirement as `pytest` exiting 5 on their first push with nothing to tell
+    # them it was intended (docs/17-adopter-onboarding-review.md § T).
+    #
+    # Tolerating exit 5 was considered and refused twice over: it would make
+    # this control vacuous the day somebody deletes the test directory, and
+    # mapping an exit code to a friendlier one is the substitution ADR 0016
+    # names. A predicate on tests existing is worse still — a repository would
+    # opt out of testing by having no tests, which is what `applies_to` exists
+    # to prevent.
     standard:
       name: NIST SP 800-218 (SSDF) PW.8
       url: https://csrc.nist.gov/pubs/sp/800/218/final
