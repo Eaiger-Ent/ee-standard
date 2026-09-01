@@ -598,6 +598,71 @@ no check behind it: nothing would re-measure it, and it would rot the way
 § H's status section did. What the reader actually needs is *can I finish this
 now, and if not where do I stop* — which is structural, stable, and answerable.
 
+## S — The register an adopter fetches describes this repository
+
+Found by the first adoption to reach `/register-adopt` on a repository nobody
+here owns. Its summary named two failures, and both are the same defect.
+
+**`tools.uv.pinned_at` ships this repository's own workflow paths.** The register
+an adopter fetches lists four:
+
+```text
+.devcontainer/setup.sh
+.github/workflows/register-check.yml
+.github/workflows/support-floor.yml        ← ours
+.github/workflows/conformance-sweep.yml    ← ours
+```
+
+`tool_versions_match_register` fails a declared site that does not exist — by
+design, because that is how a renamed workflow is caught. So an adopter fails
+SUP-001 on two files they were never going to have, and the message says the
+register records a pin there, which reads as their mistake.
+
+**`CI-001`'s `required_checks` ships this repository's own job ids** —
+`[register-check, lint-md]`. `gate-repo` refused to create a ruleset requiring a
+`lint-md` check the adopter's workflows do not produce, and refusing was
+**correct**: GitHub waits forever for a check nothing reports, so the ruleset
+would block every merge rather than gate one. The gate did exactly the right
+thing with a register that was wrong.
+
+**This is not posture, and it is not undocumented.** § 3.7 is titled *Your
+register records your own files* and names `pinned_at` as the first edit an
+adopter makes. But it sits ~1,400 lines into the reference, `START-HERE.md` does
+not mention it, and `/register-adopt` does not do it — so the adopter meets it as
+two failures rather than as a step.
+
+It is also the exact inverse of a defect already recorded in the checker.
+`tool_versions_match_register`'s own comment says the assert once held this
+repository's filenames in a tuple, and *"an adopting repository that pinned the
+same tools in files of its own naming was told they were 'pinned at no known
+locus' — this repo's paths quoted at it as though they were the standard (§ H2)"*.
+Moving the list into the register fixed the checker and left the same paths in
+the register, where they now ship to everybody.
+
+**And [ADR 0045](adr/0045-a-gate-records-where-it-installed-a-tool.md) settles
+what should happen**, three days after it was written for a different reason. Its
+argument for letting a gate write `pinned_at` is that the field *"records where a
+repository keeps a file rather than what conformant means, and two conformant
+repositories legitimately differ on it"*. If that is true — and it is the
+premise the whole ADR rests on — then a register that ships one repository's
+`pinned_at` to every adopter is shipping a repository-specific fact as though it
+were policy.
+
+**Three ways out, and none is a documentation fix:**
+
+| | |
+| --- | --- |
+| Ship the two paths every adopter has, and no more | `.devcontainer/setup.sh` and the gating workflow. Smallest change; still wrong for a repository whose workflow has another name |
+| Ship `pinned_at: []` and let the gates fill it | ADR 0045 already permits exactly this write. Requires every gate to do it, not only `gate-secrets` |
+| Derive `required_checks` from the gating workflow rather than listing it | The job ids are already discoverable; `gate-repo` reads them into `CONTEXTS` at pre-flight and compares |
+
+**A fourth thing this run exposed, and it is cheap.** The tag an adopter fetches
+is five contracts behind: `v0.5.0` ships register v0.24.0 at contract 30, and
+`main` is v0.29.0 at contract 35. Everything from contracts 31 to 35 — the
+`pre-push` locus, SUP-004, the editor-locus hook check, ADR 0045 — is absent from
+what an adopter gets. `tests/test_register_install.py` holds the tag to a real
+release; nothing holds a release to being recent.
+
 ## The doc plan
 
 The deferred question was whether to write something new or restructure
