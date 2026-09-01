@@ -184,7 +184,7 @@ def _run_remote_block(
             return BlockResult(block, Verdict.UNCLASSIFIED, target.message)
         result = REMOTE_ASSERTS[block.assert_name](target, register, block.args)
     except Unreadable as exc:
-        return BlockResult(block, Verdict.UNCLASSIFIED, str(exc))
+        return _unreadable_or_unavailable(block, exc, control_id, limits)
     except Exception as exc:  # an assert must never abort the rest of the audit
         return BlockResult(
             block, Verdict.UNCLASSIFIED, f"could not evaluate: {type(exc).__name__}: {exc}"
@@ -192,6 +192,63 @@ def _run_remote_block(
     if result.passed:
         return BlockResult(block, Verdict.PASS, result.message)
     return _waived_or_failed(block, result.message, control_id, limits)
+
+
+#: The one status a recorded platform limit may cover. GitHub answers it with
+#: *"Upgrade to GitHub Pro or make this repository public to enable this
+#: feature."*, which is the evidence ADR 0047 asks an operator to record. A 401,
+#: a 404, a timeout and a name that will not resolve are all things a correct
+#: repository can hit on a bad afternoon, and a record must never swallow them.
+_PLAN_REFUSAL = 403
+
+
+def _unreadable_or_unavailable(
+    block: VerifyBlock,
+    exc: Unreadable,
+    control_id: str | None,
+    limits: tuple[PlatformLimit, ...],
+) -> BlockResult:
+    """A block the platform refused, and whether a record explains the refusal.
+
+    ADR 0047 revision 2. The ADR was written believing a plan limit arrives as a
+    **failure** — that the effective-rules endpoint answers `[]` on a repository
+    whose plan has no rulesets. A live Free private repository answers `403`
+    instead, which is `Unreadable`, which never reached `_waived_or_failed`. So
+    the mechanism was inert for the one case it was built for: an adopter could
+    write a correct entry and still read `UNCLASSIFIED` for ever.
+
+    Only a `403` is covered, and only when an entry names this exact block.
+    Widening it to every `Unreadable` would let a dated record absorb an expired
+    token or a broken network — the checker reporting a billing fact it had not
+    established, which is the misuse the ADR's § What this cannot verify names.
+
+    **An expired entry reports `UNCLASSIFIED`, not `FAIL`.** Rule 3 says an
+    expired record stops covering, and it does; but this path never received an
+    answer, and failing a control on the strength of not having looked is the
+    thing ADR 0021 forbids everywhere else in this file. Not covering means
+    reverting to what the run actually knows, which is that the question is
+    unsettled. Both exit non-zero, and `--require-complete` promotes both to 1.
+    """
+    if exc.status != _PLAN_REFUSAL:
+        return BlockResult(block, Verdict.UNCLASSIFIED, str(exc))
+    limit = limit_for(limits, control_id or "", block.assert_name or "")
+    if limit is None:
+        return BlockResult(block, Verdict.UNCLASSIFIED, str(exc))
+    if limit.expired(datetime.date.today()):
+        return BlockResult(
+            block,
+            Verdict.UNCLASSIFIED,
+            f"{exc} — a platform limit was recorded for this block but expired on "
+            f"{limit.review_by}. Re-check the plan and set a new review date, or remove "
+            f"the entry; an expired record is not a waiver.",
+        )
+    return BlockResult(
+        block,
+        Verdict.UNAVAILABLE_PLAN,
+        f"{limit.plan}: {limit.lacks} — the platform refused the request (403) and "
+        f"deployment-decisions.yaml records why, review by {limit.review_by}. The "
+        f"control does not hold; this is a dated record of why, not a pass.",
+    )
 
 
 def _waived_or_failed(

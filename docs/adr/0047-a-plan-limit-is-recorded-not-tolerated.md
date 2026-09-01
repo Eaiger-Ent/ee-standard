@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-31
-**Revision:** 1
+**Revision:** 2
 
 ## Background
 
@@ -13,15 +13,20 @@ plans"*; secret-scanning push protection on a private repository likewise needs
 a paid tier.
 
 A repository that is private on a plan without them cannot satisfy either
-control, and the checker's verdict today is not *unverifiable* — it is **FAIL**:
+control. This ADR was written believing the checker's verdict in that state is
+not *unverifiable* but **FAIL**. Half of that was wrong, and revision 2 records
+the measurement that corrects it:
 
 | Control | Block | Today | Why |
 | --- | --- | --- | --- |
-| CI-001 | `default_branch_ruleset_satisfies` | **FAIL** | The effective-rules endpoint returns `[]`, which is a *list* and therefore an answer. It reaches `requirement_problems` and fails, exactly as the register intends for a repository that simply has no ruleset |
+| CI-001 | `default_branch_ruleset_satisfies` | **UNCLASSIFIED** (see revision 2) | This ADR was written believing the effective-rules endpoint returns `[]` — a *list*, therefore an answer, therefore a failure. A live Free private repository **refuses the read with 403**, which is `Unreadable`. The correction, and what follows from it, is § Measured 2026-09-01 |
 | SEC-001 | `github_push_protection_enabled` | **FAIL** | A reported status of `disabled` fails. Only an *absent* `security_and_analysis` is `Unreadable`, and that is the token-cannot-see case rather than the plan-does-not-offer case |
 
-So the run exits `1`. And a repository in that state is indistinguishable, in the
-report, from one that could have protected its default branch and did not.
+Either way the run cannot be green — `1` on the failure this assumed, `3` on the
+refusal it actually meets — and either way a repository in that state is
+indistinguishable, in the report, from one that could have protected its default
+branch and did not. That is the problem this ADR addresses, and it survives the
+correction intact.
 
 **The cost is not the two controls.** It is the other thirteen. A conformance
 run that can never be green is one people stop reading, and the standard's own
@@ -203,6 +208,115 @@ reports rules originating from *classic* branch protection is still untested, an
 still decides whether a Pro repository that uses classic protection instead of a
 ruleset passes CI-001 honestly or fails it through a checker gap.
 
+## Measured 2026-09-01 — the premise was wrong, and it made the mechanism inert
+
+The first adopter to run this on a Free private repository produced the answer
+the § Measured 2026-08-31 section could not:
+
+```text
+? remote: default_branch_ruleset_satisfies — /repos/<owner>/<repo>/rules/branches/main
+  answered 403 — "Upgrade to GitHub Pro or make this repository public to enable
+  this feature."
+```
+
+**The effective-rules endpoint refuses, it does not answer `[]`.** So the block
+raises `Unreadable`, `_run_remote_block` returns `UNCLASSIFIED`, and
+`_waived_or_failed` — the only function that reads a recorded limit — is never
+reached. An adopter could write a correct `platform_limits:` entry and go on
+reading `UNCLASSIFIED` for ever, with nothing in the report acknowledging that
+they had recorded anything at all.
+
+The mechanism was inert for the exact case it was built for, and for the six
+weeks between Accepted and this measurement nobody could have known: this
+repository is public, and `tests/test_platform_limits.py` proved rule 1 by
+calling `_waived_or_failed` directly, with a comment explaining that a live run
+would have needed somebody else's misconfigured repository. Constructing the
+input a mechanism expects cannot discover that reality supplies a different one.
+
+**The decision is unchanged** — recorded, dated, printed, expiring, never a pass
+— so this is an amendment rather than a superseding ADR
+([ADR 0025](0025-an-amendment-is-a-recorded-revision.md)). What changes is which
+outcome a record covers.
+
+**A recorded limit now also covers a `403` on the block it names.** Three
+constraints keep it the same narrow thing rule 1 described:
+
+* **Only `403`.** A `401`, a `404`, a timeout, a name that will not resolve and
+  a body that is not JSON stay `UNCLASSIFIED`. A dated billing record must never
+  absorb an expired token or a bad afternoon's network — that would be the
+  checker reporting a commercial fact it has not established, which is precisely
+  the misuse § What this cannot verify describes. `403` earns the exception
+  because GitHub's own body says *"Upgrade to GitHub Pro"*, which that section
+  already names as the evidence an operator records.
+* **An expired entry reports `UNCLASSIFIED`, not `FAIL`.** Rule 3 says an
+  expired record stops covering, and it does. But this path never received an
+  answer, and failing a control on the strength of not having looked is what
+  [ADR 0021](0021-how-remote-verification-authenticates.md) forbids everywhere
+  else. Not covering means reverting to what the run actually knows. Both
+  outcomes exit non-zero and `--require-complete` promotes both to `1`, so rule
+  4 is untouched.
+* **SEC-001's block is not covered, and this is not an oversight.** A Free
+  private repository answers `github_push_protection_enabled` with a `200` whose
+  `security_and_analysis` is simply absent — the same shape an under-permissioned
+  token gets on a paid repository. There is no `403` to key on and nothing else
+  distinguishes the two, so covering it would mean guessing. It stays
+  `UNCLASSIFIED`, and an adopter on Free sees one block covered and one not.
+
+**And the checker was lying about the cause.** `_http_explanation` reported every
+`403` as *"the token lacks the scope … needs a token with repository
+administration read access"*, discarding GitHub's body. The adopter who found
+this spent a cycle on a token that was already correct, and so did the assistant
+helping them. The 403 explanation now quotes GitHub and names both causes. That
+is a plain defect fixed rather than a decision, but it belongs in this record:
+the evidence this ADR asks an operator to act on was being thrown away before
+they could read it.
+
+### The refusal names the permission it wanted, and it is not administration
+
+The same request, with headers:
+
+```text
+% gh api "repos/{owner}/{repo}/rules/branches/main" -i
+HTTP/2.0 403 Forbidden
+X-Accepted-GitHub-Permissions: metadata=read
+{"message": "Upgrade to GitHub Pro or make this repository public to enable
+ this feature.", "status": "403"}
+```
+
+**`metadata=read` is a permission every token holds** — GitHub says it cannot be
+turned off. So this `403` is provably not a scope problem, and the disproof was
+in a header on the very response `_http_explanation` was reading when it
+announced *"reading this repository's protection state needs a token with
+repository administration read access"*. That claim was wrong twice: wrong that
+the cause was scope, and wrong about which permission, for an endpoint that had
+just said.
+
+This is the same header `08-adopting.md` § 1 derives the whole permissions table
+from — *"established by measurement rather than by reading prose"* — applied to a
+refusal rather than to a success. The checker now quotes it: given the accepted
+permission, an operator knows what their own token holds and can settle the
+question without the checker speculating about their billing.
+
+**Half the open question is closed.** On GitHub Free, a private repository's
+effective-rules endpoint refuses on the **plan**, with no scope confusion
+available to hide behind, which is what a `platform_limits:` entry may record.
+The other half stands: whether that endpoint, once it answers, reports rules
+originating from *classic* branch protection still decides whether a **Pro**
+private repository passes CI-001 honestly or fails through a checker gap. Only a
+Pro private repository can answer it, and this one is not.
+
+## Applied — pass 2
+
+Implemented 2026-09-01. `Unreadable` carries the HTTP `status` where there was
+one; `runner._unreadable_or_unavailable` is the new counterpart to
+`_waived_or_failed`, holding the three constraints above.
+
+`tests/test_platform_limits.py` gains a section that runs through `run_block` —
+the entry point a real conformance run uses — rather than calling the waiver
+directly, because the bypass is what hid this for six weeks. Each guard was
+mutation-tested: reverting the widening kills two tests, covering any status
+kills three, and letting an expired record keep covering kills one.
+
 ## Applied — pass 1
 
 Implemented 2026-08-31. `src/register_check/platform_limits.py` reads
@@ -229,3 +343,10 @@ The `08-adopting.md` and `START-HERE.md` prose describing the risks a constraine
 repository takes landed before this, on the branch that proposed the ADR, and
 says the mechanism is unbuilt. That wording is now stale and is corrected in the
 same change as this note.
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-31 | Original decision: a repository records a platform limitation in `deployment-decisions.yaml` and the checker reports `UNAVAILABLE (plan)` rather than failing, under six rules. | Nathan Carney |
+| 2 | 2026-09-01 | Premise corrected against a live Free private repository; the refusal's `x-accepted-github-permissions: metadata=read` proves the cause is the plan, not scope: the effective-rules endpoint answers `403`, not `[]`, so the recorded limit was never reached and the mechanism was inert. A record now also covers a `403` on the block it names — only `403`, expiring to `UNCLASSIFIED` rather than `FAIL`, and not SEC-001's absent-field case. The decision itself is unchanged. | Nathan Carney |
