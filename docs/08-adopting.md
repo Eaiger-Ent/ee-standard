@@ -119,15 +119,15 @@ now requires.
 
 | Permission | Level | Why |
 | --- | --- | --- |
-| Metadata | read | Mandatory on every fine-grained token |
-| Contents | read and write | The adoption commits; pushing needs write |
-| Workflows | read and write | Four gates write `.github/workflows/` |
-| Administration | read and write | Creating the ruleset, and populating `security_and_analysis` |
-| Pull requests | read and write | CI-001 forbids pushing to the default branch |
-| Issues | read and write | The § 4.5 sweep opens and closes a tracking issue |
 | Actions | read | Reading whether the conformance run passed |
+| Administration | read and write | Creating the ruleset, and populating `security_and_analysis` |
+| Contents | read and write | The adoption commits; pushing needs write |
 | Dependabot alerts | read | Reading what SUP-002's bot found |
+| Issues | read and write | The § 4.5 sweep opens and closes a tracking issue |
+| Metadata | read | Mandatory on every fine-grained token |
+| Pull requests | read and write | CI-001 forbids pushing to the default branch |
 | Secrets | read and write | Setting the CI credential in § 4.3 |
+| Workflows | read and write | Four gates write `.github/workflows/` |
 
 **Established by measurement rather than by reading prose.** GitHub returns the
 permission an endpoint requires in an `x-accepted-github-permissions` header, so

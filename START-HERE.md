@@ -228,15 +228,15 @@ afterwards, and it is easier to set them now than to come back.
 
 | Permission | Level | What it lets you do |
 | --- | --- | --- |
-| Metadata | Read-only | Required on every token; you cannot turn it off |
-| Contents | Read and write | Commit and push |
-| Workflows | Read and write | Push changes to `.github/workflows/` |
-| Administration | Read and write | Create the branch ruleset, and read whether push protection is on |
-| Pull requests | Read and write | Open and merge pull requests. **After adoption you cannot push to the default branch**, so this is how you change anything |
-| Issues | Read and write | Open and close issues, including the ones the scheduled sweep raises |
 | Actions | Read-only | See whether CI passed — `gh run list`, `gh run view` |
+| Administration | Read and write | Create the branch ruleset, and read whether push protection is on |
+| Contents | Read and write | Commit and push |
 | Dependabot alerts | Read-only | See what the dependency bot found |
+| Issues | Read and write | Open and close issues, including the ones the scheduled sweep raises |
+| Metadata | Read-only | Required on every token; you cannot turn it off |
+| Pull requests | Read and write | Open and merge pull requests. **After adoption you cannot push to the default branch**, so this is how you change anything |
 | Secrets | Read and write | Set the CI token later, without leaving the terminal |
+| Workflows | Read and write | Push changes to `.github/workflows/` |
 
 Leave everything else at **No access**.
 

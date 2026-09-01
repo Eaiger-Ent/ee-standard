@@ -660,3 +660,35 @@ def test_it_sets_the_terminal_interface_before_the_session_matters() -> None:
     assert step.index("/tui default") < step.index("/register-adopt"), (
         "the interface is set after the command whose output the reader needs to copy"
     )
+
+
+def test_the_permissions_are_listed_as_github_lists_them() -> None:
+    """Asked for, and it is about the reader's hands rather than tidiness.
+
+    GitHub's token form lists repository permissions alphabetically. A table in
+    any other order makes the reader scan the whole form for each row instead of
+    walking down it once, and skipping one is how `Workflows` gets missed — a
+    permission that fails only after the gates have written their files.
+
+    Held for both documents, because a reader who checks the reference against
+    the quickstart should not find two orders.
+    """
+    names = (
+        "Actions", "Administration", "Contents", "Dependabot alerts", "Issues",
+        "Metadata", "Pull requests", "Secrets", "Workflows",
+    )
+    for path, text in (
+        (START_HERE, TEXT),
+        (REPO_ROOT / "docs/08-adopting.md",
+         (REPO_ROOT / "docs/08-adopting.md").read_text(encoding="utf-8")),
+    ):
+        rows = [
+            line.split("|")[1].strip()
+            for line in text.splitlines()
+            if line.startswith("| ") and line.split("|")[1].strip() in names
+        ]
+        assert rows, f"{path.name} has no permissions table"
+        assert rows == sorted(rows), (
+            f"{path.name} lists permissions as {rows} — GitHub's form is alphabetical, "
+            "and a reader works down it once rather than searching it nine times"
+        )
