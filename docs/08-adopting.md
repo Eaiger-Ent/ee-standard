@@ -89,7 +89,7 @@ tells you which one you can revoke without breaking CI.
 | What | Name it | Where you make it | Scope | Where it goes | Needed at |
 | --- | --- | --- | --- | --- | --- |
 | Claude Code OAuth token | — | `claude setup-token` | — | Keychain, `CLAUDE_OAUTH_TOKEN` | § 2.0 — the container will not start without it |
-| The repository token | `<repo>-keychain` | <https://github.com/settings/personal-access-tokens> | Metadata: read; Contents, **Workflows** and Administration: **read and write** | Keychain, `GITHUB_TOKEN` | § 1 onward — `gh`, and `gate-repo` creating the ruleset |
+| The repository token | `<repo>-keychain` | <https://github.com/settings/personal-access-tokens> | See § 0.b1 | Keychain, `GITHUB_TOKEN` | § 1 onward — `gh`, and `gate-repo` creating the ruleset |
 | The CI token | `<repo>-actions` | <https://github.com/settings/personal-access-tokens> | `Administration: **read**` | an environment secret | § 4.3 |
 
 **Make the last two fine-grained, not classic.** SEC-003's
@@ -109,6 +109,59 @@ The CI token stays separate because its scope is genuinely different — it read
 platform state on every run and never writes — and because a standing credential
 with `Administration: write` in CI is what
 [ADR 0022](adr/0022-a-platform-token-ci-carries.md) exists to avoid.
+
+### 0.b1 — What the repository token must carry, and how that was established
+
+Nine permissions, and the split matters: four are needed to finish the adoption,
+five are needed to work in the repository afterwards. A token with only the
+first four completes § 3 and then cannot open the pull request § 1's ruleset
+now requires.
+
+| Permission | Level | Why |
+| --- | --- | --- |
+| Metadata | read | Mandatory on every fine-grained token |
+| Contents | read and write | The adoption commits; pushing needs write |
+| Workflows | read and write | Four gates write `.github/workflows/` |
+| Administration | read and write | Creating the ruleset, and populating `security_and_analysis` |
+| Pull requests | read and write | CI-001 forbids pushing to the default branch |
+| Issues | read and write | The § 4.5 sweep opens and closes a tracking issue |
+| Actions | read | Reading whether the conformance run passed |
+| Dependabot alerts | read | Reading what SUP-002's bot found |
+| Secrets | read and write | Setting the CI credential in § 4.3 |
+
+**Established by measurement rather than by reading prose.** GitHub returns the
+permission an endpoint requires in an `x-accepted-github-permissions` header, so
+each row above was read off the live API:
+
+```bash
+curl -sS -o /dev/null -D - -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://api.github.com/repos/{owner}/{repo}/rulesets | grep -i x-accepted-github
+# x-accepted-github-permissions: administration=write
+```
+
+Re-derive them the same way rather than trusting this table — it is a second
+copy of something GitHub states authoritatively, and the register's own rule
+about second copies applies to it.
+
+Two results are worth recording because they are counter-intuitive.
+
+**Reading a ruleset needs only `metadata=read`.** So a `403` on
+`GET /rulesets` is a *plan* limit rather than a permission problem, which is why
+§ 1 reads it as one.
+
+**`security_and_analysis` is a field-level permission, not an endpoint-level
+one.** `GET /repos/{owner}/{repo}` reports `metadata=read`, and the field is
+populated only for a caller with administration access. So an under-permissioned
+token gets a **successful response with the answer missing** — which is why
+`github_push_protection_enabled` raises `Unreadable` on an absent
+`security_and_analysis` rather than reporting push protection off. A false
+violation produced by not having looked is the failure that assert exists to
+avoid.
+
+**Workflows is separate from Contents and is not implied by it**, per GitHub's
+own guidance: *"If your app specifically needs to access or edit Actions files
+in the `.github/workflows` directory, request the 'Workflows' repository
+permission."*
 
 ### 0.b2 — Where each step runs, and what a session leaves behind
 

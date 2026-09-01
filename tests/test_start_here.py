@@ -609,30 +609,44 @@ def test_the_plugin_is_installed_inside_the_container_too() -> None:
     )
 
 
-def test_the_pat_carries_workflows_and_contents_write() -> None:
-    """Reported from the run: the PAT did not have the right privileges.
+def test_the_pat_covers_using_the_repository_not_just_adopting_it() -> None:
+    """Two findings from the run, and the second is the larger.
 
-    Two were missing and both fail *after* the gates have written their files,
-    which is the expensive place to find out.
+    The permissions were scoped to *completing the deployment*. But CI-001
+    forbids pushing to the default branch the moment it is created, so a token
+    without Pull requests finishes the adoption and then cannot change anything.
+    Actions, Issues, Dependabot alerts and Secrets are the same shape: needed to
+    work in the repository rather than to set it up.
 
-    `Workflows` is a separate fine-grained permission and is not implied by
-    Contents. Four of the six gates write into `.github/workflows/`, and GitHub
-    rejects a push touching a workflow file without it. `Contents` had to become
-    read-and-write for the same reason the adoption commits at all.
+    Every level here was read off `x-accepted-github-permissions` on the live
+    API; the evidence lives in `docs/08-adopting.md` § 0.b1 rather than in the
+    quickstart, which is the first finding — a beginner's guide was carrying the
+    author's working.
     """
     section = TEXT.split("#### Creating the GitHub token", 1)[1].split("\n## ", 1)[0]
-    assert "Workflows" in section, (
-        "the token permissions omit Workflows — a push carrying "
-        ".github/workflows/register-check.yml is rejected without it"
-    )
+    for permission in ("Workflows", "Pull requests", "Issues", "Actions", "Secrets"):
+        assert f"| {permission} " in section, (
+            f"the token permissions omit {permission}, which the reader needs to "
+            "work in the repository after adopting it"
+        )
     for line in section.splitlines():
         if line.startswith("| Contents"):
-            assert "Read and write" in line, (
-                "Contents is read-only, so the adoption cannot push what it commits"
-            )
-            break
-    else:
-        raise AssertionError("the permissions table no longer lists Contents")
+            assert "Read and write" in line, "Contents is read-only; the adoption pushes"
+
+
+def test_the_quickstart_does_not_show_its_working() -> None:
+    """A beginner's guide should not carry the evidence for its own claims.
+
+    "These are measured, not inferred", a quoted GitHub policy line, and a curl
+    for reading permission headers were all in the reader's path. They belong in
+    the reference, where somebody checking the table would look for them.
+    """
+    section = TEXT.split("#### Creating the GitHub token", 1)[1].split("\n## ", 1)[0]
+    for tell in ("measured, not inferred", "x-accepted-github", "If your app specifically"):
+        assert tell not in section, (
+            f"the quickstart still shows its working ({tell!r}) — that belongs in "
+            "docs/08-adopting.md § 0.b1"
+        )
 
 
 def test_it_sets_the_terminal_interface_before_the_session_matters() -> None:

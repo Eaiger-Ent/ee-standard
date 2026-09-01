@@ -222,38 +222,33 @@ there is no reason to keep two habits.
 
 Then under **Repository permissions**, set exactly these and nothing else:
 
-| Permission | Level | Why |
+Under **Repository permissions**, set these. The first four are needed to
+finish the adoption; the rest are what you need to work in the repository
+afterwards, and it is easier to set them now than to come back.
+
+| Permission | Level | What it lets you do |
 | --- | --- | --- |
-| Metadata | Read-only | Every read this standard makes. `GET /repos/{owner}/{repo}`, `/rulesets` and `/rules/branches/{branch}` all report `metadata=read` |
-| Contents | **Read and write** | Read for `gh`; **write** because the adoption commits and pushes what it wrote |
-| Workflows | **Read and write** | Four gates write `.github/workflows/register-check.yml`. GitHub: *"If your app specifically needs to access or edit Actions files in the `.github/workflows` directory, request the 'Workflows' repository permission"* |
-| Administration | **Read and write** | `POST /rulesets` and `PUT /rulesets/{id}` both report `administration=write`. It is also what makes `security_and_analysis` appear at all — see below |
+| Metadata | Read-only | Required on every token; you cannot turn it off |
+| Contents | Read and write | Commit and push |
+| Workflows | Read and write | Push changes to `.github/workflows/` |
+| Administration | Read and write | Create the branch ruleset, and read whether push protection is on |
+| Pull requests | Read and write | Open and merge pull requests. **After adoption you cannot push to the default branch**, so this is how you change anything |
+| Issues | Read and write | Open and close issues, including the ones the scheduled sweep raises |
+| Actions | Read-only | See whether CI passed — `gh run list`, `gh run view` |
+| Dependabot alerts | Read-only | See what the dependency bot found |
+| Secrets | Read and write | Set the CI token later, without leaving the terminal |
 
-**These are measured, not inferred.** GitHub returns the permission each endpoint
-needs in a response header, so you can check any of them yourself:
+Leave everything else at **No access**.
 
-```bash
-curl -sS -o /dev/null -D - -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
-  https://api.github.com/repos/{owner}/{repo}/rulesets | grep -i x-accepted-github
-# x-accepted-github-permissions: administration=write
-```
+**Three of these fail late** — after the gates have written their files — so
+they are worth checking twice before you start:
 
-**Two of these are missed constantly and both fail late**, after the gates have
-already written their files:
-
-- **Workflows** is a separate permission and is **not** implied by Contents.
-  Without it a push carrying `.github/workflows/register-check.yml` is rejected,
-  and every gate but `gate-build` writes into that file.
-- **Administration: write** is what `gate-repo` checks at its pre-flight; it
-  stops there rather than writing half a deployment.
-
-**One subtlety worth knowing**, because it looks like a contradiction. Reading
-the repository needs only `metadata=read` — but the `security_and_analysis`
-field inside the response is populated **only for a caller with administration
-access**. So SEC-001's remote block can call the endpoint with a weak token and
-get an answer that is missing the thing it asked about. The checker treats that
-absence as *unreadable* rather than as *push protection is off*, which is why a
-under-permissioned token reports `UNCLASSIFIED` rather than a false violation.
+- **Workflows** is separate from Contents. Without it, the push that carries
+  `.github/workflows/register-check.yml` is rejected.
+- **Administration** is what `gate-repo` looks for; it stops rather than
+  half-deploying.
+- **Pull requests** you will not miss until the ruleset exists and you cannot
+  push to `main` any more.
 
 **Store it in the Keychain**, which is the only place it lives — nothing commits
 it and nothing else reads it:
