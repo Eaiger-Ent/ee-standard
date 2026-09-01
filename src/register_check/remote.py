@@ -87,7 +87,19 @@ class Unreadable(RuntimeError):
     repository whose `security_and_analysis` is `null` because the caller is not
     an administrator has not told us push protection is off. Reporting FAIL
     there would assert a violation on the strength of not having looked.
+
+    `status` carries the HTTP code where there was one, and is `None` for the
+    failures that never reached a status — a timeout, a name that would not
+    resolve, a body that was not JSON. One caller reads it: a recorded platform
+    limit covers a `403` and nothing else
+    ([ADR 0047](../../docs/adr/0047-a-plan-limit-is-recorded-not-tolerated.md)
+    revision 2). Everything else treats an `Unreadable` as the single fact that
+    the question was not settled.
     """
+
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 @dataclass(frozen=True)
@@ -157,7 +169,8 @@ class GitHub:
                 received = {str(k).lower(): str(v) for k, v in response.headers.items()}
         except urllib.error.HTTPError as exc:
             raise Unreadable(
-                _http_explanation(exc.code, path, self.slug, _api_message(exc))
+                _http_explanation(exc.code, path, self.slug, _api_message(exc)),
+                status=exc.code,
             ) from exc
         except urllib.error.URLError as exc:
             raise Unreadable(f"could not reach {self.api}{path}: {exc.reason}") from exc

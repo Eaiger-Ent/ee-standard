@@ -17,15 +17,16 @@ from pathlib import Path
 
 import pytest
 
-from conftest import a_register, make_repo
+from conftest import FakeGitHub, a_register, make_repo
 from register_check.platform_limits import (
     BadPlatformLimits,
     limit_for,
     read_limits,
 )
 from register_check.register import Control, Register, VerifyBlock
+from register_check.remote import Unreadable
 from register_check.repo import Repo
-from register_check.runner import Verdict, _waived_or_failed, exit_code
+from register_check.runner import BlockResult, Verdict, _waived_or_failed, exit_code, run_block
 
 FUTURE = (datetime.date.today() + datetime.timedelta(days=90)).isoformat()
 PAST = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
@@ -110,6 +111,108 @@ def _remote_block(
 ) -> tuple[VerifyBlock, Control]:
     control = next(c for c in register.controls if c.id == control_id)
     return next(b for b in control.verify if b.assert_name == assert_name), control
+
+
+# --- a refusal, through the entry point a real run uses -----------------------
+#
+# The tests below go through `run_block` rather than calling the waiver
+# directly. That distinction is the whole reason this section exists: the ADR
+# was implemented believing a plan limit arrives as a **failure**, the unit test
+# below called `_waived_or_failed` to prove it, and both were wrong about the
+# same thing. A live Free private repository answers 403, the block became
+# UNCLASSIFIED, and the waiver was never reached. A test that constructs the
+# input it wants cannot find that out.
+
+
+def _refused(status: int | None = 403) -> Unreadable:
+    """What the checker raises when GitHub refuses the effective-rules read."""
+    return Unreadable(
+        "/repos/acme/widget/rules/branches/main answered 403 — GitHub says: "
+        '"Upgrade to GitHub Pro or make this repository public to enable this feature."',
+        status=status,
+    )
+
+
+def _run_ci_001_ruleset_block(
+    tmp_path: Path, raising: Unreadable, record: str | None
+) -> BlockResult:
+    register = a_register()
+    block, control = _remote_block(register, "CI-001", "default_branch_ruleset_satisfies")
+    files = {"deployment-decisions.yaml": record} if record else {}
+    repo = make_repo(tmp_path, files or {"a.txt": "x"})
+    return run_block(
+        block,
+        register,
+        repo,
+        control,
+        remote=FakeGitHub({"/repos/acme/widget": raising}),
+        limits=read_limits(repo) if record else (),
+    )
+
+
+def test_a_recorded_limit_covers_a_403_the_run_could_not_read(tmp_path: Path) -> None:
+    """The case the whole mechanism exists for, as a live repository produces it.
+
+    Before this, an adopter on GitHub Free could write a correct entry and still
+    read UNCLASSIFIED for ever: 403 raised `Unreadable`, which returned before
+    the waiver was consulted.
+    """
+    result = _run_ci_001_ruleset_block(tmp_path, _refused(), _record(FUTURE))
+    assert result.verdict is Verdict.UNAVAILABLE_PLAN
+    assert "github-free-private" in result.message
+    assert "does not hold" in result.message
+
+
+def test_a_403_with_no_record_stays_unclassified(tmp_path: Path) -> None:
+    """The record is what changes the verdict, never the status on its own."""
+    result = _run_ci_001_ruleset_block(tmp_path, _refused(), None)
+    assert result.verdict is Verdict.UNCLASSIFIED
+
+
+@pytest.mark.parametrize(
+    "status", [401, 404, 500, None], ids=["rejected", "invisible", "server", "no status"]
+)
+def test_a_record_covers_only_a_403(tmp_path: Path, status: int | None) -> None:
+    """A dated billing record may not absorb an expired token or a bad network.
+
+    That would be the checker reporting a commercial fact it has not
+    established, which is the misuse ADR 0047 § What this cannot verify names.
+    """
+    result = _run_ci_001_ruleset_block(tmp_path, _refused(status), _record(FUTURE))
+    assert result.verdict is Verdict.UNCLASSIFIED
+
+
+def test_an_expired_record_stops_covering_a_403(tmp_path: Path) -> None:
+    """Rule 3 on the unreadable path — and UNCLASSIFIED rather than FAIL.
+
+    Not covering means reverting to what the run knows, and this run never got
+    an answer. Failing a control on the strength of not having looked is what
+    ADR 0021 forbids everywhere else.
+    """
+    result = _run_ci_001_ruleset_block(tmp_path, _refused(), _record(PAST))
+    assert result.verdict is Verdict.UNCLASSIFIED
+    assert "expired" in result.message
+    assert "not a waiver" in result.message
+
+
+def test_a_record_matches_the_block_it_names_and_no_other(tmp_path: Path) -> None:
+    """Rule 2's scope, on the path this revision added.
+
+    SEC-001's remote block is refused the same way and has no entry, so it stays
+    unclassified while CI-001's is covered.
+    """
+    register = a_register()
+    block, control = _remote_block(register, "SEC-001", "github_push_protection_enabled")
+    repo = make_repo(tmp_path, {"deployment-decisions.yaml": _record(FUTURE)})
+    result = run_block(
+        block,
+        register,
+        repo,
+        control,
+        remote=FakeGitHub({"/repos/acme/widget": _refused()}),
+        limits=read_limits(repo),
+    )
+    assert result.verdict is Verdict.UNCLASSIFIED
 
 
 def test_a_recorded_limit_downgrades_a_failing_block(tmp_path: Path) -> None:
