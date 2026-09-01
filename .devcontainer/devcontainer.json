@@ -108,6 +108,11 @@
       // feature's on undefined terms (ADR 0029).
       "extensions": ["charliermarsh.ruff", "DavidAnson.vscode-markdownlint"],
       "settings": {
+        // The container user's login shell is bash and every script here
+        // declares bash in its shebang; this makes VS Code's *terminal* zsh, so
+        // `devcontainer exec ... bash` and "Reopen in Container" hand you
+        // different shells. Nothing depends on which — both are in the base
+        // image — but it is worth recording rather than leaving to be found.
         "terminal.integrated.defaultProfile.linux": "zsh",
 
         // Nothing in this repository serves anything. Every port the rebuild

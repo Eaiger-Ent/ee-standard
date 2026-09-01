@@ -561,3 +561,27 @@ def test_no_block_mixes_a_shell_command_with_a_slash_command() -> None:
             f"a bash block mixes shell and slash commands: {lines[:3]} — they run in "
             "different programs and cannot be pasted together"
         )
+
+
+def test_step_five_says_how_to_get_into_the_container() -> None:
+    """Asked directly: do I run step 5 on macOS or in the devcontainer?
+
+    Inside — and the guide said so while never giving the transition. Steps 1 to
+    4 all run on the Mac (step 4 *builds* the container and leaves you outside
+    it), so step 5 is where the reader moves in, and `devcontainer exec` appeared
+    only in a troubleshooting note three sections later.
+
+    It also claimed "everything since step 4 has been" inside, which is wrong in
+    a way that would confirm a reader's mistaken belief rather than correct it.
+    """
+    step = TEXT.split("## 5 — Run the adoption", 1)[1].split("\n## 6 ", 1)[0]
+    assert "devcontainer exec" in step, (
+        "step 5 does not say how to get a shell inside the container"
+    )
+    assert "Reopen in Container" in step, "it offers no route for a VS Code user"
+    assert "/workspaces/" in step, (
+        "there is no way for the reader to confirm they are actually inside"
+    )
+    assert "everything since step 4 has been" not in step, (
+        "the step still claims step 4 ran inside the container; it ran on the host"
+    )

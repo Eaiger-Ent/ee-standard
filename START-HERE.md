@@ -482,18 +482,46 @@ Claude Code token yet.
 
 ## 5 — Run the adoption
 
-One command deploys every gate, and it runs **inside a Claude Code session**
-rather than in your shell. Two blocks, because they go in two different places.
+**This is where you move into the container.** Steps 1 to 4 all ran on your Mac —
+the last of them built the container but left you outside it. Everything from
+here runs **inside**: the gates verify themselves with `uv run register-check`,
+and on your Mac that resolves to whatever uv your Mac happens to have. Phase 4
+ran an adoption on the host and every gate reported green about a uv version it
+was not using.
 
-First, in your terminal — inside the container, as everything since step 4 has
-been:
+Get a shell inside it, from your repository root:
+
+```bash
+devcontainer exec --workspace-folder . bash
+```
+
+Or open the folder in VS Code and choose **Reopen in Container** — then use its
+built-in terminal, which is already inside.
+
+**Either shell is fine.** `bash` is the container user's login shell and what the
+command above gives you; VS Code's terminal opens `zsh`, which the template
+configures. Both are installed, nothing here depends on which, and the scripts
+declare `bash` in their own shebangs regardless of what you are typing in.
+
+**You are in when this prints a path beginning `/workspaces/`:**
+
+```bash
+pwd && uv --version
+```
+
+`/Users/...` means you are still on your Mac. Go back and run one of the two
+above.
+
+---
+
+Now, in that container shell:
 
 ```bash
 claude --permission-mode acceptEdits
 ```
 
-That opens a session and gives you a `>` prompt. Then type this **at that
-prompt**, not in the shell:
+That opens a Claude Code session and gives you a `>` prompt. Then type this **at
+that prompt**, not in the shell:
 
 ```text
 /register-adopt --repo . --register ./controls.yaml
