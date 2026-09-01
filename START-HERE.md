@@ -482,13 +482,26 @@ Claude Code token yet.
 
 ## 5 — Run the adoption
 
-One command deploys every gate. Run it interactively.
+One command deploys every gate, and it runs **inside a Claude Code session**
+rather than in your shell. Two blocks, because they go in two different places.
+
+First, in your terminal — inside the container, as everything since step 4 has
+been:
 
 ```bash
 claude --permission-mode acceptEdits
-# then, in the session:
+```
+
+That opens a session and gives you a `>` prompt. Then type this **at that
+prompt**, not in the shell:
+
+```text
 /register-adopt --repo . --register ./controls.yaml
 ```
+
+`acceptEdits` is worth the flag: a full adoption is a few dozen ordinary file
+writes, and approving each one individually is how people stop reading the
+prompts that matter.
 
 **Done when:** it reports every control planned and verified, and commits.
 

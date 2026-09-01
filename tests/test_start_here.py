@@ -533,3 +533,31 @@ def test_each_pat_has_a_name_the_reader_can_look_up_later() -> None:
     assert "Token name" in section, (
         "the creation steps do not tell the reader to fill in the name field"
     )
+
+
+def test_no_block_mixes_a_shell_command_with_a_slash_command() -> None:
+    """Reported at step 5: the block had to be split to be runnable.
+
+        claude --permission-mode acceptEdits
+        # then, in the session:
+        /register-adopt --repo . --register ./controls.yaml
+
+    Pasted as one, that starts Claude Code and then feeds the remaining two
+    lines into the session as text. They belong in two places — a terminal and a
+    `>` prompt — so they are two blocks, and the slash command is fenced as
+    `text` rather than `bash` because it is not shell.
+
+    The repeating unit's promise is that a block is copy-pasteable *as a block*.
+    A block whose lines run in different programs cannot be.
+    """
+    for block in _FENCED_BASH.findall(TEXT):
+        lines = [
+            ln for ln in block.splitlines()
+            if ln.strip() and not ln.strip().startswith("#")
+        ]
+        slash = [ln for ln in lines if ln.strip().startswith("/")]
+        shell = [ln for ln in lines if not ln.strip().startswith("/")]
+        assert not (slash and shell), (
+            f"a bash block mixes shell and slash commands: {lines[:3]} — they run in "
+            "different programs and cannot be pasted together"
+        )
