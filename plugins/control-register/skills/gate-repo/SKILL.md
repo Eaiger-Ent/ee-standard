@@ -148,11 +148,17 @@ gh api "repos/$OWNER/$NAME/branches/$DEFAULT/protection" 2>/dev/null
 | `LEGACY_PROTECTION` | a classic branch-protection rule, if one exists |
 | `RECORDED` | `RULESET_PATH` in the repository, if it exists, and whether this skill wrote it |
 | `TOKEN_SCOPE` | whether the token can write rulesets |
+| `PLAN_LIMIT` | whether the platform refused on the repository's plan rather than on the token |
 
 **If `TOKEN_SCOPE` shows no `administration: write`,** stop before writing
 anything. Say which permission is missing and who grants it. A skill that writes
 the record and cannot apply it leaves a repository looking protected in a diff
 and unprotected in fact — the exact half-state this gate must not create.
+
+**A plan limit is the other thing**: a `403` saying *upgrade*, where no token
+reaches what the plan does not sell. **Read
+`${CLAUDE_PLUGIN_ROOT}/reference/plan-limits.md`** — do Step 1, stop before
+Step 2, and report the ruleset as *recorded, not applied*.
 
 ### 3. Report the plan, and what it will change for everyone
 
@@ -484,6 +490,7 @@ Canonical source for both shared standards below:
   `gate-supply-chain`, `register-adopt`, `register-install` and
   `register-variance`. Change the shape there, never here; ADR 0036 is the
   reason it is one file rather than nine copies.
+- **Plan limits** (`reference/plan-limits.md`) — shared with `gate-secrets`.
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
