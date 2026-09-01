@@ -512,3 +512,24 @@ def test_the_derivation_matches_the_script_that_reads_it() -> None:
         "must be changed with it"
     )
     assert transformation in TEXT, "START-HERE.md does not use the script's transformation"
+
+
+def test_each_pat_has_a_name_the_reader_can_look_up_later() -> None:
+    """Suggested by a reader: give the PATs names so they can be referenced.
+
+    GitHub's token list shows the name, the expiry and the last use and nothing
+    else. In ninety days both of these expire together, and the name is the only
+    thing telling you which one you can revoke without breaking CI — so they are
+    named after *where they live* rather than what they do.
+
+    Naming them also settled a question the document had been fudging: two rows
+    that turn out to carry the same name are one token, which is how the "admin
+    token" was found to be the Keychain one.
+    """
+    section = TEXT.split("### E — Get these credentials", 1)[1].split("\n## ", 1)[0]
+    assert "<repo>-keychain" in section and "<repo>-actions" in section, (
+        "the PATs have no names, so a reader cannot tell them apart in GitHub's list"
+    )
+    assert "Token name" in section, (
+        "the creation steps do not tell the reader to fill in the name field"
+    )

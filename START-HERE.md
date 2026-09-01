@@ -187,11 +187,18 @@ you should know exactly which and what they cost before you begin:
 
 ### E — Get these credentials
 
-| Credential | Where to create it | Where it goes | Needed for |
+| Name it | What it is | Where it goes | Needed for |
 | --- | --- | --- | --- |
-| Claude Code OAuth token | `claude setup-token` | Keychain, `CLAUDE_OAUTH_TOKEN` | The container will not start without it |
-| A GitHub token | see § Creating the GitHub token | Keychain, `GITHUB_TOKEN` | `gh` and every gate that talks to GitHub |
-| The CI token | the same page, a **second** token | a GitHub environment secret, later | Step § 4.3 of the reference, a second sitting |
+| — | Claude Code OAuth token | Keychain, `CLAUDE_OAUTH_TOKEN` | The container will not start without it |
+| **`<repo>-keychain`** | A GitHub PAT — see § Creating the GitHub token | Keychain, `GITHUB_TOKEN` | `gh` and every gate that talks to GitHub |
+| **`<repo>-actions`** | A second GitHub PAT | a GitHub environment secret, later | § 4.3 of the reference, a second sitting |
+
+**Name them, and name them after where they live.** GitHub's token list shows
+the name, the expiry and the last use and nothing else, so in ninety days when
+both are expiring the name is the only thing telling you which one you can
+revoke without breaking CI. `<repo>` is your repository — `my-app-keychain`,
+`my-app-actions`. The Claude token has no name field; it is a Keychain entry
+rather than a PAT.
 
 **The two GitHub tokens are not interchangeable.** One lives in your Keychain
 and is used by you *and by the gates*, from inside the container — that is the
@@ -208,6 +215,7 @@ there is no reason to keep two habits.
 
 | Field | Value |
 | --- | --- |
+| Token name | `<repo>-keychain` — this is the one that goes in your Keychain |
 | Resource owner | The account or organisation that owns the repository |
 | Repository access | **Only select repositories** → the one you are adopting |
 | Expiration | 90 days or less. You will be asked to rotate it; that is the point |

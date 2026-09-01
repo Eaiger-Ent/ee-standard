@@ -82,12 +82,15 @@ They are four different things, they are needed at four different points, and
 three of them are GitHub tokens that are **not interchangeable**. Collected here
 because meeting them one at a time is how the third one surprises you.
 
-| What | Where you make it | Scope | Where it goes | Needed at |
-| --- | --- | --- | --- | --- |
-| Claude Code OAuth token | `claude setup-token` | — | Keychain, `CLAUDE_OAUTH_TOKEN` | § 2.0 — the container will not start without it |
-| A token for `gh` | <https://github.com/settings/personal-access-tokens> | read on the repository | Keychain, `GITHUB_TOKEN` | § 1, and convenience thereafter |
-| An admin token | <https://github.com/settings/personal-access-tokens> | `Administration: **write**` | used once, not stored | § 1 — creating the ruleset |
-| The CI token | <https://github.com/settings/personal-access-tokens> | `Administration: **read**` | an environment secret | § 4.3 |
+Name each PAT after **where it lives**: GitHub's token list shows the name, the
+expiry and the last use and nothing else, so when both expire the name is what
+tells you which one you can revoke without breaking CI.
+
+| What | Name it | Where you make it | Scope | Where it goes | Needed at |
+| --- | --- | --- | --- | --- | --- |
+| Claude Code OAuth token | — | `claude setup-token` | — | Keychain, `CLAUDE_OAUTH_TOKEN` | § 2.0 — the container will not start without it |
+| The repository token | `<repo>-keychain` | <https://github.com/settings/personal-access-tokens> | Metadata: read, Contents: read, `Administration: **write**` | Keychain, `GITHUB_TOKEN` | § 1 onward — `gh`, and `gate-repo` creating the ruleset |
+| The CI token | `<repo>-actions` | <https://github.com/settings/personal-access-tokens> | `Administration: **read**` | an environment secret | § 4.3 |
 
 **Make the last two fine-grained, not classic.** SEC-003's
 `platform_token_is_not_classic` block fails on the `X-OAuth-Scopes` header a
@@ -96,9 +99,15 @@ than an inconvenience. The `ghp_...` shape in § 2.0's Keychain example is a
 *classic* token and is fine there — that entry is your own `gh` convenience and
 never reaches CI — but do not carry the shape across to row four.
 
-The admin token and the CI token are separate because their scopes are: one
-writes a ruleset once, the other reads platform state on every run, and a
-standing credential with `Administration: write` is what
+**Two tokens, and giving them names is what showed why.** An earlier version of
+this table listed three — one for `gh`, one for the ruleset, one for CI — and
+the first two turned out to be the same credential: `gate-repo` runs inside the
+container and reads the same `$GITHUB_TOKEN` the env-file supplies, so the
+"admin token" is the Keychain one and must carry `Administration: write`.
+
+The CI token stays separate because its scope is genuinely different — it reads
+platform state on every run and never writes — and because a standing credential
+with `Administration: write` in CI is what
 [ADR 0022](adr/0022-a-platform-token-ci-carries.md) exists to avoid.
 
 ### 0.b2 — Where each step runs, and what a session leaves behind
