@@ -192,12 +192,21 @@ verifies them.
 all three. Run it in your repository root before step 5:
 
 ```bash
-uv init --name "$(basename "$PWD" | tr '_' '-')"
+uv init --name "$(basename "$PWD" | tr '_' '-')" --python 3.14
 uv add --dev pytest
 mkdir -p tests
 printf 'def test_it_runs() -> None:\n    assert True\n' > tests/test_smoke.py
 git add pyproject.toml uv.lock .python-version tests/
 ```
+
+**`--python 3.14` is not optional, and `uv init` will not choose it for you.**
+It writes both files that matter — `.python-version`, which *selects* the
+interpreter every locus runs on, and `requires-python`, which *constrains*
+resolution. Leave it out and uv picks whatever it finds: an adopter got 3.13,
+and `uv add --dev register-check` then refused, because the checker requires
+3.14 and a floor of `>=3.13` is resolved from its lowest version. The error
+names the version it wanted, so if this number is ever stale, the message that
+stops you is also the correction.
 
 The `-> None` is not decoration. TYP-001 runs mypy in strict mode, which fails an
 unannotated function, and an adopter met exactly that on the first test they
