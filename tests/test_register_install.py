@@ -110,6 +110,39 @@ def test_the_tag_names_the_version_it_claims() -> None:
     )
 
 
+def test_the_tag_serves_every_file_the_adopter_guide_fetches_from_it() -> None:
+    """A file added on main is not a file an adopter can fetch.
+
+    ADR 0048 moved the adopter's register to `controls.published.yaml` and both
+    guides to fetching it — from the newest **tag**, which did not have it. So
+    step 2 returned 404 and left the reader with no register at all, at the step
+    after which nothing else can be followed. Correct in the tree, broken in the
+    released artefact, and invisible to every other test here.
+
+    The pair this guards is the same one `test_the_tag_the_register_names_exists`
+    guards: the guide and the tag have to agree, and only one of them moves when
+    somebody edits a document.
+    """
+    ref = _install().ref  # type: ignore[attr-defined]
+    fetched = set()
+    for guide in (REPO_ROOT / "START-HERE.md", REPO_ROOT / "docs/08-adopting.md"):
+        fetched |= {
+            match.group(1)
+            for match in re.finditer(
+                r"raw\.githubusercontent\.com/[^/]+/[^/]+/\$\{tag\}/(\S+?)\"?\s",
+                guide.read_text(encoding="utf-8"),
+            )
+        }
+    assert fetched, "no guide fetches anything from the pinned tag — the pattern has gone stale"
+    for path in sorted(fetched):
+        result = _git("show", f"{ref}:{path}")
+        assert result.returncode == 0, (
+            f"the adopter guide fetches {path} from {ref}, and that tag does not serve it. "
+            f"An adopter following step 2 gets a 404 and no register. Cut a release "
+            f"carrying {path} before pointing anybody at it."
+        )
+
+
 def test_the_ecosystem_supplies_the_grammar_and_the_register_supplies_the_address() -> None:
     """Two sections, and the split is the point.
 
