@@ -51,7 +51,7 @@ jobs:
       - name: Install uv
         run: |
           # renovate: datasource=pypi depName=uv
-          pip install uv==0.12.7
+          pip install uv==0.12.8
 
       # ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
       #
