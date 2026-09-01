@@ -225,11 +225,20 @@ Then under **Repository permissions**, set exactly these and nothing else:
 | Permission | Level | Why |
 | --- | --- | --- |
 | Metadata | Read-only | Mandatory for every fine-grained token |
-| Contents | Read-only | `gh` reading the repository |
+| Contents | **Read and write** | The adoption commits, and pushing needs write |
+| **Workflows** | **Read and write** | Four gates write into `.github/workflows/`, and GitHub refuses a push that touches a workflow file unless the token says so |
 | Administration | **Read and write** | `gate-repo` creates the branch ruleset at step 5, and SEC-001 reads push-protection status — GitHub hides that field from a caller without it |
 
-`Administration: write` is the one people miss, and it fails late: `gate-repo`
-stops at its pre-flight rather than writing half a deployment.
+**Two of these are missed constantly and both fail late**, after the gates have
+already written their files:
+
+- **Workflows** is separate from Contents and is not implied by it. Without it,
+  a push carrying `.github/workflows/register-check.yml` is rejected with
+  *"refusing to allow a Personal Access Token to create or update workflow"* —
+  and every gate but one writes into that file.
+- **Administration: write** is what `gate-repo` checks at its pre-flight. It
+  stops there rather than writing half a deployment, which is the right
+  behaviour and an opaque one if you do not know what it is looking for.
 
 **Store it in the Keychain**, which is the only place it lives — nothing commits
 it and nothing else reads it:
@@ -535,8 +544,15 @@ Then, in that same container shell:
 claude --permission-mode acceptEdits
 ```
 
-That opens a Claude Code session and gives you a `>` prompt. Then type this **at
-that prompt**, not in the shell:
+That opens a Claude Code session and gives you a `>` prompt. **Set the terminal
+interface first**, or you will not be able to select and copy anything the
+session prints — and this step prints commands and verdicts you will want:
+
+```text
+/tui default
+```
+
+Then type this at the same prompt:
 
 ```text
 /register-adopt --repo . --register ./controls.yaml

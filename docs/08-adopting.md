@@ -89,7 +89,7 @@ tells you which one you can revoke without breaking CI.
 | What | Name it | Where you make it | Scope | Where it goes | Needed at |
 | --- | --- | --- | --- | --- | --- |
 | Claude Code OAuth token | — | `claude setup-token` | — | Keychain, `CLAUDE_OAUTH_TOKEN` | § 2.0 — the container will not start without it |
-| The repository token | `<repo>-keychain` | <https://github.com/settings/personal-access-tokens> | Metadata: read, Contents: read, `Administration: **write**` | Keychain, `GITHUB_TOKEN` | § 1 onward — `gh`, and `gate-repo` creating the ruleset |
+| The repository token | `<repo>-keychain` | <https://github.com/settings/personal-access-tokens> | Metadata: read; Contents, **Workflows** and Administration: **read and write** | Keychain, `GITHUB_TOKEN` | § 1 onward — `gh`, and `gate-repo` creating the ruleset |
 | The CI token | `<repo>-actions` | <https://github.com/settings/personal-access-tokens> | `Administration: **read**` | an environment secret | § 4.3 |
 
 **Make the last two fine-grained, not classic.** SEC-003's

@@ -607,3 +607,42 @@ def test_the_plugin_is_installed_inside_the_container_too() -> None:
         "the step does not say why a second install is needed, so it reads as a "
         "duplicated instruction somebody will skip"
     )
+
+
+def test_the_pat_carries_workflows_and_contents_write() -> None:
+    """Reported from the run: the PAT did not have the right privileges.
+
+    Two were missing and both fail *after* the gates have written their files,
+    which is the expensive place to find out.
+
+    `Workflows` is a separate fine-grained permission and is not implied by
+    Contents. Four of the six gates write into `.github/workflows/`, and GitHub
+    rejects a push touching a workflow file without it. `Contents` had to become
+    read-and-write for the same reason the adoption commits at all.
+    """
+    section = TEXT.split("#### Creating the GitHub token", 1)[1].split("\n## ", 1)[0]
+    assert "Workflows" in section, (
+        "the token permissions omit Workflows — a push carrying "
+        ".github/workflows/register-check.yml is rejected without it"
+    )
+    for line in section.splitlines():
+        if line.startswith("| Contents"):
+            assert "Read and write" in line, (
+                "Contents is read-only, so the adoption cannot push what it commits"
+            )
+            break
+    else:
+        raise AssertionError("the permissions table no longer lists Contents")
+
+
+def test_it_sets_the_terminal_interface_before_the_session_matters() -> None:
+    """Reported from the run: without `/tui default` you cannot copy anything out.
+
+    The step prints commands and verdicts a reader needs to keep, so this belongs
+    before the work rather than in troubleshooting after it.
+    """
+    step = TEXT.split("## 5 — Run the adoption", 1)[1].split("\n## 6 ", 1)[0]
+    assert "/tui default" in step, "step 5 does not set a copyable terminal interface"
+    assert step.index("/tui default") < step.index("/register-adopt"), (
+        "the interface is set after the command whose output the reader needs to copy"
+    )
