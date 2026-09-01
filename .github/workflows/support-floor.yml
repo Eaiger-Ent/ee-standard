@@ -61,7 +61,7 @@ jobs:
         if: steps.gap.outputs.gap == 'true'
         run: |
           # renovate: datasource=pypi depName=uv
-          pip install uv==0.12.7
+          pip install uv==0.12.8
 
       - name: Tests, on the oldest interpreter this package claims to support
         if: steps.gap.outputs.gap == 'true'
