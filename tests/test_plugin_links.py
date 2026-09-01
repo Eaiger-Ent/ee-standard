@@ -64,6 +64,35 @@ def test_no_link_walks_out_of_the_plugin(path: Path) -> None:
     )
 
 
+#: A repository path named in prose — `docs/02-skill-family.md`, in backticks.
+#: The plugin cites these deliberately: `docs/` is not shipped, so a reader
+#: follows one in the standard's repository rather than in their install.
+_DOCS_PATH = re.compile(r"`(docs/[A-Za-z0-9._/-]+\.md)`")
+
+
+@pytest.mark.parametrize("path", MARKDOWN, ids=lambda p: str(p.relative_to(PLUGIN)))
+def test_every_repository_path_the_plugin_names_exists(path: Path) -> None:
+    """A pointer to a document nobody wrote reads exactly like a working one.
+
+    Nine skills sent a reader to `docs/skill-relationship-map.md`, which has
+    never existed in this repository. The registry it meant is
+    `docs/02-skill-family.md`. It survived because the sentence is copied into
+    every skill and read by nobody: the link-shape rule beside this one forbids
+    walking out of the plugin, and a **prose** path walks nowhere to check.
+
+    Unlike the ADR citations above, this cannot be satisfied by naming a
+    decision — a document either exists or it does not, and the reader who
+    follows one that does not gets no second guess.
+    """
+    text = path.read_text(encoding="utf-8")
+    missing = sorted({m for m in _DOCS_PATH.findall(text) if not (REPO_ROOT / m).is_file()})
+    assert not missing, (
+        f"{path.relative_to(PLUGIN)} sends a reader to a document this repository "
+        f"does not have: "
+        f"{', '.join(missing)}"
+    )
+
+
 @pytest.mark.parametrize("path", MARKDOWN, ids=lambda p: str(p.relative_to(PLUGIN)))
 def test_every_citation_names_a_decision_that_exists(path: Path) -> None:
     for number in _CITATION.findall(path.read_text(encoding="utf-8")):

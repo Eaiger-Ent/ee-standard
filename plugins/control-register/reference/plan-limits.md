@@ -1,8 +1,7 @@
 # When the platform refuses on the plan, not the token
 
-One home for this rule rather than a copy in each gate, which is
-[ADR 0036](https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0036-shared-skill-prose-has-one-home.md)'s
-reason for this directory.
+One home for this rule rather than a copy in each gate (ADR 0036, in the
+standard's own repository).
 
 Shared by the gates whose controls verify **platform state a plan can withhold**:
 `gate-repo` (CI-001's ruleset) and `gate-secrets` (SEC-001's push protection).
@@ -39,15 +38,14 @@ hold.
 permission is fixable in a minute, so a record written under one claims
 protection somebody was about to obtain anyway — that record is misleading and
 the gate stops before writing it. A plan limit is not fixable without buying or
-publishing, and
-[ADR 0047](https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0047-a-plan-limit-is-recorded-not-tolerated.md)
-rule 2 requires the record regardless: what the gate writes is a **file** block,
+publishing, and ADR 0047 rule 2
+requires the record regardless: what the gate writes is a **file** block,
 a plan cannot stop a repository containing a file, and a recorded limit may name
 a `kind: remote` block only. So an adopter who cannot apply must still be able to
 record — *"the day the plan changes it is one API call rather than a fresh
 decision"*.
 
-**Point at the ADR for what the repository writes next.** It carries the key and
+**Point at ADR 0047 for what the repository writes next.** It carries the key and
 a worked example for `deployment-decisions.yaml`, after which the checker reports
 that block as `UNAVAILABLE (plan)` on every run, with its review date. Do not
 transcribe that entry into a skill: it is one repository's billing, and a skill
