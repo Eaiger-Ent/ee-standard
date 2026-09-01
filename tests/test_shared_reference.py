@@ -36,6 +36,7 @@ SKILLS = sorted(p for p in (PLUGIN / "skills").iterdir() if p.is_dir())
 #: whose SKILL.md carries one of these as a section body rather than a pointer
 #: has taken the copy back.
 SHARED_HEADINGS = {
+    "plan-limits.md": "When the platform refuses on the plan, not the token",
     "pre-commit-runner.md": "Before you write a pre-commit hook, make sure something runs it",
     "write-narration.md": "Say what each write is for, before you make it",
 }

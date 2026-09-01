@@ -414,7 +414,7 @@ which is the point of re-running after a register bump.
 
 Canonical source for both shared standards below:
 `${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
-`docs/skill-relationship-map.md`.
+`docs/02-skill-family.md`.
 
 - **Write narration shape** (`reference/write-narration.md`) — shared with
   `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
