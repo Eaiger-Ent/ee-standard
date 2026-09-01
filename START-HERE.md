@@ -224,21 +224,36 @@ Then under **Repository permissions**, set exactly these and nothing else:
 
 | Permission | Level | Why |
 | --- | --- | --- |
-| Metadata | Read-only | Mandatory for every fine-grained token |
-| Contents | **Read and write** | The adoption commits, and pushing needs write |
-| **Workflows** | **Read and write** | Four gates write into `.github/workflows/`, and GitHub refuses a push that touches a workflow file unless the token says so |
-| Administration | **Read and write** | `gate-repo` creates the branch ruleset at step 5, and SEC-001 reads push-protection status — GitHub hides that field from a caller without it |
+| Metadata | Read-only | Every read this standard makes. `GET /repos/{owner}/{repo}`, `/rulesets` and `/rules/branches/{branch}` all report `metadata=read` |
+| Contents | **Read and write** | Read for `gh`; **write** because the adoption commits and pushes what it wrote |
+| Workflows | **Read and write** | Four gates write `.github/workflows/register-check.yml`. GitHub: *"If your app specifically needs to access or edit Actions files in the `.github/workflows` directory, request the 'Workflows' repository permission"* |
+| Administration | **Read and write** | `POST /rulesets` and `PUT /rulesets/{id}` both report `administration=write`. It is also what makes `security_and_analysis` appear at all — see below |
+
+**These are measured, not inferred.** GitHub returns the permission each endpoint
+needs in a response header, so you can check any of them yourself:
+
+```bash
+curl -sS -o /dev/null -D - -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://api.github.com/repos/{owner}/{repo}/rulesets | grep -i x-accepted-github
+# x-accepted-github-permissions: administration=write
+```
 
 **Two of these are missed constantly and both fail late**, after the gates have
 already written their files:
 
-- **Workflows** is separate from Contents and is not implied by it. Without it,
-  a push carrying `.github/workflows/register-check.yml` is rejected with
-  *"refusing to allow a Personal Access Token to create or update workflow"* —
-  and every gate but one writes into that file.
-- **Administration: write** is what `gate-repo` checks at its pre-flight. It
-  stops there rather than writing half a deployment, which is the right
-  behaviour and an opaque one if you do not know what it is looking for.
+- **Workflows** is a separate permission and is **not** implied by Contents.
+  Without it a push carrying `.github/workflows/register-check.yml` is rejected,
+  and every gate but `gate-build` writes into that file.
+- **Administration: write** is what `gate-repo` checks at its pre-flight; it
+  stops there rather than writing half a deployment.
+
+**One subtlety worth knowing**, because it looks like a contradiction. Reading
+the repository needs only `metadata=read` — but the `security_and_analysis`
+field inside the response is populated **only for a caller with administration
+access**. So SEC-001's remote block can call the endpoint with a weak token and
+get an answer that is missing the thing it asked about. The checker treats that
+absence as *unreadable* rather than as *push protection is off*, which is why a
+under-permissioned token reports `UNCLASSIFIED` rather than a false violation.
 
 **Store it in the Keychain**, which is the only place it lives — nothing commits
 it and nothing else reads it:
