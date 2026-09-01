@@ -215,6 +215,53 @@ def test_a_record_matches_the_block_it_names_and_no_other(tmp_path: Path) -> Non
     assert result.verdict is Verdict.UNCLASSIFIED
 
 
+def _mistyped(review_by: str) -> str:
+    """A record naming an assert that does not exist — one letter out."""
+    return _record(review_by).replace(
+        "default_branch_ruleset_satisfies", "default_branch_ruleset_satisfied"
+    )
+
+
+def test_a_record_that_matches_nothing_says_so(tmp_path: Path) -> None:
+    """Rule 5's inverse. A record the checker did not match was silent.
+
+    An adopter who mistypes the filename, the control id or the assert name got
+    a report identical to having written nothing. The first live repository to
+    record a limit produced that same output three times — a filename typo, a
+    checker defect, and a correct file — and nothing in it told them apart.
+    """
+    result = _run_ci_001_ruleset_block(tmp_path, _refused(), _mistyped(FUTURE))
+    assert result.verdict is Verdict.UNCLASSIFIED
+    assert "deployment-decisions.yaml records a platform limit" in result.message
+    assert "default_branch_ruleset_satisfied" in result.message, (
+        "the message must name what is on record, or a typo stays invisible"
+    )
+
+
+def test_no_record_at_all_stays_quiet(tmp_path: Path) -> None:
+    """Having no limits is the ordinary case, not a mistake to report."""
+    result = _run_ci_001_ruleset_block(tmp_path, _refused(), None)
+    assert result.verdict is Verdict.UNCLASSIFIED
+    assert "deployment-decisions.yaml" not in result.message
+
+
+def test_a_matching_record_does_not_also_complain(tmp_path: Path) -> None:
+    """The sentence is for a record that missed, never for one that hit."""
+    result = _run_ci_001_ruleset_block(tmp_path, _refused(), _record(FUTURE))
+    assert result.verdict is Verdict.UNAVAILABLE_PLAN
+    assert "does not name" not in result.message
+
+
+def test_a_failing_block_says_it_too(tmp_path: Path) -> None:
+    """The same silence existed on the path ADR 0047 was written for."""
+    register = a_register()
+    block, control = _remote_block(register, "CI-001", "default_branch_ruleset_satisfies")
+    limits = read_limits(make_repo(tmp_path, {"deployment-decisions.yaml": _mistyped(FUTURE)}))
+    result = _waived_or_failed(block, "the branch is not protected", control.id, limits)
+    assert result.verdict is Verdict.FAIL
+    assert "does not name" in result.message
+
+
 def test_a_recorded_limit_downgrades_a_failing_block(tmp_path: Path) -> None:
     """Rule 1, at the function that decides it.
 

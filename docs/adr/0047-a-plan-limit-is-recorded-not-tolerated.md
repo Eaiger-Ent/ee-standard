@@ -305,6 +305,37 @@ originating from *classic* branch protection still decides whether a **Pro**
 private repository passes CI-001 honestly or fails through a checker gap. Only a
 Pro private repository can answer it, and this one is not.
 
+### Confirmed on the repository, not only in a test
+
+The fix above was written from a report and covered by tests that construct
+their own inputs — the same shape of evidence that let the original defect ship.
+So the entry was written on the live Free private repository and the block re-run
+on the **unfixed** `v0.6.0`:
+
+```text
+CI-001   UNCLASSIFIED
+  ? remote: default_branch_ruleset_satisfies — ... (403)
+Summary: ... 1 unclassified, 0 unavailable (plan)
+```
+
+A correct `deployment-decisions.yaml`, correctly named, read by the checker, and
+a report **byte-identical to having written nothing**. That is the inert
+mechanism observed rather than reasoned about, and it is the last thing that
+repository can prove: it answers only while a plan refuses.
+
+**Rule 5's inverse was found in the same sitting, and it is a second defect.**
+Reaching that output took three runs — one with the filename mistyped, one with
+the checker defect, one correct — and *the report was the same each time*. Rule 5
+says a limitation nobody sees is an exemption; a limitation the operator wrote
+and the checker never matched was equally invisible, and an adopter has no way to
+tell "my record is wrong" from "the mechanism does nothing".
+
+So a run that reads limits and matches none now says what is on record, naming
+the pairs it carries, which is what makes a mistyped control id or assert name
+visible. An **absent** file stays silent: having no limits is the ordinary case
+and not a mistake. This applies to both paths — the `403` this revision added,
+and the failure the ADR was written for.
+
 ## Applied — pass 2
 
 Implemented 2026-09-01. `Unreadable` carries the HTTP `status` where there was
@@ -349,4 +380,4 @@ same change as this note.
 | Rev | Date | What changed | Ratified by |
 | --- | --- | --- | --- |
 | 1 | 2026-08-31 | Original decision: a repository records a platform limitation in `deployment-decisions.yaml` and the checker reports `UNAVAILABLE (plan)` rather than failing, under six rules. | Nathan Carney |
-| 2 | 2026-09-01 | Premise corrected against a live Free private repository; the refusal's `x-accepted-github-permissions: metadata=read` proves the cause is the plan, not scope: the effective-rules endpoint answers `403`, not `[]`, so the recorded limit was never reached and the mechanism was inert. A record now also covers a `403` on the block it names — only `403`, expiring to `UNCLASSIFIED` rather than `FAIL`, and not SEC-001's absent-field case. The decision itself is unchanged. | Nathan Carney |
+| 2 | 2026-09-01 | Premise corrected against a live Free private repository; the refusal's `x-accepted-github-permissions: metadata=read` proves the cause is the plan, not scope. Confirmed on that repository, and rule 5's inverse closed: a record the checker reads and matches to nothing now says so: the effective-rules endpoint answers `403`, not `[]`, so the recorded limit was never reached and the mechanism was inert. A record now also covers a `403` on the block it names — only `403`, expiring to `UNCLASSIFIED` rather than `FAIL`, and not SEC-001's absent-field case. The decision itself is unchanged. | Nathan Carney |

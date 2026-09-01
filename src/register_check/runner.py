@@ -202,6 +202,36 @@ def _run_remote_block(
 _PLAN_REFUSAL = 403
 
 
+def _unmatched_record(
+    limits: tuple[PlatformLimit, ...], control_id: str | None, block: VerifyBlock
+) -> str:
+    """What to add when a repository recorded limits and none covers this block.
+
+    ADR 0047 rule 5 says a limitation nobody sees is an exemption, and every run
+    prints the ones that apply. The inverse was silent: an adopter who wrote a
+    record the checker did not match got a report **identical** to having
+    written nothing, and no way to tell which had happened.
+
+    That is not hypothetical. The first live repository to record one produced
+    the same output three times — once from a typo in the filename, once from a
+    checker defect (revision 2 above), and once correctly — and the report
+    distinguished none of them.
+
+    So say what was on record. Naming the pairs it *does* carry is what makes a
+    mistyped control id or assert name visible, which is the failure this
+    sentence exists to catch; the file's absence stays silent, because having no
+    limits is the ordinary case and not a mistake.
+    """
+    if not limits:
+        return ""
+    recorded = ", ".join(f"{limit.control}/{limit.assert_name}" for limit in limits)
+    return (
+        f" — deployment-decisions.yaml records a platform limit for {recorded}, which "
+        f"does not name {control_id or '?'}/{block.assert_name or '?'}, so nothing here "
+        "is covered by it"
+    )
+
+
 def _unreadable_or_unavailable(
     block: VerifyBlock,
     exc: Unreadable,
@@ -233,7 +263,9 @@ def _unreadable_or_unavailable(
         return BlockResult(block, Verdict.UNCLASSIFIED, str(exc))
     limit = limit_for(limits, control_id or "", block.assert_name or "")
     if limit is None:
-        return BlockResult(block, Verdict.UNCLASSIFIED, str(exc))
+        return BlockResult(
+            block, Verdict.UNCLASSIFIED, str(exc) + _unmatched_record(limits, control_id, block)
+        )
     if limit.expired(datetime.date.today()):
         return BlockResult(
             block,
@@ -270,7 +302,9 @@ def _waived_or_failed(
     """
     limit = limit_for(limits, control_id or "", block.assert_name or "")
     if limit is None:
-        return BlockResult(block, Verdict.FAIL, message)
+        return BlockResult(
+            block, Verdict.FAIL, message + _unmatched_record(limits, control_id, block)
+        )
     if limit.expired(datetime.date.today()):
         return BlockResult(
             block,
