@@ -1,6 +1,6 @@
 # ADR 0047: A Plan Limit Is Recorded, Not Tolerated
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-08-31
 **Revision:** 1
 
@@ -159,6 +159,73 @@ satisfies CI-001 and this mechanism is needed only on Free; if it does not, the
 checker has a gap that should be closed on its own merits rather than waived
 here. Test it on any Pro private repository before implementing this.
 
-This ADR is **Proposed** rather than Accepted for that reason and one other: it
-is the first mechanism in the register that lets a Tier-1 control not hold, and
-that deserves a second reader before it exists.
+**Accepted 2026-08-31.** It was Proposed for two reasons and only one of them
+is discharged: it is the first mechanism in the register that lets a Tier-1
+control not hold, and it has now had its second reader.
+
+**The open question is not discharged, and one guard follows from it.** A
+`platform_limits:` entry may only name a capability the plan genuinely does not
+offer — never one it offers by a route the checker fails to read. If the
+effective-rules endpoint turns out not to report rules originating from classic
+branch protection, a Pro private repository failing CI-001 is a **checker
+defect** to fix, and waiving it here would hide the defect behind a record that
+looks deliberate. Test the endpoint before writing an entry for any repository
+that has classic branch protection configured.
+
+That distinction is the difference between this mechanism and an opt-out, and it
+is the one thing a reviewer of an entry should check first: *is the platform
+refusing, or is the checker not looking?*
+
+## Measured 2026-08-31 — the open question narrows
+
+The endpoint's own refusal names a different tier from the documentation:
+
+```text
+% gh api repos/{owner}/{repo}/rulesets
+{"message": "Upgrade to GitHub Pro or make this repository public to enable
+ this feature.", "status": "403"}
+```
+
+GitHub's ruleset documentation says rulesets are *"for customers on GitHub Team
+and GitHub Enterprise plans"*; the API says **Pro**. Taking the API as the
+authority on its own behaviour, the tier at which this mechanism is needed is
+**Free**, not everything below Team, and the population it serves is smaller than
+this ADR assumed when it was written.
+
+That does not change the decision — a repository on Free still cannot buy the
+control, and still should not run permanently red — but it changes who should be
+told about it, and it makes the § What this cannot verify guard sharper rather
+than softer: an entry recorded by a **Pro** repository would very likely be
+waiving a capability the plan does offer.
+
+It also does not settle the other half. Whether the effective-rules endpoint
+reports rules originating from *classic* branch protection is still untested, and
+still decides whether a Pro repository that uses classic protection instead of a
+ruleset passes CI-001 honestly or fails it through a checker gap.
+
+## Applied — pass 1
+
+Implemented 2026-08-31. `src/register_check/platform_limits.py` reads
+`platform_limits:` from `deployment-decisions.yaml`; `runner.py` gains
+`Verdict.UNAVAILABLE_PLAN`, placed between `SKIPPED (no credentials)` and
+`UNCLASSIFIED` in severity, and `_waived_or_failed` is the one function that
+turns a failing remote block into a waiver.
+
+Each of the four mechanical rules is held by a test in
+`tests/test_platform_limits.py`: it never passes, it matches on the
+control-and-assert pair so a control's other blocks are untouched, an expired
+entry fails with the date in the message, and `--require-complete` promotes it
+to `1`. `tests/test_posture.py` holds rule 6 — the string may not appear in
+`controls.yaml` or under `plugins/`.
+
+Two things are deliberately not implemented, both because they would be false
+comfort. The checker still cannot confirm a claimed limit is real, and nothing
+here tries to; and no entry exists in this repository, which
+`test_this_repository_records_none` holds, because this repository is public and
+ruleset-protected and an entry would be exactly the misuse § What this cannot
+verify describes.
+
+The `08-adopting.md` and `START-HERE.md` prose describing the risks a constrained
+repository takes landed before this, on the branch that proposed the ADR, and
+says the mechanism is unbuilt. That wording is now stale and is corrected in the
+same change as this note.

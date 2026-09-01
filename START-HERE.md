@@ -7,8 +7,8 @@ default branch whose protection is verified against what GitHub actually
 enforces — with one command that tells you which of those hold.
 
 **Two of those need a paid GitHub plan if your repository is private.** Check
-before you start rather than at step 3 — § Is your repository private? is one
-command and it decides what you can reach.
+before you start rather than at step 3 — § D is one command and it decides
+what you can reach.
 
 Most of this you do alone. Two steps wait on somebody else, and § What you are
 about to do says which, so you can raise them today and carry on.
@@ -37,7 +37,18 @@ Fuller explanation: [`HOW-IT-WORKS.md`](HOW-IT-WORKS.md).
 
 ## Before you start
 
-### What this assumes
+Five things, **in this order** — each is needed by the one after it, and the
+lettering is to keep them apart from steps 1 to 6, which come later.
+
+| | |
+| --- | --- |
+| **A** | What this assumes about your machine |
+| **B** | Install the tools |
+| **C** | Get a repository and stand in it — everything after this happens inside it |
+| **D** | Find out what your repository can support |
+| **E** | Get the credentials |
+
+### A — What this assumes
 
 macOS, with Docker running. The container's secrets are fetched from the macOS
 Keychain by a script that runs *before* the container exists, so on Linux or
@@ -45,7 +56,7 @@ Windows that script is what you adapt first —
 [`docs/08-adopting.md`](docs/08-adopting.md) § 2.0 states the contract a
 replacement owes.
 
-### Install these
+### B — Install these tools
 
 | Tool | Install | You have it when |
 | --- | --- | --- |
@@ -63,7 +74,94 @@ Give Docker Desktop 8 GB of memory (Settings → Resources → Memory).
 makes an existing repository conformant; it does not create one. § Where to run
 these has the check and the one-liner if you are starting from nothing.
 
-### Is your repository private?
+**Is it a Python project?** The checker installs as a Python dependency, and the
+register declares the spelling for that ecosystem and no other. In a Python
+repository you get the gates *and* `register-check`, which is what verifies them.
+In any other, the gates deploy and enforce but the command that audits them
+cannot be installed
+([ADR 0032](docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md) records
+this as known and unsolved). Worth knowing now rather than at the last step.
+
+### C — Get a repository, and stand in it
+
+Everything from § 1 onward writes files into whatever directory you are in, so
+this comes before all of it. **The one exception is step 1**, which installs a
+plugin into `~/.claude/` and touches no project — you can run that from
+anywhere.
+
+**Start by finding out what you already have.** These print `yes` or `no` and
+change nothing:
+
+```bash
+git rev-parse --show-toplevel >/dev/null 2>&1 && echo "git repository: yes" || echo "git repository: no"
+git remote get-url origin 2>/dev/null || echo "origin remote: no"
+gh repo view "$(basename "$PWD")" --json nameWithOwner -q .nameWithOwner 2>/dev/null \
+  || echo "on GitHub under this name: no"
+```
+
+Then take the one row that matches. **Do not run a block that does not match
+you** — `git init` in an existing repository prints a confusing warning and
+silently ignores `-b main`, and `gh repo create` fails outright if the name is
+taken.
+
+| What you have | What to do |
+| --- | --- |
+| All three `yes` | **Nothing.** You are ready — go to § D |
+| A repository, no `origin` | Publish it: the second block below |
+| Nothing at all | The first block below |
+| Somebody else made it | Clone it: the third block below |
+
+**Starting from nothing.** Run this from where you keep projects — `~/git`, or
+wherever that is — **not from inside another repository**. The first line stops
+you if you are:
+
+```bash
+git rev-parse --show-toplevel 2>/dev/null && { echo "STOP: already inside a repository — cd out first"; }
+mkdir -p my-new-project && cd my-new-project     # choose the name; it becomes the repository's
+git init -b main
+git commit -q --allow-empty -m "Initial commit"
+gh repo create "$(basename "$PWD")" --private --source=. --remote=origin --push
+```
+
+**A repository already, but nothing on GitHub:**
+
+```bash
+gh repo create "$(basename "$PWD")" --private --source=. --remote=origin --push
+```
+
+**It is already on GitHub — clone it, do not recreate it.** This covers both
+"somebody else made it" and "I made it on an earlier attempt", and they are the
+same situation:
+
+```bash
+gh repo clone <owner>/<repo>    # angle brackets: replace these
+cd <repo>
+```
+
+**If `gh repo create` says `Name already exists on this account`**, that is the
+row above: the repository is on GitHub already. **Clone it.** Do not attach a new
+empty local repository to it — if the remote has any commits you do not have,
+the push is rejected with *"Updates were rejected because the remote contains
+work that you do not have locally"*, and you are further from working than when
+you started.
+
+```bash
+gh repo list --limit 100 | grep "$(basename "$PWD")"   # find what is already there
+```
+
+**Done when** both of these print something — a path, and a URL:
+
+```bash
+git rev-parse --show-toplevel   # the repository root; cd here if it differs
+git remote get-url origin       # the GitHub repository these controls will protect
+```
+
+`fatal: not a git repository` means you are in an ordinary folder and none of the
+blocks above has been run yet. Nothing below works until this does: § 2 commits a
+file, § 3 asks GitHub about *this* repository, and the secrets and
+branch-protection controls read what git tracks and what GitHub enforces.
+
+### D — What your repository can support
 
 If it is, run this before anything else. It decides whether two of the fifteen
 controls are reachable at all, and finding that out at step 3 wastes the four
@@ -87,18 +185,101 @@ types, tests, the pinned devcontainer, dependency proposals. Two cannot, and
 you should know exactly which and what they cost before you begin:
 § If your plan has no rulesets, at the end.
 
-### Get these credentials
+### E — Get these credentials
 
-| Credential | Where to create it | Scope | Where it goes |
+| Name it | What it is | Where it goes | Needed for |
 | --- | --- | --- | --- |
-| Claude Code OAuth token | `claude setup-token` | — | Keychain, `CLAUDE_OAUTH_TOKEN` |
-| A token for `gh` | <https://github.com/settings/personal-access-tokens> | read on the repository | Keychain, `GITHUB_TOKEN` |
-| An admin token | <https://github.com/settings/personal-access-tokens> | `Administration: write` | used once, not stored |
-| The CI token | <https://github.com/settings/personal-access-tokens> | `Administration: read` | an environment secret, at step 6 |
+| — | Claude Code OAuth token | Keychain, `CLAUDE_OAUTH_TOKEN` | The container will not start without it |
+| **`<repo>-keychain`** | A GitHub PAT — see § Creating the GitHub token | Keychain, `GITHUB_TOKEN` | `gh` and every gate that talks to GitHub |
+| **`<repo>-actions`** | A second GitHub PAT | a GitHub environment secret, later | § 4.3 of the reference, a second sitting |
 
-**Make the last two fine-grained, not classic.** A classic token in CI is a
-verified violation — SEC-003 fails on a header only classic tokens return. The
-`gh` row may be classic; it never reaches CI.
+**Name them, and name them after where they live.** GitHub's token list shows
+the name, the expiry and the last use and nothing else, so in ninety days when
+both are expiring the name is the only thing telling you which one you can
+revoke without breaking CI. `<repo>` is your repository — `my-app-keychain`,
+`my-app-actions`. The Claude token has no name field; it is a Keychain entry
+rather than a PAT.
+
+**The two GitHub tokens are not interchangeable.** One lives in your Keychain
+and is used by you *and by the gates*, from inside the container — that is the
+one you need now. The other is given to GitHub Actions, never leaves the
+platform, and belongs to a later sitting;
+[`docs/08-adopting.md`](docs/08-adopting.md) § 4.3 covers it when you get there.
+
+#### Creating the GitHub token
+
+Go to <https://github.com/settings/personal-access-tokens> → **Generate new
+token**. Choose **fine-grained**, not classic: a classic token in CI is a
+verified violation, SEC-003 fails on a header only classic tokens return, and
+there is no reason to keep two habits.
+
+| Field | Value |
+| --- | --- |
+| Token name | `<repo>-keychain` — this is the one that goes in your Keychain |
+| Resource owner | The account or organisation that owns the repository |
+| Repository access | **Only select repositories** → the one you are adopting |
+| Expiration | 90 days or less. You will be asked to rotate it; that is the point |
+
+Then under **Repository permissions**, set exactly these and nothing else:
+
+Under **Repository permissions**, set these. The first four are needed to
+finish the adoption; the rest are what you need to work in the repository
+afterwards, and it is easier to set them now than to come back.
+
+| Permission | Level | What it lets you do |
+| --- | --- | --- |
+| Actions | Read-only | See whether CI passed — `gh run list`, `gh run view` |
+| Administration | Read and write | Create the branch ruleset, and read whether push protection is on |
+| Contents | Read and write | Commit and push |
+| Dependabot alerts | Read-only | See what the dependency bot found |
+| Issues | Read and write | Open and close issues, including the ones the scheduled sweep raises |
+| Metadata | Read-only | Required on every token; you cannot turn it off |
+| Pull requests | Read and write | Open and merge pull requests. **After adoption you cannot push to the default branch**, so this is how you change anything |
+| Secrets | Read and write | Set the CI token later, without leaving the terminal |
+| Workflows | Read and write | Push changes to `.github/workflows/` |
+
+Leave everything else at **No access**.
+
+**Store it in the Keychain**, which is the only place it lives — nothing commits
+it and nothing else reads it:
+
+```bash
+security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "<paste the token>"
+```
+
+**Scoped to this project** instead of every project on the machine. Run this
+from your repository root — the name is derived rather than typed, using the
+same transformation `fetch-secrets.sh` uses to look it up, so the two cannot
+disagree:
+
+```bash
+prefix=$(basename "$PWD" | tr '[:lower:]-' '[:upper:]_')
+echo "storing as ${prefix}_GITHUB_TOKEN"
+security add-generic-password -a "$USER" -s "${prefix}_GITHUB_TOKEN" -w "<paste the token>"
+```
+
+A checkout in `my-app` becomes `MY_APP_GITHUB_TOKEN`, and the prefixed name is
+checked **before** the plain one — so a project-scoped token wins wherever both
+exist.
+
+**How it reaches the container.** You never export it and never put it in a
+file yourself. `.devcontainer/fetch-secrets.sh` runs **on the host** before the
+container exists, reads the Keychain, and writes `.devcontainer/.env` and
+`.env.docker`; `devcontainer.json` passes the second in with `--env-file`.
+Inside, `$GITHUB_TOKEN` is set and `gh` uses it with no configuration of its own.
+Both files are gitignored, and SEC-001 reads those two lines.
+
+**Check it before you rely on it:**
+
+```bash
+prefix=$(basename "$PWD" | tr '[:lower:]-' '[:upper:]_')
+token=$(security find-generic-password -a "$USER" -s "${prefix}_GITHUB_TOKEN" -w 2>/dev/null \
+     || security find-generic-password -a "$USER" -s "GITHUB_TOKEN" -w)
+GH_TOKEN="$token" gh api "repos/{owner}/{repo}" --jq .full_name
+```
+
+That tries the project-scoped name first and falls back to the shared one, which
+is exactly what happens inside the container.
 
 ## What you are about to do
 
@@ -114,46 +295,6 @@ verified violation — SEC-003 fails on a header only classic tokens return. The
 **You can stop after any of them.** Each step leaves the repository in a working
 state, so a first sitting that ends at step 4 has cost nothing — pick it up
 later from where you stopped.
-
-## Where to run these
-
-**Step 1 runs anywhere. Everything from step 2 runs in your repository's root.**
-
-Installing the plugin is a change to your machine, not to any project — it lands
-in `~/.claude/` and writes nothing into a repository. Step 2 onward writes files
-where you are standing: `controls.yaml`, `.devcontainer/`, `renovate.json`. Run
-them in the wrong directory and you get a stray register in your home folder and
-a container config nothing will use.
-
-```bash
-cd /path/to/your-repository
-git rev-parse --show-toplevel   # the repository root — cd here if it differs
-git remote get-url origin       # the GitHub repository these controls will protect
-```
-
-**If the first command says `fatal: not a git repository`, stop here** — you are
-in an ordinary folder, and there is nothing for this standard to make conformant
-yet. Almost everything below needs a repository *and* a GitHub remote: step 2
-commits a file, step 3 calls `gh api repos/{owner}/{repo}/...`, and the secrets and
-branch-protection controls read what git tracks and what GitHub enforces.
-
-### If you do not have a repository yet
-
-```bash
-# A new project: create it locally, then create it on GitHub and push.
-mkdir -p my-project && cd my-project
-git init -b main
-git commit -q --allow-empty -m "Initial commit"
-gh repo create my-project --private --source=. --remote=origin --push
-```
-
-```bash
-# An existing GitHub repository somebody else set up: clone it.
-gh repo clone <owner>/<repo> && cd <repo>   # angle brackets: replace these
-```
-
-**Done when:** both commands at the top of this section print something — a path
-and a URL.
 
 ## 1 — Install the plugin
 
@@ -182,7 +323,7 @@ yours the moment you edit it.
 repo=https://github.com/Eaiger-Ent/ee-standard
 tag=$(git ls-remote --tags --refs "$repo" | awk -F/ '{print $NF}' | sort -V | tail -1)
 echo "${tag:?}"
-curl -fsSL -o controls.yaml "https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/${tag}/controls.yaml"
+curl -fsSL -o controls.yaml "https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/${tag}/controls.published.yaml"
 git add controls.yaml
 ```
 
@@ -196,6 +337,24 @@ check needs the checker, which does not exist until step 5.
 **Why this exists:** [`docs/08-adopting.md`](docs/08-adopting.md) § 0.1
 
 ## 3 — The platform steps
+
+**Private repository without rulesets? This step is one command, and then you go
+to step 4.** § D — What your repository can support is where you found that out. Run this
+to record what your plan gives you, and skip the rest of this step:
+
+```bash
+gh api "repos/{owner}/{repo}/rulesets" 2>&1 | tail -2
+```
+
+Expect a `403` saying *"Upgrade to GitHub Pro or make this repository public"*.
+Secret scanning is a paid feature on private repositories too, so Settings →
+Code security will not offer push protection either — **there is no setting to
+find, and nothing here you have failed to do.** Read § If your plan has no
+rulesets for what that costs and how to record it, then **go to step 4**.
+
+Everyone else, continue.
+
+---
 
 None of this is code and none of it is visible to a `git clone`. It needs the
 admin token.
@@ -229,9 +388,9 @@ the moment it returns, so it is not something to do twice or by accident.
 compare against after step 5 — expect the ruleset list to be empty and
 `.protected` to be `false` now, and both to change then.
 
-**If it fails:** a `403` on the ruleset listing means the repository is private
-on a plan without them — see § If your plan has no rulesets. A `403` on write
-with a `200` on read is a token scope problem, not a syntax one.
+**If it fails:** a `403` on write with a `200` on read is a token scope problem,
+not a syntax one. A `403` on the *listing* means you should have taken the
+branch at the top of this step.
 
 **Why this exists:** [`docs/08-adopting.md`](docs/08-adopting.md) § 1
 
@@ -269,14 +428,59 @@ sed -i.bak -e "s/{{PROJECT_NAME}}/$(basename "$PWD")/g" .devcontainer/devcontain
 sed -i.bak -e "s/{{UV_VERSION}}/${uv_version}/g" -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86}/g" -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm}/g" .devcontainer/setup.sh
 rm .devcontainer/*.bak
 grep -rl '{{' .devcontainer
-claude setup-token
-security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "sk-ant-oat01-..."
+```
+
+**That `grep` must print nothing.** A surviving placeholder is what fails the
+build later, at `sha256sum -c`, with no clue why.
+
+**Check before you write.** The Keychain service names carry no project prefix
+by design — one credential serves every ee project on the machine — so if you
+have set one up before, the entry is already there and you need do nothing:
+
+```bash
+security find-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w >/dev/null \
+  && echo "already set — nothing to do" \
+  || echo "not set — add it below"
+```
+
+`add-generic-password` **will not overwrite**: on an existing entry it fails with
+*"The specified item already exists in the keychain."* To replace one, delete it
+first.
+
+```bash
+claude setup-token   # prints the token; copy it
+security delete-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" 2>/dev/null
+security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "<paste it here>"
+```
+
+Then build:
+
+```bash
 devcontainer up --workspace-folder . --remove-existing-container
 ```
 
-**Done when:** the `grep` prints nothing and
-`devcontainer exec --workspace-folder . uv --version` reports the version you
-substituted.
+**Done when:** the `grep` prints nothing, the build ends with
+`"outcome":"success"`, and the environment report at the end shows `uv` at the
+version you substituted, built for your architecture.
+
+**One `✗` is expected here** if you skipped the optional `gh` credential:
+
+```text
+✗ GitHub CLI — not authenticated.
+```
+
+That report never blocks the build, and the container is fine. It matters at
+step 5 — `gate-repo` and the remote checks talk to GitHub — so fix it on the
+**host** rather than inside:
+
+```bash
+security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "<a token>"
+devcontainer up --workspace-folder . --remove-existing-container
+```
+
+`gh auth login` inside the container works too and does not survive a rebuild:
+the only persistent volume is `/home/vscode/.claude`, and `gh` keeps its
+credentials in `~/.config/gh`.
 
 **If it fails:** an empty value from the extraction is caught by the `echo` — do
 not skip it. A container that starts with no uv in it means the substitution
@@ -287,15 +491,86 @@ Claude Code token yet.
 
 ## 5 — Run the adoption
 
-One command deploys every gate. Run it interactively.
+**This is where you move into the container.** Steps 1 to 4 all ran on your Mac —
+the last of them built the container but left you outside it. Everything from
+here runs **inside**: the gates verify themselves with `uv run register-check`,
+and on your Mac that resolves to whatever uv your Mac happens to have. Phase 4
+ran an adoption on the host and every gate reported green about a uv version it
+was not using.
+
+Get a shell inside it, from your repository root:
+
+```bash
+devcontainer exec --workspace-folder . bash
+```
+
+Or open the folder in VS Code and choose **Reopen in Container** — then use its
+built-in terminal, which is already inside.
+
+**Either shell is fine.** `bash` is the container user's login shell and what the
+command above gives you; VS Code's terminal opens `zsh`, which the template
+configures. Both are installed, nothing here depends on which, and the scripts
+declare `bash` in their own shebangs regardless of what you are typing in.
+
+**You are in when this prints a path beginning `/workspaces/`:**
+
+```bash
+pwd && uv --version
+```
+
+`/Users/...` means you are still on your Mac. Go back and run one of the two
+above.
+
+---
+
+**Install the plugin again, inside.** This is not a mistake in step 1 and not a
+mistake here: the container's `~/.claude` is a **named volume**, not your Mac's
+home directory, so the plugin you installed at step 1 is not in it. Step 1's
+install is still needed — step 4 copied the devcontainer template out of it —
+and this one is needed to run the skills.
+
+```bash
+claude plugin marketplace add Eaiger-Ent/ee-standard
+claude plugin install control-register@ee-standard
+```
+
+**Done when** `claude plugin list | grep control-register` prints a row. The
+volume survives rebuilds, so this is once per project rather than once per
+container.
+
+Then, in that same container shell:
 
 ```bash
 claude --permission-mode acceptEdits
-# then, in the session:
+```
+
+That opens a Claude Code session and gives you a `>` prompt. **Set the terminal
+interface first**, or you will not be able to select and copy anything the
+session prints — and this step prints commands and verdicts you will want:
+
+```text
+/tui default
+```
+
+Then type this at the same prompt:
+
+```text
 /register-adopt --repo . --register ./controls.yaml
 ```
 
+`acceptEdits` is worth the flag: a full adoption is a few dozen ordinary file
+writes, and approving each one individually is how people stop reading the
+prompts that matter.
+
 **Done when:** it reports every control planned and verified, and commits.
+
+**Write one test first if you have none.** TST-001 requires a test suite to
+exist — a runner that collects nothing exits non-zero, so `git push` is refused
+until there is something to run. Any real test will do; an empty file will not:
+
+```bash
+mkdir -p tests && printf 'def test_it_runs():\n    assert True\n' > tests/test_smoke.py
+```
 
 **If it fails:** it will still prompt for `.devcontainer/devcontainer.json` —
 that is a sensitive file and no permission mode silences it. `gate-repo` asks its
@@ -364,9 +639,43 @@ the first time the hook runs.
 
 ## You are done when
 
+**Step 5 is what put the checker there.** `register-check` does not exist before
+it: `/register-adopt` dispatches `/register-install`, which adds it to your
+project as a dependency pinned to a tagged release. Two things follow, and both
+have caught people out:
+
+- **It is a command, not a slash command.** There is no `/register-check` in
+  Claude Code. Run it in a terminal.
+- **Run it inside the container.** Everything after step 4 goes inside —
+  `devcontainer exec --workspace-folder . uv run register-check`, or open a
+  shell in the container and run it there.
+
 ```bash
 uv run register-check
 ```
+
+**If it says the command is not found**, one of three things is true, and they
+are quick to tell apart:
+
+```bash
+ls pyproject.toml                                  # a Python project at all?
+grep -c register-check pyproject.toml uv.lock      # the dependency, and the pin
+```
+
+| What you see | What it means |
+| --- | --- |
+| No `pyproject.toml` | Your repository is not a Python project — see the note below |
+| It exists, no `register-check` in it | Step 5 did not get as far as installing the checker. Re-run `/register-adopt` |
+| Both present, still not found | You are on the host rather than in the container |
+
+**The checker is installed as a Python dependency, and today only a Python
+project can hold one.** The register declares the `git+` spelling for `python`
+and for no other ecosystem, so `/register-install` stops rather than inventing
+one — [ADR 0032](docs/adr/0032-the-checker-is-installed-from-a-tagged-ref.md)
+§ The non-Python adopter is not solved records that as known. The gates still
+deploy and still enforce; what you do not get is the command that verifies them.
+If your repository is not Python, say so when you raise this — you are the
+adopter that ADR says reopens the question.
 
 **Exit `3` is the expected first success, not a failure.** It means nothing was
 found in violation but something could not be verified — some controls read
@@ -389,6 +698,9 @@ run fails on controls that actually hold:
 | Every gate says its pre-commit locus is wired, nothing runs on commit | A wired locus is not an installed hook | `ls -l .git/hooks/pre-commit`; `uv run pre-commit install` |
 | A gate is green about a tool version you are not running | You ran it on the host, not in the container | Everything after step 4 goes inside |
 | `sha256sum -c` fails during container create | A placeholder survived, or an architecture digest is wrong | `grep -rl '{{' .devcontainer` should print nothing |
+| `refusing to allow a Personal Access Token to create or update workflow` | The token has no **Workflows** permission — it is separate from Contents | Add it, re-store the token, and rebuild |
+| `git push` refused, and `pytest` said `no tests ran` (exit 5) | TST-001 requires a test suite to exist, and a runner that collects nothing exits non-zero | Write one test. An empty suite is not a passing one |
+| SUP-001: *"markdownlint-cli2 is sourced from package-lock.json, which is not tracked"* | You have not deployed DOC-001 yet — that tool is its, not a supply-chain fault | [`docs/08-adopting.md`](docs/08-adopting.md) § 3 |
 
 ## If your plan has no rulesets
 
@@ -424,8 +736,26 @@ to prevent: a check that runs and blocks nothing is theme **T-3**.
   merge, but it can tell you, and a report nobody reads is the failure after
   this one.
 
-**A mechanism to record this rather than run permanently red is proposed and not
-built** — [ADR 0047](docs/adr/0047-a-plan-limit-is-recorded-not-tolerated.md). It
-would report the two blocks as `UNAVAILABLE (plan)` with an expiry date instead
-of failing them. Until it is accepted and implemented, exit `1` is what you get,
-and nothing in this document pretends otherwise.
+**You can record this rather than run permanently red**
+([ADR 0047](docs/adr/0047-a-plan-limit-is-recorded-not-tolerated.md)). Add an
+entry to `deployment-decisions.yaml` naming the control, the block, your plan and
+what it lacks, with a review date:
+
+```yaml
+platform_limits:
+  - control: CI-001
+    assert: default_branch_ruleset_satisfies
+    plan: github-free-private
+    lacks: rulesets on a private repository are GitHub Team and Enterprise only
+    review_by: 2026-11-30
+```
+
+The block then reports `UNAVAILABLE (plan)` instead of failing, and the run exits
+`3` rather than `1`. **It is a record, not a pass** — the control does not hold,
+the reason and the date print on every run, and an entry past its `review_by`
+fails the build rather than going on covering. `--require-complete` still turns
+it into a failure, so a repository in this state does not turn that flag on.
+
+Only record a capability your plan genuinely does not offer. If GitHub offers it
+by some route the checker fails to read, that is a defect to report rather than
+something to waive.

@@ -32,6 +32,7 @@ One file cannot hold both policies.
 | Path | What it is |
 | --- | --- |
 | `controls.yaml` | The register — see above |
+| `controls.published.yaml` | **Generated.** The register an adopter fetches, derived from `controls.yaml` by removing `# local-only` entries ([ADR 0048](adr/0048-the-published-register-is-derived.md)). Written by `register-check publish`; `tests/test_published_register.py` fails a stale one |
 | `deployment-decisions.yaml` | Declined deployments — see above |
 | `START-HERE.md` | **The adoption quickstart.** The happy path for a junior with a Mac and nothing else: what to install, which credentials, six steps. Held runnable by `tests/test_start_here.py` |
 | `HOW-IT-WORKS.md` | The mechanism in one screen, for a person deciding whether to adopt or reading a verdict. Links `docs/00-concepts.md` for every term rather than restating one |

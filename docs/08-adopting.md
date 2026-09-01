@@ -82,12 +82,15 @@ They are four different things, they are needed at four different points, and
 three of them are GitHub tokens that are **not interchangeable**. Collected here
 because meeting them one at a time is how the third one surprises you.
 
-| What | Where you make it | Scope | Where it goes | Needed at |
-| --- | --- | --- | --- | --- |
-| Claude Code OAuth token | `claude setup-token` | — | Keychain, `CLAUDE_OAUTH_TOKEN` | § 2.0 — the container will not start without it |
-| A token for `gh` | <https://github.com/settings/personal-access-tokens> | read on the repository | Keychain, `GITHUB_TOKEN` | § 1, and convenience thereafter |
-| An admin token | <https://github.com/settings/personal-access-tokens> | `Administration: **write**` | used once, not stored | § 1 — creating the ruleset |
-| The CI token | <https://github.com/settings/personal-access-tokens> | `Administration: **read**` | an environment secret | § 4.3 |
+Name each PAT after **where it lives**: GitHub's token list shows the name, the
+expiry and the last use and nothing else, so when both expire the name is what
+tells you which one you can revoke without breaking CI.
+
+| What | Name it | Where you make it | Scope | Where it goes | Needed at |
+| --- | --- | --- | --- | --- | --- |
+| Claude Code OAuth token | — | `claude setup-token` | — | Keychain, `CLAUDE_OAUTH_TOKEN` | § 2.0 — the container will not start without it |
+| The repository token | `<repo>-keychain` | <https://github.com/settings/personal-access-tokens> | See § 0.b1 | Keychain, `GITHUB_TOKEN` | § 1 onward — `gh`, and `gate-repo` creating the ruleset |
+| The CI token | `<repo>-actions` | <https://github.com/settings/personal-access-tokens> | `Administration: **read**` | an environment secret | § 4.3 |
 
 **Make the last two fine-grained, not classic.** SEC-003's
 `platform_token_is_not_classic` block fails on the `X-OAuth-Scopes` header a
@@ -96,10 +99,69 @@ than an inconvenience. The `ghp_...` shape in § 2.0's Keychain example is a
 *classic* token and is fine there — that entry is your own `gh` convenience and
 never reaches CI — but do not carry the shape across to row four.
 
-The admin token and the CI token are separate because their scopes are: one
-writes a ruleset once, the other reads platform state on every run, and a
-standing credential with `Administration: write` is what
+**Two tokens, and giving them names is what showed why.** An earlier version of
+this table listed three — one for `gh`, one for the ruleset, one for CI — and
+the first two turned out to be the same credential: `gate-repo` runs inside the
+container and reads the same `$GITHUB_TOKEN` the env-file supplies, so the
+"admin token" is the Keychain one and must carry `Administration: write`.
+
+The CI token stays separate because its scope is genuinely different — it reads
+platform state on every run and never writes — and because a standing credential
+with `Administration: write` in CI is what
 [ADR 0022](adr/0022-a-platform-token-ci-carries.md) exists to avoid.
+
+### 0.b1 — What the repository token must carry, and how that was established
+
+Nine permissions, and the split matters: four are needed to finish the adoption,
+five are needed to work in the repository afterwards. A token with only the
+first four completes § 3 and then cannot open the pull request § 1's ruleset
+now requires.
+
+| Permission | Level | Why |
+| --- | --- | --- |
+| Actions | read | Reading whether the conformance run passed |
+| Administration | read and write | Creating the ruleset, and populating `security_and_analysis` |
+| Contents | read and write | The adoption commits; pushing needs write |
+| Dependabot alerts | read | Reading what SUP-002's bot found |
+| Issues | read and write | The § 4.5 sweep opens and closes a tracking issue |
+| Metadata | read | Mandatory on every fine-grained token |
+| Pull requests | read and write | CI-001 forbids pushing to the default branch |
+| Secrets | read and write | Setting the CI credential in § 4.3 |
+| Workflows | read and write | Four gates write `.github/workflows/` |
+
+**Established by measurement rather than by reading prose.** GitHub returns the
+permission an endpoint requires in an `x-accepted-github-permissions` header, so
+each row above was read off the live API:
+
+```bash
+curl -sS -o /dev/null -D - -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://api.github.com/repos/{owner}/{repo}/rulesets | grep -i x-accepted-github
+# x-accepted-github-permissions: administration=write
+```
+
+Re-derive them the same way rather than trusting this table — it is a second
+copy of something GitHub states authoritatively, and the register's own rule
+about second copies applies to it.
+
+Two results are worth recording because they are counter-intuitive.
+
+**Reading a ruleset needs only `metadata=read`.** So a `403` on
+`GET /rulesets` is a *plan* limit rather than a permission problem, which is why
+§ 1 reads it as one.
+
+**`security_and_analysis` is a field-level permission, not an endpoint-level
+one.** `GET /repos/{owner}/{repo}` reports `metadata=read`, and the field is
+populated only for a caller with administration access. So an under-permissioned
+token gets a **successful response with the answer missing** — which is why
+`github_push_protection_enabled` raises `Unreadable` on an absent
+`security_and_analysis` rather than reporting push protection off. A false
+violation produced by not having looked is the failure that assert exists to
+avoid.
+
+**Workflows is separate from Contents and is not implied by it**, per GitHub's
+own guidance: *"If your app specifically needs to access or edit Actions files
+in the `.github/workflows` directory, request the 'Workflows' repository
+permission."*
 
 ### 0.b2 — Where each step runs, and what a session leaves behind
 
@@ -223,6 +285,13 @@ than during it.
 what runs where, and this is the first row of it in practice: the template you
 are about to copy lives in that cache, and there is nothing to copy it into yet.
 
+**And install it again inside the container, once that exists.** The devcontainer
+mounts its own `~/.claude` as a named volume, so a plugin installed on the host
+is not there — `/register-adopt` reports `Unknown command` and nothing explains
+why. Neither install is redundant: the host's supplies the devcontainer template
+copied in § 2.0, and the container's supplies the skills that deploy the gates.
+The volume outlives a rebuild, so the second install is once per project.
+
 ### 0.1 — Where `./controls.yaml` comes from
 
 That command names a register, and until you have one there is nothing to plan
@@ -239,7 +308,7 @@ repo=https://github.com/Eaiger-Ent/ee-standard
 tag=$(git ls-remote --tags --refs "$repo" | awk -F/ '{print $NF}' | sort -V | tail -1)
 echo "$tag"                       # non-empty, or nothing below fetches anything
 curl -fsSL -o controls.yaml \
-  "https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/${tag}/controls.yaml"
+  "https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/${tag}/controls.published.yaml"
 git add controls.yaml
 ```
 
@@ -645,9 +714,17 @@ there is no Claude Code OAuth token, so the container never starts and the
 message arrives before you have a container to read it in:
 
 ```bash
+# These service names carry no project prefix, so one credential store serves
+# every ee project on the machine — a second adoption finds them already set.
+security find-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w >/dev/null \
+  && echo "already set" || echo "not set"
+
+# `add-generic-password` will not overwrite: on an existing entry it fails with
+# "The specified item already exists in the keychain." Delete first to replace.
 claude setup-token
-security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "sk-ant-oat01-..."
-security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "ghp_..."   # optional, but `gh` needs it
+security delete-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" 2>/dev/null
+security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "<paste it here>"
+security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "<a token>"   # optional, but `gh` needs it
 ```
 
 Either name may be prefixed with your checkout directory in `UPPER_SNAKE_CASE`

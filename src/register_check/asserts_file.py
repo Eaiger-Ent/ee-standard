@@ -519,6 +519,32 @@ def toolchain_version(text: str) -> str | None:
     return match.group(1) if match else None
 
 
+def _who_needs(tool: str, register: Register) -> str:
+    """Which control wants this tool, and who deploys it — appended to a failure.
+
+    An absent lockfile reads as a broken supply chain. Usually it means the
+    control that needs the tool has not been deployed yet, and those are very
+    different problems with one message. Measured on the first adoption outside
+    this repository: `markdownlint-cli2 is sourced from package-lock.json, which
+    is not tracked` sent a reader looking at SUP-001 when the fix was to deploy
+    DOC-001.
+
+    Read from the register rather than held here: which control names a tool is
+    a register fact, and a lookup table in the checker would be a second copy of
+    it (ADR 0018).
+    """
+    for control in register.controls:
+        for block in control.verify:
+            if tool in {str(v) for v in block.args.values()}:
+                by = f", deployed by {control.deployed_by}" if control.deployed_by else ""
+                return (
+                    f" — that tool belongs to {control.id}{by}. If you have not "
+                    f"deployed {control.id} yet, this is that rather than a "
+                    "supply-chain defect"
+                )
+    return ""
+
+
 def tool_versions_match_register(
     repo: Repo,
     register: Register,
@@ -559,11 +585,13 @@ def tool_versions_match_register(
         if tool.source == "lockfile" and tool.lockfile and tool.lockfile not in repo.tracked:
             problems.append(
                 f"{tool.name} is sourced from {tool.lockfile}, which is not tracked"
+                + _who_needs(tool.name, register)
             )
         if tool.source == "toolchain" and tool.toolchain:
             if tool.toolchain not in repo.tracked:
                 problems.append(
                     f"{tool.name} is sourced from {tool.toolchain}, which is not tracked"
+                    + _who_needs(tool.name, register)
                 )
             elif toolchain_version(repo.read(tool.toolchain)) is None:
                 # The same silence one level down as a declared `pinned_at` site
