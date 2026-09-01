@@ -598,6 +598,122 @@ no check behind it: nothing would re-measure it, and it would rot the way
 § H's status section did. What the reader actually needs is *can I finish this
 now, and if not where do I stop* — which is structural, stable, and answerable.
 
+## S — The register an adopter fetches describes this repository
+
+Found by the first adoption to reach `/register-adopt` on a repository nobody
+here owns. Its summary named two failures, and both are the same defect.
+
+**`tools.uv.pinned_at` ships this repository's own workflow paths.** The register
+an adopter fetches lists four:
+
+```text
+.devcontainer/setup.sh
+.github/workflows/register-check.yml
+.github/workflows/support-floor.yml        ← ours
+.github/workflows/conformance-sweep.yml    ← ours
+```
+
+`tool_versions_match_register` fails a declared site that does not exist — by
+design, because that is how a renamed workflow is caught. So an adopter fails
+SUP-001 on two files they were never going to have, and the message says the
+register records a pin there, which reads as their mistake.
+
+**`CI-001`'s `required_checks` ships this repository's own job ids** —
+`[register-check, lint-md]`. `gate-repo` refused to create a ruleset requiring a
+`lint-md` check the adopter's workflows do not produce, and refusing was
+**correct**: GitHub waits forever for a check nothing reports, so the ruleset
+would block every merge rather than gate one. The gate did exactly the right
+thing with a register that was wrong.
+
+**This is not posture, and it is not undocumented.** § 3.7 is titled *Your
+register records your own files* and names `pinned_at` as the first edit an
+adopter makes. But it sits ~1,400 lines into the reference, `START-HERE.md` does
+not mention it, and `/register-adopt` does not do it — so the adopter meets it as
+two failures rather than as a step.
+
+It is also the exact inverse of a defect already recorded in the checker.
+`tool_versions_match_register`'s own comment says the assert once held this
+repository's filenames in a tuple, and *"an adopting repository that pinned the
+same tools in files of its own naming was told they were 'pinned at no known
+locus' — this repo's paths quoted at it as though they were the standard (§ H2)"*.
+Moving the list into the register fixed the checker and left the same paths in
+the register, where they now ship to everybody.
+
+**And [ADR 0045](adr/0045-a-gate-records-where-it-installed-a-tool.md) settles
+what should happen**, three days after it was written for a different reason. Its
+argument for letting a gate write `pinned_at` is that the field *"records where a
+repository keeps a file rather than what conformant means, and two conformant
+repositories legitimately differ on it"*. If that is true — and it is the
+premise the whole ADR rests on — then a register that ships one repository's
+`pinned_at` to every adopter is shipping a repository-specific fact as though it
+were policy.
+
+**Three ways out, and none is a documentation fix:**
+
+| | |
+| --- | --- |
+| Ship the two paths every adopter has, and no more | `.devcontainer/setup.sh` and the gating workflow. Smallest change; still wrong for a repository whose workflow has another name |
+| Ship `pinned_at: []` and let the gates fill it | ADR 0045 already permits exactly this write. Requires every gate to do it, not only `gate-secrets` |
+| Derive `required_checks` from the gating workflow rather than listing it | The job ids are already discoverable; `gate-repo` reads them into `CONTEXTS` at pre-flight and compares |
+
+**A fourth thing this run exposed, and it is cheap.** The tag an adopter fetches
+is five contracts behind: `v0.5.0` ships register v0.24.0 at contract 30, and
+`main` is v0.29.0 at contract 35. Everything from contracts 31 to 35 — the
+`pre-push` locus, SUP-004, the editor-locus hook check, ADR 0045 — is absent from
+what an adopter gets. `tests/test_register_install.py` holds the tag to a real
+release; nothing holds a release to being recent.
+
+## T — The register assumes a repository that already looks like this one
+
+§ S is about paths. These two are about *shape*, and they come from the same
+run: a new repository cannot satisfy controls that describe a mature one, and
+neither failure says so.
+
+**A repository with no tests cannot push.** `TST-001`'s hook runs `uv run
+pytest`, pytest exits **5** when it collects no tests, and nothing distinguishes
+that from a failure. So a freshly adopted repository is blocked at `git push`
+until somebody writes a test — measured, not predicted:
+
+```console
+$ uv init --no-workspace && uv run pytest; echo $?
+5
+```
+
+The control's own `enforces` is *a failing test fails the build*. **No tests is
+not a failing test**, and conflating them means the gate's first act in a new
+repository is to refuse work for a reason its own sentence does not cover. Two
+readings are defensible and the register picks neither on purpose today:
+
+- *A repository must have tests.* Then say so — that is a stronger control than
+  the one written, and the message should read "TST-001: this repository has no
+  tests" rather than a pytest exit code.
+- *An empty suite passes.* Then exit 5 is tolerated, and the hook says so where
+  a reader can see it.
+
+Either is fine. Silently mapping "nothing to run" onto "the build is broken" is
+not, and it is what happens now.
+
+**`markdownlint-cli2` is pinned to a node lockfile.** The register declares it
+`source: lockfile` on `package-lock.json`, and `tool_versions_match_register`
+fails a lockfile-sourced tool whose lockfile git does not track. So an adopter
+with no node project fails SUP-001 permanently, on a tool they cannot install
+anyway — `lint-md` lives behind the private marketplace ADR 0044 records.
+
+**Corrected on inspection: this is legibility, not structure.** § 3 of the
+reference tells an adopter `npm init -y && npm install --save-dev
+markdownlint-cli2`, which creates the lockfile — so `source: lockfile` on it is
+right, and the failure means DOC-001 has not been deployed yet rather than that
+the register assumes an ecosystem the adopter lacks. What is wrong is that one
+message covers two situations: a missing lockfile reads as a broken supply chain
+when the fix is to deploy a different control. `tool_versions_match_register`
+now names the control the tool belongs to and who deploys it.
+
+**Both are the same shape as § S.** The register was written by a repository that
+is Python *and* node, has four workflows, and has tests — and it ships as though
+every adopter is too. § 3.7 says the adopter edits `ecosystems:` and
+`pinned_at`; it does not say they may need to delete a `tools:` entry for a tool
+they will never install, and nothing in the adoption route prompts it.
+
 ## The doc plan
 
 The deferred question was whether to write something new or restructure
@@ -754,7 +870,10 @@ steps:
 <One sentence. What this does, not why.>
 
 ```bash
-<the commands, copy-pasteable as a block, no placeholders to think about>
+<the commands, copy-pasteable as a block, no placeholders to think about —
+ a reader will paste it verbatim, so derive every value rather than leaving
+ OWNER/REPO for them to fill in, and look up anything context-sensitive rather
+ than trusting a shortcut that silently answers about the wrong thing>
 ```
 
 **Done when:** <the one observable thing. A verdict, a file, a returned list.>
@@ -821,10 +940,19 @@ the four rows may be classic and which may not.>
 
 ## What you are about to do
 
-<A six-row table: the step, whether it needs anyone but you, and whether you can
-stop after it. Not how long — see § P. Two rows need somebody else (an admin for
-the ruleset, an org owner for the Renovate app) and saying so up front is what
-lets a reader start today instead of discovering it at step 3.>
+<A six-row table: the step, and the **rights** it needs — "Yours", "Admin on the
+repository", "Owner on the organisation". Not how long (§ P), and not *who* can
+do it: a reader who happens to be an admin does step 3 themselves, so naming the
+person reads as "not you" and is wrong half the time. Naming the right is
+accurate either way.
+
+Two rows need rights the reader may not hold, and saying so up front is what
+lets them start today and raise those in parallel instead of discovering them at
+step 3.
+
+**Do not add a "can you stop after?" column.** The first draft had one and every
+cell read "yes" — a column of identical values is noise wearing the costume of
+information. It is one sentence under the table.>
 
 ## 1 — Install the plugin
 ## 2 — Get the register

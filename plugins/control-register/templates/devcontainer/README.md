@@ -111,8 +111,16 @@ when the Keychain holds no Claude Code OAuth token — the container never start
 So one host-side step comes before everything else:
 
 ```bash
+# Already set? These service names carry no project prefix, so one credential
+# serves every project on the machine and a second adoption finds it there.
+security find-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w >/dev/null \
+  && echo "already set" || echo "not set"
+
+# Setting or replacing it. `add-generic-password` will not overwrite — it fails
+# with "The specified item already exists in the keychain" — so delete first.
 claude setup-token
-security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "sk-ant-oat01-..."
+security delete-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" 2>/dev/null
+security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "<paste it here>"
 ```
 
 A GitHub token is optional but wanted, or `gh` inside the container starts

@@ -1,3 +1,11 @@
+# GENERATED — do not edit. Run `register-check publish` instead.
+#
+# The register an adopter fetches, derived from `controls.yaml` by removing the
+# entries this repository marks `# local-only` (ADR 0048). Those are facts about
+# this repository — the workflows it happens to have, the jobs it happens to
+# run — and shipping them made an adopter fail on files they could not have.
+#
+# Everything else here is identical to `controls.yaml`, comments included.
 # The Equal Experts control register
 #
 # The single source of truth for what "conformant" means at Equal Experts.
@@ -524,10 +532,8 @@ tools:
       # the tests on the oldest interpreter `requires-python` claims. A site
       # that installs a pinned tool is a site that can drift from the register,
       # whether or not a verdict depends on it.
-      - .github/workflows/support-floor.yml  # local-only
       # The sweep installs uv to run the deployment report unattended. Another
       # site that repeats the version, so another site that can drift from it.
-      - .github/workflows/conformance-sweep.yml  # local-only
   # The interpreter every other Python tool runs inside, and until contract 20
   # the only tool here that no locus pinned and nothing compared. `source:
   # toolchain` is neither of the other two and both would be false: the value
@@ -1546,7 +1552,6 @@ controls:
           #
           required_checks:
             - register-check
-            - lint-md  # local-only
           # `strict_required_status_checks_policy`. With it off, a check that
           # passed against stale code still counts, so a merge can be gated by a
           # run that never saw what it is merging.
@@ -1572,7 +1577,6 @@ controls:
           # other. `test_gate_repo_deploy.py` holds the two `args:` equal.
           required_checks:
             - register-check
-            - lint-md  # local-only
           require_branches_up_to_date: true
     owner: platform-engineering
     deployed_by: gate-repo

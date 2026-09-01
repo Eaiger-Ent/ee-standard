@@ -15,6 +15,9 @@ _MARK = {
     Verdict.SKIPPED_PREDICATE: "-",
     Verdict.SKIPPED_NO_CREDENTIALS: "-",
     Verdict.UNCLASSIFIED: "?",
+    # Distinct from `?` on purpose: unreadable is *we could not tell*, and
+    # this is *we know, and the plan does not sell it* (ADR 0047).
+    Verdict.UNAVAILABLE_PLAN: "⊘",
 }
 
 
@@ -88,7 +91,11 @@ def render(
         f"{counts[Verdict.FAIL]} failed, "
         f"{counts[Verdict.SKIPPED_PREDICATE]} skipped (predicate), "
         f"{counts[Verdict.SKIPPED_NO_CREDENTIALS]} skipped (no credentials), "
-        f"{counts[Verdict.UNCLASSIFIED]} unclassified; "
+        f"{counts[Verdict.UNCLASSIFIED]} unclassified, "
+        # Printed even when zero, unlike a footnote. A repository running
+        # with a recorded plan limit should see it in the same line it
+        # reads for everything else (ADR 0047 rule 5).
+        f"{counts[Verdict.UNAVAILABLE_PLAN]} unavailable (plan); "
         f"meta-controls: {meta_passed}/{len(meta_results)} passed",
     ]
     # Two different reasons a run gathered no evidence, reported separately

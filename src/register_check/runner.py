@@ -7,6 +7,7 @@ purpose, and neither is ever counted as a pass.
 
 from __future__ import annotations
 
+import datetime
 import shlex
 import subprocess
 import sys
@@ -17,6 +18,7 @@ from enum import Enum
 from register_check.asserts import ASSERTS
 from register_check.asserts_file import CONTROL_ARG, AssertFn
 from register_check.asserts_remote import PUBLIC_REMOTE_ASSERTS, REMOTE_ASSERTS
+from register_check.platform_limits import PlatformLimit, limit_for, read_limits
 from register_check.predicates import compile_predicate
 from register_check.register import Control, MetaControl, Register, VerifyBlock
 from register_check.remote import GitHub, NoCredentials, Unreadable, Unresolvable
@@ -30,6 +32,11 @@ class Verdict(Enum):
     SKIPPED_PREDICATE = "SKIPPED (predicate)"
     SKIPPED_NO_CREDENTIALS = "SKIPPED (no credentials)"
     UNCLASSIFIED = "UNCLASSIFIED"
+    #: A remote block the repository's GitHub plan does not let it satisfy,
+    #: recorded in `deployment-decisions.yaml` (ADR 0047). Never a pass: it
+    #: sits beside UNCLASSIFIED in severity because both mean the control
+    #: does not hold and the run gathered no evidence that it does.
+    UNAVAILABLE_PLAN = "UNAVAILABLE (plan)"
 
     def __str__(self) -> str:
         return self.value
@@ -40,6 +47,7 @@ _SEVERITY = (
     Verdict.PASS,
     Verdict.SKIPPED_PREDICATE,
     Verdict.SKIPPED_NO_CREDENTIALS,
+    Verdict.UNAVAILABLE_PLAN,
     Verdict.UNCLASSIFIED,
     Verdict.FAIL,
 )
@@ -60,7 +68,16 @@ EXIT_INCOMPLETE = 3
 # skip is deliberately absent: not-applicable is a legitimate pass, and
 # conflating it with unverified would make the code meaningless in the common
 # case (a repo with no Terraform genuinely satisfies IAC-001's applicability).
-_UNVERIFIED = (Verdict.SKIPPED_NO_CREDENTIALS, Verdict.UNCLASSIFIED)
+_UNVERIFIED = (
+    Verdict.SKIPPED_NO_CREDENTIALS,
+    Verdict.UNCLASSIFIED,
+    # A recorded plan limit denies the run a `0` exactly as an unreadable
+    # answer does, and `--require-complete` promotes it to `1`. ADR 0047
+    # rule 4: the flag means *fail if anything could not be verified*, and
+    # this is the case it was written for. A repository in this state does
+    # not turn the flag on, and that is the visible cost rather than a hole.
+    Verdict.UNAVAILABLE_PLAN,
+)
 
 
 def exit_code(
@@ -133,7 +150,12 @@ RemoteTarget = GitHub | NoCredentials | Unresolvable | None
 
 
 def _run_remote_block(
-    block: VerifyBlock, register: Register, repo: Repo, remote: RemoteTarget
+    block: VerifyBlock,
+    register: Register,
+    repo: Repo,
+    remote: RemoteTarget,
+    control_id: str | None = None,
+    limits: tuple[PlatformLimit, ...] = (),
 ) -> BlockResult:
     """Ask the platform, and report honestly when it does not answer.
 
@@ -167,7 +189,46 @@ def _run_remote_block(
         return BlockResult(
             block, Verdict.UNCLASSIFIED, f"could not evaluate: {type(exc).__name__}: {exc}"
         )
-    return BlockResult(block, Verdict.PASS if result.passed else Verdict.FAIL, result.message)
+    if result.passed:
+        return BlockResult(block, Verdict.PASS, result.message)
+    return _waived_or_failed(block, result.message, control_id, limits)
+
+
+def _waived_or_failed(
+    block: VerifyBlock,
+    message: str,
+    control_id: str | None,
+    limits: tuple[PlatformLimit, ...],
+) -> BlockResult:
+    """A failing remote block the repository recorded as unbuyable (ADR 0047).
+
+    Only a **failure** is reachable here, and only a `kind: remote` one. A block
+    that passed is not waived, and a file block never reaches this function —
+    a plan cannot stop a repository containing a file, so CI-001's recorded
+    ruleset must still match the register.
+
+    An **expired** entry fails rather than reverting to the waiver. A plan is a
+    commercial state that changes on a renewal date, and an entry with no live
+    expiry is a permanent exemption wearing a record's clothes.
+    """
+    limit = limit_for(limits, control_id or "", block.assert_name or "")
+    if limit is None:
+        return BlockResult(block, Verdict.FAIL, message)
+    if limit.expired(datetime.date.today()):
+        return BlockResult(
+            block,
+            Verdict.FAIL,
+            f"{message} — a platform limit was recorded for this block but expired on "
+            f"{limit.review_by}. Re-check the plan and set a new review date, or remove "
+            f"the entry; an expired record is not a waiver.",
+        )
+    return BlockResult(
+        block,
+        Verdict.UNAVAILABLE_PLAN,
+        f"{limit.plan}: {limit.lacks} — recorded in deployment-decisions.yaml, "
+        f"review by {limit.review_by}. The control does not hold; this is a dated "
+        f"record of why, not a pass.",
+    )
 
 
 def run_block(
@@ -176,11 +237,23 @@ def run_block(
     repo: Repo,
     control: Control | MetaControl | None = None,
     remote: RemoteTarget = None,
+    limits: tuple[PlatformLimit, ...] = (),
 ) -> BlockResult:
     if block.kind == "command":
         return _run_command_block(block, repo)
     if block.kind == "remote":
-        return _run_remote_block(block, register, repo, remote)
+        # The control's id reaches the waiver from here rather than from the
+        # block's own `args:`, for the same reason `provenance_stamp_present`
+        # takes it from the runner: a control naming itself in its own entry is
+        # a second copy of its id in the file that exists to prevent them.
+        return _run_remote_block(
+            block,
+            register,
+            repo,
+            remote,
+            control.id if control is not None else None,
+            limits,
+        )
     assert block.assert_name is not None
     args = dict(block.args)
     if control is not None:
@@ -212,7 +285,11 @@ def _block_applies(block: VerifyBlock, register: Register, repo: Repo) -> bool:
 
 
 def run_control(
-    control: Control, register: Register, repo: Repo, remote: RemoteTarget = None
+    control: Control,
+    register: Register,
+    repo: Repo,
+    remote: RemoteTarget = None,
+    limits: tuple[PlatformLimit, ...] | None = None,
 ) -> ControlResult:
     satisfied, detail = applies(control, register, repo)
     if not satisfied:
@@ -233,7 +310,13 @@ def run_control(
                 "repository shape this repo does not have"
             ),
         )
-    blocks = tuple(run_block(block, register, repo, control, remote) for block in applicable)
+    # Read once per control rather than per block. A malformed record raises,
+    # which is deliberate: reading it as "no limits" would turn a recorded,
+    # dated waiver into a silent failure and the report would look ordinary.
+    recorded = read_limits(repo) if limits is None else limits
+    blocks = tuple(
+        run_block(block, register, repo, control, remote, recorded) for block in applicable
+    )
     return ControlResult(control, worst([b.verdict for b in blocks]), blocks)
 
 

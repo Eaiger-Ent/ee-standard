@@ -93,6 +93,12 @@
       // statement of what the editor enforces.
       "extensions": [],
       "settings": {
+        // The container user's login shell is bash, and every script here
+        // declares bash in its shebang; this makes VS Code's *terminal* zsh, so
+        // `devcontainer exec ... bash` and "Reopen in Container" hand you
+        // different shells. Nothing depends on which — both are in the base
+        // image — but the difference is deliberate to record rather than a
+        // thing to discover.
         "terminal.integrated.defaultProfile.linux": "zsh"
       }
     }

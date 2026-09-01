@@ -165,3 +165,25 @@ def test_no_shipped_file_declares_a_platform_credential_at_all() -> None:
         if _DECLARES_CREDENTIALS.search(path.read_text(encoding="utf-8", errors="ignore"))
     ]
     assert not offenders, "; ".join(offenders)
+
+
+def test_no_platform_limit_reaches_the_register_or_the_plugin() -> None:
+    """A plan limit is posture — a fact about one repository's billing.
+
+    ADR 0047 rule 6, and ADR 0022 requirement 6's rule applied to a new kind of
+    entry. `platform_limits:` belongs in `deployment-decisions.yaml`, which an
+    adopter owns; in `controls.yaml` or under `plugins/` it would ship one
+    repository's invoice to everybody who installs the standard.
+    """
+    shipped = [REPO_ROOT / "controls.yaml", *(REPO_ROOT / "plugins").rglob("*")]
+    for path in shipped:
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        assert "platform_limits" not in text, (
+            f"{path.relative_to(REPO_ROOT)} mentions platform_limits — that is posture, "
+            "and it must not reach the register or anything an adopter installs"
+        )

@@ -29,7 +29,12 @@ if gh auth status &>/dev/null; then
 elif [ -n "${GITHUB_TOKEN:-}" ]; then
   echo "  ✗ GitHub CLI — GITHUB_TOKEN set but rejected (expired? wrong scopes?)"
 else
-  echo "  ✗ GitHub CLI — not authenticated. Run: gh auth login"
+  echo "  ✗ GitHub CLI — not authenticated."
+  echo "      Durable fix, on the HOST — survives a rebuild:"
+  echo "        security add-generic-password -a \"\$USER\" -s GITHUB_TOKEN -w <token>"
+  echo "      then rebuild. \`gh auth login\` in here works too and is lost on the"
+  echo "      next rebuild: only /home/vscode/.claude is a volume, and gh keeps its"
+  echo "      credentials in ~/.config/gh."
 fi
 
 if [ -n "${EE_SKILLS_GITHUB_TOKEN:-}" ]; then
