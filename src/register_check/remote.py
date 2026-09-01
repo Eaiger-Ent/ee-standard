@@ -169,7 +169,13 @@ class GitHub:
                 received = {str(k).lower(): str(v) for k, v in response.headers.items()}
         except urllib.error.HTTPError as exc:
             raise Unreadable(
-                _http_explanation(exc.code, path, self.slug, _api_message(exc)),
+                _http_explanation(
+                    exc.code,
+                    path,
+                    self.slug,
+                    _api_message(exc),
+                    _accepted_permissions(exc),
+                ),
                 status=exc.code,
             ) from exc
         except urllib.error.URLError as exc:
@@ -245,7 +251,31 @@ def _api_message(exc: urllib.error.HTTPError) -> str:
     return " ".join(message.split())[:_MESSAGE_LIMIT]
 
 
-def _http_explanation(code: int, path: str, slug: str, message: str = "") -> str:
+def _accepted_permissions(exc: urllib.error.HTTPError) -> str:
+    """The permission GitHub says the endpoint accepts, if it said.
+
+    `x-accepted-github-permissions` is the header `08-adopting.md` § 1 derives
+    the whole permissions table from, and on a refusal it settles the question
+    the body only implies. The effective-rules endpoint answers
+    `metadata=read` — a permission **every** token has, including the one being
+    refused — so a `403` carrying it cannot be a scope problem, and saying so
+    needs no guess about the plan.
+
+    Absent on many responses, and never required: an empty string simply drops
+    the sentence that would have quoted it.
+    """
+    try:
+        value = exc.headers.get("x-accepted-github-permissions", "")
+    except Exception:
+        return ""
+    if not isinstance(value, str):
+        return ""
+    return " ".join(value.split())[:_MESSAGE_LIMIT]
+
+
+def _http_explanation(
+    code: int, path: str, slug: str, message: str = "", accepts: str = ""
+) -> str:
     """What an operator has to do about this status, not merely what it was.
 
     401 and 403 are UNCLASSIFIED rather than SKIPPED (no credentials) on
@@ -253,12 +283,25 @@ def _http_explanation(code: int, path: str, slug: str, message: str = "") -> str
     token: the first needs the token fixed, the second needs one supplied, and
     collapsing them tells the operator to do the wrong thing.
 
-    A `403` has **two** causes and this cannot choose between them, so it names
-    both and quotes GitHub. Asserting the scope was the whole answer sent a real
-    adopter after a token that was already correct, on a private repository
-    whose plan does not sell rulesets at all.
+    A `403` has **two** causes — a token without the scope, and a plan that does
+    not sell the feature — and this quotes GitHub rather than choosing. Asserting
+    the scope was the whole answer sent a real adopter after a token that was
+    already correct, on a private repository whose plan does not sell rulesets at
+    all; the header naming the permission the endpoint *does* accept was on that
+    same response, unread.
     """
     quoted = f' — GitHub says: "{message}"' if message else ""
+    #: With the header, the operator can settle it themselves and needs no
+    #: speculation from here: they know what their token holds and the endpoint
+    #: has just said what it wanted. Without it, both causes have to be named.
+    cause = (
+        f" The endpoint accepts {accepts}. If your token holds that, the plan is "
+        "refusing rather than the scope"
+        if accepts
+        else " Either the token lacks the permission, or the plan does not offer the "
+        "feature — a private repository has neither rulesets nor push protection below "
+        "a paid tier"
+    )
     if code == 401:
         return (
             f"the token was rejected for {path} (401) — it is invalid or expired; "
@@ -266,12 +309,8 @@ def _http_explanation(code: int, path: str, slug: str, message: str = "") -> str
         )
     if code == 403:
         return (
-            f"{path} answered 403{quoted}. Either the token lacks repository "
-            f"administration read access for {slug}, or this repository's plan does "
-            "not offer the feature — a private repository has neither rulesets nor "
-            "push protection below a paid tier. GitHub's wording above tells you "
-            "which; a plan limit is recorded in deployment-decisions.yaml (ADR 0047), "
-            "never fixed with a bigger token"
+            f"{path} answered 403 for {slug}{quoted}.{cause}; a plan limit is recorded "
+            "in deployment-decisions.yaml (ADR 0047), never fixed with a bigger token"
         )
     if code == 404:
         return (

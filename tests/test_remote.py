@@ -185,20 +185,30 @@ def test_every_http_failure_is_unreadable_never_a_violation(
         GitHub("acme/widget", "t").get("/repos/acme/widget")
 
 
-def _http_error(code: int, body: bytes | None) -> urllib.error.HTTPError:
-    """An `HTTPError` whose body can be read, as urllib hands one over."""
+def _http_error(
+    code: int, body: bytes | None, headers: dict[str, str] | None = None
+) -> urllib.error.HTTPError:
+    """An `HTTPError` whose body and headers can be read, as urllib hands one over."""
+    carried = email.message.Message()
+    for name, value in (headers or {}).items():
+        carried[name] = value
     return urllib.error.HTTPError(
         "https://api.github.com/x",
         code,
         "no",
-        {},  # type: ignore[arg-type]
+        carried,
         io.BytesIO(body) if body is not None else None,
     )
 
 
-def _explanation(code: int, body: bytes | None, monkeypatch: pytest.MonkeyPatch) -> str:
+def _explanation(
+    code: int,
+    body: bytes | None,
+    monkeypatch: pytest.MonkeyPatch,
+    headers: dict[str, str] | None = None,
+) -> str:
     def raising(*_: Any, **__: Any) -> Any:
-        raise _http_error(code, body)
+        raise _http_error(code, body, headers)
 
     monkeypatch.setattr(urllib.request, "urlopen", raising)
     with pytest.raises(Unreadable) as caught:
@@ -211,14 +221,19 @@ def test_a_403_names_both_causes_rather_than_asserting_the_scope(
 ) -> None:
     """A 403 on a rulesets endpoint has two causes and this cannot choose.
 
-    A token without administration access and a private repository on a plan
-    that does not sell rulesets answer identically. Naming only the scope sent a
-    real adopter after a token that was already correct.
+    A token without the permission and a private repository on a plan that does
+    not sell rulesets answer identically. Naming only the scope sent a real
+    adopter after a token that was already correct — and naming *administration*
+    was a second guess on top of the first: the endpoint it was said about
+    accepts `metadata=read`, which every token holds.
     """
     message = _explanation(403, b'{"message": "Upgrade to GitHub Pro"}', monkeypatch)
-    assert "administration read access" in message
+    assert "the token lacks the permission" in message
     assert "plan" in message
     assert "deployment-decisions.yaml" in message
+    assert "administration" not in message, (
+        "the checker is naming a permission GitHub did not ask for"
+    )
 
 
 def test_a_403_quotes_github_because_only_github_knows_which_cause(
@@ -255,6 +270,35 @@ def test_a_quoted_message_cannot_run_away_with_the_report(
     """A server having a bad day does not get to fill a control's report."""
     body = json.dumps({"message": "x" * 5_000}).encode()
     assert len(_explanation(403, body, monkeypatch)) < 1_000
+
+
+def test_a_403_names_the_permission_github_says_it_accepts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The header that settles it was on the refusal all along.
+
+    `/rules/branches/{branch}` answers `x-accepted-github-permissions:
+    metadata=read` — a permission every token holds, including the one being
+    refused. So a 403 carrying it cannot be a scope problem, and the checker
+    can say that without guessing at anyone's billing.
+    """
+    message = _explanation(
+        403,
+        b'{"message": "Upgrade to GitHub Pro or make this repository public."}',
+        monkeypatch,
+        {"X-Accepted-GitHub-Permissions": "metadata=read"},
+    )
+    assert "metadata=read" in message
+    assert "the plan is refusing rather than the scope" in message
+
+
+def test_a_403_without_the_header_still_explains_itself(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Most responses do not carry it, and none is required to."""
+    message = _explanation(403, b'{"message": "Resource not accessible"}', monkeypatch)
+    assert "The endpoint accepts" not in message
+    assert "deployment-decisions.yaml" in message
 
 
 def test_a_401_is_still_a_token_to_fix(monkeypatch: pytest.MonkeyPatch) -> None:

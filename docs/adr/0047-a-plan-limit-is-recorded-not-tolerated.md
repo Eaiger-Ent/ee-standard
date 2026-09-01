@@ -271,6 +271,40 @@ is a plain defect fixed rather than a decision, but it belongs in this record:
 the evidence this ADR asks an operator to act on was being thrown away before
 they could read it.
 
+### The refusal names the permission it wanted, and it is not administration
+
+The same request, with headers:
+
+```text
+% gh api "repos/{owner}/{repo}/rules/branches/main" -i
+HTTP/2.0 403 Forbidden
+X-Accepted-GitHub-Permissions: metadata=read
+{"message": "Upgrade to GitHub Pro or make this repository public to enable
+ this feature.", "status": "403"}
+```
+
+**`metadata=read` is a permission every token holds** — GitHub says it cannot be
+turned off. So this `403` is provably not a scope problem, and the disproof was
+in a header on the very response `_http_explanation` was reading when it
+announced *"reading this repository's protection state needs a token with
+repository administration read access"*. That claim was wrong twice: wrong that
+the cause was scope, and wrong about which permission, for an endpoint that had
+just said.
+
+This is the same header `08-adopting.md` § 1 derives the whole permissions table
+from — *"established by measurement rather than by reading prose"* — applied to a
+refusal rather than to a success. The checker now quotes it: given the accepted
+permission, an operator knows what their own token holds and can settle the
+question without the checker speculating about their billing.
+
+**Half the open question is closed.** On GitHub Free, a private repository's
+effective-rules endpoint refuses on the **plan**, with no scope confusion
+available to hide behind, which is what a `platform_limits:` entry may record.
+The other half stands: whether that endpoint, once it answers, reports rules
+originating from *classic* branch protection still decides whether a **Pro**
+private repository passes CI-001 honestly or fails through a checker gap. Only a
+Pro private repository can answer it, and this one is not.
+
 ## Applied — pass 2
 
 Implemented 2026-09-01. `Unreadable` carries the HTTP `status` where there was
@@ -315,4 +349,4 @@ same change as this note.
 | Rev | Date | What changed | Ratified by |
 | --- | --- | --- | --- |
 | 1 | 2026-08-31 | Original decision: a repository records a platform limitation in `deployment-decisions.yaml` and the checker reports `UNAVAILABLE (plan)` rather than failing, under six rules. | Nathan Carney |
-| 2 | 2026-09-01 | Premise corrected against a live Free private repository: the effective-rules endpoint answers `403`, not `[]`, so the recorded limit was never reached and the mechanism was inert. A record now also covers a `403` on the block it names — only `403`, expiring to `UNCLASSIFIED` rather than `FAIL`, and not SEC-001's absent-field case. The decision itself is unchanged. | Nathan Carney |
+| 2 | 2026-09-01 | Premise corrected against a live Free private repository; the refusal's `x-accepted-github-permissions: metadata=read` proves the cause is the plan, not scope: the effective-rules endpoint answers `403`, not `[]`, so the recorded limit was never reached and the mechanism was inert. A record now also covers a `403` on the block it names — only `403`, expiring to `UNCLASSIFIED` rather than `FAIL`, and not SEC-001's absent-field case. The decision itself is unchanged. | Nathan Carney |
