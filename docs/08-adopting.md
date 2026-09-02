@@ -1121,8 +1121,10 @@ matters where a stamp is read, and here nothing reads one. **Do not write a
 stamp naming `lint-md`**: a stamp names the skill that deployed the artefact, and
 recording a deployment that did not happen is worse than recording none.
 
-Six steps, done and verified in Phase 4's consumer repository. The lockfile is
-the pin:
+Seven steps. Six were done in Phase 4's consumer repository; the seventh — the
+editor locus — was missing from this list until an adopter deployed the other six
+and the gate said so, and all seven are now verified together in a repository
+that had none of them. The lockfile is the pin:
 
 ```bash
 npm init -y && npm install --save-dev markdownlint-cli2
