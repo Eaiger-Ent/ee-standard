@@ -1173,6 +1173,17 @@ register pins does not.
 Then `uv run register-check run --control DOC-001`, which is what makes this a
 deployment rather than a hope.
 
+**And re-run `/gate-supply-chain` afterwards.** Step 1 gave the repository a
+`package.json`, which is a **node ecosystem** it did not have before, and SUP-002
+requires an update channel for every ecosystem present — so a repository that was
+green on SUP-002 fails it the moment DOC-001 lands, with
+*"`.github/dependabot.yml` does not cover: node"*. That file is
+`gate-supply-chain`'s and carries its stamp, so re-running the gate is the route:
+adding the entry by hand would leave a stamp claiming work the gate did not do.
+
+Found by the first adopter to deploy DOC-001 into a Python-only repository, which
+is what every adopter following this guide has.
+
 What follows describes this repository's own artefacts, which are the reference
 implementation:
 
