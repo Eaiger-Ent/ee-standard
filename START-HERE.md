@@ -787,12 +787,24 @@ predictable set, and the order you clear them in matters.
 
 | The report says | What it means | What clears it |
 | --- | --- | --- |
-| `DOC-001 FAIL` — *no tracked markdownlint configuration file* | The markdown gate is the one gate no skill deploys for you, and **tracked** is the operative word — a file git does not carry is not wired | The seven steps in [`docs/08-adopting.md`](docs/08-adopting.md) § 3. All three loci, and `git add` every file |
+| `DOC-001 FAIL` — *no tracked markdownlint configuration file* | The one control no gate in this plugin deploys — it is `lint-md`'s, in another marketplace. **Tracked** is the operative word: a file git does not carry is not wired | `/lint-md` if you can reach it, else the seven steps in [`docs/08-adopting.md`](docs/08-adopting.md) § 3 — see below |
 | `SUP-001 FAIL` — *markdownlint-cli2 is sourced from package-lock.json, which is not tracked* | **The same cause**, not a second one. The register pins that tool from a lockfile you do not have yet | Committing `package-lock.json` in the step above |
 | `SEC-001 FAIL` — *push protection is 'disabled'* | The local blocks pass — the scanner runs at every locus. This is the server-side stop, and only GitHub can turn it on | Settings → Code security → enable push protection. Admin, and one click |
 | `CI-001 FAIL` — *not protected as the register requires* | Note its file block **passed**: you have *recorded* the ruleset. Recording is intent; this block asks what GitHub enforces, and the answer is nothing | `/gate-repo`, which applies the recorded ruleset through the API |
 | `GOV-001 FAIL` — *a merge waits for no check at all* | Not a separate problem. Every blocking control is credited to a CI job nothing requires, which is CI-001's failure seen from the other end | Clearing CI-001 clears this |
 | `SEC-003 UNCLASSIFIED` | Permanent, and correct. Those blocks answer only inside a GitHub Actions job; your own token settles nothing about what CI carries | Nothing. This is why a local run cannot exit `0` |
+
+**DOC-001 has a skill, and it may not be yours to run.** It is deployed by
+`/lint-md`, which lives in the **private** `EqualExperts/ee-skills` marketplace.
+If your account reaches that marketplace, install it and run the skill: one
+command rather than seven steps, and it stamps what it writes. If it does not,
+[`docs/08-adopting.md`](docs/08-adopting.md) § 3 has the seven steps, and they
+are a decision rather than a stopgap
+([ADR 0044](docs/adr/0044-the-adopter-installs-from-the-public-marketplace.md)) —
+`register-check` runs the same two verify blocks over what you write as over
+anything a gate writes, because a control is verified by what your repository
+contains and not by what put it there. Either way you get the control; only one
+of them costs an afternoon.
 
 **Clear them in that order, and there is a reason.** DOC-001 needs commits, and
 committing is easiest while you can still push to the default branch. CI-001 is
