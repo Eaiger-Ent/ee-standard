@@ -1121,8 +1121,10 @@ matters where a stamp is read, and here nothing reads one. **Do not write a
 stamp naming `lint-md`**: a stamp names the skill that deployed the artefact, and
 recording a deployment that did not happen is worse than recording none.
 
-Six steps, done and verified in Phase 4's consumer repository. The lockfile is
-the pin:
+Seven steps. Six were done in Phase 4's consumer repository; the seventh — the
+editor locus — was missing from this list until an adopter deployed the other six
+and the gate said so, and all seven are now verified together in a repository
+that had none of them. The lockfile is the pin:
 
 ```bash
 npm init -y && npm install --save-dev markdownlint-cli2
@@ -1150,9 +1152,37 @@ npm init -y && npm install --save-dev markdownlint-cli2
    what CI-001's `required_checks:` names, and GitHub matches a required check
    by the context a job produces — rename the job and your ruleset waits forever
    for a check nothing reports.
+7. **The editor extension the register names**, in
+   `.devcontainer/devcontainer.json` under `customizations.vscode.extensions`.
+   DOC-001 declares **three** loci and this is the third: `editor_extension:` in
+   its `args:` is the id, read from the register rather than typed from memory.
+   Installing it is all that file does for this locus — which tool holds a gated
+   file type is settled in `.vscode/settings.json` (ADR 0029).
+
+This step was missing from the list until an adopter deployed the other six and
+`markdown_gate_wired_at_all_loci` answered *"editor locus — no editor
+configuration installs …"*. The table below had it the whole time and is headed
+as **this repository's** artefacts, which reads as reference rather than
+requirement. A control's loci are the requirement.
+
+**The PostToolUse hook in that table is not a seventh thing to write.** The
+assert judges a hook script only where one runs this tool, so a repository with
+none passes; a repository whose hook invokes something other than what the
+register pins does not.
 
 Then `uv run register-check run --control DOC-001`, which is what makes this a
 deployment rather than a hope.
+
+**And re-run `/gate-supply-chain` afterwards.** Step 1 gave the repository a
+`package.json`, which is a **node ecosystem** it did not have before, and SUP-002
+requires an update channel for every ecosystem present — so a repository that was
+green on SUP-002 fails it the moment DOC-001 lands, with
+*"`.github/dependabot.yml` does not cover: node"*. That file is
+`gate-supply-chain`'s and carries its stamp, so re-running the gate is the route:
+adding the entry by hand would leave a stamp claiming work the gate did not do.
+
+Found by the first adopter to deploy DOC-001 into a Python-only repository, which
+is what every adopter following this guide has.
 
 What follows describes this repository's own artefacts, which are the reference
 implementation:
