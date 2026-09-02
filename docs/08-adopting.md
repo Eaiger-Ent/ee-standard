@@ -1150,6 +1150,23 @@ npm init -y && npm install --save-dev markdownlint-cli2
    what CI-001's `required_checks:` names, and GitHub matches a required check
    by the context a job produces — rename the job and your ruleset waits forever
    for a check nothing reports.
+7. **The editor extension the register names**, in
+   `.devcontainer/devcontainer.json` under `customizations.vscode.extensions`.
+   DOC-001 declares **three** loci and this is the third: `editor_extension:` in
+   its `args:` is the id, read from the register rather than typed from memory.
+   Installing it is all that file does for this locus — which tool holds a gated
+   file type is settled in `.vscode/settings.json` (ADR 0029).
+
+This step was missing from the list until an adopter deployed the other six and
+`markdown_gate_wired_at_all_loci` answered *"editor locus — no editor
+configuration installs …"*. The table below had it the whole time and is headed
+as **this repository's** artefacts, which reads as reference rather than
+requirement. A control's loci are the requirement.
+
+**The PostToolUse hook in that table is not a seventh thing to write.** The
+assert judges a hook script only where one runs this tool, so a repository with
+none passes; a repository whose hook invokes something other than what the
+register pins does not.
 
 Then `uv run register-check run --control DOC-001`, which is what makes this a
 deployment rather than a hope.
