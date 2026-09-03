@@ -35,6 +35,7 @@ One file cannot hold both policies.
 | `controls.published.yaml` | **Generated.** The register an adopter fetches, derived from `controls.yaml` by removing `# local-only` entries ([ADR 0048](adr/0048-the-published-register-is-derived.md)). Written by `register-check publish`; `tests/test_published_register.py` fails a stale one |
 | `deployment-decisions.yaml` | Declined deployments — see above |
 | `START-HERE.md` | **The adoption quickstart.** The happy path for a junior with a Mac and nothing else: what to install, which credentials, six steps. Held runnable by `tests/test_start_here.py` |
+| `adopt.sh` | **The bootstrap.** The one file an adopter fetches by hand, before Claude Code or a plugin exists — it needs `git` and `curl` and no credentials, resolves the newest tag, clones it anonymously, and runs the route in `plugins/control-register/templates/adopt/` from there ([ADR 0049](adr/0049-the-adoption-route-is-executable.md) revision 2). Fetched from `main` and pins nothing by design: it holds no rules, and what it clones is pinned |
 | `HOW-IT-WORKS.md` | The mechanism in one screen, for a person deciding whether to adopt or reading a verdict. Links `docs/00-concepts.md` for every term rather than restating one |
 | `README.md` | What this repository is, for a person arriving cold |
 | `CLAUDE.md` | The same ground for an agent, plus every decision in force |

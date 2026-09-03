@@ -128,6 +128,35 @@ repo directly (not just `gh`), embed that PAT in that remote's URL instead —
 rather than extending the credential helper. Out of scope for now: this
 container's git operations are all against Eaiger-Ent/ee-standard.
 
+### The ee-skills marketplace
+
+There is one git operation against an EqualExperts repo, and it is not one you
+type: `claude plugin marketplace add EqualExperts/ee-skills` clones a **private**
+repository over HTTPS, through the same `gh auth git-credential` helper. The
+ambient PAT is Eaiger-Ent-scoped and answers `403 Write access to repository not
+granted`, so the clone gets the second PAT the same way `gh-ee-skills` does — by
+scoping it to that one invocation, rather than embedding it in a remote or
+teaching the helper about two orgs:
+
+```bash
+ee-skills-plugins
+```
+
+`setup.sh` installs that to `/usr/local/bin` and calls it, so a container built
+with the Keychain entry already set needs nothing. **Run it by hand when the
+entry was added later.** `EE_SKILLS_GITHUB_TOKEN` reaches the container through
+`--env-file`, so a container built without it cannot pick it up until
+`fetch-secrets.sh` and a rebuild have run — and this script is what that rebuild
+would have run. It is idempotent, prints `=` for what was already there and `+`
+for what it added, and holds the plugin list as its only copy.
+
+Its exit codes are the register's (ADR 0016): `0` everything present, `1` the
+token is set but rejected, **`3` no token at all** — which `setup.sh` tolerates
+on purpose, because a missing second PAT leaves the rest of the image correct.
+`check-auth.sh` reports the marketplace separately from the token, since plugin
+state lives in the `~/.claude` volume: a token that authenticates and a
+marketplace that is present are two different facts.
+
 `add-generic-password` will not overwrite. To rotate a value, delete first:
 
 ```bash

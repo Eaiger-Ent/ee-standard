@@ -1497,6 +1497,67 @@ document that described it.
       ADR, and `tests/test_adopter_guide.py` fails a guide that names a
       marketplace the register does not
 
+## Phase 7 — What two independent adoptions found
+
+Two people ran the environment deploy on their own machines, from
+`START-HERE.md` alone. Both finished. Everything below is something they lost
+time to that a machine could have answered in a second, or that the guide did
+not say.
+
+- [x] The three prerequisites § B and § E did not state are stated. `uv` is a
+      host tool — § C2 runs `uv init` on the Mac, before a container exists, and
+      § B listed every other tool but not that one. `gh auth login` asks for a
+      protocol and § B never named one, so `ssh` wrote a `git@github.com:`
+      origin that nothing in the container can push to. And § E's pointer to the
+      PAT procedure did not say it was the next heading.
+- [x] A global `url.…insteadOf` rewrite is diagnosed where it bites. Verified in
+      the devcontainer: with `url."git@github.com:".insteadOf` set, step 1's
+      HTTPS marketplace clone resolves to `ssh git@github.com` and fails
+      `Permission denied (publickey)`. Claude Code clones over HTTPS itself
+      rather than through `gh`, and the marketplace repository is public, so an
+      SSH error there can only be a rewrite — it reads as an auth problem and is
+      not one.
+- [x] A pasted block cannot run a command before its input exists. Step 4 held
+      `claude setup-token`, a delete and an `add-generic-password` in one fence,
+      with the prose asking the reader to copy the first command's output into
+      the third. Three blocks now, run one at a time.
+- [x] The route is executable, and detects rather than instructs
+      ([ADR 0049](adr/0049-the-adoption-route-is-executable.md)).
+      `plugins/control-register/templates/adopt/` ships five stages and a
+      `status.sh` that names the first one not satisfied. A failing check prints
+      a verdict and a section reference, never an instruction, and
+      `tests/test_adopt_route.py` fails a reference to a section that does not
+      exist or a printed command the guide already carries. Exit codes are the
+      routing: `0` next stage, `1` yours to fix, `2` a manual act outstanding,
+      `3` wrong machine — the host/container split, stated rather than guessed.
+- [x] The ee-skills marketplace is one script a person can re-run.
+      `claude plugin marketplace add EqualExperts/ee-skills` clones a private
+      repository through the `gh auth git-credential` helper, so it needs the
+      second PAT; verified both ways, the ambient Eaiger-Ent token answers
+      `403`. That clone previously existed only inside `setup.sh`, so a
+      container first built before the Keychain entry existed had an empty
+      `~/.claude` volume and no route to fill it. `.devcontainer/bin/ee-skills-plugins`
+      is installed beside `gh-ee-skills` and **called by** `setup.sh`, so the
+      plugin list moves rather than being copied; exit `3` on no token leaves
+      the build correct and prints the Keychain step.
+- [x] The route is reachable before anything is installed, and can act.
+      `adopt.sh` at the repository root is fetched with `curl`, needs only `git`
+      and `curl`, and clones the newest tag anonymously — verified with every
+      token and askpass stripped, so the scripts that check § B no longer sit
+      behind § B. `guided.sh` asks § C's questions and takes the one branch of
+      its four-row table that matches what it read, rather than offering a
+      choice: `git init` inside an existing repository and `gh repo create`
+      against a taken name become impossible rather than warned about. It holds
+      actions only — every check delegates to a numbered stage, and
+      `test_the_guided_script_owns_no_check_of_its_own` fails it for reaching a
+      verdict itself. [ADR 0049](adr/0049-the-adoption-route-is-executable.md)
+      revision 2 records the reversal and what it does not reverse.
+- [x] `*` is not the newest version, at any of the three sites that used it.
+      With two versions cached the glob expands to both — a broken path, not a
+      newer one — and plain `sort` puts `0.1.0` above `0.10.0`. Step 4's
+      `cp -R` was copying two directories into one. All three now resolve with
+      `sort -V | tail -1` and stop if the cache is empty.
+
 ## What is deliberately not in scope
 
 | Excluded | Why |
