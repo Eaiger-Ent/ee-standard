@@ -48,6 +48,22 @@ lettering is to keep them apart from steps 1 to 6, which come later.
 | **D** | Find out what your repository can support |
 | **E** | Get the credentials |
 
+**And there is a script that tells you where you are.** The route below is
+linear, but you will not arrive at it linearly — you will stop, come back, and
+lose track of which sections already hold. Once § 1 has installed the plugin,
+this reads your machine and names the one stage to look at:
+
+```bash
+adopt=$(echo ~/.claude/plugins/cache/ee-standard/control-register/*/templates/adopt)
+"$adopt"/status.sh
+```
+
+It changes nothing, on your machine or on GitHub. Every check it fails prints
+the section here that explains the fix — the scripts detect, this document
+instructs, and [ADR 0049](docs/adr/0049-the-adoption-route-is-executable.md)
+records why it is kept that way round. It needs only Claude Code from § B to
+exist, so running § 1 early is the one reordering that pays.
+
 ### A — What this assumes
 
 macOS, with Docker running. The container's secrets are fetched from the macOS

@@ -1497,6 +1497,50 @@ document that described it.
       ADR, and `tests/test_adopter_guide.py` fails a guide that names a
       marketplace the register does not
 
+## Phase 7 — What two independent adoptions found
+
+Two people ran the environment deploy on their own machines, from
+`START-HERE.md` alone. Both finished. Everything below is something they lost
+time to that a machine could have answered in a second, or that the guide did
+not say.
+
+- [x] The three prerequisites § B and § E did not state are stated. `uv` is a
+      host tool — § C2 runs `uv init` on the Mac, before a container exists, and
+      § B listed every other tool but not that one. `gh auth login` asks for a
+      protocol and § B never named one, so `ssh` wrote a `git@github.com:`
+      origin that nothing in the container can push to. And § E's pointer to the
+      PAT procedure did not say it was the next heading.
+- [x] A global `url.…insteadOf` rewrite is diagnosed where it bites. Verified in
+      the devcontainer: with `url."git@github.com:".insteadOf` set, step 1's
+      HTTPS marketplace clone resolves to `ssh git@github.com` and fails
+      `Permission denied (publickey)`. Claude Code clones over HTTPS itself
+      rather than through `gh`, and the marketplace repository is public, so an
+      SSH error there can only be a rewrite — it reads as an auth problem and is
+      not one.
+- [x] A pasted block cannot run a command before its input exists. Step 4 held
+      `claude setup-token`, a delete and an `add-generic-password` in one fence,
+      with the prose asking the reader to copy the first command's output into
+      the third. Three blocks now, run one at a time.
+- [x] The route is executable, and detects rather than instructs
+      ([ADR 0049](adr/0049-the-adoption-route-is-executable.md)).
+      `plugins/control-register/templates/adopt/` ships five stages and a
+      `status.sh` that names the first one not satisfied. A failing check prints
+      a verdict and a section reference, never an instruction, and
+      `tests/test_adopt_route.py` fails a reference to a section that does not
+      exist or a printed command the guide already carries. Exit codes are the
+      routing: `0` next stage, `1` yours to fix, `2` a manual act outstanding,
+      `3` wrong machine — the host/container split, stated rather than guessed.
+- [x] The ee-skills marketplace is one script a person can re-run.
+      `claude plugin marketplace add EqualExperts/ee-skills` clones a private
+      repository through the `gh auth git-credential` helper, so it needs the
+      second PAT; verified both ways, the ambient Eaiger-Ent token answers
+      `403`. That clone previously existed only inside `setup.sh`, so a
+      container first built before the Keychain entry existed had an empty
+      `~/.claude` volume and no route to fill it. `.devcontainer/bin/ee-skills-plugins`
+      is installed beside `gh-ee-skills` and **called by** `setup.sh`, so the
+      plugin list moves rather than being copied; exit `3` on no token leaves
+      the build correct and prints the Keychain step.
+
 ## What is deliberately not in scope
 
 | Excluded | Why |
