@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-03
-**Revision:** 1
+**Revision:** 2
 
 ## Background
 
@@ -102,6 +102,9 @@ the reader from decisions that are theirs — which token, which protocol, which
 repository — and § E exists because those choices have consequences ninety days
 later.
 
+**Revision 2 reverses this in part**, and § The guided route records what
+changed and what did not.
+
 **Generating the scripts from `START-HERE.md`.** Tempting, and it would make the
 duplication impossible rather than merely tested. Rejected as more machinery than
 the problem needs: the reference test achieves the same guarantee, fails with a
@@ -133,3 +136,64 @@ adopter to the point where that command can answer at all.
 **A new step in the guide needs a stage, or it is unrouted.** This is the
 maintenance burden this ADR accepts. It is bounded by the test: the route and
 the directory must agree, so the failure is loud rather than silent.
+
+## The guided route (revision 2)
+
+**Amended 2026-09-03.** Revision 1 shipped detection only, and the first thing asked of it was the thing
+it had rejected: a script that walks a newcomer from nothing to a repository,
+asking the questions § C asks and doing what the answers imply.
+
+**That is now `guided.sh`, and it is the only script here that acts.** It asks
+for a base directory and a project name, reads whether each already exists
+locally and on GitHub, and takes the one branch of § C's four-row table that
+matches — rather than offering the choice, because choosing the wrong row is the
+mistake § C warns about. It offers § C2's project skeleton, runs § D, and stops
+at § E, because tokens are made in a browser by a person.
+
+**The rejection in revision 1 was right about the mechanism and wrong about the
+scope.** A script that performs a step does hold a copy of it. So `guided.sh`
+holds the *actions* and no *checks*: every verdict it reaches comes from running
+a numbered stage and reading its exit code, and
+`test_the_guided_script_owns_no_check_of_its_own` fails it for calling `pass` or
+`fail` itself. There is one copy of each check, and the guided route and the
+adopter running `./10-repo.sh` by hand cannot disagree.
+
+**What is not reversed:** it still creates nothing without a confirmation, still
+writes nothing to GitHub that the reader did not answer for, and still stops
+rather than automating § E. `git init` inside an existing repository and
+`gh repo create` against a name already taken — the two failures § C names — are
+now impossible rather than warned about, because the branch is chosen from what
+was read.
+
+## Getting the route before anything is installed (revision 2)
+
+Revision 1 shipped the route in the plugin, which put it behind
+`claude plugin install` — behind Claude Code, behind § B. The scripts that check
+§ B were reachable only by someone who had finished § B.
+
+**`adopt.sh` at the repository root is the bootstrap**, and it is the one file
+fetched by hand:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/main/adopt.sh -o adopt.sh
+bash adopt.sh
+```
+
+It needs only `git` and `curl`, and **no credentials**: this repository is
+public and the clone is anonymous, verified with every token and askpass
+stripped. It resolves the newest tag, clones that tag once into
+`~/.cache/ee-standard/<tag>`, and runs the route from there. The plugin still
+ships the same files; this adds a second delivery route to one source, not a
+second copy.
+
+**`adopt.sh` itself is fetched from `main` and pins nothing.** It is a resolve, a
+clone and an `exec`. What it clones is pinned to the newest tag — the same
+version § 2 tells an adopter to take the register from — so the unpinned part
+holds no rules and the pinned part holds all of them.
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-09-03 | Original decision: five detection stages and a `status.sh` in the plugin, routed by exit code, holding no instruction and referencing `START-HERE.md` sections that a test proves exist. | Nathan Carney |
+| 2 | 2026-09-03 | Two additions after the route was tried. `guided.sh` acts — it asks § C's questions and creates what the answers imply — reversing revision 1's rejection of scripts that fix what they find; the rejection is kept in scope by holding `guided.sh` to actions only, with every check delegated to a numbered stage and a test enforcing it. `adopt.sh` at the repository root bootstraps the route over an anonymous clone, so the scripts that check § B no longer sit behind § B. The credentials group split out of `00-preflight.sh` into `25-credentials.sh`, which renamed that stage `00-tools.sh`, so § E can be reached after § C and § D as the document orders it. | Nathan Carney |

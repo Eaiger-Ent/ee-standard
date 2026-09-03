@@ -101,14 +101,15 @@ repository_root() {
 # The order of the adoption, in one place. status.sh walks this list and nothing
 # else, and a test asserts it matches the files on disk in both directions.
 
-ROUTE_SCRIPTS="00-preflight.sh 10-repo.sh 20-platform.sh 30-container.sh 40-adopt.sh"
+ROUTE_SCRIPTS="00-tools.sh 10-repo.sh 20-platform.sh 25-credentials.sh 30-container.sh 40-adopt.sh"
 
 route_title() {
   local stage="$1"
   case "$stage" in
-    00-preflight.sh) echo "your Mac has the tools, and git is not rewriting URLs" ;;
+    00-tools.sh)      echo "your Mac has the tools, and git is not rewriting URLs" ;;
     10-repo.sh)      echo "a repository, a remote, a project in it, and the register" ;;
     20-platform.sh)  echo "what your GitHub plan and settings allow" ;;
+    25-credentials.sh) echo "the tokens that reach the container are in the Keychain" ;;
     30-container.sh) echo "the devcontainer is substituted and built" ;;
     40-adopt.sh)     echo "inside the container: the gates, and what register-check says" ;;
     *)               echo "unknown stage" ;;

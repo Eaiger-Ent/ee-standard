@@ -86,4 +86,4 @@ else
   fi
 fi
 
-verdict 20-platform.sh 30-container.sh
+verdict 20-platform.sh 25-credentials.sh

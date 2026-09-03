@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# Stage 0 — your Mac, before there is a container.
+# Stage 0 — the tools on your Mac (§ A and § B).
 #
-# Everything here is a precondition something later depends on silently. A
-# missing tool, an SSH-shaped git, or an empty Keychain does not announce itself
-# at the moment it matters; it announces itself three steps later as something
-# else. This asks all of it up front and changes nothing.
+# Every one of these is a precondition something later depends on silently. A
+# missing tool or an SSH-shaped git does not announce itself when it matters; it
+# announces itself three steps later, as something else. Credentials are § E and
+# are 25-credentials.sh, because they come after § C and § D.
 
 set -uo pipefail
 cd "$(dirname "$0")" || exit 1
@@ -95,30 +95,4 @@ else
   esac
 fi
 
-# -------------------------------------------------------------------- keychain
-
-section "Keychain entries (§ E, § 4)"
-if ! installed security; then
-  echo "  no 'security' command — this is not macOS."
-  detail "§ A states the contract a replacement for fetch-secrets.sh owes."
-  exit 3
-fi
-
-if security find-generic-password -a "$USER" -s CLAUDE_OAUTH_TOKEN -w >/dev/null 2>&1; then
-  pass "CLAUDE_OAUTH_TOKEN — the container will not start without it"
-else
-  manual "CLAUDE_OAUTH_TOKEN is not in the Keychain" "4"
-fi
-
-# fetch-secrets.sh looks the project-scoped name up first, so this checks in the
-# same order: a token named for this project wins wherever both exist.
-project_prefix=$(basename "$PWD" | tr '[:lower:]-' '[:upper:]_')
-if security find-generic-password -a "$USER" -s "${project_prefix}_GITHUB_TOKEN" -w >/dev/null 2>&1; then
-  pass "${project_prefix}_GITHUB_TOKEN — project-scoped, and it wins over the plain name"
-elif security find-generic-password -a "$USER" -s GITHUB_TOKEN -w >/dev/null 2>&1; then
-  pass "GITHUB_TOKEN — shared across every project on this machine"
-else
-  manual "no GitHub PAT in the Keychain" "E"
-fi
-
-verdict 00-preflight.sh 10-repo.sh
+verdict 00-tools.sh 10-repo.sh

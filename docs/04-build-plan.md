@@ -1540,6 +1540,23 @@ not say.
       is installed beside `gh-ee-skills` and **called by** `setup.sh`, so the
       plugin list moves rather than being copied; exit `3` on no token leaves
       the build correct and prints the Keychain step.
+- [x] The route is reachable before anything is installed, and can act.
+      `adopt.sh` at the repository root is fetched with `curl`, needs only `git`
+      and `curl`, and clones the newest tag anonymously — verified with every
+      token and askpass stripped, so the scripts that check § B no longer sit
+      behind § B. `guided.sh` asks § C's questions and takes the one branch of
+      its four-row table that matches what it read, rather than offering a
+      choice: `git init` inside an existing repository and `gh repo create`
+      against a taken name become impossible rather than warned about. It holds
+      actions only — every check delegates to a numbered stage, and
+      `test_the_guided_script_owns_no_check_of_its_own` fails it for reaching a
+      verdict itself. [ADR 0049](adr/0049-the-adoption-route-is-executable.md)
+      revision 2 records the reversal and what it does not reverse.
+- [x] `*` is not the newest version, at any of the three sites that used it.
+      With two versions cached the glob expands to both — a broken path, not a
+      newer one — and plain `sort` puts `0.1.0` above `0.10.0`. Step 4's
+      `cp -R` was copying two directories into one. All three now resolve with
+      `sort -V | tail -1` and stop if the cache is empty.
 
 ## What is deliberately not in scope
 

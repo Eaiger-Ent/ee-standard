@@ -13,6 +13,35 @@ what you can reach.
 Most of this you do alone. Two steps wait on somebody else, and § What you are
 about to do says which, so you can raise them today and carry on.
 
+## Or be asked instead of reading
+
+**One file, no credentials, nothing installed first.** This repository is
+public, so the clone is anonymous — you need only `git` and `curl`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/main/adopt.sh -o adopt.sh
+bash adopt.sh
+```
+
+That checks § B's tools, asks where you keep projects and what to call this one,
+reads whether it already exists locally and on GitHub, and does the one thing
+that follows — creating, cloning or publishing, private by default. It offers
+§ C2's project skeleton, runs § D, and then **stops at § E**, because the tokens
+are made in a browser by you. Come back to it and it checks what the Keychain
+holds and tells you where you are.
+
+```bash
+bash adopt.sh status
+```
+
+That one only reads, and answers "what still needs doing" at any point.
+
+**It creates nothing without asking, and this document remains the reference.**
+Every check it fails names the section here that explains it, because the
+scripts detect and this document instructs —
+[ADR 0049](docs/adr/0049-the-adoption-route-is-executable.md). If you would
+rather read straight through, ignore all of it and start at § Before you start.
+
 ## How this works
 
 `controls.yaml` — the **register** — holds fifteen entries. Each names a
@@ -468,6 +497,10 @@ and both are worth putting right.
 stopped.** The plugin you just installed ships a set of scripts that can: they
 read your machine and name the one stage still to look at.
 
+**If you took the guided route above, `bash adopt.sh status` is the same
+thing** and needs no plugin. What follows is the same scripts reached through
+the plugin you have just installed.
+
 **Resolve the version rather than globbing it.** More than one version can be
 cached at a time, and `*` then expands to all of them — which is a broken path,
 not the newest one. This picks the highest and stops if there is none:
@@ -482,7 +515,7 @@ echo "${version:?no control-register in the cache — § 1 has not run}"
 It prints one line per stage and the first that is not satisfied:
 
 ```text
-  n/a here  00-preflight.sh  your Mac has the tools, and git is not rewriting URLs
+  n/a here  00-tools.sh      your Mac has the tools, and git is not rewriting URLs
   blocked   10-repo.sh       a repository, a remote, a project in it, and the register
   ...
 Run this for the detail:

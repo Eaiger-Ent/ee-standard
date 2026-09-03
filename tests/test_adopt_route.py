@@ -12,7 +12,9 @@ nothing more, and this file holds the scripts to that:
 
 * every section a script names resolves to a heading in `START-HERE.md`, so a
   renamed section fails the build instead of routing a reader nowhere;
-* no script restates a command the document already carries;
+* no *detector* restates a command the document already carries — `guided.sh`
+  is the one exception, because acting is what it is for, and it is held to a
+  different rule: it may not implement a check of its own;
 * the route in `_lib.sh` and the files on disk agree, both ways, so a stage
   cannot be added without joining the route or removed while still named.
 """
@@ -54,8 +56,17 @@ RESTATED = (
 )
 
 
+# `guided.sh` asks questions and creates things (ADR 0049 revision 2). Every
+# other script here reads and reports.
+ACTING = {"guided.sh"}
+
+
 def _scripts() -> list[Path]:
     return sorted(p for p in ADOPT.glob("*.sh") if p.name != "_lib.sh")
+
+
+def _detectors() -> list[Path]:
+    return [p for p in _scripts() if p.name not in ACTING]
 
 
 def _headings() -> set[str]:
@@ -94,8 +105,8 @@ def test_every_section_a_script_names_exists(script: Path) -> None:
     )
 
 
-@pytest.mark.parametrize("script", _scripts(), ids=lambda p: p.name)
-def test_a_script_detects_rather_than_instructs(script: Path) -> None:
+@pytest.mark.parametrize("script", _detectors(), ids=lambda p: p.name)
+def test_a_detector_detects_rather_than_instructs(script: Path) -> None:
     """The document owns the words; the script owns the verdict.
 
     Scoped to what a script *prints*. A comment naming `/register-adopt` to say
@@ -114,13 +125,45 @@ def test_a_script_detects_rather_than_instructs(script: Path) -> None:
     )
 
 
-def test_the_route_and_the_files_agree() -> None:
-    """Both directions. A stage off the route never runs; a stage on it must exist."""
+def test_the_guided_script_owns_no_check_of_its_own() -> None:
+    """It may create things. It may not decide whether something holds.
+
+    The moment `guided.sh` re-implements a check, there are two copies of it and
+    the one an adopter runs by hand can disagree with the one the guided route
+    runs. So every verdict it reaches must come from a stage script it invokes.
+    """
+    guided = ADOPT / "guided.sh"
+    assert guided.is_file(), "guided.sh is the acting route and is missing"
+    text = guided.read_text(encoding="utf-8")
+
+    invoked = {stage for stage in _route_scripts() if stage in text}
+    assert invoked, (
+        "guided.sh invokes no stage script, so whatever checking it does is a "
+        "second copy. Call the stage and interpret its exit code."
+    )
+
+    printed = "\n".join(
+        line for line in text.splitlines() if not line.lstrip().startswith("#")
+    )
+    for verdict_helper in ("pass ", "fail "):
+        assert f"\n  {verdict_helper}" not in printed, (
+            f"guided.sh calls `{verdict_helper.strip()}` inside a check. Verdicts are the "
+            "stage scripts' to give; guided.sh reports what they returned."
+        )
+
+
+def _route_scripts() -> list[str]:
     lib = (ADOPT / "_lib.sh").read_text(encoding="utf-8")
     declared = re.search(r'^ROUTE_SCRIPTS="([^"]+)"$', lib, re.M)
     assert declared is not None, "_lib.sh has no ROUTE_SCRIPTS line"
-    route = declared.group(1).split()
-    on_disk = {p.name for p in _scripts()} - {"status.sh"}
+    return declared.group(1).split()
+
+
+def test_the_route_and_the_files_agree() -> None:
+    """Both directions. A stage off the route never runs; a stage on it must exist."""
+    lib = (ADOPT / "_lib.sh").read_text(encoding="utf-8")
+    route = _route_scripts()
+    on_disk = {p.name for p in _scripts()} - {"status.sh"} - ACTING
 
     assert set(route) == on_disk, (
         f"the route names {sorted(route)} and the directory holds {sorted(on_disk)}. "
