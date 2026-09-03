@@ -1,53 +1,111 @@
-# Shared vocabulary for the adoption route. Sourced, never executed.
+# Shared vocabulary for the adoption route. Sourced by every stage, never run.
 #
-# **These scripts detect; START-HERE.md instructs.** Every failure prints the
-# section that says what to do about it and no script repeats those words. That
-# is the whole design constraint: a script holding a copy of an instruction is
-# free to drift from the document, which is the failure this repository exists
-# to prevent. `tests/test_adopt_route.py` fails a reference to a section that
-# does not exist.
+# THE ONE RULE: these scripts report what is true. START-HERE.md says what to do
+# about it. A failing check prints the section that explains the fix and not the
+# fix itself, because a script holding a copy of an instruction is free to drift
+# from the document — the failure this standard exists to prevent.
+# tests/test_adopt_route.py fails a section reference that does not resolve.
 #
-# Exit codes, which are how one script names the next:
+# A stage script reads:
 #
-#   0  this stage holds        → run the NEXT script it prints
-#   1  a check failed          → yours to fix, at the section named
-#   2  waiting on a manual act → you, or somebody with rights you lack
-#   3  cannot verify from here → wrong machine (host vs container)
+#     section "What this group is about (§ B)"
+#     if <something is true>; then
+#       pass "what holds"
+#     else
+#       fail "what does not" "B"
+#     fi
+#     verdict 00-preflight.sh 10-repo.sh
+#
+# and `verdict` turns the counters into the exit code that names the next stage.
+
+# ---------------------------------------------------------------- presentation
 
 if [ -t 1 ]; then
-  _g=$'\033[32m'; _r=$'\033[31m'; _y=$'\033[33m'; _d=$'\033[2m'; _n=$'\033[0m'
+  GREEN=$'\033[32m'
+  RED=$'\033[31m'
+  AMBER=$'\033[33m'
+  DIM=$'\033[2m'
+  RESET=$'\033[0m'
 else
-  _g=''; _r=''; _y=''; _d=''; _n=''
+  GREEN='' RED='' AMBER='' DIM='' RESET=''
 fi
 
-FAILED=0
-PENDING=0
+# ------------------------------------------------------------------- reporting
+#
+# Three verdicts, and the difference between the last two matters:
+#   pass    it holds
+#   fail    it does not, and fixing it is yours to do
+#   manual  nothing here can do it — a browser, a setting, another person
+#
+# `fail` and `manual` both take the START-HERE.md section as their last
+# argument. `_lib.sh` prints the `§`; the caller passes the bare token.
 
-# `ok    <what>`            a fact that holds
-# `bad   <what> <section>`  a fact that does not, and where it is explained
-# `wait  <what> <section>`  a manual act nothing here can perform
-# `note  <text>`            context, never a verdict
-ok()   { printf '  %s✓%s %s\n' "$_g" "$_n" "$1"; }
-bad()  { printf '  %s✗%s %s  %s→ START-HERE.md § %s%s\n' "$_r" "$_n" "$1" "$_d" "$2" "$_n"; FAILED=$((FAILED + 1)); }
-wait_on() { printf '  %s•%s %s  %s→ START-HERE.md § %s%s\n' "$_y" "$_n" "$1" "$_d" "$2" "$_n"; PENDING=$((PENDING + 1)); }
-note() { printf '    %s%s%s\n' "$_d" "$1" "$_n"; }
-head_() { printf '\n%s\n' "$1"; }
+FAILURES=0
+MANUAL_ACTS=0
 
-have() { command -v "$1" >/dev/null 2>&1; }
+section() {
+  local title="$1"
+  printf '\n%s\n' "$title"
+}
 
-# /workspaces is where devcontainer.json mounts this repository; /.dockerenv is
-# the fallback for a container started any other way.
-in_container() {
-  [ -f /.dockerenv ] && return 0
-  case "$PWD" in /workspaces/*) return 0 ;; esac
+pass() {
+  local what="$1"
+  printf '  %s✓%s %s\n' "$GREEN" "$RESET" "$what"
+}
+
+fail() {
+  local what="$1" section_ref="$2"
+  printf '  %s✗%s %s  %s→ START-HERE.md § %s%s\n' \
+    "$RED" "$RESET" "$what" "$DIM" "$section_ref" "$RESET"
+  FAILURES=$((FAILURES + 1))
+}
+
+manual() {
+  local what="$1" section_ref="$2"
+  printf '  %s•%s %s  %s→ START-HERE.md § %s%s\n' \
+    "$AMBER" "$RESET" "$what" "$DIM" "$section_ref" "$RESET"
+  MANUAL_ACTS=$((MANUAL_ACTS + 1))
+}
+
+# Context under a verdict. Never a verdict itself, so it counts towards nothing.
+detail() {
+  local text="$1"
+  printf '    %s%s%s\n' "$DIM" "$text" "$RESET"
+}
+
+# --------------------------------------------------------------------- helpers
+
+installed() {
+  local command_name="$1"
+  command -v "$command_name" >/dev/null 2>&1
+}
+
+# /workspaces is where devcontainer.json mounts the repository; /.dockerenv
+# catches a container started any other way.
+inside_container() {
+  if [ -f /.dockerenv ]; then
+    return 0
+  fi
+  case "$PWD" in
+    /workspaces/*) return 0 ;;
+  esac
   return 1
 }
 
-# The route, in order. One line per stage: script, then what it settles.
-# `status.sh` walks this and nothing else, so adding a stage is one line here.
+repository_root() {
+  git rev-parse --show-toplevel 2>/dev/null || printf '%s' "$PWD"
+}
+
+# ----------------------------------------------------------------------- route
+#
+# The order of the adoption, in one place. status.sh walks this list and nothing
+# else, and a test asserts it matches the files on disk in both directions.
+
 ROUTE_SCRIPTS="00-preflight.sh 10-repo.sh 20-platform.sh 30-container.sh 40-adopt.sh"
+
 route_title() {
-  case "$1" in
+  local stage="$1"
+  case "$stage" in
     00-preflight.sh) echo "your Mac has the tools, and git is not rewriting URLs" ;;
     10-repo.sh)      echo "a repository, a remote, a project in it, and the register" ;;
     20-platform.sh)  echo "what your GitHub plan and settings allow" ;;
@@ -57,25 +115,40 @@ route_title() {
   esac
 }
 
-# Called last by every stage script. Turns the counters into the exit code and
-# names the next script, so the output itself is the routing.
+# ---------------------------------------------------------------------- ending
+#
+# Every stage ends by calling this. The exit code is how one script names the
+# next, so it is the whole routing mechanism:
+#
+#   0  this stage holds                → run `next_stage`
+#   1  a check failed                  → fix it, re-run this stage
+#   2  a manual act is outstanding     → do it, re-run this stage
+#   3  cannot be answered from here    → wrong machine (a stage exits 3 itself)
+
 verdict() {
-  local this="$1" next="$2"
+  local this_stage="$1" next_stage="$2"
   echo
-  if [ "$FAILED" -gt 0 ]; then
-    printf '%sBLOCKED%s — %s check(s) failed. Fix them at the sections named, then re-run:\n' "$_r" "$_n" "$FAILED"
-    printf '  ./%s\n' "$this"
+
+  if [ "$FAILURES" -gt 0 ]; then
+    printf '%sBLOCKED%s — %s check(s) failed. Fix them at the sections named, then re-run:\n' \
+      "$RED" "$RESET" "$FAILURES"
+    printf '  ./%s\n' "$this_stage"
     return 1
   fi
-  if [ "$PENDING" -gt 0 ]; then
-    printf '%sWAITING%s — %s manual act(s) outstanding. Do them, then re-run:\n' "$_y" "$_n" "$PENDING"
-    printf '  ./%s\n' "$this"
+
+  if [ "$MANUAL_ACTS" -gt 0 ]; then
+    printf '%sWAITING%s — %s manual act(s) outstanding. Do them, then re-run:\n' \
+      "$AMBER" "$RESET" "$MANUAL_ACTS"
+    printf '  ./%s\n' "$this_stage"
     return 2
   fi
-  if [ -z "$next" ]; then
-    printf '%sDONE%s — this was the last stage.\n' "$_g" "$_n"
+
+  if [ -z "$next_stage" ]; then
+    printf '%sDONE%s — this was the last stage.\n' "$GREEN" "$RESET"
     return 0
   fi
-  printf '%sOK%s — next:\n  ./%s   %s(%s)%s\n' "$_g" "$_n" "$next" "$_d" "$(route_title "$next")" "$_n"
+
+  printf '%sOK%s — next:\n' "$GREEN" "$RESET"
+  printf '  ./%s   %s(%s)%s\n' "$next_stage" "$DIM" "$(route_title "$next_stage")" "$RESET"
   return 0
 }

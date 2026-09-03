@@ -48,21 +48,10 @@ lettering is to keep them apart from steps 1 to 6, which come later.
 | **D** | Find out what your repository can support |
 | **E** | Get the credentials |
 
-**And there is a script that tells you where you are.** The route below is
-linear, but you will not arrive at it linearly — you will stop, come back, and
-lose track of which sections already hold. Once § 1 has installed the plugin,
-this reads your machine and names the one stage to look at:
-
-```bash
-adopt=$(echo ~/.claude/plugins/cache/ee-standard/control-register/*/templates/adopt)
-"$adopt"/status.sh
-```
-
-It changes nothing, on your machine or on GitHub. Every check it fails prints
-the section here that explains the fix — the scripts detect, this document
-instructs, and [ADR 0049](docs/adr/0049-the-adoption-route-is-executable.md)
-records why it is kept that way round. It needs only Claude Code from § B to
-exist, so running § 1 early is the one reordering that pays.
+**Read these five in order the first time.** After § 1 has installed the
+plugin there is a script that reads your machine and tells you which of them
+still need doing — § Knowing where you are, once you have something to run it
+with. It is for the second sitting and the third, not this one.
 
 ### A — What this assumes
 
@@ -473,6 +462,48 @@ and both are worth putting right.
 
 **Why this exists:** [`docs/08-adopting.md`](docs/08-adopting.md) § 0.0
 
+## Knowing where you are
+
+**You will not do this in one sitting, and the document cannot tell where you
+stopped.** The plugin you just installed ships a set of scripts that can: they
+read your machine and name the one stage still to look at.
+
+**Resolve the version rather than globbing it.** More than one version can be
+cached at a time, and `*` then expands to all of them — which is a broken path,
+not the newest one. This picks the highest and stops if there is none:
+
+```bash
+plugin=~/.claude/plugins/cache/ee-standard/control-register
+version=$(ls "$plugin" | sort -V | tail -1)
+echo "${version:?no control-register in the cache — § 1 has not run}"
+"$plugin/$version/templates/adopt/status.sh"
+```
+
+It prints one line per stage and the first that is not satisfied:
+
+```text
+  n/a here  00-preflight.sh  your Mac has the tools, and git is not rewriting URLs
+  blocked   10-repo.sh       a repository, a remote, a project in it, and the register
+  ...
+Run this for the detail:
+  ./10-repo.sh
+```
+
+Run that stage for the reasons. Each check that fails prints the section **of
+this document** that explains the fix, because the scripts detect and this
+document instructs —
+[ADR 0049](docs/adr/0049-the-adoption-route-is-executable.md) records why it is
+kept that way round, and a test fails a reference to a section that does not
+exist.
+
+`n/a here` is not a gap. Some stages are answerable only on the Mac and some
+only inside the container, and one that cannot answer says so rather than
+guessing — the same split § 5 is about.
+
+**They change nothing**, on your machine, in your repository or on GitHub. Every
+act they cannot perform — a token, a browser setting, installing Renovate — is
+printed as an outstanding item and detected once you have done it.
+
 ## 2 — Get the register
 
 The plugin ships no register. The register is what you adopt, and it becomes
@@ -562,9 +593,16 @@ placeholders, so while it is there the "any placeholders left?" check can never
 come back clean:
 
 ```bash
-cp -R ~/.claude/plugins/cache/ee-standard/control-register/*/templates/devcontainer .devcontainer
+plugin=~/.claude/plugins/cache/ee-standard/control-register
+version=$(ls "$plugin" | sort -V | tail -1)
+echo "${version:?no control-register in the cache — § 1 has not run}"
+cp -R "$plugin/$version/templates/devcontainer" .devcontainer
 rm .devcontainer/README.md
 ```
+
+**The version is resolved, not globbed.** With two versions cached, `*` expands
+to both and `cp -R` copies two directories into one — a `.devcontainer` that
+looks copied and has the template nested inside it.
 
 Read the version and the x86_64 digest out of the register, and fetch the
 aarch64 one from the release. **Check all three are non-empty** — an extraction
@@ -764,7 +802,10 @@ Dependabot manager can see one — so without this, uv is pinned at whatever
 version you adopted at, for ever, with the supply-chain controls green over it.
 
 ```bash
-cp ~/.claude/plugins/cache/ee-standard/control-register/*/templates/renovate/renovate.json .
+plugin=~/.claude/plugins/cache/ee-standard/control-register
+version=$(ls "$plugin" | sort -V | tail -1)
+echo "${version:?no control-register in the cache — § 1 has not run}"
+cp "$plugin/$version/templates/renovate/renovate.json" .
 git add renovate.json .github/dependabot.yml
 ```
 
