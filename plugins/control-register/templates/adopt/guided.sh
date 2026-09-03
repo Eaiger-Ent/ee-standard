@@ -52,11 +52,36 @@ banner() {
 # ------------------------------------------------------------------ § A and § B
 
 banner "Tools (§ A, § B)"
-if ! "$HERE/00-tools.sh"; then
-  echo
-  echo "Install what is missing and run this again. Nothing has been changed."
-  exit 1
-fi
+"$HERE/00-tools.sh"
+tools_exit=$?
+
+# Three different answers, and treating them alike was a real complaint: a run
+# with every tool present stopped on "install what is missing", which named
+# nothing because nothing was missing.
+case "$tools_exit" in
+  0)
+    ;;
+  1)
+    echo
+    echo "The ✗ lines above are what to install. Nothing has been changed."
+    exit 1
+    ;;
+  2)
+    echo
+    echo "Nothing is missing. The • lines above are a setting or a choice, and none"
+    echo "of them stops what follows."
+    if ! confirm "Carry on?"; then
+      echo "Stopped. Nothing has been changed."
+      exit 1
+    fi
+    ;;
+  *)
+    echo
+    echo "00-tools.sh could not answer from here (exit $tools_exit)."
+    echo "Nothing has been changed."
+    exit 1
+    ;;
+esac
 
 # --------------------------------------------------------------------- § C
 

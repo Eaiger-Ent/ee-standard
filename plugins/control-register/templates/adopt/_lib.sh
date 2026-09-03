@@ -43,6 +43,12 @@ fi
 FAILURES=0
 MANUAL_ACTS=0
 
+# The text of each one, so `verdict` can name them rather than counting them. A
+# reader who is told "1 manual act outstanding" and has to go and find which is
+# being given a puzzle instead of an answer.
+FAILURE_LIST=""
+MANUAL_LIST=""
+
 section() {
   local title="$1"
   printf '\n%s\n' "$title"
@@ -58,6 +64,8 @@ fail() {
   printf '  %s✗%s %s  %s→ START-HERE.md § %s%s\n' \
     "$RED" "$RESET" "$what" "$DIM" "$section_ref" "$RESET"
   FAILURES=$((FAILURES + 1))
+  FAILURE_LIST="${FAILURE_LIST}${what}  (§ ${section_ref})
+"
 }
 
 manual() {
@@ -65,6 +73,16 @@ manual() {
   printf '  %s•%s %s  %s→ START-HERE.md § %s%s\n' \
     "$AMBER" "$RESET" "$what" "$DIM" "$section_ref" "$RESET"
   MANUAL_ACTS=$((MANUAL_ACTS + 1))
+  MANUAL_LIST="${MANUAL_LIST}${what}  (§ ${section_ref})
+"
+}
+
+# Nice to have. Absent, it is worth knowing and worth nothing else — so it
+# counts towards no total and stops no route. A route that halts for something
+# it has just called optional is lying about one of the two.
+optional() {
+  local what="$1"
+  printf '  %s◦ %s — optional, and absent%s\n' "$DIM" "$what" "$RESET"
 }
 
 # Context under a verdict. Never a verdict itself, so it counts towards nothing.
@@ -131,16 +149,22 @@ verdict() {
   echo
 
   if [ "$FAILURES" -gt 0 ]; then
-    printf '%sBLOCKED%s — %s check(s) failed. Fix them at the sections named, then re-run:\n' \
-      "$RED" "$RESET" "$FAILURES"
-    printf '  ./%s\n' "$this_stage"
+    printf '%sBLOCKED%s — %s check(s) failed:\n' "$RED" "$RESET" "$FAILURES"
+    printf '%s' "$FAILURE_LIST" | while IFS= read -r item; do
+      [ -n "$item" ] && printf '    %s✗%s %s\n' "$RED" "$RESET" "$item"
+    done
+    printf '  Fix them at the sections named, then re-run:\n'
+    printf '    ./%s\n' "$this_stage"
     return 1
   fi
 
   if [ "$MANUAL_ACTS" -gt 0 ]; then
-    printf '%sWAITING%s — %s manual act(s) outstanding. Do them, then re-run:\n' \
-      "$AMBER" "$RESET" "$MANUAL_ACTS"
-    printf '  ./%s\n' "$this_stage"
+    printf '%sWAITING%s — %s manual act(s) outstanding:\n' "$AMBER" "$RESET" "$MANUAL_ACTS"
+    printf '%s' "$MANUAL_LIST" | while IFS= read -r item; do
+      [ -n "$item" ] && printf '    %s•%s %s\n' "$AMBER" "$RESET" "$item"
+    done
+    printf '  Each is yours to do in a browser or a setting. Then re-run:\n'
+    printf '    ./%s\n' "$this_stage"
     return 2
   fi
 
