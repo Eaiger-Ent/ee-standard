@@ -37,10 +37,26 @@ require_tool devcontainer "devcontainer CLI"
 require_tool gh "GitHub CLI"
 require_tool uv "uv"
 
-if installed code; then
+# `code` on PATH is the shell command, not the editor. It is a separate install
+# ("Shell Command: Install 'code' command in PATH"), so testing for it reports
+# VS Code missing on a Mac that is running it — which it did, to the first
+# person who ran this, inside a VS Code terminal.
+vs_code_present() {
+  installed code && return 0
+  [ -d "/Applications/Visual Studio Code.app" ] && return 0
+  [ -d "$HOME/Applications/Visual Studio Code.app" ] && return 0
+  [ "${TERM_PROGRAM:-}" = vscode ] && return 0
+  return 1
+}
+
+if vs_code_present; then
   pass "VS Code"
+  if ! installed code; then
+    detail "the 'code' command is not on PATH, which is a separate install and optional"
+  fi
 else
-  manual "VS Code — optional, but § 5 offers it as one of two ways in" "B"
+  optional "VS Code"
+  detail "§ 5 offers two ways into the container and only one of them is VS Code."
 fi
 
 # -------------------------------------------------------------------- docker

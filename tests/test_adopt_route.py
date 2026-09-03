@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import re
 import stat
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -175,3 +176,51 @@ def test_the_route_and_the_files_agree() -> None:
             f"{stage} is on the route but has no route_title case in _lib.sh, "
             "so status.sh would print 'unknown stage' for it."
         )
+
+
+def _run_against_lib(body: str) -> subprocess.CompletedProcess[str]:
+    """Exercise the reporting vocabulary the way a stage script uses it."""
+    return subprocess.run(
+        ["bash", "-c", f"set -uo pipefail\n. ./_lib.sh\n{body}"],
+        cwd=ADOPT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_an_optional_absence_stops_nothing() -> None:
+    """A route that halts for something it just called optional is lying about one.
+
+    The first person to run this had every tool installed and was stopped by
+    VS Code — reported absent because `code` was not on PATH, which is a
+    separate install from the editor. The stage exited 2, the guided route read
+    any non-zero as fatal, and it printed "install what is missing" naming
+    nothing, because nothing was.
+    """
+    result = _run_against_lib('optional "VS Code"\nverdict 00-tools.sh 10-repo.sh')
+    assert result.returncode == 0, (
+        "an optional absence reached a counter and stopped the route:\n"
+        f"{result.stdout}{result.stderr}"
+    )
+
+
+def test_a_verdict_names_what_it_is_waiting_for() -> None:
+    """A count is a puzzle. "1 manual act outstanding" does not say which."""
+    result = _run_against_lib(
+        'manual "Docker has 4 GB of memory" "B"\nverdict 00-tools.sh 10-repo.sh'
+    )
+    assert result.returncode == 2, f"expected the waiting verdict, got {result.returncode}"
+    assert result.stdout.count("Docker has 4 GB of memory") >= 2, (
+        "the summary counts the outstanding acts without naming them, so the reader "
+        f"has to go and find which:\n{result.stdout}"
+    )
+
+
+def test_vs_code_is_not_detected_by_its_shell_command_alone() -> None:
+    """`code` on PATH is a separate install from the editor, and optional itself."""
+    tools = (ADOPT / "00-tools.sh").read_text(encoding="utf-8")
+    assert "Visual Studio Code.app" in tools, (
+        "00-tools.sh tests only for the `code` command, which reports VS Code missing "
+        "on a Mac that is running it — as it did, inside a VS Code terminal."
+    )
