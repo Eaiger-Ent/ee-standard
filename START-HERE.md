@@ -61,6 +61,7 @@ replacement owes.
 | Tool | Install | You have it when |
 | --- | --- | --- |
 | Homebrew | <https://brew.sh> | `brew --version` |
+| uv | `brew install uv` | `uv --version` |
 | Docker Desktop | <https://www.docker.com/products/docker-desktop/> | `docker info` succeeds |
 | Claude Code | <https://docs.claude.com/en/docs/claude-code/setup> | `claude --version` |
 | node and npm | `brew install node` | `npm --version` |
@@ -69,6 +70,12 @@ replacement owes.
 | VS Code | `brew install --cask visual-studio-code` | `code --version` |
 
 Give Docker Desktop 8 GB of memory (Settings → Resources → Memory).
+
+**uv on the Mac is for § C2 and nothing else** — `uv init` and `uv add`
+create the project skeleton, and that has to exist before the container is
+built. Every *verification* runs inside the container, on the uv version step
+4 pins from the register; a host uv is not that one and is never what a gate
+reports on.
 
 **And a repository to work on**, on GitHub and cloned locally. This standard
 makes an existing repository conformant; it does not create one. § Where to run
