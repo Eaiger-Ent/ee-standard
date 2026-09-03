@@ -61,14 +61,36 @@ replacement owes.
 | Tool | Install | You have it when |
 | --- | --- | --- |
 | Homebrew | <https://brew.sh> | `brew --version` |
+| uv | `brew install uv` | `uv --version` |
 | Docker Desktop | <https://www.docker.com/products/docker-desktop/> | `docker info` succeeds |
 | Claude Code | <https://docs.claude.com/en/docs/claude-code/setup> | `claude --version` |
 | node and npm | `brew install node` | `npm --version` |
 | `devcontainer` CLI | `npm i -g @devcontainers/cli` | `devcontainer --version` |
-| GitHub CLI | `brew install gh`, then `gh auth login` | `gh auth status` |
+| GitHub CLI | `brew install gh`, then `gh auth login` — **choose HTTPS** | `gh auth status` |
 | VS Code | `brew install --cask visual-studio-code` | `code --version` |
 
 Give Docker Desktop 8 GB of memory (Settings → Resources → Memory).
+
+**`gh auth login` asks which protocol you prefer, and the answer here is
+HTTPS.** It is not a preference — it decides what `gh repo create` and
+`gh repo clone` write as your `origin` in § C. Choose SSH and you get
+`git@github.com:…`, and **nothing inside the container can push to it**: the
+container authenticates with the Keychain PAT over HTTPS and has no SSH key,
+because the only thing that survives a rebuild is `/home/vscode/.claude`.
+Already chosen SSH? `gh auth login` again and pick HTTPS, then fix the remote
+you already have. The first line prints what you have — a `git@github.com:`
+one is what the second replaces:
+
+```bash
+git remote get-url origin
+git remote set-url origin "https://github.com/<owner>/<repo>.git"
+```
+
+**uv on the Mac is for § C2 and nothing else** — `uv init` and `uv add`
+create the project skeleton, and that has to exist before the container is
+built. Every *verification* runs inside the container, on the uv version step
+4 pins from the register; a host uv is not that one and is never what a gate
+reports on.
 
 **And a repository to work on**, on GitHub and cloned locally. This standard
 makes an existing repository conformant; it does not create one. § Where to run
@@ -252,8 +274,14 @@ you should know exactly which and what they cost before you begin:
 | Name it | What it is | Where it goes | Needed for |
 | --- | --- | --- | --- |
 | — | Claude Code OAuth token | Keychain, `CLAUDE_OAUTH_TOKEN` | The container will not start without it |
-| **`<repo>-keychain`** | A GitHub PAT — see § Creating the GitHub token | Keychain, `GITHUB_TOKEN` | `gh` and every gate that talks to GitHub |
+| **`<repo>-keychain`** | A GitHub PAT — **§ Creating the GitHub token, immediately below, makes it** | Keychain, `GITHUB_TOKEN` | `gh` and every gate that talks to GitHub |
 | **`<repo>-actions`** | A second GitHub PAT | a GitHub environment secret, later | § 4.3 of the reference, a second sitting |
+
+**Never made a fine-grained PAT? Do not go looking.** § Creating the GitHub
+token is the next heading in this document, and it is the whole procedure —
+which fields to set, exactly which permissions, and the command that puts the
+result in your Keychain. Read the rest of this section first: it is what the
+two tokens are for, and you make them one at a time.
 
 **Name them, and name them after where they live.** GitHub's token list shows
 the name, the expiry and the last use and nothing else, so in ninety days when
@@ -400,6 +428,32 @@ lists files.
 
 **If it fails:** `claude: command not found` means Claude Code is not installed —
 see the table above.
+
+**`Permission denied (publickey)` means a git rewrite, not a missing
+credential.** Claude Code clones a marketplace itself, over
+`https://github.com/…`, without going through `gh` — and this repository is
+public, so that clone needs no credentials at all. An SSH error can only mean
+something turned the URL into an SSH one before git dialled. Find it:
+
+```bash
+git config --global --get-regexp 'url\..*\.insteadof'
+```
+
+A line like `url.git@github.com:.insteadof https://github.com/` is the cause:
+it rewrites **every** GitHub HTTPS URL on the machine, including this one, and
+the SSH key it then wants is not there. Remove it — using the name that
+command printed, which may not be the one below — and retry:
+
+```bash
+git config --global --unset-all url."git@github.com:".insteadOf
+git ls-remote https://github.com/Eaiger-Ent/ee-standard.git >/dev/null && echo reachable
+rm -rf ~/.claude/plugins/marketplaces/ee-standard
+```
+
+The third line clears a half-written cache from the failed attempt, which
+otherwise makes the retry look like it succeeded. **A rewrite is not the same
+setting as `gh`'s protocol** — that one is § B's, it cannot break this step,
+and both are worth putting right.
 
 **Why this exists:** [`docs/08-adopting.md`](docs/08-adopting.md) § 0.0
 
