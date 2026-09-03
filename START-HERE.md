@@ -78,10 +78,11 @@ HTTPS.** It is not a preference — it decides what `gh repo create` and
 container authenticates with the Keychain PAT over HTTPS and has no SSH key,
 because the only thing that survives a rebuild is `/home/vscode/.claude`.
 Already chosen SSH? `gh auth login` again and pick HTTPS, then fix the remote
-you already have:
+you already have. The first line prints what you have — a `git@github.com:`
+one is what the second replaces:
 
 ```bash
-git remote get-url origin   # git@github.com:… is the one to change
+git remote get-url origin
 git remote set-url origin "https://github.com/<owner>/<repo>.git"
 ```
 
