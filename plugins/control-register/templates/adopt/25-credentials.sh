@@ -8,8 +8,8 @@
 # by you, and this reports which of them have arrived in the Keychain.
 
 set -uo pipefail
-cd "$(dirname "$0")" || exit 1
-. ./_lib.sh
+HERE="$(cd "$(dirname "$0")" && pwd)"
+. "$HERE/_lib.sh"
 cd "$(repository_root)" || exit 1
 
 if ! installed security; then

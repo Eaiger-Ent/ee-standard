@@ -7,8 +7,8 @@
 # about a uv version it was not using, which is the worst kind of answer.
 
 set -uo pipefail
-cd "$(dirname "$0")" || exit 1
-. ./_lib.sh
+HERE="$(cd "$(dirname "$0")" && pwd)"
+. "$HERE/_lib.sh"
 
 if ! inside_container; then
   echo "This stage runs inside the container, and you are on your Mac."

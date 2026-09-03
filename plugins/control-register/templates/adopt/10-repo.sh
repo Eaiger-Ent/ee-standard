@@ -7,8 +7,8 @@
 # controls have nothing to say about it), and that the register has arrived.
 
 set -uo pipefail
-cd "$(dirname "$0")" || exit 1
-. ./_lib.sh
+HERE="$(cd "$(dirname "$0")" && pwd)"
+. "$HERE/_lib.sh"
 cd "$(repository_root)" || exit 1
 
 # ---------------------------------------------------------- repository, remote

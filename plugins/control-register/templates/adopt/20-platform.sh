@@ -7,8 +7,8 @@
 # four steps before it. Everything here reads; nothing here writes.
 
 set -uo pipefail
-cd "$(dirname "$0")" || exit 1
-. ./_lib.sh
+HERE="$(cd "$(dirname "$0")" && pwd)"
+. "$HERE/_lib.sh"
 
 if ! installed gh || ! gh auth status >/dev/null 2>&1; then
   echo "gh is not authenticated, so none of these questions can be asked."

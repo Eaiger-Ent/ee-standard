@@ -8,8 +8,8 @@
 # are 25-credentials.sh, because they come after § C and § D.
 
 set -uo pipefail
-cd "$(dirname "$0")" || exit 1
-. ./_lib.sh
+HERE="$(cd "$(dirname "$0")" && pwd)"
+. "$HERE/_lib.sh"
 
 if inside_container; then
   echo "This stage is about your Mac, and you are inside the container."
