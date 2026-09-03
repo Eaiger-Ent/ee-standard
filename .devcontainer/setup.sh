@@ -34,9 +34,16 @@ for d in /usr/local/share/nvm/versions/node/*/lib/node_modules/@anthropic-ai; do
 done
 
 # DOC-001's tool, from the one authority that owns its version:
-# package-lock.json. Every locus runs `npx markdownlint-cli2`, so there is no
-# version to keep in step here — the lockfile is the pin, and SUP-001 already
-# enforces that it is committed and installed frozen.
+# package-lock.json. Every locus runs `node_modules/.bin/markdownlint-cli2` —
+# the path this install writes, which is the artefact the lockfile owns — so
+# there is no version to keep in step here: the lockfile is the pin, and
+# SUP-001 already enforces that it is committed and installed frozen.
+#
+# This said `npx markdownlint-cli2` until register contract 35. ADR 0020
+# measured `npx` reaching a binary the lockfile does not own — its own cache or
+# the registry — so the two spellings are not interchangeable, and a comment
+# naming the wrong one is a second copy of a rule, in the file whose job is to
+# install the tree the pinned one lives in.
 npm ci --no-audit --no-fund
 
 # ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
