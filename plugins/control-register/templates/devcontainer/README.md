@@ -117,10 +117,24 @@ So one host-side step comes before everything else:
 security find-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w >/dev/null \
   && echo "already set" || echo "not set"
 
-# Setting or replacing it. `add-generic-password` will not overwrite — it fails
-# with "The specified item already exists in the keychain" — so delete first.
+```
+
+**Setting or replacing it is three commands, run one at a time.** The first is
+interactive and the third needs what it printed, so a single paste runs the
+third with nothing to put in it. `add-generic-password` will not overwrite — it
+fails with *"The specified item already exists in the keychain"* — so the delete
+comes between them, and the redirect makes it harmless when there is nothing to
+delete.
+
+```bash
 claude setup-token
+```
+
+```bash
 security delete-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" 2>/dev/null
+```
+
+```bash
 security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "<paste it here>"
 ```
 

@@ -186,13 +186,15 @@ banner "What your plan supports (§ D)"
 banner "Credentials (§ E) — your turn"
 cat <<'MSG'
 
-The next part cannot be scripted. Two tokens are made in a browser, by you, and
-one of them decides what every gate can reach:
+The next part cannot be scripted. The tokens are made in a browser, by you.
 
-  START-HERE.md § E                        which tokens, and what each is for
-  START-HERE.md § Creating the GitHub token the fields and the exact permissions
+  START-HERE.md § E
 
-Make them, put them in the Keychain as § E says, and then come back.
+That one section has both of them: which tokens, what each is for, the exact
+fields and permissions, and the command that puts the result in the Keychain.
+
+**You only need the first one today.** The second is CI's, it is not a Keychain
+entry, and nothing before § 6 asks for it.
 MSG
 
 echo

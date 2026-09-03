@@ -740,16 +740,40 @@ message arrives before you have a container to read it in:
 # every ee project on the machine — a second adoption finds them already set.
 security find-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w >/dev/null \
   && echo "already set" || echo "not set"
-
-# `add-generic-password` will not overwrite: on an existing entry it fails with
-# "The specified item already exists in the keychain." Delete first to replace.
-claude setup-token
-security delete-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" 2>/dev/null
-security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "<paste it here>"
-security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "<a token>"
 ```
 
-The last line is optional, but `gh` needs it.
+**What follows is three commands run one at a time, not a block to paste.** The
+first is interactive and the third needs what it printed, so pasting all three
+runs the third with nothing to put in it — and stores the literal placeholder,
+which fails the build later with no visible connection to the cause.
+
+First, get the token. This opens a browser, waits for you to authorise, and then
+prints the token. Copy what it prints:
+
+```bash
+claude setup-token
+```
+
+Then clear any existing entry. `add-generic-password` will not overwrite — on an
+existing entry it fails with *"The specified item already exists in the
+keychain"* — and the redirect makes this harmless when there is none:
+
+```bash
+security delete-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" 2>/dev/null
+```
+
+Last, store what the first command printed, replacing the placeholder and its
+angle brackets:
+
+```bash
+security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "<paste it here>"
+```
+
+A GitHub token is optional here, but `gh` needs it:
+
+```bash
+security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "<a token>"
+```
 
 Either name may be prefixed with your checkout directory in `UPPER_SNAKE_CASE`
 to scope it to one project. `check-auth.sh` reports which entry answered on

@@ -224,3 +224,38 @@ def test_vs_code_is_not_detected_by_its_shell_command_alone() -> None:
         "00-tools.sh tests only for the `code` command, which reports VS Code missing "
         "on a Mac that is running it — as it did, inside a VS Code terminal."
     )
+
+
+def test_a_stage_reads_the_repository_the_adopter_is_standing_in(tmp_path: Path) -> None:
+    """Reported from a real run, and every green line before it was meaningless.
+
+    The route ships inside a checkout of *this* repository, which is itself a
+    git repository with a manifest, a lockfile, a `.python-version`, tests and a
+    `controls.yaml`. A stage that `cd`s to its own directory before asking
+    `git rev-parse --show-toplevel` therefore answers about `ee-standard` — and
+    passes every check while telling the adopter nothing about their project.
+
+    It reported `10-repo.sh` and `20-platform.sh` done for a repository the
+    adopter had never touched, and then looked for a Keychain entry named after
+    the cache directory the route was unpacked into.
+    """
+    project = tmp_path / "someone-elses-project"
+    project.mkdir()
+    subprocess.run(["git", "init", "-q", "-b", "main", "."], cwd=project, check=True)
+
+    result = subprocess.run(
+        [str(ADOPT / "10-repo.sh")],
+        cwd=project,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert str(project) in result.stdout, (
+        "the stage did not report on the directory it was run from. It reported:\n"
+        f"{result.stdout}"
+    )
+    assert str(REPO_ROOT) not in result.stdout, (
+        "the stage reported on the route's own checkout rather than the adopter's "
+        f"repository:\n{result.stdout}"
+    )

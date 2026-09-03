@@ -7,8 +7,8 @@
 # by which point nothing points back to the substitution that did not happen.
 
 set -uo pipefail
-cd "$(dirname "$0")" || exit 1
-. ./_lib.sh
+HERE="$(cd "$(dirname "$0")" && pwd)"
+. "$HERE/_lib.sh"
 cd "$(repository_root)" || exit 1
 
 # ------------------------------------------------------------- template copied

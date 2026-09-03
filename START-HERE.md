@@ -309,13 +309,12 @@ you should know exactly which and what they cost before you begin:
 | --- | --- | --- | --- |
 | — | Claude Code OAuth token | Keychain, `CLAUDE_OAUTH_TOKEN` | The container will not start without it |
 | **`<repo>-keychain`** | A GitHub PAT — **§ Creating the GitHub token, immediately below, makes it** | Keychain, `GITHUB_TOKEN` | `gh` and every gate that talks to GitHub |
-| **`<repo>-actions`** | A second GitHub PAT | a GitHub environment secret, later | § 4.3 of the reference, a second sitting |
+| **`<repo>-actions`** | A second GitHub PAT | A GitHub **environment** secret, not the Keychain | CI's own checks — **§ The CI token, below** |
 
-**Never made a fine-grained PAT? Do not go looking.** § Creating the GitHub
-token is the next heading in this document, and it is the whole procedure —
-which fields to set, exactly which permissions, and the command that puts the
-result in your Keychain. Read the rest of this section first: it is what the
-two tokens are for, and you make them one at a time.
+**Both GitHub tokens are specified below, in the order you make them.**
+§ Creating the GitHub token is the one you need now; § The CI token is the one
+for a later sitting. Each gives the fields, the exact permissions and where the
+result goes, so neither needs you to leave this document.
 
 **Name them, and name them after where they live.** GitHub's token list shows
 the name, the expiry and the last use and nothing else, so in ninety days when
@@ -324,11 +323,14 @@ revoke without breaking CI. `<repo>` is your repository — `my-app-keychain`,
 `my-app-actions`. The Claude token has no name field; it is a Keychain entry
 rather than a PAT.
 
-**The two GitHub tokens are not interchangeable.** One lives in your Keychain
-and is used by you *and by the gates*, from inside the container — that is the
-one you need now. The other is given to GitHub Actions, never leaves the
-platform, and belongs to a later sitting;
-[`docs/08-adopting.md`](docs/08-adopting.md) § 4.3 covers it when you get there.
+**The two GitHub tokens are not interchangeable**, and the difference is where
+each one lives. The Keychain one is used by you *and by the gates*, from inside
+the container. The CI one is handed to GitHub Actions and never leaves the
+platform — so it is not a Keychain entry, and `fetch-secrets.sh` neither looks
+for it nor wants it.
+
+**You only need the first one today.** Make it, finish the adoption, and come
+back for the second when CI asks for it.
 
 #### Creating the GitHub token
 
@@ -431,6 +433,39 @@ organisation that owns the repository, and **Repository access** must list this
 repository by name. If the owner is an organisation, fine-grained tokens also
 need that organisation to have approved them — until an owner approves, every
 request answers 404.
+
+#### The CI token — for a later sitting
+
+**Not now.** Nothing before § 6 needs it, and the adoption finishes without it.
+It is here so that both tokens are specified in one place; come back when the
+conformance job tells you it could not verify something.
+
+Same page, same **fine-grained** choice, and one permission:
+
+| Field | Value |
+| --- | --- |
+| Token name | `<repo>-actions` — the one CI holds |
+| Resource owner | The account or organisation that owns the repository |
+| Repository access | **Only select repositories** → this one |
+| Expiration | 90 days or less |
+
+| Permission | Level | Why this one |
+| --- | --- | --- |
+| Administration | **Read-only** | The only permission it needs. It is what the Actions `GITHUB_TOKEN` does not carry, and what SEC-001's remote block reads — without it GitHub omits `security_and_analysis` entirely and the block reports `UNCLASSIFIED` over a repository where push protection is on |
+
+Everything else at **No access**. It reads one field; it writes nothing.
+
+**Where it goes is the part that matters, and it is not the Keychain.** Put it
+in a **deployment environment** secret with a branch policy limited to your
+default branch — not a plain repository secret. A repository secret is readable
+by any workflow run that reaches it, including one a pull request added a
+trigger for; an environment's branch policy lives in repository settings rather
+than in the workflow file, so it is a guard a pull request cannot edit
+([ADR 0022](docs/adr/0022-a-platform-token-ci-carries.md)).
+
+**The wiring is a separate job from the token**, and the order matters — the
+credential first, then `--require-complete`, or every run fails on a control
+that holds. [`docs/08-adopting.md`](docs/08-adopting.md) § 4.3 is that step.
 
 ## What you are about to do
 
@@ -981,8 +1016,9 @@ cannot pass, on a branch you can no longer push to directly. Nothing merges,
 including the fix. Push, watch the job go green, *then* run `/gate-repo`.
 
 If the job exits `1` on incompleteness rather than on a violation, it wants the
-credential: [`docs/08-adopting.md`](docs/08-adopting.md) § 4.2 then § 4.3, in
-that order.
+credential: § The CI token above makes it, then
+[`docs/08-adopting.md`](docs/08-adopting.md) § 4.2 and § 4.3 wire it up, in that
+order.
 
 ## When it goes wrong
 
