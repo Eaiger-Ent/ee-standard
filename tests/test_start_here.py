@@ -704,14 +704,27 @@ def test_the_permissions_are_listed_as_github_lists_them() -> None:
         (REPO_ROOT / "docs/08-adopting.md",
          (REPO_ROOT / "docs/08-adopting.md").read_text(encoding="utf-8")),
     ):
-        rows = [
-            line.split("|")[1].strip()
-            for line in text.splitlines()
-            if line.startswith("| ") and line.split("|")[1].strip() in names
-        ]
-        assert rows, f"{path.name} has no permissions table"
-        assert rows == sorted(rows), (
-            f"{path.name} lists permissions as {rows} — GitHub's form is alphabetical, "
+        # Per table, not per document. A document may carry more than one — the
+        # quickstart specifies two tokens, and the CI one needs a single
+        # permission — and rows from separate tables are not a sequence a reader
+        # ever walks. A contiguous run of table lines is one table.
+        tables: list[list[str]] = []
+        run: list[str] = []
+        for line in text.splitlines():
+            if line.startswith("|"):
+                name = line.split("|")[1].strip()
+                if name in names:
+                    run.append(name)
+                continue
+            if run:
+                tables.append(run)
+                run = []
+        if run:
+            tables.append(run)
+
+        assert tables, f"{path.name} has no permissions table"
+        assert all(table == sorted(table) for table in tables), (
+            f"{path.name} lists permissions as {tables} — GitHub's form is alphabetical, "
             "and a reader works down it once rather than searching it nine times"
         )
 

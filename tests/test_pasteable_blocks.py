@@ -100,3 +100,47 @@ def test_no_trailing_comment_in_a_shell_block(path: Path) -> None:
         "zsh, which does not set `interactive_comments`. Move the annotation "
         "above the block:\n" + "\n".join(offenders)
     )
+
+
+#: A command that prints something the reader must then paste, and the command
+#: that consumes it. In one fence they are a trap: the consumer runs first.
+_PRODUCES_A_VALUE = "claude setup-token"
+_CONSUMES_A_VALUE = "add-generic-password"
+
+
+@pytest.mark.parametrize("path", _paste_path_files(), ids=_PASTE_PATH)
+def test_a_block_never_consumes_a_value_it_also_produces(path: Path) -> None:
+    """The third command cannot run before the first has printed its input.
+
+    `claude setup-token` opens a browser, waits, and prints a token. The
+    `add-generic-password` below it wants that token. In one fence a reader
+    pastes all of it, the store command runs with the literal `<paste it here>`
+    still in place, and the container fails to start much later with nothing
+    pointing back here.
+
+    Splitting them is the whole fix: two fences cannot be pasted as one.
+    """
+    text = path.read_text(encoding="utf-8")
+    offenders = []
+
+    in_fence = False
+    fence_start = 0
+    body: list[str] = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        if in_fence:
+            if _FENCE_END.match(line):
+                joined = "\n".join(body)
+                if _PRODUCES_A_VALUE in joined and _CONSUMES_A_VALUE in joined:
+                    offenders.append(f"{path.name}:{fence_start}")
+                in_fence = False
+            else:
+                body.append(line)
+        elif _SHELL_FENCE.match(line):
+            in_fence, fence_start, body = True, number, []
+
+    assert not offenders, (
+        f"a shell block at {offenders} runs `{_PRODUCES_A_VALUE}` and "
+        f"`{_CONSUMES_A_VALUE}` together. One prints what the other needs, so a "
+        "single paste stores the placeholder. Put them in separate fences with "
+        "the instruction between them."
+    )

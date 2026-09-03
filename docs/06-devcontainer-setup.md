@@ -83,7 +83,12 @@ Mac; it prints an `sk-ant-oat01-...` token to paste into the second command:
 
 ```bash
 claude setup-token
+```
 
+Then paste what it printed into the second, in place of the placeholder — two
+commands, run one at a time, because the second needs the first's output:
+
+```bash
 security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" \
   -w "sk-ant-oat01-..."
 ```
