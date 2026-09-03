@@ -47,6 +47,15 @@ else
   echo "  ✗ gh-ee-skills — no EE_SKILLS_GITHUB_TOKEN. See docs/06-devcontainer-setup.md"
 fi
 
+# A token that authenticates is not a marketplace that is present. Plugin state
+# lives in the ~/.claude volume, so a container first built before the Keychain
+# entry existed has an empty one and no rebuild is needed to fix it.
+if claude plugin marketplace list 2>/dev/null | grep -q "EqualExperts/ee-skills"; then
+  echo "  ✓ ee-skills marketplace — added"
+else
+  echo "  ✗ ee-skills marketplace — not added. Run: ee-skills-plugins"
+fi
+
 if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
   echo "  ✓ Claude Code — OAuth token present (subscription billing)"
 else

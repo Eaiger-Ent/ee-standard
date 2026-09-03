@@ -154,42 +154,19 @@ for host in github.com gist.github.com; do
     "!${GH_BIN} auth git-credential"
 done
 
-# A second PAT for the EqualExperts org, scoped per invocation. The wrapper is a
-# reviewed file rather than a heredoc — it is an executable that lands on PATH,
-# so it belongs in a diff and under the same gates as the rest of the repo.
+# Two PATs for two orgs, each scoped per invocation. Both wrappers are reviewed
+# files rather than heredocs — they are executables that land on PATH, so they
+# belong in a diff and under the same gates as the rest of the repo.
 sudo install -m 0755 .devcontainer/bin/gh-ee-skills /usr/local/bin/gh-ee-skills
+sudo install -m 0755 .devcontainer/bin/ee-skills-plugins /usr/local/bin/ee-skills-plugins
 
-# The ee-skills plugins this repo's workflow depends on (docs/02-skill-family.md).
+# The ee-skills marketplace and the plugins this repo's workflow depends on.
+# The list, and why each entry is on it, live in that script and nowhere else —
+# a copy here would be free to drift from the one a person re-runs by hand.
 # Plugin state lives in the ~/.claude volume, so this only does work on a fresh
-# volume. The marketplace repo is private to the EqualExperts org, so both the
-# add and the installs run under the second PAT — the ambient GITHUB_TOKEN is
-# Eaiger-Ent-scoped and cannot clone it.
-#
-# `control-register` is in the list even though this repository *is* its source,
-# and the two copies do not compete: `.claude/skills/<name>` symlinks into
-# `plugins/control-register/` (ADR 0033) take project precedence, so `/gate-*`
-# here always runs the working tree. What the installed copy buys is the
-# published artefact being present to compare against — the thing an adopter
-# actually receives, which Phase 6 found differs from the tree in ways no local
-# test saw — and an entry in the plugin inventory, which is where
-# `register-check deployments` reads an installed version from (ADR 0043).
-# It is installed from the private marketplace here because that is the one this
-# container already adds; an adopter takes the public `Eaiger-Ent/ee-standard`
-# marketplace instead (ADR 0044), which is why the shipped template installs no
-# plugins at all rather than a copy of this list.
-if [ -n "${EE_SKILLS_GITHUB_TOKEN:-}" ]; then
-  if ! claude plugin marketplace list 2>/dev/null | grep -q "EqualExperts/ee-skills"; then
-    GITHUB_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" GH_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" \
-      claude plugin marketplace add EqualExperts/ee-skills
-  fi
-  installed="$(claude plugin list 2>/dev/null || true)"
-  for plugin in control-register adr-toolkit lint-md devcontainer-check skill-preflight ee-skills-manage clarify-all; do
-    echo "${installed}" | grep -q "${plugin}@ee-skills" && continue
-    GITHUB_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" GH_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" \
-      claude plugin install "${plugin}@ee-skills"
-  done
-else
-  echo "⚠ EE_SKILLS_GITHUB_TOKEN not set — skipping ee-skills plugin install" >&2
-fi
+# volume. Exit 3 is "no second PAT, nothing else wrong": the script prints the
+# Keychain step and this build carries on, because the rest of the image is
+# still correct.
+ee-skills-plugins || [ "$?" = 3 ]
 
 echo "✓ setup complete"

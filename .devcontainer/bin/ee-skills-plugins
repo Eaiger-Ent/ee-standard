@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# Installed to /usr/local/bin by .devcontainer/setup.sh, which also calls it.
+#
+# Adds the private EqualExperts/ee-skills marketplace and installs the plugins
+# this repository's workflow depends on (docs/02-skill-family.md). Idempotent:
+# it adds what is missing and reports what was already there, so it is safe to
+# re-run by hand after a token is set, rotated, or a plugin is added below.
+#
+# It exists as a script rather than inline in setup.sh because a person needs to
+# run it too: EE_SKILLS_GITHUB_TOKEN arrives through --env-file, so a container
+# built before the Keychain entry existed has no way to pick it up other than a
+# rebuild — and this is what a rebuild would have run.
+#
+# **The plugin list below is the only copy.** setup.sh calls this file rather
+# than repeating it; a second list would drift from this one.
+#
+# `control-register` is in the list even though this repository *is* its source,
+# and the two copies do not compete: `.claude/skills/<name>` symlinks into
+# `plugins/control-register/` (ADR 0033) take project precedence, so `/gate-*`
+# here always runs the working tree. What the installed copy buys is the
+# published artefact being present to compare against — the thing an adopter
+# actually receives, which Phase 6 found differs from the tree in ways no local
+# test saw — and an entry in the plugin inventory, which is where
+# `register-check deployments` reads an installed version from (ADR 0043).
+#
+# It is installed from the private marketplace here because that is the one this
+# container adds; an adopter takes the public `Eaiger-Ent/ee-standard`
+# marketplace instead (ADR 0044), which is why the shipped template installs no
+# plugins at all rather than a copy of this list.
+set -euo pipefail
+
+PLUGINS=(
+  control-register
+  adr-toolkit
+  lint-md
+  devcontainer-check
+  skill-preflight
+  ee-skills-manage
+  clarify-all
+)
+
+MARKETPLACE="EqualExperts/ee-skills"
+
+# Exit 3 is this repository's "nothing violated, something unverified" (ADR
+# 0016) and setup.sh accepts it: a missing second PAT must warn rather than fail
+# a container build, because everything else in the image is still correct.
+if [ -z "${EE_SKILLS_GITHUB_TOKEN:-}" ]; then
+  cat >&2 <<'MSG'
+⚠ EE_SKILLS_GITHUB_TOKEN not set — skipping the ee-skills marketplace.
+
+  EqualExperts/ee-skills is private, so cloning it needs the second PAT. The
+  ambient GITHUB_TOKEN is scoped to Eaiger-Ent and answers 403 for that org.
+
+  On your **Mac**, not in here:
+
+    security add-generic-password -a "$USER" -s EE_SKILLS_GITHUB_TOKEN -w "<token>"
+
+  A fine-grained PAT with resource owner EqualExperts and Contents: Read-only
+  over ee-skills is enough to install from it. Then, from the repository root:
+
+    .devcontainer/fetch-secrets.sh
+    devcontainer up --workspace-folder . --remove-existing-container
+
+  fetch-secrets.sh runs on the host and writes the value into
+  .devcontainer/.env.docker, which devcontainer.json passes in with --env-file —
+  which is why this cannot be fixed from inside the container.
+MSG
+  exit 3
+fi
+
+# Prove the token reaches the org before asking Claude Code to clone with it: a
+# rejected token surfaces here as one legible line rather than as a clone
+# failure per plugin.
+if ! gh-ee-skills api "repos/${MARKETPLACE}" --jq .nameWithOwner >/dev/null 2>&1; then
+  echo "✗ EE_SKILLS_GITHUB_TOKEN is set but cannot read ${MARKETPLACE}." >&2
+  echo "  Expired, or its resource owner is not EqualExperts, or the org has" >&2
+  echo "  not approved it — until an owner approves, every request answers 404." >&2
+  exit 1
+fi
+
+# Both names are exported for the same invocation: Claude Code's clone runs
+# through git, which reads the `gh auth git-credential` helper setup.sh
+# registers, and gh honours one of GH_TOKEN/GITHUB_TOKEN at a time.
+ee_skills_claude() {
+  GITHUB_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" GH_TOKEN="${EE_SKILLS_GITHUB_TOKEN}" \
+    claude "$@"
+}
+
+if claude plugin marketplace list 2>/dev/null | grep -q "${MARKETPLACE}"; then
+  echo "  = marketplace ${MARKETPLACE} already added"
+else
+  ee_skills_claude plugin marketplace add "${MARKETPLACE}"
+  echo "  + marketplace ${MARKETPLACE}"
+fi
+
+installed="$(claude plugin list 2>/dev/null || true)"
+for plugin in "${PLUGINS[@]}"; do
+  if echo "${installed}" | grep -q "${plugin}@ee-skills"; then
+    echo "  = ${plugin}@ee-skills already installed"
+    continue
+  fi
+  ee_skills_claude plugin install "${plugin}@ee-skills"
+  echo "  + ${plugin}@ee-skills"
+done
+
+echo "✓ ee-skills plugins present"
