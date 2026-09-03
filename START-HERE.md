@@ -588,11 +588,30 @@ security find-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w >/dev/null 
 
 `add-generic-password` **will not overwrite**: on an existing entry it fails with
 *"The specified item already exists in the keychain."* To replace one, delete it
-first. The first line prints the token; copy it, and paste it into the third.
+first.
+
+**Three commands, run one at a time — do not paste them as a block.** The first
+is interactive and the third needs what it printed, so a block would run the
+third before you had anything to put in it.
+
+**First, get the token.** This opens a browser, waits for you to authorise, and
+then prints the token. Copy what it prints:
 
 ```bash
 claude setup-token
+```
+
+**Then clear any existing entry.** Harmless if there is none — that is what the
+redirect is for:
+
+```bash
 security delete-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" 2>/dev/null
+```
+
+**Last, store it**, replacing the placeholder — angle brackets and all — with
+what the first command printed:
+
+```bash
 security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "<paste it here>"
 ```
 
