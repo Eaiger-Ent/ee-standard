@@ -48,8 +48,14 @@ if command -v gh >/dev/null 2>&1; then
   fi
 fi
 
+# A token in the environment is not a signed-in session, and saying "present"
+# invited exactly that reading. It is the credential `claude -p` uses; the
+# interactive CLI asks you to choose a login method once per config directory
+# regardless, and that is onboarding rather than a failure.
 if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
-  echo "  ✓ Claude Code — OAuth token present"
+  echo "  ✓ Claude Code — OAuth token present (non-interactive use is authenticated)"
+  echo "      The first interactive 'claude' still asks you to pick a login method."
+  echo "      Choose the subscription account. It is asked once, not once per build."
 else
   echo "  ✗ Claude Code — no OAuth token. Run 'claude setup-token' on your host"
 fi

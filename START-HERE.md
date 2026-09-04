@@ -828,6 +828,20 @@ Then, in that same container shell:
 claude --permission-mode acceptEdits
 ```
 
+**The first run asks you to choose a login method, and that is not a failure.**
+The Keychain token you set at § 4 is real and it works — `claude -p "say ok"`
+answers without a prompt, on the same container, using it. What the interactive
+CLI wants in addition is an account record, and a fresh config directory has
+none. Choose **Claude account with subscription** and sign in.
+
+**It is asked once, not once per build.** Claude Code keeps that record in
+`~/.claude.json`, which is a *sibling* of `~/.claude` rather than a file inside
+it — so a volume mounted at `~/.claude` does not carry it. The template sets
+`CLAUDE_CONFIG_DIR` to the mount target, which puts it in the volume
+([Anthropic's dev container guidance](https://code.claude.com/docs/en/devcontainer)
+says to do exactly this). If you built your container before that shipped, one
+rebuild makes the sign-in stick.
+
 That opens a Claude Code session and gives you a `>` prompt. **Set the terminal
 interface first**, or you will not be able to select and copy anything the
 session prints — and this step prints commands and verdicts you will want:
