@@ -176,6 +176,44 @@ else
   fi
 fi
 
+# --------------------------------------------------------------------- § 2
+
+banner "The register (§ 2)"
+if [ -f controls.yaml ]; then
+  detail "controls.yaml is already here — nothing to fetch."
+else
+  echo "The plugin ships no register. The register is what you adopt, and it"
+  echo "becomes yours the moment you edit it — so it is fetched into your"
+  echo "repository rather than read from somewhere else."
+  echo
+
+  if confirm "Fetch the newest published register?"; then
+    register_repo=https://github.com/Eaiger-Ent/ee-standard
+    register_tag=$(git ls-remote --tags --refs "$register_repo" \
+      | awk -F/ '{print $NF}' | sort -V | tail -1)
+
+    if [ -z "$register_tag" ]; then
+      echo "Could not resolve a tag — no network, or the repository moved."
+      detail "§ 2 has the four lines to run by hand."
+    else
+      # controls.published.yaml, not controls.yaml: the register an adopter
+      # takes is derived, with this repository's own entries removed
+      # (ADR 0048). The tag it ships names that same tag.
+      curl -fsSL -o controls.yaml \
+        "https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/${register_tag}/controls.published.yaml"
+      git add controls.yaml
+      echo "  fetched controls.yaml at ${register_tag}, and staged it"
+      detail "It is yours now. § 3.7 of the reference is where you start editing it."
+    fi
+  else
+    detail "Skipped. 10-repo.sh will keep reporting it, and § 5 needs it."
+  fi
+fi
+
+echo
+detail "Where the repository stands now:"
+"$HERE/10-repo.sh" || true
+
 # --------------------------------------------------------------------- § D
 
 banner "What your plan supports (§ D)"
