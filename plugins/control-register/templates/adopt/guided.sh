@@ -419,6 +419,11 @@ what it prints — and this step prints verdicts you will want:
 Then, at the same prompt:
 
   /register-adopt --repo . --register ./controls.yaml
+
+Re-running a failed or partial adoption? Add --yes. It pre-answers the plan and
+the checker install, which get the same answer every time, and answers nothing
+else: gate-repo still asks before every call that changes what your colleagues
+can push.
 MSG
 
 echo
