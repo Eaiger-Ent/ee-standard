@@ -251,11 +251,90 @@ def test_a_stage_reads_the_repository_the_adopter_is_standing_in(tmp_path: Path)
         check=False,
     )
 
-    assert str(project) in result.stdout, (
-        "the stage did not report on the directory it was run from. It reported:\n"
-        f"{result.stdout}"
+    # The verdict names the route's own path, deliberately — it is the command to
+    # re-run. What must not name it is the line reporting which repository was
+    # read, so that is the line this asserts about.
+    reported = [line for line in result.stdout.splitlines() if "git repository —" in line]
+    assert reported, f"the stage reported no repository at all:\n{result.stdout}"
+
+    assert str(project) in reported[0], (
+        f"the stage did not report on the directory it was run from: {reported[0]!r}"
     )
-    assert str(REPO_ROOT) not in result.stdout, (
+    assert str(REPO_ROOT) not in reported[0], (
         "the stage reported on the route's own checkout rather than the adopter's "
-        f"repository:\n{result.stdout}"
+        f"repository: {reported[0]!r}"
+    )
+
+
+def test_a_printed_command_runs_from_where_the_reader_is(tmp_path: Path) -> None:
+    """`./10-repo.sh` is correct in one directory, and it is not the reader's.
+
+    Reported from a real run: the route printed `Run this for the detail:
+    ./10-repo.sh`, and the reader — standing in the directory the route had just
+    reported on, which is the right place to be — got
+    `zsh: no such file or directory`. The scripts live in a cache directory
+    nobody stands in, and a stage reads the repository you are standing in, so
+    the command is two lines: where to be, and what to run.
+    """
+    project = tmp_path / "a-project"
+    project.mkdir()
+    subprocess.run(["git", "init", "-q", "-b", "main", "."], cwd=project, check=True)
+
+    result = subprocess.run(
+        [str(ADOPT / "10-repo.sh")], cwd=project, capture_output=True, text=True, check=False
+    )
+
+    assert "./10-repo.sh" not in result.stdout, (
+        "a bare relative path was printed as the command to run:\n" f"{result.stdout}"
+    )
+    assert str(ADOPT / "10-repo.sh") in result.stdout, (
+        "the printed command is not an absolute path, so it only works from the "
+        f"route's own directory:\n{result.stdout}"
+    )
+    assert f"cd {project}" in result.stdout, (
+        "the printed command does not say where to stand, and a stage reads the "
+        f"repository it is run from:\n{result.stdout}"
+    )
+
+
+@pytest.mark.parametrize("script", _scripts(), ids=lambda p: p.name)
+def test_no_script_offers_a_bare_relative_command(script: Path) -> None:
+    """The static half: `run_hint` exists so nothing hand-rolls the hint again."""
+    printed = "\n".join(
+        line for line in script.read_text(encoding="utf-8").splitlines()
+        if not line.lstrip().startswith("#")
+    )
+    offenders = re.findall(r"\./\d\d-[a-z-]+\.sh|\./status\.sh|\./guided\.sh", printed)
+    assert not offenders, (
+        f"{script.relative_to(REPO_ROOT)} prints {sorted(set(offenders))}, which resolves "
+        "only inside the route's own directory. Use `run_hint <stage>`, which prints the "
+        "`cd` and the absolute path."
+    )
+
+
+def test_the_guided_substitution_matches_the_template_it_substitutes() -> None:
+    """Two files, one set of placeholders, and nothing else holding them together.
+
+    `guided.sh` performs § 4's substitution, so it names each `{{PLACEHOLDER}}`
+    the devcontainer template carries. Add one to the template and it ships
+    unsubstituted — a build that fails at `sha256sum -c` with nothing pointing
+    back. Remove one and the `sed` is dead code that looks live.
+    """
+    template_dir = REPO_ROOT / "plugins" / "control-register" / "templates" / "devcontainer"
+    placeholder = re.compile(r"\{\{[A-Z0-9_]+\}\}")
+
+    in_template = set()
+    for path in template_dir.rglob("*"):
+        if path.is_file() and path.name != "README.md":
+            body = path.read_text(encoding="utf-8", errors="ignore")
+            in_template |= set(placeholder.findall(body))
+
+    guided = (ADOPT / "guided.sh").read_text(encoding="utf-8")
+    substituted = set(placeholder.findall(guided))
+
+    assert in_template, "the template carries no placeholders — this test guards nothing"
+    assert substituted == in_template, (
+        f"guided.sh substitutes {sorted(substituted)} and the template carries "
+        f"{sorted(in_template)}. Unsubstituted: {sorted(in_template - substituted)}. "
+        f"Substituted but absent: {sorted(substituted - in_template)}."
     )
