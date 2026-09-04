@@ -64,7 +64,13 @@
   // pre-commit hooks and the editor all resolve the same environment. CI never
   // reads this file, so `uv run` there is unaffected.
   "containerEnv": {
-    "UV_PROJECT_ENVIRONMENT": "/home/vscode/.venv-ee-standard"
+    "UV_PROJECT_ENVIRONMENT": "/home/vscode/.venv-ee-standard",
+
+    // ~/.claude.json is a sibling of ~/.claude, not a file inside it, so the
+    // volume mounted below does not carry the OAuth account record and a
+    // rebuild lands back at the login menu. This puts it in the volume —
+    // https://code.claude.com/docs/en/devcontainer
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
   },
 
   "initializeCommand": "bash .devcontainer/fetch-secrets.sh",

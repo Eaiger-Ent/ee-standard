@@ -81,9 +81,21 @@
 
   // Credential state survives a rebuild. Without this, every rebuild is
   // followed by a re-authentication ritual, and rituals get skipped.
+  //
+  // The volume alone is not enough, and this cost a rebuild to find out.
+  // Claude Code keeps the OAuth *account* record in ~/.claude.json, which is a
+  // sibling of ~/.claude rather than a file inside it — so it lands in the
+  // ephemeral home and a mounted ~/.claude still greets you with the login
+  // menu. CLAUDE_CONFIG_DIR moves that file into the volume, which is what
+  // Anthropic's own dev container guidance says to do:
+  // https://code.claude.com/docs/en/devcontainer
   "mounts": [
     "source={{PROJECT_NAME}}-claude-home,target=/home/vscode/.claude,type=volume"
   ],
+
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+  },
 
   "customizations": {
     "vscode": {
