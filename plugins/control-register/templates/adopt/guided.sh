@@ -22,6 +22,10 @@ fi
 
 # Reads come from the terminal, never from stdin: this script may have arrived
 # down a pipe, in which case stdin is the script itself.
+#: Fetched again inside the container at the end — the host's cache is not
+#: mounted there, so the route has to arrive over the network a second time.
+BOOTSTRAP_URL=https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/main/adopt.sh
+
 if [ ! -r /dev/tty ]; then
   echo "No terminal to ask questions on. Run this from an interactive shell."
   exit 1
@@ -252,7 +256,7 @@ The next part cannot be scripted. The tokens are made in a browser, by you.
 That one section has both of them: which tokens, what each is for, the exact
 fields and permissions, and the command that puts the result in the Keychain.
 
-**You only need the first one today.** The second is CI's, it is not a Keychain
+You only need the first one today. The second is CI's, it is not a Keychain
 entry, and nothing before § 6 asks for it.
 MSG
 
@@ -366,5 +370,51 @@ Every command the route prints already includes that line, because each stage
 reads the repository you are standing in.
 MSG
 
+# The handover used to name § 4 and § 5 and stop. A reader who has got this far
+# has been given commands at every step, and being handed a section number at
+# the last one is where the momentum goes.
+banner "What happens next (§ 5)"
+cat <<MSG
+
+Everything from here runs INSIDE the container. Four things, in order.
+
+1. Get a shell in it. From your Mac:
+
+  cd $project_path
+  devcontainer exec --workspace-folder . bash
+
+You are in when \`pwd\` prints a path beginning /workspaces. VS Code's
+"Reopen in Container" and its built-in terminal do the same thing.
+
+2. Install the plugin again, inside. This is not a mistake in § 1 and not a
+mistake here: the container's ~/.claude is a named volume, not your Mac's home
+directory, so what you installed on the host is not in it.
+
+  claude plugin marketplace add Eaiger-Ent/ee-standard
+  claude plugin install control-register@ee-standard
+
+3. The route is on your Mac, and this is a different machine. ~/.cache is
+not mounted into the container, so fetch the bootstrap again in there:
+
+  curl -fsSL $BOOTSTRAP_URL -o /tmp/adopt.sh
+  bash /tmp/adopt.sh status
+
+That reports the stages this side can answer for — 40-adopt.sh is the one that
+was "n/a here" on your Mac.
+
+4. Run the adoption. It is a Claude Code session rather than a command:
+
+  claude --permission-mode acceptEdits
+
+Set the terminal interface at its prompt first, or you cannot select and copy
+what it prints — and this step prints verdicts you will want:
+
+  /tui default
+
+Then, at the same prompt:
+
+  /register-adopt --repo . --register ./controls.yaml
+MSG
+
 echo
-detail "The container is § 4, and the adoption itself is § 5. Both are in START-HERE.md."
+detail "§ 4 and § 5 of START-HERE.md are the same steps, with the reasons."

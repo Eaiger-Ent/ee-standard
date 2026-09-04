@@ -338,3 +338,35 @@ def test_the_guided_substitution_matches_the_template_it_substitutes() -> None:
         f"{sorted(in_template)}. Unsubstituted: {sorted(in_template - substituted)}. "
         f"Substituted but absent: {sorted(substituted - in_template)}."
     )
+
+
+#: The § 5 commands `guided.sh` prints at its handover. Printing them means
+#: holding a second copy, so each must still be the one the guide gives.
+HANDOVER_COMMANDS = (
+    "devcontainer exec --workspace-folder . bash",
+    "claude plugin marketplace add Eaiger-Ent/ee-standard",
+    "claude plugin install control-register@ee-standard",
+    "claude --permission-mode acceptEdits",
+    "/tui default",
+    "/register-adopt --repo . --register ./controls.yaml",
+)
+
+
+@pytest.mark.parametrize("command", HANDOVER_COMMANDS)
+def test_the_handover_gives_the_command_the_guide_gives(command: str) -> None:
+    """Two copies of a command, and only this holding them together.
+
+    `guided.sh` ends by printing § 5 rather than naming it — a reader given
+    commands at every step and a section number at the last one is being
+    stopped, not handed over. The cost is a second copy of those commands, so
+    each is checked against `START-HERE.md`: change one there and this fails
+    rather than leaving the route quietly telling people something else.
+    """
+    guided = (ADOPT / "guided.sh").read_text(encoding="utf-8")
+    guide = (REPO_ROOT / "START-HERE.md").read_text(encoding="utf-8")
+
+    assert command in guided, f"guided.sh no longer prints {command!r}"
+    assert command in guide, (
+        f"guided.sh prints {command!r} and START-HERE.md does not carry it. "
+        "One of the two has drifted, and the reader follows whichever they met first."
+    )
