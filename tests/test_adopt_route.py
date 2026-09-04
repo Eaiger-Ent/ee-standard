@@ -310,3 +310,31 @@ def test_no_script_offers_a_bare_relative_command(script: Path) -> None:
         "only inside the route's own directory. Use `run_hint <stage>`, which prints the "
         "`cd` and the absolute path."
     )
+
+
+def test_the_guided_substitution_matches_the_template_it_substitutes() -> None:
+    """Two files, one set of placeholders, and nothing else holding them together.
+
+    `guided.sh` performs § 4's substitution, so it names each `{{PLACEHOLDER}}`
+    the devcontainer template carries. Add one to the template and it ships
+    unsubstituted — a build that fails at `sha256sum -c` with nothing pointing
+    back. Remove one and the `sed` is dead code that looks live.
+    """
+    template_dir = REPO_ROOT / "plugins" / "control-register" / "templates" / "devcontainer"
+    placeholder = re.compile(r"\{\{[A-Z0-9_]+\}\}")
+
+    in_template = set()
+    for path in template_dir.rglob("*"):
+        if path.is_file() and path.name != "README.md":
+            body = path.read_text(encoding="utf-8", errors="ignore")
+            in_template |= set(placeholder.findall(body))
+
+    guided = (ADOPT / "guided.sh").read_text(encoding="utf-8")
+    substituted = set(placeholder.findall(guided))
+
+    assert in_template, "the template carries no placeholders — this test guards nothing"
+    assert substituted == in_template, (
+        f"guided.sh substitutes {sorted(substituted)} and the template carries "
+        f"{sorted(in_template)}. Unsubstituted: {sorted(in_template - substituted)}. "
+        f"Substituted but absent: {sorted(substituted - in_template)}."
+    )

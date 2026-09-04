@@ -83,6 +83,27 @@ case "$tools_exit" in
     ;;
 esac
 
+# --------------------------------------------------------------------- § 1
+
+banner "The plugin (§ 1)"
+if claude plugin list 2>/dev/null | grep -q "control-register@ee-standard"; then
+  detail "control-register is already installed."
+elif confirm "Install the control-register plugin? It touches no project"; then
+  claude plugin marketplace add Eaiger-Ent/ee-standard
+  claude plugin install control-register@ee-standard
+else
+  detail "Skipped. § 4 copies the devcontainer template out of it, so it is needed."
+fi
+
+# The plugin cache is versioned, and more than one version can be present — a
+# glob would expand to all of them, which is a broken path rather than a newer
+# one, and plain `sort` puts 0.1.0 above 0.10.0.
+plugin_cache="$HOME/.claude/plugins/cache/ee-standard/control-register"
+plugin_version=""
+if [ -d "$plugin_cache" ]; then
+  plugin_version=$(ls "$plugin_cache" | sort -V | tail -1)
+fi
+
 # --------------------------------------------------------------------- § C
 
 banner "Where the project lives (§ C)"
@@ -241,6 +262,87 @@ if confirm "Done that — check what the Keychain holds now?"; then
 else
   echo "  When you have, run:"
   run_hint 25-credentials.sh
+fi
+
+# --------------------------------------------------------------------- § 4
+
+banner "The container (§ 4)"
+if [ -d .devcontainer ]; then
+  detail ".devcontainer is already here — nothing copied."
+elif [ -z "$plugin_version" ]; then
+  echo "The plugin cache is empty, so there is no template to copy."
+  detail "§ 1 installs it. § 4 has the steps if you would rather do it by hand."
+elif ! [ -f controls.yaml ]; then
+  echo "No controls.yaml, and the uv version and digest are read out of it."
+  detail "§ 2 is where the register comes from."
+elif confirm "Copy the devcontainer template and substitute it?"; then
+  template="$plugin_cache/$plugin_version/templates/devcontainer"
+  cp -R "$template" .devcontainer
+
+  # Its README explains the placeholders, so while it is there the "any
+  # placeholders left?" check below can never come back clean.
+  rm -f .devcontainer/README.md
+
+  uv_block() { sed -n '/^  uv:/,/^  [a-z-]*:$/p' controls.yaml; }
+  uv_version=$(uv_block | sed -n 's/^ *version: *"\{0,1\}\([0-9][^"]*\)"\{0,1\} *$/\1/p')
+  uv_sha_x86=$(uv_block | sed -n 's/^ *sha256: *//p')
+  uv_sha_arm=$(curl -fsSL \
+    "https://github.com/astral-sh/uv/releases/download/${uv_version}/uv-aarch64-unknown-linux-gnu.tar.gz.sha256" \
+    | cut -d' ' -f1)
+
+  # An extraction that quietly yields nothing is worse than one that errors: the
+  # substitution writes emptiness over the placeholder and the build fails much
+  # later at `sha256sum -c`, with nothing pointing back here.
+  if [ -z "$uv_version" ] || [ -z "$uv_sha_x86" ] || [ -z "$uv_sha_arm" ]; then
+    echo "  one of the three values came back empty — nothing substituted:"
+    detail "version='$uv_version' x86='${uv_sha_x86:0:12}' aarch64='${uv_sha_arm:0:12}'"
+    rm -rf .devcontainer
+    detail "Removed the copy rather than leave a half-substituted one. § 4 by hand."
+  else
+    sed -i.bak -e "s/{{PROJECT_NAME}}/$(basename "$PWD")/g" .devcontainer/devcontainer.json
+    sed -i.bak \
+      -e "s/{{UV_VERSION}}/${uv_version}/g" \
+      -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86}/g" \
+      -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm}/g" \
+      .devcontainer/setup.sh
+    rm -f .devcontainer/*.bak
+
+    left=$(grep -rl '{{' .devcontainer 2>/dev/null || true)
+    if [ -n "$left" ]; then
+      echo "  a placeholder survived, in: $left"
+      detail "That is what fails the build later at sha256sum -c. § 4 by hand."
+    else
+      echo "  .devcontainer copied and substituted — uv ${uv_version}"
+    fi
+  fi
+else
+  detail "Skipped. § 4 has the steps."
+fi
+
+echo
+detail "Where the container stands now:"
+"$HERE/30-container.sh" || true
+
+echo
+echo "Building it is one command and takes a few minutes. It needs"
+echo "CLAUDE_OAUTH_TOKEN in the Keychain, which is the § E step above."
+if [ -d .devcontainer ] && confirm "Build the container now?"; then
+  devcontainer up --workspace-folder . --remove-existing-container
+fi
+
+# --------------------------------------------------------------------- § 6
+
+banner "The bots (§ 6)"
+if [ -f renovate.json ]; then
+  detail "renovate.json is already here."
+elif [ -z "$plugin_version" ]; then
+  detail "No plugin cache to copy it from. § 6 has the step."
+elif confirm "Copy the Renovate config? Without it, uv stays pinned for ever"; then
+  cp "$plugin_cache/$plugin_version/templates/renovate/renovate.json" .
+  git add renovate.json
+  [ -f .github/dependabot.yml ] && git add .github/dependabot.yml
+  echo "  renovate.json copied and staged"
+  detail "Installing the Renovate app is yours, in a browser: § 6."
 fi
 
 # ------------------------------------------------------------------- handover
