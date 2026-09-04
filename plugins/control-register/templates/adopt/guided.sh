@@ -406,6 +406,11 @@ was "n/a here" on your Mac.
 
   claude --permission-mode acceptEdits
 
+The first run asks you to choose a login method, and that is not a failure. The
+Keychain token is real and works — \`claude -p "say ok"\` answers using it — but
+the interactive CLI also wants an account record, and a fresh config directory
+has none. Choose the subscription account. It is asked once, not once per build.
+
 Set the terminal interface at its prompt first, or you cannot select and copy
 what it prints — and this step prints verdicts you will want:
 
