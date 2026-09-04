@@ -93,6 +93,12 @@ detail() {
 
 # --------------------------------------------------------------------- helpers
 
+# Where this file is, resolved absolutely. Every "run this" the route prints
+# must be a path that works from wherever the reader is standing — a bare
+# `./10-repo.sh` is only correct in one directory, and it is not the one the
+# reader is in, because the stages are run from the repository being adopted.
+ROUTE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 installed() {
   local command_name="$1"
   command -v "$command_name" >/dev/null 2>&1
@@ -112,6 +118,15 @@ inside_container() {
 
 repository_root() {
   git rev-parse --show-toplevel 2>/dev/null || printf '%s' "$PWD"
+}
+
+# A stage reads the repository you are standing in, so the command to re-run it
+# is two lines, not one. Printing only the second sent a reader to
+# `zsh: no such file or directory`.
+run_hint() {
+  local stage="$1"
+  printf '    cd %s\n' "$(repository_root)"
+  printf '    %s/%s\n' "$ROUTE_DIR" "$stage"
 }
 
 # ----------------------------------------------------------------------- route
@@ -154,7 +169,7 @@ verdict() {
       [ -n "$item" ] && printf '    %s✗%s %s\n' "$RED" "$RESET" "$item"
     done
     printf '  Fix them at the sections named, then re-run:\n'
-    printf '    ./%s\n' "$this_stage"
+    run_hint "$this_stage"
     return 1
   fi
 
@@ -164,7 +179,7 @@ verdict() {
       [ -n "$item" ] && printf '    %s•%s %s\n' "$AMBER" "$RESET" "$item"
     done
     printf '  Each is yours to do in a browser or a setting. Then re-run:\n'
-    printf '    ./%s\n' "$this_stage"
+    run_hint "$this_stage"
     return 2
   fi
 
@@ -173,7 +188,7 @@ verdict() {
     return 0
   fi
 
-  printf '%sOK%s — next:\n' "$GREEN" "$RESET"
-  printf '  ./%s   %s(%s)%s\n' "$next_stage" "$DIM" "$(route_title "$next_stage")" "$RESET"
+  printf '%sOK%s — next: %s%s%s\n' "$GREEN" "$RESET" "$DIM" "$(route_title "$next_stage")" "$RESET"
+  run_hint "$next_stage"
   return 0
 }

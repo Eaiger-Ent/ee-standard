@@ -201,12 +201,30 @@ echo
 if confirm "Done that — check what the Keychain holds now?"; then
   "$HERE/25-credentials.sh" || true
 else
-  detail "When you have, run: ./25-credentials.sh"
+  echo "  When you have, run:"
+  run_hint 25-credentials.sh
 fi
 
 # ------------------------------------------------------------------- handover
 
 banner "Where you are"
 "$HERE/status.sh" || true
+
+# This script cd'd into the project. Your shell did not — a child process cannot
+# move its parent — so a reader who follows a printed command straight after
+# this runs it from wherever they started. That happened, and answered
+# `zsh: no such file or directory`.
+banner "Your shell is still where you started"
+cat <<MSG
+
+This ran in $project_path, but your terminal is not there. Before running
+anything the route prints, go to the repository:
+
+  cd $project_path
+
+Every command the route prints already includes that line, because each stage
+reads the repository you are standing in.
+MSG
+
 echo
 detail "The container is § 4, and the adoption itself is § 5. Both are in START-HERE.md."

@@ -41,7 +41,8 @@ done
 
 echo
 if [ -n "$first_unsatisfied" ]; then
-  printf 'Run this for the detail:\n  ./%s\n' "$first_unsatisfied"
+  printf 'Run this for the detail:\n'
+  run_hint "$first_unsatisfied"
   exit 1
 fi
 
