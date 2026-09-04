@@ -5,7 +5,7 @@ description: >
   tagged ref the register names, so every locus that runs it has something to
   run. Triggers: 'install the checker', 'install register-check',
   '/register-install'.
-argument-hint: "[--repo <path>] [--register <path>]"
+argument-hint: "[--repo <path>] [--register <path>] [--yes]"
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 
@@ -46,6 +46,7 @@ is no control to name. That is the reason, and it is not the same as forgetting
 | ------- | ---------- | --------- | ------------- |
 | `--repo <path>` | No | current directory | The repository to install into |
 | `--register <path>` | No | `<repo>/controls.yaml` | The register to read the address from |
+| `--yes` | No | off | Pre-answer the install confirmation with **Install**. It answers nothing else — read `${CLAUDE_PLUGIN_ROOT}/reference/unattended.md` |
 
 ## Success criteria
 
@@ -189,7 +190,13 @@ register-install will add to <repo>:
   replacing:   <the ref currently pinned, or "nothing — this is a new install">
 ```
 
-One **AskUserQuestion**. Options: **Install** / **Cancel**.
+**Without `--yes`:** one **AskUserQuestion**. Options: **Install** / **Cancel**.
+
+**With `--yes`** — passed directly, or through from `/register-adopt` — do not
+ask. Proceed as though **Install** had been chosen, and say so in one line:
+`--yes: proceeding as Install`. Print the block above either way; the flag
+removes the keystroke, not the disclosure. Read
+`${CLAUDE_PLUGIN_ROOT}/reference/unattended.md` and follow it.
 
 Say what the pin means, because it is the part a reader is entitled to weigh:
 the checker will not move until this ref does, and moving it is a change to this

@@ -860,6 +860,21 @@ Then type this at the same prompt:
 writes, and approving each one individually is how people stop reading the
 prompts that matter.
 
+**Re-running it? Add `--yes`.** An adoption is re-run — after a failure, after a
+token arrives, after a control is added — and the plan confirmation and the
+checker's install confirmation get the same answer every time. A question always
+answered the same way is a keystroke rather than consent, and it teaches you to
+press through the ones that matter:
+
+```text
+/register-adopt --repo . --register ./controls.yaml --yes
+```
+
+**It answers those two and nothing else.** The plan still prints. `gate-repo`
+still asks before every call that changes what your colleagues can push, a gate
+still asks before taking over a file you wrote by hand, and nothing is removed
+without asking. Those are not proceed questions, and no flag answers them.
+
 **Done when:** it reports every control planned and verified, and commits.
 
 **Write one test first if you have none.** TST-001 requires a test suite to

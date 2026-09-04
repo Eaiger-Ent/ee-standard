@@ -4,7 +4,7 @@ description: >
   Adopt the Equal Experts control standard: plan every applicable control,
   confirm once, dispatch the gates, verify through the checker, commit.
   Triggers: 'adopt the standard', 'deploy the control register', '/register-adopt'.
-argument-hint: "[--repo <path>] [--register <path>]"
+argument-hint: "[--repo <path>] [--register <path>] [--yes]"
 disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, Skill
 ---
@@ -52,9 +52,16 @@ failure of the adoption, not a success.
 | ------- | ---------- | --------- | ------------- |
 | `--repo <path>` | No | current directory | The repository to adopt into |
 | `--register <path>` | No | `<repo>/controls.yaml` | The register to plan from |
+| `--yes` | No | off | Pre-answer the plan confirmation with **Deploy all**, and pass the same to `/register-install`. It answers nothing else — read `${CLAUDE_PLUGIN_ROOT}/reference/unattended.md` |
 
-Both flags mirror `register-check`'s own, and are passed through to every gate,
-so a plan, a deployment and its audit can never be pointed at different things.
+The first two mirror `register-check`'s own, and are passed through to every
+gate, so a plan, a deployment and its audit can never be pointed at different
+things.
+
+`--yes` is passed to `/register-install` and to nothing else. **The gates never
+receive it**, because none of their questions is a proceed question: they ask
+before taking over a file the gate did not write, before removing something, and
+— in `gate-repo` — before every call that changes platform state.
 
 ## Success criteria
 
@@ -225,8 +232,19 @@ per control, is `docs/08-adopting.md` § 4.1.
 
 ## Step 3 — Confirm, once
 
-One **AskUserQuestion** covering the whole plan. Options: **Deploy all** /
-**Choose gates** / **Cancel**.
+**Print the plan either way.** `--yes` removes the keystroke, not the
+disclosure: a reader who passes it sees the same plan go by and can still stop
+the run.
+
+**Without `--yes`:** one **AskUserQuestion** covering the whole plan. Options:
+**Deploy all** / **Choose gates** / **Cancel**.
+
+**With `--yes`:** do not ask. Proceed as though **Deploy all** had been chosen,
+and say so in one line — `--yes: proceeding as Deploy all` — so the output
+records that a question was answered rather than never posed. Read
+`${CLAUDE_PLUGIN_ROOT}/reference/unattended.md` and follow it; it also states
+which questions `--yes` may never answer, and this skill's own exclusion below
+is one of them.
 
 On **Choose gates**, ask a second, multi-select question listing the gates the
 plan selected. A partial adoption is a legitimate answer — and say what it
