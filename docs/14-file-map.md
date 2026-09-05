@@ -55,6 +55,7 @@ One file cannot hold both policies.
 | Path | What is in it |
 | --- | --- |
 | `docs/` | Every explanation. `docs/00-concepts.md` first, then the numbered files; `docs/adr/` holds the decisions |
+| `docs/craft/` | The Craft workstream — coding standards for Python and React, which the register deliberately says nothing about. Its own naming standard and stage files, set out in `docs/craft/plan.md`; deliberately not numbered into the files above, and not a phase of the build plan |
 | `src/` | `src/register_check/` — the checker. One assert implementation, read by every locus |
 | `tests/` | The suite. Several tests hold rules that govern *this* repository rather than a conformant one |
 | `plugins/` | `plugins/control-register/` — what an adopter installs: nine skills, the templates they write from, and the shared prose |
