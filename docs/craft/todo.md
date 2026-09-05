@@ -13,26 +13,36 @@ Written 2026-09-05. S1 is under way; every other section is untouched.
 
 ## S1 — Survey
 
+Its exit criterion is met — the check is in
+[`survey.sources.md`](survey.sources.md) § Exit criterion, not restated here.
+One box below is still open; it is not part of that criterion.
+
 - [x] Settle the workstream name — **Craft**, settled 2026-09-05 against
       *Practice*, *Idiom* and *Workmanship*. `docs/practice/` became
       `docs/craft/` before the first commit, so no file, skill or identity ever
       carried the earlier word. The reasoning is the naming standard in
       [`plan.md`](plan.md)
-- [ ] Create `survey.sources.md` with one row per source: source, URL, licence,
+- [x] Create `survey.sources.md` with one row per source: source, URL, licence,
       maintenance signal, authority, and what it claims to cover
-- [ ] Register the Python sources: ruff's rule taxonomy, PEP 8, PEP 20, Google's
+- [x] Register the Python sources: ruff's rule taxonomy, PEP 8, PEP 20, Google's
       Python style guide, `pytest` practice, OWASP ASVS
-- [ ] Register the React sources: the React docs' Rules of React and *You Might
+- [x] Register the React sources: the React docs' Rules of React and *You Might
       Not Need an Effect*, `eslint-plugin-react-hooks` including the compiler
       rules, `typescript-eslint` recommended-type-checked,
       `eslint-plugin-jsx-a11y` with WCAG, Testing Library's guiding principles,
-      and one opinionated style config read as a source
-- [ ] Register the six transferable `llm-toolkit` files against a pinned commit
-- [ ] Record a licence answer for every registered source — blank is a finding,
-      not an omission
-- [ ] Record a maintenance signal (last release or commit) for every source
-- [ ] Read `docs/control-planes/` in the toolkit before either repository's use
-      of the word "control" is borrowed
+      and one opinionated style config read as a source — `@antfu/eslint-config`,
+      after Airbnb was rejected on a 2021-12-25 last publish
+- [x] Register the six transferable `llm-toolkit` files against a pinned commit —
+      `a46825d`, which is still `main`'s head
+- [x] Record a licence answer for every registered source — blank is a finding,
+      not an omission. Three were wrong as GitHub reported them and were
+      corrected by reading the licence file
+- [x] Record a maintenance signal (last release or commit) for every source
+- [x] Read `docs/control-planes/` in the toolkit before either repository's use
+      of the word "control" is borrowed — their control plane is a docs
+      repository an assistant loads, so it is enforcement *by* context and
+      shares nothing with a control here but the word. Neither vocabulary
+      travels
 - [ ] Find out whether any Equal Experts repository already consumes these rules,
       and how. **Not authorised as asked** — the obvious route is a code search
       across the EqualExperts org, which is a scan of company repositories and
