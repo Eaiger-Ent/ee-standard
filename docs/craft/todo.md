@@ -132,13 +132,16 @@ boxes below were added by the stage itself and are not part of that criterion.
 - [ ] Run it unmodified and capture the raw counts
 - [ ] Sample the findings for false positives, at a stated sample size
 - [ ] Demote what fails, recording the measurement that demoted each one
-- [ ] Have a second reader resolve S2's contested classifications. Its input is
-      [`assess.contested.md`](assess.contested.md) — two options and their costs
-      per row, with S2's own view marked as a view. **Reading it is not
-      resolving them:** all fifteen are still marked `contested` in the register,
-      and four of the recommendations would change its shape and its stated
-      shares, so re-derive those after this reading rather than treating them as
-      settled
+- [x] Have a second reader resolve S2's contested classifications. Done
+      2026-09-06: every recommendation in
+      [`assess.contested.md`](assess.contested.md) was taken. Fourteen of the
+      fifteen rows moved — two splits, one drop, one `contested` → `incompatible`
+      — and `assess.rules.md` § Resolved is the record. **`react.barrel-exports`
+      is still marked `contested` because its resolution was that it should be**,
+      and `react.no-class-components` was resolved by ADR 0052 rather than by the
+      recommendation, which proposed an axis that ADR has since ruled out. The
+      register is 182 rows and the shares are re-derived: 71% Python, 76% React,
+      21% stack-neutral
 - [ ] Re-run until the criteria clear, or record why they cannot be met
 - [ ] Resolve what `@eslint-react`'s `disable-conflict-eslint-plugin-react` and
       `disable-conflict-eslint-plugin-react-hooks` configs contain, from an
