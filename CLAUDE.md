@@ -179,6 +179,7 @@ The ones most likely to catch you out, by what they govern:
 | Loci, pins, digests, or a bot's config | ADRs 0020, 0039, 0041 |
 | Writing or amending an ADR | ADRs 0024, 0025, 0026 |
 | The adopter's route, or the marketplace | ADRs 0032, 0042, 0043, 0044 |
+| Anything in the Craft workstream | **ADRs 0051, 0052, 0053, 0054** |
 
 **Naming (ADR 0031).** The plugin is `control-register`, the checker is
 `register-check`, the non-gate skills are `register-*`. The gates keep their

@@ -3,12 +3,13 @@
 Coding standards for the code this organisation writes and the code its
 assistants generate, for two stacks: **Python** and **React**.
 
-**Status: proposed.** Nothing here is a decision, with one exception: the
-workstream is named **Craft**, settled 2026-09-05 and recorded in the naming
-standard below, because every file, identity and skill name downstream depends
-on it. The decisions this work needs are listed under
-[Decisions this workstream owes an ADR](#decisions-this-workstream-owes-an-adr), and each
-lands in `docs/adr/` before the thing it governs is built.
+**Status: the stages are proposed; four things are decided.** The workstream is
+named **Craft**, settled 2026-09-05, because every file, identity and skill name
+downstream depends on it. The four decisions this work owed an ADR were taken on
+2026-09-06 and are Accepted — see [Decisions this workstream owed an
+ADR](#decisions-this-workstream-owed-an-adr), which records where each lives
+rather than restating it. Everything else below is a plan: the stages, their
+deliverables and their exit criteria are proposals until the stage meets them.
 
 Written 2026-09-05 as *Practice*; renamed to *Craft* the same day, before the
 first commit, so the earlier word appears nowhere in this repository's history.
@@ -172,7 +173,13 @@ What gets built, decided before it is built.
   control.
 - The **attribution and licence posture** for every source S1 registered.
 
-**Deliverable:** `design.profiles.md` plus the ADRs it requires.
+Four of these were decided ahead of the stage, on 2026-09-06 — the profile
+model, the craft/register boundary, where the mapping lives and the attribution
+posture all have Accepted ADRs, listed under [Decisions this workstream owed an
+ADR](#decisions-this-workstream-owed-an-adr). What is left is the design that
+reads them.
+
+**Deliverable:** `design.profiles.md` plus any further ADR it requires.
 **Exit:** every ADR it names is Accepted.
 
 ### S5 — Build the chooser and the installer
@@ -200,28 +207,33 @@ team reports, not against what the plan predicted.
 **Exit:** criteria named in S3 still hold in use, or the gap is recorded and
 the profile changed.
 
-## Decisions this workstream owes an ADR
+## Decisions this workstream owed an ADR
 
-None of these is settled. Each is listed so that it is taken deliberately rather
-than drifted into.
+All four were taken on **2026-09-06**, after S2 produced the evidence three of
+them were waiting for. Each is now an Accepted ADR, and the ADR is the record —
+a summary here would be the second copy this repository exists to prevent.
 
-1. Whether a craft rule may ever become a control, and what it must have
-   before it does.
-2. What a profile is, and whether "archetype" (backend service, library,
-   application) is a real axis or whether stack alone carries it. Deferred until
-   S2 shows whether rules actually vary that way.
-3. Where the enforceable mapping lives, given ADR 0018 — the register/checker
-   boundary applies to anything this produces that a machine reads.
-4. Attribution and licence, per source.
+| # | Decision | Record |
+| --- | --- | --- |
+| 1 | Whether a craft rule may ever become a control, and what it must have first | [ADR 0051](../adr/0051-a-craft-rule-becomes-a-control-by-being-installed.md) |
+| 2 | What a profile is, and whether archetype is an axis | [ADR 0052](../adr/0052-a-profile-is-a-stack-and-a-strictness.md) |
+| 3 | Where the enforceable mapping lives, given ADR 0018 | [ADR 0053](../adr/0053-the-craft-mapping-is-register-data.md) |
+| 4 | Attribution and licence, per source | [ADR 0054](../adr/0054-craft-cites-its-sources-and-copies-none.md) |
+
+S4's exit criterion is *every ADR it names is Accepted*. These four are, which
+does not finish S4: `design.profiles.md` is still owed, and the stage may find it
+needs an ADR these four did not anticipate.
 
 ## Open questions
 
-- Whether any Equal Experts repository already consumes these rules, and how.
-  Answering it properly means a code search across the EqualExperts org, which
-  is a scan of company repositories and has not been authorised. Open until that
-  yes, or until a narrower route is found.
+~~Whether any Equal Experts repository already consumes these rules, and how.~~
+**Closed 2026-09-06: no.** Answered directly rather than by the org-wide code
+search, which was never authorised and is now not needed. The finding stands as
+it was recorded — `survey.sources.md` § What is not registered says no consumer
+is registered, and the reason is now that there is none rather than that nobody
+looked.
 
-Two questions this plan was written with are now closed, kept here so the
+Two further questions this plan was written with are also closed, kept here so the
 closing is visible rather than silent:
 
 - ~~Whether "Practice" is the right name for the workstream.~~ Settled
