@@ -87,7 +87,7 @@ npm ci --no-audit --no-fund
 # Where the artefact is fetched from is recorded in `controls.yaml` as
 # `tools.uv.release_repo`.
 # renovate: datasource=pypi depName=uv
-UV_VERSION=0.12.9
+UV_VERSION=0.12.10
 case "$(uname -m)" in
   aarch64|arm64) UV_ARCH=aarch64 UV_SHA=c36fe17937ff6bd16dc42fc13854b5465999fcab2efe0af559381e945e3c6001 ;;
   *)             UV_ARCH=x86_64  UV_SHA=ec7a99cd05e0cd7f80243f135ce1361c76835cb0ee60055d14d20eba8eba1460 ;;
