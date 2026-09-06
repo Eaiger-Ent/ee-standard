@@ -151,19 +151,26 @@ boxes below were added by the stage itself and are not part of that criterion.
 
 ## S4 — Design
 
-- [ ] Decide from S2's evidence whether "archetype" is a real axis or whether
-      stack alone carries it
+- [x] Decide from S2's evidence whether "archetype" is a real axis or whether
+      stack alone carries it — **stack alone**, with the `any.` rows gating on
+      evidence rather than on a declared archetype. ADR 0052
 - [ ] Specify the profile: its axes, its naming, its versioning
 - [ ] Specify what happens when a profile changes under a repository that has
       already installed it
 - [ ] Specify the config surface per stack, and confirm it introduces no new
       format
-- [ ] Draft the ADR on the craft/register boundary — when, if ever, a craft rule
-      becomes a control
-- [ ] Draft the ADR on the profile model
-- [ ] Draft the ADR on attribution and licence posture, per source
-- [ ] Check anything a machine will read against ADR 0018 before it enters code
-- [ ] Get every ADR this stage names to Accepted
+- [x] Draft the ADR on the craft/register boundary — when, if ever, a craft rule
+      becomes a control. **ADR 0051**, Accepted 2026-09-06
+- [x] Draft the ADR on the profile model — **ADR 0052**, Accepted 2026-09-06
+- [x] Draft the ADR on attribution and licence posture, per source — **ADR
+      0054**, Accepted 2026-09-06
+- [x] Check anything a machine will read against ADR 0018 before it enters code
+      — **ADR 0053** applies 0018's test to the mapping and answers *data*. The
+      test still applies per rule as Craft's code is written, and 0053 requires
+      each exception to carry its reason there
+- [ ] Get every ADR this stage names to Accepted — the four above are, and the
+      box stays open because `design.profiles.md` may name one they did not
+      anticipate
 - [ ] Write `design.profiles.md`
 
 ## S5 — Build the chooser and the installer
@@ -194,20 +201,33 @@ boxes below were added by the stage itself and are not part of that criterion.
 
 ## Decisions owed an ADR
 
-Tracked here so each is taken deliberately. The wording of each is in
-[`plan.md`](plan.md).
+All four taken 2026-09-06. `plan.md` § Decisions this workstream owed an ADR
+names the record for each; the ADR is the record and nothing is summarised here.
 
-- [ ] Whether a craft rule may ever become a control, and what it needs first
-- [ ] What a profile is, and whether archetype is an axis — deferred until S2
-- [ ] Where the enforceable mapping lives, given ADR 0018
-- [ ] Attribution and licence, per source
+- [x] Whether a craft rule may ever become a control, and what it needs first —
+      **ADR 0051.** It becomes one by being installed as one, and Craft's
+      installer mints the entry. Three preconditions, one of which is that S3
+      has measured it. `any.dependency-vulnerability-scanning` is Craft's to
+      close by this route rather than by widening SUP-002
+- [x] What a profile is, and whether archetype is an axis — deferred until S2,
+      then decided on S2's evidence. **ADR 0052.** Stack and strictness; no
+      archetype axis and no codebase-age axis; the 42 `any.` rows gate on the
+      artefact they read being present
+- [x] Where the enforceable mapping lives, given ADR 0018 — **ADR 0053.**
+      Register data, in a Craft register of its own: not `controls.yaml`, not
+      Python
+- [x] Attribution and licence, per source — **ADR 0054.** Cite every source,
+      copy none. One rule for all twenty-four, which removes ASVS's share-alike
+      and WCAG's document licence from the picture rather than managing them
 
 ## Open questions
 
 - [x] ~~Is "Practice" the right name for the workstream~~ — settled 2026-09-05:
       **Craft**
-- [ ] Does any Equal Experts repository already consume these rules — open, and
-      the org-wide search that would answer it is not authorised
+- [x] ~~Does any Equal Experts repository already consume these rules~~ —
+      **closed 2026-09-06: no.** Answered directly, so the org-wide code search
+      that was never authorised is no longer needed. `survey.sources.md` records
+      no consumer, and the reason is now that there is none
 - [x] ~~**Blocked — outward-facing.** The `llm-toolkit` licence and its owners'
       view on machine enforcement~~ — closed 2026-09-05: Equal Experts owns the
       repository, so the ideas are ours to use. The missing licence is recorded
