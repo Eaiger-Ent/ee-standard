@@ -140,24 +140,61 @@ the count that decides the next stage has been sanity-checked by a person.
 as contested rather than resolved silently, and bucket 1's share of buckets 1–3
 is stated for each stack.
 
-### S3 — Review, empirically
+### S3 — Bench the configuration
 
-The stage that decides whether any of this improves someone's experience, and
-the one most plans skip.
+The stage that decides whether the thing works before anyone installs it.
 
-Take the candidate default-on set and run it unmodified over several real Python
-and React repositories. Count. A profile that emits thousands of findings on
-first install is switched off within a day and teaches a team to ignore the
-tool — that is a worse outcome than shipping nothing. Acceptance criteria are
-written **before** the run: a findings-per-KLOC ceiling and a tolerable
-false-positive rate. The default-on set is then tuned until it clears them, and
-what got demoted to default-off is recorded with the number that demoted it.
+**This stage was rewritten on 2026-09-06, and the original is worth stating
+because the replacement only makes sense against it.** As first written, S3 ran
+the candidate default-on set over several real Python and React repositories and
+held it to a findings-per-KLOC ceiling, on the reasoning that *a profile that
+emits thousands of findings on first install is switched off within a day and
+teaches a team to ignore the tool*. That is a failure of installing on an
+**existing** codebase. [ADR
+0052](../adr/0052-a-profile-is-a-stack-and-a-strictness.md) targets new ones,
+where there is no accumulated code to flood, and every finding is on a line
+written minutes ago by the person who can fix it. A corpus measurement would
+have been measuring a risk this workstream does not carry — carefully, and
+against the wrong thing.
 
-Contested classifications from S2 get a second reader here.
+What does bite on day one of a new repository, in the order it bites:
 
-**Deliverable:** `review.noise.md` — criteria, measurements, what moved and why.
-**Exit:** the default-on set clears the criteria on every trial repository, and
-every demotion cites its measurement.
+1. **The configuration has to assemble and run.** Six ESLint plugins, three
+   presets, two `disable-conflict` configs whose contents S2 could not resolve,
+   and a type-checked ruleset that needs a `tsconfig` to exist. Whether that
+   composes into a working flat config is genuinely unknown, and it is the first
+   thing a developer meets.
+2. **No two selected rules may contradict each other.** `PLR0911` against
+   `clean-code 102`'s early returns was found by reading and is recorded as
+   `incompatible`; two plugins reporting one defect twice was `assess.rules.md`
+   finding 2. On an existing codebase a rule fight is one more entry in a long
+   list. On a new one it blocks the first commit.
+3. **A false positive is the whole of the friction.** With no legacy noise to
+   hide in, a rule that flags correct code is all the developer sees. So the
+   rules with a known false-positive reputation are **probed** — the case each
+   is known to get wrong, written deliberately — rather than sampled from a
+   corpus that does not exist yet.
+4. **Cost per finding, not count of findings.** 421 of ruff's 812 stable rules
+   carry no fix at all. The question a new repository asks is how much hand-work
+   a rule costs each time it fires, and the taxonomy answers that without a run.
+
+Acceptance criteria are still written **before** anything is run — the ordering
+was never the part that depended on the corpus. They are criteria about the
+configuration rather than about a body of code.
+
+~~Contested classifications from S2 get a second reader here.~~ Done 2026-09-06,
+ahead of the rest of the stage; `assess.rules.md` § Resolved is the record.
+
+**The empirical evidence about real use now comes from S6**, which is the only
+stage that observes the profile in a repository somebody is working in. That
+makes S6 the stage this plan can least afford to skip, and the rewrite moves
+weight onto it rather than removing weight from the plan.
+
+**Deliverable:** `review.bench.md` — the criteria, the scaffold, what ran, what
+fought, and what was demoted with the case that demoted it.
+**Exit:** the configuration assembles and runs clean on a scaffold of each
+stack, no selected rule contradicts another, and every demotion cites the case
+that demoted it.
 
 ### S4 — Design
 
@@ -184,10 +221,13 @@ reads them.
 
 ### S5 — Build the chooser and the installer
 
-A skill in the `lint-md` model. It infers stack and archetype from the
-repository, presents the profiles with what each turns on **and what S3 measured
-it will cost**, takes an explicit yes, writes the pinned configuration at every
-locus, records what it wrote, and hands back the judgment-only residue as prose
+A skill in the `lint-md` model. It infers the stack from the repository — not an
+archetype, which [ADR
+0052](../adr/0052-a-profile-is-a-stack-and-a-strictness.md) ruled out as an axis
+— presents the profiles with what each turns on **and what S3 found each rule
+costs to satisfy**, takes an explicit yes, writes the pinned configuration at
+every locus, records what it wrote **including which stack-neutral groups its
+evidence gates switched on**, and hands back the judgment-only residue as prose
 an assistant loads — labelled unenforced.
 
 Versioned and published, so a consumer pins it the way `.claude/skill-config.yaml`
@@ -200,8 +240,13 @@ changes nothing.
 
 ### S6 — Trial and review
 
-Install on a real repository. Run for a stated period. Revise against what the
-team reports, not against what the plan predicted.
+Install on a **new** repository at its start, which is the case the profile is
+for. Run for a stated period. Revise against what the team reports, not against
+what the plan predicted.
+
+Since S3 was rewritten away from a corpus, this is the **only** stage that
+observes the profile in a repository somebody is working in, and the only source
+of evidence about how it feels rather than whether it composes.
 
 **Deliverable:** `review.trial.md`.
 **Exit:** criteria named in S3 still hold in use, or the gap is recorded and

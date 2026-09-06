@@ -9,7 +9,10 @@ copies of the same statement are free to drift, and a ticked box is not an exit
 criterion: a stage is finished when `plan.md`'s criterion is met, however many
 boxes are ticked.
 
-Written 2026-09-05. S1 and S2 are complete; S3 onwards is untouched.
+Written 2026-09-05. S1 and S2 are complete. S3 was rewritten 2026-09-06 after
+ADR 0052 named new codebases as the target and left its original premise
+measuring a risk this workstream does not carry; S4 onwards is untouched apart
+from the boxes that premise reached.
 
 ## S1 — Survey
 
@@ -122,16 +125,51 @@ boxes below were added by the stage itself and are not part of that criterion.
       are deliberately unapplied, so every count `assess.rules.md` publishes
       still holds. **Added by the stage**, not planned by it
 
-## S3 — Review, empirically
+## S3 — Bench the configuration
 
-- [ ] Write the acceptance criteria **before** any run: a findings-per-KLOC
-      ceiling and a tolerable false-positive rate
-- [ ] Choose the trial repositories — at least two Python, at least two React —
-      and record why each is representative
-- [ ] Build the candidate default-on configuration for each stack
-- [ ] Run it unmodified and capture the raw counts
-- [ ] Sample the findings for false positives, at a stated sample size
-- [ ] Demote what fails, recording the measurement that demoted each one
+**Rewritten 2026-09-06.** The stage was written around running the default-on
+set over real repositories and holding it to a findings-per-KLOC ceiling. ADR
+0052 targets new codebases, where that measurement has nothing to measure.
+`plan.md` § S3 records why; the boxes below are the replacement. Three of the
+originals are struck rather than deleted — a silently removed step is
+indistinguishable from a completed one.
+
+- [ ] Write the acceptance criteria **before** anything is run. They are about
+      the configuration, not a corpus: it assembles, it runs, no two selected
+      rules contradict, and every probed false-positive case is either clean or
+      the rule is demoted with the case recorded
+- [ ] Build a minimal scaffold per stack — a new repository of the shape the
+      profile is for, not a sample of an existing one
+- [ ] Build the candidate default-on configuration for each stack from the
+      resolved register
+- [ ] Confirm the React config assembles at all: six plugins, three presets, the
+      two `disable-conflict` configs, and type-checked rules that need a
+      `tsconfig`
+- [ ] Resolve what `@eslint-react`'s `disable-conflict-eslint-plugin-react` and
+      `disable-conflict-eslint-plugin-react-hooks` configs contain, from an
+      installed tree. S2 could not read them from the published bundle and
+      recorded that rather than asserting it — and a React profile naming both
+      plugins without one of these double-reports
+- [ ] Check `@eslint-react`'s coverage against the 104 rules
+      `eslint-plugin-react` carries, which is what rows 10 and 11 were resolved
+      contingent on
+- [ ] Find every pair of selected rules that contradict. `python.return-count`
+      is one and is already recorded as `incompatible`; the search is for the
+      others
+- [ ] Probe the rules with a known false-positive reputation, one deliberate
+      case each — `anchor-ambiguous-text` against a link with an `aria-label`,
+      `S101` against a test, `explicit-module-boundary-types` against a
+      component
+- [ ] Record cost per finding from ruff's `fix_availability`, which needs no run:
+      421 of 812 stable rules carry no fix
+- [ ] Settle the four numbers the resolutions left owed —
+      `python.function-length`'s threshold, `python.line-length`'s default,
+      `python.no-any`'s strict variant and `react.explicit-return-types`' scope.
+      **Each is now a choice with a stated rationale, revisable at S6**, not a
+      corpus calibration
+- [ ] Measure what ruff's `preview = true` costs, since two Python properties are
+      reachable only by enabling all 140 preview rules at once
+- [ ] Demote what fails, recording the case that demoted it
 - [x] Have a second reader resolve S2's contested classifications. Done
       2026-09-06: every recommendation in
       [`assess.contested.md`](assess.contested.md) was taken. Fourteen of the
@@ -142,15 +180,16 @@ boxes below were added by the stage itself and are not part of that criterion.
       recommendation, which proposed an axis that ADR has since ruled out. The
       register is 182 rows and the shares are re-derived: 71% Python, 76% React,
       21% stack-neutral
-- [ ] Re-run until the criteria clear, or record why they cannot be met
-- [ ] Resolve what `@eslint-react`'s `disable-conflict-eslint-plugin-react` and
-      `disable-conflict-eslint-plugin-react-hooks` configs contain, from an
-      installed tree. S2 could not read them from the published bundle and
-      recorded that rather than asserting it — and a React profile naming both
-      plugins without one of these double-reports
-- [ ] Measure what ruff's `preview = true` costs, since two Python properties are
-      reachable only by enabling all 140 preview rules at once
-- [ ] Write `review.noise.md`
+- [ ] Write `review.bench.md`
+- [x] ~~Choose the trial repositories — at least two Python, at least two React —
+      and record why each is representative~~ — struck 2026-09-06. Representative
+      of an existing codebase, which is not the target
+- [x] ~~Run it unmodified and capture the raw counts~~ — struck 2026-09-06. There
+      is nothing to count on a new repository
+- [x] ~~Sample the findings for false positives, at a stated sample size~~ —
+      struck 2026-09-06, and replaced rather than dropped: a false positive still
+      matters and matters more, so it is **probed deliberately** above rather
+      than sampled from a corpus that does not exist
 
 ## S4 — Design
 
@@ -180,12 +219,16 @@ boxes below were added by the stage itself and are not part of that criterion.
 
 - [ ] Specify the skill's configuration contract, in the shape
       `.claude/skill-config.yaml` already uses
-- [ ] Infer stack and archetype from the repository
-- [ ] Present each applicable profile with what it enables **and** what S3
-      measured it will cost
+- [ ] Infer the stack from the repository. **Not an archetype** — ADR 0052
+      ruled it out as an axis, and the stack-neutral groups gate on the artefact
+      they read being present instead
+- [ ] Present each applicable profile with what it enables **and** what S3 found
+      each rule costs to satisfy
 - [ ] Require an explicit confirmation before anything is written
 - [ ] Write the pinned configuration at every locus the profile declares
-- [ ] Record what was written
+- [ ] Record what was written, **including which stack-neutral groups the
+      evidence gates switched on and what switched them** — ADR 0052 requires it,
+      because a gate nobody can see is the invisible suppression it rejected
 - [ ] Emit the judgment-only residue as prose an assistant loads, labelled
       unenforced
 - [ ] Make a second run over its own output change nothing
@@ -194,7 +237,8 @@ boxes below were added by the stage itself and are not part of that criterion.
 
 ## S6 — Trial and review
 
-- [ ] Choose the trial repository and agree the period before installing
+- [ ] Choose the trial repository — a **new** one, at its start — and agree the
+      period before installing
 - [ ] Install through the skill rather than by hand — an installer nobody used is
       an installer nobody tested
 - [ ] Collect what the team reports, not what the plan predicted
