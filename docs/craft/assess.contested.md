@@ -5,14 +5,18 @@ Stage **S2** of [`plan.md`](plan.md), written for stage **S3**. Fifteen rows in
 out two ways to resolve each, what each way costs, and which one the assessing
 stage would pick.
 
-**It resolves nothing.** `plan.md` § S3 gives contested classifications to a
-second reader, and S2's exit criterion holds precisely because none of them was
-resolved silently. Every one of the fifteen is still marked `contested` in the
-register, every count that document publishes is unchanged, and four
-recommendations below would change the register's *shape* — splitting an
-identity, dropping one, treating two rows as one — and have deliberately not
-been applied. A stage that prepared the options and then took them is not a
-stage that had a second reader.
+**It resolved nothing when it was written, which is the point.** `plan.md` § S3
+gives contested classifications to a second reader, and S2's exit criterion holds
+precisely because the stage that found them resolved none of them. A stage that
+prepared the options and then took them is not a stage that had a second reader.
+
+**The second reader read it on 2026-09-06 and took every recommendation.** What
+each resolution did to the register is recorded in
+[`assess.rules.md`](assess.rules.md) § Resolved, which is the record; each row
+below now ends with a **Taken** line saying what happened to it, and nothing else
+in this document has been rewritten. The options and their costs stand as they
+were argued, including on the two rows where the recommendation was not applied
+as written.
 
 **The recommendations are S2's view, and they are marked as such** so a reader
 knows what they are disagreeing with. They are an opinion formed while reading
@@ -61,6 +65,9 @@ did not carve it out.
 **S2's view: B.** The contest is between a rule and a *phrasing* of the property,
 not between two rules.
 
+**Taken: B.** The property now reads *a swallowed exception is swallowed
+explicitly*; all three rules are selected and the sources agree.
+
 ### 2. `python.exception-message-not-inline`
 
 Ruff `EM101`/`EM102`/`TRY003` push messages out of the raise site;
@@ -84,6 +91,10 @@ on `python.naming-form` and `python.naming-intent`.
 clarity rather than enforcement. **Structural — not applied.**
 
 **S2's view: B**, on the strength of the precedent rather than of the outcome.
+
+**Taken: B.** Split into `python.exception-message-not-a-literal` and
+`python.exception-type-carries-its-message`. Both stay `off`; the split bought
+clarity, as the option said it would.
 
 ### 3. `python.function-length`
 
@@ -109,6 +120,9 @@ purity is a poor trade.
 **S2's view: A**, with the number set by S3's measurement rather than by either
 source.
 
+**Taken: A.** The assertion is now what the tools measure, which moves the row
+to bucket 1. The threshold is S3's and is still owed.
+
 ### 4. `python.function-parameter-count`
 
 `clean-code 101` says no more than three. Ruff `PLR0913` defaults to five.
@@ -129,6 +143,8 @@ things.
 `PLR0913`, so the profile is harder to read.
 
 **S2's view: B.**
+
+**Taken: B.** `PLR0917` at 3, `PLR0913` at 5.
 
 ### 5. `python.return-count`
 
@@ -154,6 +170,9 @@ never catches anything — which is a rule kept for the look of it.
 **S2's view: A**, and the incompatibility is worth recording in its own right —
 it is the only row here where two rules from the same tool cannot both be on.
 
+**Taken: A.** The Agree column now reads `incompatible` rather than `contested`,
+which is a different claim and the accurate one.
+
 ### 6. `python.line-length`
 
 `pep8` says 79, `google` says 80, ruff defaults to 88, this repository uses 100.
@@ -178,6 +197,9 @@ property.
 
 **S2's view: B**, with the formatter-agreement constraint doing the real work.
 
+**Taken: B.** A profile parameter, default 88, constrained to equal
+`ruff format`'s. The default is S3's to confirm.
+
 ### 7. `python.no-any`
 
 Ruff `ANN401` sees annotations only. mypy `strict` does **not** ban `Any`;
@@ -200,6 +222,10 @@ spreads, and it spreads into public signatures eventually.
 
 **S2's view: B** for the default profile, with **A** kept as a strict-profile
 variant for S3 to measure rather than discarded.
+
+**Taken: B**, and A is kept rather than discarded. The row is now on, narrowed to
+public signatures; `disallow_any_explicit` is the strict-profile variant S3 will
+measure.
 
 ### 8. `python.no-assert-for-enforcement`
 
@@ -226,6 +252,10 @@ work into S5's inference step and makes the generated config less portable.
 is the first place a craft profile would otherwise import a pattern the register
 treats as a weakening, and that is a boundary question, not a configuration one.
 
+**Taken: B.** Scoped to the source path, so no exemption exists. The boundary
+question the row raised is answered by the choice rather than deferred: a craft
+profile does not ship a pattern the register treats as a weakening.
+
 ## React
 
 ### 9. `react.no-class-components`
@@ -250,6 +280,12 @@ profile model becomes unusable.
 
 **S2's view: B**, with the axis observation handed to S4's decision 2 — where
 `plan.md` deferred the archetype question pending exactly this kind of evidence.
+
+**Not taken as written — and the outcome is B's.** [ADR
+0052](../adr/0052-a-profile-is-a-stack-and-a-strictness.md) decided there is no
+codebase-age axis and that the target is new codebases, so the axis this option
+proposed does not exist. The row is **on**, unconditionally. B wanted the rule
+for new code and new code is all there is.
 
 ### 10 + 11. `react.no-legacy-proptypes` and `react.jsx-runtime-assumed`
 
@@ -284,6 +320,12 @@ this a bet rather than a choice.
 would change the register's React count and its stated shares, and the merge is
 an argument rather than a correction.
 
+**Taken: B.** `@eslint-react`'s `recommended` is the JSX-correctness base and
+`eslint-plugin-react`'s `recommended` is not installed. Both rows resolve to *on*
+and both stay in the register as separate properties — the contest was one, the
+properties are two. Coverage against `eslint-plugin-react`'s 104 rules is still
+S3's to confirm.
+
 ### 12. `react.explicit-return-types`
 
 `@typescript-eslint/explicit-module-boundary-types` asserts `typescript 003`
@@ -306,6 +348,9 @@ will be wrong somewhere; and the split needs S3 to confirm it is worth the extra
 configuration.
 
 **S2's view: B**, measured at S3.
+
+**Taken: B.** On, scoped to exported non-component functions. Whether the scope
+is worth its configuration is S3's to confirm.
 
 ### 13. `react.interface-over-type`
 
@@ -330,6 +375,9 @@ first being told which one.
 
 **S2's view: A. Structural — not applied.** Of the fifteen this is the one that
 most reads like a rule written because a style guide needed a section.
+
+**Taken: A.** The identity is dropped. React falls from 68 rows to 67 before the
+row 15 split puts it back at 68.
 
 ### 14. `react.barrel-exports`
 
@@ -356,6 +404,10 @@ own kind of noise.
 `llm-toolkit` is a source of ideas and not of positions, which is finding 8's
 conclusion applied to a second file.
 
+**Taken: B**, which means the row does not move. It is the one row still marked
+`contested` in the register, and it is marked `unendorsed` alongside — a
+deliberate outcome, not a pass that missed one.
+
 ### 15. `react.a11y-link-purpose`
 
 WCAG 2.4.4 is the requirement. `jsx-a11y/anchor-ambiguous-text` is the only rule
@@ -381,6 +433,10 @@ it beyond prose.
 measurement at S3. This is the accessibility twin of the contrast finding: the
 requirement is real and the instrument is not equal to it.
 
+**Taken: B.** Split into `react.a11y-link-has-content` (bucket 1, on) and
+`react.a11y-link-purpose` (bucket 3, WCAG 2.4.4 with no instrument). A survives
+as an S3 false-positive measurement.
+
 ## Two things the fifteen have in common
 
 **Three of them are not contests between sources at all.** Rows 1, 2 and 15
@@ -398,13 +454,28 @@ even two of them, `assess.rules.md`'s row count and its stated bucket shares
 move, so the shares should be re-derived after that reading rather than treated
 as settled. The command that derives them is in that document.
 
-## What this document does not do
+## What this document did, and did not, do
 
-- **It does not resolve anything.** All fifteen rows remain `contested` in
-  `assess.rules.md`, and its exit criterion is unaffected.
-- **It does not apply the four structural recommendations**, which would change
-  the register's shape and every count published with it.
-- **It does not measure.** Rows 3, 6, 7, 10+11, 12 and 15 name a measurement, and
-  every one of those belongs to S3.
-- **It does not add work.** `todo.md`'s existing second-reader box under S3 is
-  the box this document is written for; no new open item was invented to hold it.
+Written to prepare a decision, then read and acted on the same day. Both halves
+are worth separating, because a document that recommended and a document that
+decided are different things and this one was only ever the first.
+
+**When it was written, it resolved nothing.** All fifteen rows were still
+`contested` in `assess.rules.md`; none of the four structural recommendations was
+applied; every count that document published stood as S2 derived it. S2's exit
+criterion was met by a stage that did not resolve its own contests.
+
+**When it was read, every recommendation was taken.** Fourteen rows moved.
+[`assess.rules.md`](assess.rules.md) § Resolved is the record — this document was
+not rewritten to match, beyond a **Taken** line per row, because the argument is
+worth keeping in the shape it was made.
+
+**It still does not measure.** Rows 3, 6, 7, 10+11, 12 and 15 named a
+measurement. Resolving a row settled its classification and settled none of those
+numbers: `python.function-length`'s threshold, `python.line-length`'s default,
+`python.no-any`'s strict variant, `react.explicit-return-types`' scope and
+`@eslint-react`'s coverage against `eslint-plugin-react`'s 104 rules are all
+still S3's. **A resolved row is not a measured one.**
+
+**It added no work.** `todo.md`'s existing second-reader box under S3 is the box
+this document was written for, and taking the recommendations is what closes it.

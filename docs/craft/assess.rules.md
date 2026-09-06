@@ -113,7 +113,7 @@ not settled here.
 
 ## Python
 
-Seventy-one properties. Ruff is the bulk instrument, and the section is ordered by
+Seventy-two properties. Ruff is the bulk instrument, and the section is ordered by
 what the property is about rather than by rule family, because a family is the
 tool's organising idea and not the code's.
 
@@ -139,22 +139,23 @@ tool's organising idea and not the code's.
 | --- | --- | --- | --- | --- | --- | --- |
 | `python.no-blind-except` | `except` names the exceptions it handles, except in a deliberate catch-all | `ruff`, `code-quality` | agree | 1 | ruff `BLE001`, `E722` | on |
 | `python.exception-chaining` | An exception raised inside `except` chains from the original | `ruff`, `code-quality` | agree | 1 | ruff `B904` | on |
-| `python.no-silent-exception-swallow` | An exception is never discarded without a decision | `ruff`, `code-quality` | **contested** | 1 | ruff `S110`, `S112` — but ruff `SIM105` *recommends* `contextlib.suppress`, which is a swallow | on |
+| `python.no-silent-exception-swallow` | A swallowed exception is swallowed **explicitly** — never by `pass` or `continue` | `ruff`, `code-quality` | agree | 1 | ruff `S110`, `S112`, `SIM105`, all three selected. `contextlib.suppress` is the explicit form the property asks for | on |
 | `python.no-log-and-reraise` | An error is logged **or** re-raised, not both | `code-quality` | — | 2 | Nothing asserts it. ruff `TRY400`/`TRY401` are adjacent and cover a different mistake | on |
 | `python.exception-carries-context` | An error type or message adds information the caller did not have | `code-quality`, `clean-code 202` | agree | 3 | — | n/a |
-| `python.exception-message-not-inline` | An exception message is not a long literal at the raise site | `ruff` | **contested** | 1 | ruff `EM101`, `EM102`, `TRY003` — which pull against `clean-code 202`'s *descriptive error messages* | off |
+| `python.exception-message-not-a-literal` | An exception message is not a bare string literal at the raise site | `ruff` | — | 1 | ruff `EM101`, `EM102`. A traceback-formatting concern; asserts nothing about what the message says | off |
+| `python.exception-type-carries-its-message` | A long message belongs to an exception type, not to the raise site | `ruff`, `clean-code 202` | agree | 1 | ruff `TRY003`. A design concern, and the half `clean-code 202` actually agrees with | off |
 
 ### Structure and size
 
 | Identity | Asserts | Sources | Agree | B | Instrument | Default |
 | --- | --- | --- | --- | --- | --- | --- |
-| `python.function-length` | A function is short enough to read at once | `clean-code 002`, `google` | **contested** | 2 | `clean-code` says under 20 **lines**; ruff `PLR0915` counts statements and `C901` counts complexity. Both are proxies | on (as proxies) |
-| `python.function-parameter-count` | A function takes few parameters | `clean-code 101`, `ruff` | **contested** | 1 | ruff `PLR0913`, `PLR0917` — but `clean-code` says 3 and ruff defaults to 5 | on |
+| `python.function-length` | A function has few statements and low branching | `clean-code 002`, `google`, `ruff` | agree | 1 | ruff `PLR0915`, `C901`. The assertion is what the tools measure; `clean-code 002`'s twenty *lines* is the intent behind it and not the threshold. Number set by S3 | on |
+| `python.function-parameter-count` | A function takes few parameters, and very few positionally | `clean-code 101`, `ruff` | agree | 1 | ruff `PLR0917` at 3 (positional) and `PLR0913` at 5 (total). The sources were counting different things | on |
 | `python.nesting-depth` | Control flow does not nest deeply | `clean-code 102` | — | 1 | ruff `PLR1702` — **preview** | off |
 | `python.class-size` | A class stays small and focused | `clean-code 105`, `solid 001` | agree | 1 | ruff `PLR0904` — **preview**; counts public methods, which is a proxy for focus | off |
 | `python.class-dependency-count` | A class depends on few collaborators | `solid 101` | — | 2 | Nothing asserts it. Countable from `__init__` parameters, which is `PLR0913` at a different site | off |
 | `python.shallow-inheritance` | Inheritance hierarchies stay shallow | `solid 105` | — | 2 | Nothing asserts it. Depth is mechanically countable | off |
-| `python.return-count` | A function has few exit points | `ruff` | **contested** | 1 | ruff `PLR0911` — which pulls against `clean-code 102`'s *use early returns* | off |
+| `python.return-count` | A function has few exit points | `ruff` | **incompatible** | 1 | ruff `PLR0911`. **Never selected**: an early return is the recommended fix for `clean-code 102`'s nesting and increments this count, so the two cannot both be on. The only such pair in this register | off, permanently |
 | `python.no-redundant-assign-before-return` | A value is returned rather than parked in a name first | `ruff` | — | 1 | ruff `RET504` | off |
 | `python.abstraction-ordering` | Functions read high-level first, details after | `clean-code 203` | — | 3 | — | n/a |
 | `python.single-responsibility` | A unit has one reason to change | `solid 001`, `clean-code 105`, `pep20` | agree | 3 | — | n/a |
@@ -169,7 +170,7 @@ tool's organising idea and not the code's.
 | --- | --- | --- | --- | --- | --- | --- |
 | `python.naming-form` | Names follow the language's casing conventions | `pep8`, `google`, `ruff` | agree | 1 | ruff `N801`–`N818` (pep8-naming) | on |
 | `python.naming-intent` | A name says what the thing is for | `clean-code 001`, `clean-code 104`, `clean-code 205`, `pep20` | agree | 3 | — . ruff `E741` catches three ambiguous single letters and nothing else | n/a |
-| `python.line-length` | Lines are short enough to read side by side | `pep8`, `google`, `ruff` | **contested** | 1 | ruff `E501` — `pep8` says 79, `google` says 80, ruff defaults to 88, this repository uses 100 | on |
+| `python.line-length` | A line limit exists and the formatter agrees with it | `pep8`, `google`, `ruff` | agree | 1 | ruff `E501`, as a profile parameter defaulting to 88 and **constrained to equal `ruff format`'s line length**. The number is a preference; the agreement is the property | on |
 | `python.import-order` | Imports are grouped and ordered | `pep8`, `google`, `ruff` | agree | 1 | ruff `I001` (isort) | on |
 | `python.no-relative-parent-imports` | A module does not import from its parent by relative path | `google` | — | 1 | ruff `TID252` | on |
 | `python.consistent-formatting` | Formatting is not a per-author choice | `clean-code 005`, `pep8` | agree | 1 | `ruff format`. A formatter, not a lint rule — cited because the property is met by running it | on |
@@ -195,7 +196,7 @@ tool's organising idea and not the code's.
 | Identity | Asserts | Sources | Agree | B | Instrument | Default |
 | --- | --- | --- | --- | --- | --- | --- |
 | `python.annotate-public-api` | Public functions annotate parameters and returns | `google`, `typescript 003` (by analogy) | agree | 1 | ruff `ANN001`, `ANN201`, `ANN2xx`; mypy `disallow_untyped_defs` | on |
-| `python.no-any` | `Any` is not the answer to an unknown type | `typescript 002` (by analogy) | **contested** | 1 | ruff `ANN401` covers annotations only; mypy `strict` does **not** ban `Any`. `disallow_any_explicit` does, and is not in `strict` | off |
+| `python.no-any` | `Any` does not appear in a public signature | `typescript 002` (by analogy) | agree | 1 | ruff `ANN401`, which is exactly this scope. mypy `disallow_any_explicit` asserts the wider property and is kept as a **strict-profile variant** for S3 to measure, not discarded | on |
 | `python.typing-only-imports` | Imports needed only for types are in a type-checking block | `ruff` | — | 1 | ruff `TC001`–`TC003` | off |
 
 ### Testing
@@ -229,7 +230,7 @@ authority.
 | `python.tls-verification-on` | Certificate verification is never disabled | `security 002`, `asvs` | agree | 1 | ruff `S501` | on |
 | `python.crypto-grade-randomness` | Secrets are not drawn from the standard PRNG | `asvs`, `ruff` | agree | 1 | ruff `S311` | on |
 | `python.no-bind-all-interfaces` | A service does not bind `0.0.0.0` by default | `asvs`, `ruff` | agree | 1 | ruff `S104` | off |
-| `python.no-assert-for-enforcement` | Runtime enforcement does not rely on `assert` | `asvs`, `ruff` | **contested** | 1 | ruff `S101` — which fires on every test, so the property is only reachable with a per-path exclusion | on (excluding `tests/`) |
+| `python.no-assert-for-enforcement` | Runtime enforcement does not rely on `assert` | `asvs`, `ruff` | agree | 1 | ruff `S101`, **scoped to the package source path** rather than excused from `tests/`. No exemption exists, so none can drift — the rule's scope matches the property's | on (scoped) |
 | `python.structured-logging` | Logs are key-value, not prose | `code-quality` | — | 1 | ruff `G001`–`G004`, `LOG015` — these constrain the *call*, not the format. The format is bucket 2 | on |
 | `python.no-sensitive-data-in-logs` | Secrets and PII never reach a log | `security 006`, `asvs` | agree | 2 | Nothing asserts it. A denylist over log call arguments could | off |
 
@@ -292,9 +293,9 @@ documentation devotes a whole page to has a lint rule, and the rule ships
 | `react.no-nested-component-definitions` | A component is not defined inside another component's body | `hooks`, `xr` | agree | 1 | `react-hooks/static-components`; `@eslint-react/no-nested-component-definitions` | on |
 | `react.context-value-stability` | A context value is not a fresh object on every render | `xr` | — | 1 | `@eslint-react/no-unstable-context-value` — **strict only** | on |
 | `react.no-deprecated-api` | Deprecated lifecycle and API surface is not used | `rp`, `xr` | agree | 1 | `react/no-deprecated`; `@eslint-react/no-component-will-*`, `no-create-ref`, `no-forward-ref`, `no-use-context` | on |
-| `react.no-class-components` | New components are functions | `xr` | **contested** | 1 | `@eslint-react/no-class-component` — **strict only**, and the property is a migration position rather than a correctness one | off |
-| `react.no-legacy-proptypes` | Prop types are types, not runtime `propTypes` | `rp` | **contested** | 1 | `react/prop-types` is **in** `eslint-plugin-react`'s `recommended` and asserts the opposite for a TypeScript codebase | off |
-| `react.jsx-runtime-assumed` | `React` need not be in scope for JSX | `rp` | **contested** | 1 | `react/react-in-jsx-scope` is **in** `recommended` and is wrong for React 17 and later; the `jsx-runtime` config turns it off | off (via `jsx-runtime`) |
+| `react.no-class-components` | Components are functions | `xr` | agree | 1 | `@eslint-react/no-class-component`, `strict` only, so the profile selects it explicitly. Resolved by **ADR 0052** rather than by row 9's recommendation — there is no codebase-age axis, and the target is new codebases | on |
+| `react.no-legacy-proptypes` | Prop types are types, not runtime `propTypes` | `rp` | agree | 1 | Satisfied by taking `@eslint-react`'s `recommended` as the JSX-correctness base, which has no `prop-types` rule. `eslint-plugin-react`'s `recommended` is not installed | on |
+| `react.jsx-runtime-assumed` | `React` need not be in scope for JSX | `rp` | agree | 1 | The same choice as the row above: `@eslint-react`'s `recommended` has no `react-in-jsx-scope`, so nothing has to be undone. One contest, resolved once | on |
 
 ### TypeScript
 
@@ -307,17 +308,16 @@ React. All thirteen of its rules appear below.
 | `react.strict-type-checking` | `tsconfig` enables the strict family | `typescript 001`, `tse` | agree | 2 | `tsc` itself, read from `tsconfig.json`. No lint rule asserts a compiler flag | on |
 | `react.no-explicit-any` | `unknown` or a real type, never `any` | `typescript 002`, `tse` | agree | 1 | `@typescript-eslint/no-explicit-any` (in `recommended`) | on |
 | `react.no-unsafe-any-flow` | A value typed `any` does not flow into a call, member access or return | `typescript 002`, `tse` | agree | 1 | `@typescript-eslint/no-unsafe-{argument,assignment,call,member-access,return}` — **type-checked only** | on |
-| `react.explicit-return-types` | Public functions and methods declare their return type | `typescript 003` | **contested** | 1 | `@typescript-eslint/explicit-module-boundary-types` — exists, and is **not** in any recommended preset | off |
+| `react.explicit-return-types` | Exported non-component functions declare their return type | `typescript 003` | agree | 1 | `@typescript-eslint/explicit-module-boundary-types` with `allowTypedFunctionExpressions`, component files out of scope. Selected explicitly; in no preset. Scope confirmed at S3 | on (scoped) |
 | `react.no-non-null-assertion` | `!` is not used to silence the null check | `typescript 004`, `tse` | agree | 1 | `@typescript-eslint/no-non-null-assertion` — in `strict`, not `recommended` | on |
 | `react.no-floating-promises` | Every promise is awaited, returned or explicitly ignored | `tse` | — | 1 | `@typescript-eslint/no-floating-promises` — type-checked | on |
 | `react.no-misused-promises` | An async function is not passed where a void callback is expected | `tse` | — | 1 | `@typescript-eslint/no-misused-promises` — type-checked | on |
 | `react.throw-error-objects` | Only `Error` subclasses are thrown | `typescript 103`, `tse` | agree | 1 | `@typescript-eslint/only-throw-error` — type-checked | on |
 | `react.domain-error-types` | Domain failures have their own error types | `typescript 103`, `code-quality` | agree | 3 | — | n/a |
-| `react.interface-over-type` | Object shapes are declared as interfaces | `typescript 101` | **contested** | 1 | `@typescript-eslint/consistent-type-definitions` — a style choice with no correctness argument, and `antfu` takes the opposite default | off |
 | `react.naming-form` | PascalCase for types and components, camelCase for values | `typescript 102`, `typescript 201`, `typescript 202` | agree | 1 | `@typescript-eslint/naming-convention` — not in any recommended preset, and requires a written selector list | off |
 | `react.readonly-immutability` | Properties and arrays that should not change are `readonly` | `typescript 104` | — | 3 | — . No recommended rule; `prefer-readonly` covers private class fields only | n/a |
 | `react.discriminated-unions` | State and API responses are modelled as discriminated unions | `typescript 105` | — | 3 | — | n/a |
-| `react.barrel-exports` | Modules are re-exported through an `index.ts` | `typescript 203` | **contested** | 3 | — . Widely argued against on bundle and circular-import grounds; registered because the source asserts it, not because this stage endorses it | n/a |
+| `react.barrel-exports` | Modules are re-exported through an `index.ts` | `typescript 203` | **contested**, unendorsed | 3 | — . Widely argued against on bundle and circular-import grounds. **Stays contested by decision**: inverting it needs a source arguing for the inversion, and none is registered. The register cites; it does not opine | n/a |
 | `react.async-await-over-chains` | `async`/`await` rather than `.then()` chains | `typescript 204` | — | 2 | Nothing in the registered plugins. `eslint-plugin-promise` has `prefer-await-to-then`, which is a source this survey has not registered | off |
 
 ### Accessibility
@@ -344,7 +344,8 @@ so the omission is deliberate rather than invisible.
 | `react.a11y-focus-order` | Focus order follows meaning; no positive `tabindex` | `wcag` 2.4.3, `a11y` | agree | 1 | `jsx-a11y/tabindex-no-positive`, `no-noninteractive-tabindex`, `aria-activedescendant-has-tabindex` | on |
 | `react.a11y-document-language` | The document declares its language | `wcag` 3.1.1, `a11y` | agree | 1 | `jsx-a11y/html-has-lang`; `lang` extends it to any element and is **not in `recommended`** | on |
 | `react.a11y-media-captions` | Time-based media carries captions | `wcag` 1.2.2, `a11y` | agree | 1 | `jsx-a11y/media-has-caption` | on |
-| `react.a11y-link-purpose` | A link's purpose is clear from its text | `wcag` 2.4.4, `a11y` | **contested** | 1 | `jsx-a11y/anchor-has-content`, `anchor-is-valid`; `anchor-ambiguous-text` is **`off` in `recommended`** and is the one that actually asserts the property | on |
+| `react.a11y-link-has-content` | A link has text content and a real destination | `wcag` 2.4.4, `a11y` | agree | 1 | `jsx-a11y/anchor-has-content`, `anchor-is-valid`. Both on in `recommended`; a weaker claim than the row below, and an enforceable one | on |
+| `react.a11y-link-purpose` | A link's purpose is clear from its text | `wcag` 2.4.4 | — | 3 | — . `jsx-a11y/anchor-ambiguous-text` is `off` in `recommended`, false-positives on legitimate copy and cannot see `aria-label`. Kept as an S3 false-positive measurement, not as an instrument | n/a |
 | `react.a11y-semantic-elements` | A native element is used before a role is added to a `div` | `wcag` 4.1.2, `a11y` | agree | 1 | `jsx-a11y/no-redundant-roles`, `no-interactive-element-to-noninteractive-role`, `no-noninteractive-element-to-interactive-role`; `prefer-tag-over-role` asserts the property most directly and is **not in `recommended`** | on |
 | `react.a11y-no-unexpected-focus` | Focus is not seized on load | `wcag` 3.2.1, `a11y` | agree | 1 | `jsx-a11y/no-autofocus`, `no-distracting-elements` | on |
 | `react.a11y-contrast` | Text meets the contrast minimum | `wcag` 1.4.3 | — | 2 | **Nothing static asserts it.** Contrast is a rendered-pixel property; it needs an axe run in a browser, which is a different instrument at a different locus | off |
@@ -515,11 +516,14 @@ excluded because they are already enforced.
 
 | Stack | 1 | 2 | 3 | Total | Bucket 1's share |
 | --- | --- | --- | --- | --- | --- |
-| Python | 49 | 10 | 12 | 71 | **69%** |
-| React | 53 | 6 | 9 | 68 | **78%** |
+| Python | 51 | 9 | 12 | 72 | **71%** |
+| React | 52 | 6 | 10 | 68 | **76%** |
 | Stack-neutral | 8 | 20 | 10 | 38 | **21%** |
 
-The counts were derived from this file rather than kept alongside it:
+**These are the resolved numbers.** As S2 published them on 2026-09-06 they were
+69%, 78% and 21% over 181 rows; the second reader's resolutions moved them, and
+§ Resolved records what moved. The counts were derived from this file rather than
+kept alongside it:
 
 ```bash
 # Rows in one section, by bucket. The bucket is the fifth cell of every
@@ -530,23 +534,20 @@ awk '/^## Python/,/^## React/' docs/craft/assess.rules.md \
 
 Three qualifications, without which the shares flatter the work.
 
-**Python's 69% is not 69% of the value.** Three of the forty-nine bucket-1 rows
-are unreachable as they stand — `python.nesting-depth` and `python.class-size`
-are ruff `preview`, and `python.no-assert-for-enforcement` needs a per-path
-exclusion before it can be switched on at all. Against that, the twelve
-judgment-only rows — single responsibility, dependency direction, naming intent,
-abstraction ordering — are the ones a reviewer actually spends time on. A share
-counts rows, not weight.
+**Python's 71% is not 71% of the value.** Two of the fifty-one bucket-1 rows are
+unreachable as they stand: `python.nesting-depth` and `python.class-size` are
+ruff `preview`. `python.no-assert-for-enforcement` is no longer among them —
+scoping it to the source path removed the exemption that made it awkward.
+Against the 71%, the twelve judgment-only rows — single responsibility,
+dependency direction, naming intent, abstraction ordering — are the ones a
+reviewer actually spends time on. A share counts rows, not weight.
 
-**React's 78% rests on rules six different plugins ship in six different
-presets, and it is the least trustworthy number here.** Fourteen of the
-fifty-three bucket-1 rows are `off`, `strict`-only, `type-checked`-only or in no
-preset at all — counted by hand from the Instrument column, which is why those
-markers are there. Two more, `react.no-legacy-proptypes` and
-`react.jsx-runtime-assumed`, are in a recommended preset and assert the *wrong*
-thing for this stack. The number of rules that exist and the number a team gets
-by installing the recommended configs are not the same number, and the gap is
-this register's main practical finding.
+**React's 76% still rests on rules six plugins ship in six presets.** Resolving
+rows 9 to 12 removed four of the fourteen bucket-1 rows that were `off`,
+`strict`-only, `type-checked`-only or in no preset — they are now selected
+explicitly rather than left to a preset — but ten remain, and the profile has to
+name every one. The two rows that were in a recommended preset asserting the
+*wrong* thing are gone with `eslint-plugin-react`'s `recommended` itself.
 
 **The stack-neutral 21% is the honest one.** Commit conventions and API shape
 have real instruments; authorisation, validation and threat modelling do not, and
@@ -649,9 +650,65 @@ what gets selected will be a finding somebody has to fix by hand.
   real decision with a measurable cost, and it is S3's to measure.
 - **What `disable-conflict-eslint-plugin-react*` actually contains.** Read from
   an installed tree at S3, not asserted here.
-- **Contested rows.** Fifteen are marked `contested`. `plan.md` gives them to
-  S3's second reader, and none of them has been quietly resolved to one side
-  here.
+- ~~**Contested rows.** Fifteen are marked `contested`.~~ Resolved 2026-09-06 by
+  the second reader; § Resolved is the record. One survives, because its
+  resolution was that it should.
+
+## Resolved
+
+**2026-09-06, by the second reader.** `plan.md` § S3 gives contested
+classifications to a second reader; the options were set out in
+[`assess.contested.md`](assess.contested.md) and every recommendation in it was
+taken. Fourteen of the fifteen rows above changed as a result. This section says
+what moved, so a reader of the rows can see the register as it was assessed and
+the register as it stands without holding two documents open.
+
+**Two of the fifteen were not applied as written**, and both are recorded here
+rather than quietly adjusted:
+
+- **`react.no-class-components`** was recommended as a *profile axis* — on for
+  greenfield, off for an existing codebase. [ADR
+  0052](../adr/0052-a-profile-is-a-stack-and-a-strictness.md) has since decided
+  there is no codebase-age axis and that the target is new codebases, and an
+  Accepted ADR outranks a stage's recommendation. The row is **on**, with no
+  axis. The outcome the recommendation wanted for new code is the outcome; the
+  mechanism it proposed does not exist.
+- **`react.barrel-exports`** was recommended to **stay contested**. Taking that
+  recommendation means the row does not move, which is why one `contested` mark
+  survives a pass that resolved the other fourteen. It is not an oversight.
+
+| Row | Was | Is now |
+| --- | --- | --- |
+| `python.no-silent-exception-swallow` | contested; `SIM105` pulling against `S110`/`S112` | The property restated as *explicit* rather than *never*. All three rules selected; sources agree |
+| `python.exception-message-not-inline` | contested; one identity over `EM` and `TRY003` | **Split.** `python.exception-message-not-a-literal` (`EM101`/`EM102`) and `python.exception-type-carries-its-message` (`TRY003`). `clean-code 202` agrees with the second and never conflicted with the first |
+| `python.function-length` | contested, bucket 2, proxies accepted | Assertion rewritten to what the tools measure. Bucket **1**, threshold from S3 |
+| `python.function-parameter-count` | contested; 3 against 5 | `PLR0917` at 3, `PLR0913` at 5. The sources were counting different things |
+| `python.return-count` | contested | **`incompatible`**, off permanently. `PLR0911` and `clean-code 102`'s early returns cannot both hold — the only such pair in the register |
+| `python.line-length` | contested; four sources, four numbers | A profile parameter defaulting to 88, constrained to equal `ruff format`'s. The agreement is the property; the number is not |
+| `python.no-any` | contested; off | Narrowed to public signatures, where `ANN401` is exact. On. `disallow_any_explicit` kept as a strict-profile variant for S3 |
+| `python.no-assert-for-enforcement` | contested; on, excluding `tests/` | Scoped to the source path. **No exemption exists**, so the profile no longer ships a weakening |
+| `react.no-class-components` | contested; off | On, by ADR 0052 rather than by the recommendation |
+| `react.no-legacy-proptypes` | contested; off | On. `@eslint-react`'s `recommended` is the JSX-correctness base and has no `prop-types` |
+| `react.jsx-runtime-assumed` | contested; off via `jsx-runtime` | On, by the same choice. One contest, resolved once |
+| `react.explicit-return-types` | contested; off | On, scoped to exported non-component functions |
+| `react.interface-over-type` | contested; off | **Dropped.** A source asserting a preference is not a property |
+| `react.barrel-exports` | contested | Contested, **unendorsed** — unchanged by decision |
+| `react.a11y-link-purpose` | contested; bucket 1, on | **Split.** `react.a11y-link-has-content` (bucket 1, on) and `react.a11y-link-purpose` (bucket 3, WCAG 2.4.4 with no instrument) |
+
+**The three that were never contests between sources resolved as predicted.**
+`assess.contested.md` § Two things the fifteen have in common said rows 1, 2 and
+15 would each resolve by splitting or restating a property that bundled two
+assertions. All three did: one restatement and two splits. That is the hand
+check's failure in reverse — there a machine bundled a tool's rules into a
+property; here a property had been minted over rules that were never one thing —
+and it is now the second time in this stage that the fix was to separate two
+claims wearing one identity.
+
+**Four rows still owe S3 a number rather than a decision.**
+`python.function-length`'s threshold, `python.line-length`'s default,
+`python.no-any`'s strict variant and `react.explicit-return-types`' scope are
+resolved as *classifications* and unmeasured as *settings*. A resolved row is not
+a measured one.
 
 ## Exit criterion
 
@@ -659,12 +716,17 @@ what gets selected will be a finding somebody has to fix by hand.
 > contested rather than resolved silently, and bucket 1's share of buckets 1–3 is
 > stated for each stack.
 
-**Met.** 181 properties: 71 Python, 68 React and 42 stack-neutral, each carrying
-a bucket; plus 13 bucket-4 statements tracked separately and counted nowhere.
-Four of the 181 carry a control ID and are excluded from the shares, which is why
-the shares total 177. Fifteen rows are marked `contested` and none is resolved.
-Bucket 1's share is stated per stack above, with the three qualifications that
-stop the number being read as more than it is.
+**Met, and then acted on.** As published on 2026-09-06 the register held 181
+properties — 71 Python, 68 React and 42 stack-neutral — each carrying a bucket,
+plus 13 bucket-4 statements tracked separately and counted nowhere. Fifteen rows
+were marked `contested` and **none was resolved by the stage that found them**,
+which is what the criterion asks and what makes it met.
+
+The second reader resolved fourteen of the fifteen later the same day. The
+register now holds 182 properties — 72 Python, 68 React, 42 stack-neutral — and
+one `contested` row, `react.barrel-exports`, which stays contested *because* the
+resolution said so. § Resolved is the record. Four rows still carry a control ID
+and are excluded from the shares, so the shares total 178.
 
 The criterion says nothing about the sweep, the hand check or the two unregistered
 instruments, and this document does not tick those. A stage is finished when its
