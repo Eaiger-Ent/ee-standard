@@ -66,7 +66,7 @@ One box below is still open; it is not part of that criterion.
 ## S2 — Assess
 
 Its exit criterion is met — the check is in
-[`assess.rules.md`](assess.rules.md) § Exit criterion, not restated here. Two
+[`assess.rules.md`](assess.rules.md) § Exit criterion, not restated here. Three
 boxes below were added by the stage itself and are not part of that criterion.
 
 - [x] Re-run the source sweep before assessing anything — the commands and the
@@ -115,6 +115,12 @@ boxes below were added by the stage itself and are not part of that criterion.
       `eslint-plugin-promise`, Conventional Commits and the OpenAPI
       Specification. **Added by the stage**; `survey.sources.md` findings 10 and
       11 record why they were missing
+- [x] Set out two ways to resolve each contested row, with what each costs —
+      [`assess.contested.md`](assess.contested.md). **Prepared, not resolved**:
+      `plan.md` § S3 gives these to a second reader, and a stage that took its
+      own options is a stage that had none. The four structural recommendations
+      are deliberately unapplied, so every count `assess.rules.md` publishes
+      still holds. **Added by the stage**, not planned by it
 
 ## S3 — Review, empirically
 
@@ -126,7 +132,13 @@ boxes below were added by the stage itself and are not part of that criterion.
 - [ ] Run it unmodified and capture the raw counts
 - [ ] Sample the findings for false positives, at a stated sample size
 - [ ] Demote what fails, recording the measurement that demoted each one
-- [ ] Have a second reader resolve S2's contested classifications
+- [ ] Have a second reader resolve S2's contested classifications. Its input is
+      [`assess.contested.md`](assess.contested.md) — two options and their costs
+      per row, with S2's own view marked as a view. **Reading it is not
+      resolving them:** all fifteen are still marked `contested` in the register,
+      and four of the recommendations would change its shape and its stated
+      shares, so re-derive those after this reading rather than treating them as
+      settled
 - [ ] Re-run until the criteria clear, or record why they cannot be met
 - [ ] Resolve what `@eslint-react`'s `disable-conflict-eslint-plugin-react` and
       `disable-conflict-eslint-plugin-react-hooks` configs contain, from an
