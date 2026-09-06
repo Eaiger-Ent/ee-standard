@@ -31,19 +31,27 @@ One box below is still open; it is not part of that criterion.
       rules, `typescript-eslint` recommended-type-checked,
       `eslint-plugin-jsx-a11y` with WCAG, Testing Library's guiding principles,
       and one opinionated style config read as a source — `@antfu/eslint-config`,
-      after Airbnb was rejected on a 2021-12-25 last publish
-- [x] Register the six transferable `llm-toolkit` files against a pinned commit —
-      `a46825d`, which is still `main`'s head
+      after Airbnb was rejected on a 2021-12-25 last publish. The stage's own
+      review added `eslint-plugin-react` and `@eslint-react/eslint-plugin`: the
+      first pass had no source for JSX correctness at all, and registered the
+      antfu config in place of the plugin it delegates React to
+- [x] Register the transferable `llm-toolkit` files against a pinned commit —
+      `a46825d`, which is still `main`'s head. **Seven, not six:**
+      `rules/platform/security.md` is language-neutral despite its path and is
+      registered with the other six
 - [x] Record a licence answer for every registered source — blank is a finding,
       not an omission. Three were wrong as GitHub reported them and were
       corrected by reading the licence file
-- [x] Record a maintenance signal (last release or commit) for every source
+- [x] Record a maintenance signal (last release or commit) for every source, and
+      the commands that produced it — see `survey.sources.md` § How to re-run
+      this sweep. Every signal there rots, and one nobody can re-derive is a
+      claim rather than a measurement
 - [x] Read `docs/control-planes/` in the toolkit before either repository's use
       of the word "control" is borrowed — their control plane is a docs
       repository an assistant loads, so it is enforcement *by* context and
       shares nothing with a control here but the word. Neither vocabulary
       travels
-- [ ] Find out whether any Equal Experts repository already consumes these rules,
+- [x] Find out whether any Equal Experts repository already consumes these rules,
       and how. **Not authorised as asked** — the obvious route is a code search
       across the EqualExperts org, which is a scan of company repositories and
       has no yes behind it. Open until that yes or a narrower route
@@ -57,14 +65,21 @@ One box below is still open; it is not part of that criterion.
 
 ## S2 — Assess
 
+- [ ] Re-run the source sweep before assessing anything — the commands and the
+      trigger are in `survey.sources.md` § How to re-run this sweep. Nothing
+      enforces this; that section is the whole mechanism
 - [ ] Fix the table shape: identity, what it asserts, which sources assert it,
       whether they agree, bucket, exact tool and rule ID, default-on proposal
 - [ ] Mint identities property-first (`python.*`, `react.*`) and cite sources
       against them — never key a row on an upstream ID
 - [ ] Pass over ruff's taxonomy, the bulk source for Python's bucket 1
-- [ ] Pass over each React source in turn
-- [ ] Pass over each of the six neutral toolkit files, per file rather than in
-      one sweep
+- [ ] Pass over each React source in turn — including
+      `rules/platform/typescript.rules.md`, which S1 deferred here rather than
+      registering as neutral. **A React pass that finishes without it is a
+      defect, not a decision**
+- [ ] Pass over each of the seven neutral toolkit files, per file rather than in
+      one sweep — `security.md` is read **against** OWASP ASVS rather than
+      alongside it, since the two cover the same ground with different authority
 - [ ] Route bucket 4 (assistant behaviour, not code) to its own list or discard
       it, recording which and why
 - [ ] Mark contested classifications as contested rather than resolving them

@@ -157,6 +157,7 @@ for where anything lives. Both are more current than any list kept here.
 | `docs/14-file-map.md` | Which file, and why three config files are three |
 | `docs/adr/` | Every decision in force, **except any marked `Proposed`** — open, awaiting a second reader, and not to be implemented as though settled. Today: none. `archive/` holds the retired |
 | `docs/09`–`docs/17` | Phase records and reviews, in order |
+| `docs/craft/plan.md` | **Craft** — the coding-standards workstream for Python and React, which the register is deliberately silent about. Its own naming standard and stages; not a phase of the build plan, and it mints no controls |
 
 ## Decisions in force
 
