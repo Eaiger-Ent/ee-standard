@@ -9,7 +9,7 @@ copies of the same statement are free to drift, and a ticked box is not an exit
 criterion: a stage is finished when `plan.md`'s criterion is met, however many
 boxes are ticked.
 
-Written 2026-09-05. S1 is under way; every other section is untouched.
+Written 2026-09-05. S1 and S2 are complete; S3 onwards is untouched.
 
 ## S1 — Survey
 
@@ -65,27 +65,56 @@ One box below is still open; it is not part of that criterion.
 
 ## S2 — Assess
 
-- [ ] Re-run the source sweep before assessing anything — the commands and the
+Its exit criterion is met — the check is in
+[`assess.rules.md`](assess.rules.md) § Exit criterion, not restated here. Two
+boxes below were added by the stage itself and are not part of that criterion.
+
+- [x] Re-run the source sweep before assessing anything — the commands and the
       trigger are in `survey.sources.md` § How to re-run this sweep. Nothing
-      enforces this; that section is the whole mechanism
-- [ ] Fix the table shape: identity, what it asserts, which sources assert it,
-      whether they agree, bucket, exact tool and rule ID, default-on proposal
-- [ ] Mint identities property-first (`python.*`, `react.*`) and cite sources
+      enforces this; that section is the whole mechanism. Run 2026-09-06: one
+      row moved (`@eslint-react` 5.18.8 → 5.18.9) and one was wrong rather than
+      stale (ruff's linter count), corrected in place
+- [x] Fix the table shape: identity, what it asserts, which sources assert it,
+      whether they agree, bucket, exact tool and rule ID, default-on proposal.
+      Seven columns, defined in `assess.rules.md` § How to read a row
+- [x] Mint identities property-first (`python.*`, `react.*`) and cite sources
       against them — never key a row on an upstream ID
-- [ ] Pass over ruff's taxonomy, the bulk source for Python's bucket 1
-- [ ] Pass over each React source in turn — including
+- [x] Pass over ruff's taxonomy, the bulk source for Python's bucket 1 — read as
+      JSON from the pinned 0.16.5 rather than from the documentation site, which
+      is why the linter count came back corrected
+- [x] Pass over each React source in turn — including
       `rules/platform/typescript.rules.md`, which S1 deferred here rather than
       registering as neutral. **A React pass that finishes without it is a
-      defect, not a decision**
-- [ ] Pass over each of the seven neutral toolkit files, per file rather than in
-      one sweep — `security.md` is read **against** OWASP ASVS rather than
-      alongside it, since the two cover the same ground with different authority
-- [ ] Route bucket 4 (assistant behaviour, not code) to its own list or discard
-      it, recording which and why
-- [ ] Mark contested classifications as contested rather than resolving them
-      silently
-- [ ] Hand-check one file's machine pass against a person's read
-- [ ] State bucket 1's share of buckets 1–3, per stack
+      defect, not a decision.** All thirteen of its rules are in the register;
+      every plugin's preset was read from its published bundle rather than from
+      its documentation, which is what surfaced findings 1 to 3
+- [x] Pass over each of the seven neutral toolkit files, per file rather than in
+      one sweep — `security.md` read **against** OWASP ASVS. It resolved in
+      ASVS's favour: every one of its twenty-one rules is an ASVS requirement at
+      a coarser grain, and none asserts anything ASVS does not
+- [x] Route bucket 4 (assistant behaviour, not code) to its own list or discard
+      it, recording which and why. **Tracked, not discarded** — thirteen
+      statements listed in `assess.rules.md` § Bucket 4, with the recommendation
+      that Craft does not carry them. Reading `code-quality.md` as one file and
+      routing it whole would have lost the six code properties in its § Errors
+      and § Logging sections
+- [x] Mark contested classifications as contested rather than resolving them
+      silently — fifteen rows, none resolved
+- [x] Hand-check one file's machine pass against a person's read —
+      `rules/clean-code.md`. Five of eight bucket-1 proposals were wrong, in
+      three distinct shapes, and the shapes are why the Instrument column carries
+      `preview` and `off` markers
+- [x] State bucket 1's share of buckets 1–3, per stack — 69% Python, 78% React,
+      21% stack-neutral, with the three qualifications that stop those being
+      read as more than they are
+- [x] Add the `any.` scope to `plan.md`'s naming standard — forty-two properties
+      belong to neither stack, and minting them twice is the duplication the
+      standard exists to prevent. **Added by the stage**, not planned by it
+- [x] Register the six sources the assessment needed and the survey did not
+      have — `eslint-plugin-testing-library`, `commitlint`, `spectral`,
+      `eslint-plugin-promise`, Conventional Commits and the OpenAPI
+      Specification. **Added by the stage**; `survey.sources.md` findings 10 and
+      11 record why they were missing
 
 ## S3 — Review, empirically
 
@@ -99,6 +128,13 @@ One box below is still open; it is not part of that criterion.
 - [ ] Demote what fails, recording the measurement that demoted each one
 - [ ] Have a second reader resolve S2's contested classifications
 - [ ] Re-run until the criteria clear, or record why they cannot be met
+- [ ] Resolve what `@eslint-react`'s `disable-conflict-eslint-plugin-react` and
+      `disable-conflict-eslint-plugin-react-hooks` configs contain, from an
+      installed tree. S2 could not read them from the published bundle and
+      recorded that rather than asserting it — and a React profile naming both
+      plugins without one of these double-reports
+- [ ] Measure what ruff's `preview = true` costs, since two Python properties are
+      reachable only by enabling all 140 preview rules at once
 - [ ] Write `review.noise.md`
 
 ## S4 — Design
