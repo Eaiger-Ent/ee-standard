@@ -9,7 +9,8 @@ repository metadata and licence files, the npm registry for publish dates,
 `curl` for the cited URL, and the pinned clone for `llm-toolkit`. Where GitHub's
 licence detection and the repository's own licence file disagree, the file wins
 and the row says so. Rows were taken on **2026-09-05**; the rows and corrections
-this stage's own review added were taken on **2026-09-06**. The commands are in
+this stage's own review added were taken on **2026-09-06**, as were the six rows
+S2's pass found missing — see findings 10 and 11. The commands are in
 [How to re-run this sweep](#how-to-re-run-this-sweep), because a maintenance
 signal nobody can re-derive is a claim rather than a measurement.
 
@@ -31,7 +32,7 @@ a different kind of source, not a missing one.
 
 | Source | URL | Licence | Maintenance | Authority | Covers |
 | --- | --- | --- | --- | --- | --- |
-| ruff's rule taxonomy | <https://docs.astral.sh/ruff/rules/> | MIT | 0.16.6, released 2026-09-03 | tool | 969 rules across 59 linters at the 0.16.5 this repository pins — pycodestyle, pyflakes, pylint, bugbear, pyupgrade, isort and more, under stable codes with fix availability declared per rule |
+| ruff's rule taxonomy | <https://docs.astral.sh/ruff/rules/> | MIT | 0.16.6, released 2026-09-03 | tool | 969 rules at the 0.16.5 this repository pins — 812 stable, 140 preview, 17 removed — across 58 stable linters. **Corrected 2026-09-06 by S2**, which read the taxonomy as JSON: the 59 counted a rule with no code and no linter — pycodestyle, pyflakes, pylint, bugbear, pyupgrade, isort and more, under stable codes with fix availability declared per rule |
 | PEP 8 — Style Guide for Python Code | <https://peps.python.org/pep-0008/> | **Public domain**, stated in the document's own Copyright section. GitHub reports `NONE` for `python/peps`, which is detection failing rather than an absent grant | Repository last pushed 2026-09-03; the PEP itself is stable by design | stack | Layout, naming, comments, and the explicit instruction that a style rule may be broken when applying it hurts readability |
 | PEP 20 — The Zen of Python | <https://peps.python.org/pep-0020/> | **Public domain**, stated in the document's own Copyright section | Stable; unchanged for years by design | stack | Nineteen aphorisms. Judgment-only in every line — registered because it is the reference other sources appeal to, not because a machine can hold it |
 | PEP 257 — Docstring Conventions | <https://peps.python.org/pep-0257/> | **Public domain**, stated in the document's own Copyright section | Repository last pushed 2026-09-03; the PEP is stable | stack | What a docstring is for, and the one-line and multi-line forms. ruff's entire `D` family implements it through pydocstyle, so this is the authority behind a block of rules the taxonomy alone would leave unexplained |
@@ -50,9 +51,28 @@ a different kind of source, not a missing one.
 | `eslint-plugin-jsx-a11y` | <https://github.com/jsx-eslint/eslint-plugin-jsx-a11y> | MIT | v6.10.2, published to npm **2024-10-26**; repository last pushed 2026-01-06 | tool | Static accessibility rules over JSX. The quietest source registered — see findings |
 | WCAG 2.2 | <https://www.w3.org/TR/WCAG22/> | W3C Document License, read from `w3c/wcag`'s `LICENSE.md`. GitHub reports `NOASSERTION` | Repository last pushed 2026-09-04; the Recommendation itself is stable | standards body | The accessibility requirements the lint plugin above approximates, and the durable authority behind them |
 | Testing Library guiding principles | <https://testing-library.com/docs/guiding-principles/> | MIT | `@testing-library/react` 16.3.3, published 2026-08-27; `dom-testing-library` v10.4.1, 2025-07-27 | tool | What to query, what not to assert, and the principle the query priority encodes |
+| `eslint-plugin-testing-library` | <https://github.com/testing-library/eslint-plugin-testing-library> | MIT | 7.16.2, published to npm 2026-03-24; repository pushed 2026-09-06 | tool | The enforceable half of the row above — query priority, awaiting async utilities, and reaching into the DOM. **Added 2026-09-06 by S2**, which found the principles registered without an instrument |
 | `eslint-plugin-react` | <https://github.com/jsx-eslint/eslint-plugin-react> | MIT | v7.37.5, published to npm 2025-04-03; repository pushed 2026-07-30 | tool | JSX correctness — keys, index-as-key, dangerous props, prop handling. The long-standing plugin, and slowing: no release in seventeen months |
-| `@eslint-react/eslint-plugin` | <https://eslint-react.xyz/docs/rules/overview> | MIT | 5.18.8, published to npm 2026-09-05 — the day this survey was taken | tool | The same ground rewritten for flat config and typed rules. The active successor to the row above, and the plugin `@antfu/eslint-config` actually delegates React to |
+| `@eslint-react/eslint-plugin` | <https://eslint-react.xyz/docs/rules/overview> | MIT | **5.18.9, published to npm 2026-09-06** — 5.18.8 the day before, which is the one row S2's re-run moved | tool | The same ground rewritten for flat config and typed rules. The active successor to the row above, and the plugin `@antfu/eslint-config` actually delegates React to |
 | `@antfu/eslint-config` | <https://github.com/antfu/eslint-config> | MIT | v9.5.1, released 2026-09-02 | community, opinionated | One opinionated flat config, **read as a source and not adopted** — registered to see which rules an opinionated author turns on, and why. Its React coverage is not its own: it delegates to `@eslint-react/eslint-plugin` and `eslint-plugin-react-refresh` (0.5.6, 2026-09-02) through optional peers, both registered or named here rather than left behind the wrapper |
+
+## Stack-neutral instruments and the standards behind them
+
+**Added 2026-09-06 by S2.** These were reached by asking *what would enforce
+this* rather than *what did we register*, which is the right direction and means
+the survey was one pass behind the assessment. Five rows: two instruments the
+assessment's stack-neutral properties cite, one instrument a single React
+property cites, and the two standards the first two approximate — registered alongside
+them for the same reason WCAG is registered alongside `jsx-a11y`. If the tool
+stops, the requirement does not.
+
+| Source | URL | Licence | Maintenance | Authority | Covers |
+| --- | --- | --- | --- | --- | --- |
+| Conventional Commits 1.0.0 | <https://www.conventionalcommits.org/en/v1.0.0/> | MIT, read from `conventional-commits/conventionalcommits.org` | Repository last pushed 2026-03-11; the specification is at 1.0.0 and stable by design | community, widely adopted | The commit message grammar — type, optional scope, description, body and footers, and what a breaking change looks like |
+| `commitlint` | <https://commitlint.js.org/> | MIT | `@commitlint/cli` and `@commitlint/config-conventional` both 21.2.2, published to npm 2026-08-13 | tool | Commit message linting against a configurable rule set; `config-conventional` is the row above expressed as rules |
+| OpenAPI Specification | <https://spec.openapis.org/oas/v3.2.0.html> | Apache-2.0 | 3.2.0, released 2025-09-19; repository pushed 2026-09-01 | standards body | The description format every API row's evidence is written in. Not a source of rules — a source of the artefact the rules are checked against |
+| `spectral` | <https://docs.stoplight.io/docs/spectral/674b27b261c3c-overview> | Apache-2.0 | `@stoplight/spectral-cli` 6.16.3, published to npm 2026-08-03; repository pushed 2026-09-05 | tool | Linting an OpenAPI or AsyncAPI document against a rule set. The instrument behind nine `any.` rows, and it can say nothing about an API with no description document |
+| `eslint-plugin-promise` | <https://github.com/eslint-community/eslint-plugin-promise> | ISC | 7.3.0, published to npm 2026-04-27; repository pushed 2026-09-04 | tool | Promise usage rules. Registered for one property — `prefer-await-to-then` — and the smallest source here; recorded rather than cited informally |
 
 ## Neutral — `llm-toolkit`
 
@@ -146,6 +166,26 @@ source can say what good code is, a *tool* source can only say what that tool
 will flag. Under the old wording the two are indistinguishable, which would have
 let a tool's default set be read at S2 as though a language had blessed it.
 
+**10. A principle was registered without its instrument.** This register listed
+the Testing Library *guiding principles* and nothing that enforces them.
+`eslint-plugin-testing-library` is the enforceable half, it lives under a
+different package and a different organisation, and six React rows in
+`assess.rules.md` cite it across eleven of its rules. This is finding 8 in a second shape: there, a wrapper
+was registered in place of what it wrapped; here, a principle was registered in
+place of what enforces it. Both are the same mistake — registering the thing that
+is easiest to name rather than the thing that does the work. Added 2026-09-06.
+
+**11. The stack-neutral half had no instruments at all.** Nothing in the first
+pass could enforce a commit convention or an API shape, because the survey was
+built by asking *which sources describe good code* and those two questions are
+answered by tools rather than by prose. `commitlint`, `spectral` and
+`eslint-plugin-promise` now carry rows, and so do Conventional Commits 1.0.0 and
+the OpenAPI Specification — the standards they approximate — registered on the
+same reasoning that put WCAG beside `jsx-a11y`. Added 2026-09-06. The general
+lesson is in the section that names them: a survey built only from *what
+describes* will always be one pass behind an assessment that asks *what
+enforces*.
+
 ## What is not registered, and why
 
 - `rules/platform/angular-ts.rules.md`, `bicep.rules.md`, `dotnet.rules.md` and
@@ -198,12 +238,15 @@ trigger rather than only the commands.
 > Every source carries a licence answer and a maintenance signal, and each of the
 > two stacks has at least one source of first-party authority.
 
-**Met.** Eighteen sources: seven Python, ten React, and `llm-toolkit` as one
-source across seven files. Every row carries both answers, including the row
-whose licence answer is *none*. Stack authority exists for both: PEP 8, PEP 20
-and PEP 257 for Python; `react.dev` and `eslint-plugin-react-hooks` for React.
-The criterion survives finding 9 — the rows that were reclassified were tool
-rows either way, and no stack row moved.
+**Met.** Twenty-four sources: seven Python, eleven React, five stack-neutral, and
+`llm-toolkit` as one source across seven files. Every row carries both answers,
+including the row whose licence answer is *none*. Stack authority exists for
+both: PEP 8, PEP 20 and PEP 257 for Python; `react.dev` and
+`eslint-plugin-react-hooks` for React. The criterion survives finding 9 — the
+rows that were reclassified were tool rows either way, and no stack row moved —
+and it survives findings 10 and 11, which added six sources rather than
+invalidating any: the criterion was met by the eighteen and is met by the
+twenty-four.
 
 The criterion says nothing about the consumer question, and this document does
 not tick it. A stage is finished when its criterion is met, not when its boxes
