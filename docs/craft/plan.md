@@ -7,7 +7,7 @@ assistants generate, for two stacks: **Python** and **React**.
 workstream is named **Craft**, settled 2026-09-05 and recorded in the naming
 standard below, because every file, identity and skill name downstream depends
 on it. The decisions this work needs are listed under
-[Decisions this phase owes an ADR](#decisions-this-phase-owes-an-adr), and each
+[Decisions this workstream owes an ADR](#decisions-this-workstream-owes-an-adr), and each
 lands in `docs/adr/` before the thing it governs is built.
 
 Written 2026-09-05 as *Practice*; renamed to *Craft* the same day, before the
@@ -67,9 +67,9 @@ rules. Useful, and nowhere near sufficient.
 "control plane" vocabulary. It overlaps the word "control" and nothing else. Read
 before either term is used loosely.
 
-## The naming standard for this phase
+## The naming standard for this workstream
 
-Deliberately unlike the register's. Nothing in this phase should read as though
+Deliberately unlike the register's. Nothing in this workstream should read as though
 it continues `docs/00`–`17`, and nothing it produces should be mistaken for a
 control.
 
@@ -199,7 +199,7 @@ team reports, not against what the plan predicted.
 **Exit:** criteria named in S3 still hold in use, or the gap is recorded and
 the profile changed.
 
-## Decisions this phase owes an ADR
+## Decisions this workstream owes an ADR
 
 None of these is settled. Each is listed so that it is taken deliberately rather
 than drifted into.
@@ -231,7 +231,7 @@ closing is visible rather than silent:
   may be used. The licence file is still absent, which stays a **finding** the
   survey records rather than a blocker, and it still constrains copying prose.
 
-## What this phase will not do
+## What this workstream will not do
 
 - Fine-tune a model on a ruleset.
 - Vendor another team's prose without a licence.
