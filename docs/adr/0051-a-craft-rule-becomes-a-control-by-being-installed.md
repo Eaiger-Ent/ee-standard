@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-06
-**Revision:** 1
+**Revision:** 2
 
 ## Background
 
@@ -91,8 +91,15 @@ by being written about, argued for, or listed in `docs/craft/`.
    verdict by being wanted badly enough.
 3. **S3 has measured it.** A control that floods on install is worse than no
    control, because it teaches a team to ignore a red build. The measurement is
-   `review.noise.md`'s, and a property that has not been through it is not ready
+   `review.bench.md`'s, and a property that has not been through it is not ready
    to block a merge in somebody else's repository.
+
+**Amended 2026-09-06: the file named in precondition 3 was `review.noise.md`.**
+S3's deliverable was renamed when the stage was rewritten away from a corpus,
+and this record was left pointing at a file that will never exist. The
+precondition is unchanged — a property is not ready until S3 has measured it —
+and what changed is only the name of the document where that measurement is
+written down.
 
 **`any.dependency-vulnerability-scanning` is Craft's to close**, by this route,
 as a new control rather than by widening SUP-002.
@@ -150,3 +157,10 @@ provenance, and it may not keep a second copy of the rule.
 - `docs/craft/assess.rules.md` § Findings, finding 7 — the four properties that
   are already controls and the one that is not quite.
 - `docs/00-concepts.md` — a locus, a pinned tool and a verdict.
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-09-06 | Original decision: a craft property becomes a control by an installer writing the register entry, on three preconditions. | Nathan Carney |
+| 2 | 2026-09-06 | § Decision, precondition 3 corrected: the measurement is `review.bench.md`'s. S3's deliverable was renamed from `review.noise.md` when the stage was rewritten away from a corpus, and this record named a file that will not exist. The decision is unchanged. | Nathan Carney |

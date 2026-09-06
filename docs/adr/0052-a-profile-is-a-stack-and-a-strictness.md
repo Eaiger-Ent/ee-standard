@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-06
-**Revision:** 1
+**Revision:** 2
 
 ## Background
 
@@ -120,7 +120,13 @@ install case.
 age gone, every question of the form *should this repository get more or fewer
 rules* resolves to strictness. If S3 finds that levels alone cannot express what
 teams need, this ADR is what has to be amended, and the evidence for amending it
-will be in `review.noise.md`.
+will be in `review.bench.md`.
+
+**Amended 2026-09-06: that file was named `review.noise.md`.** S3's deliverable
+was renamed when the stage was rewritten away from a corpus, so this paragraph
+sent a reader looking for a document that will never exist. What this ADR would
+be amended *on* is unchanged; only the name of the record holding the evidence
+is.
 
 **The three properties the age question raised are settled and stay settled.** A
 future adopter with an old codebase is not a reason to reopen it. Craft's answer
@@ -146,3 +152,10 @@ more honest claim than a profile that pretends to serve both.
   evidence, stated there as evidence rather than as a conclusion.
 - `docs/craft/assess.contested.md` rows 9, 10 and 11 — the codebase-age
   candidate, and what removing it resolves.
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-09-06 | Original decision: two axes — stack and strictness — with no archetype axis and no codebase-age axis, and the stack-neutral rules gating on evidence. | Nathan Carney |
+| 2 | 2026-09-06 | § Consequences corrected: the evidence for amending this ADR will be in `review.bench.md`. S3's deliverable was renamed from `review.noise.md` when the stage was rewritten away from a corpus, and this record named a file that will not exist. The decision is unchanged. | Nathan Carney |
