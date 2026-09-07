@@ -16,6 +16,15 @@ witnesses below are those, one section per group, and
 `docs/craft/review.bench.md` § What fought records the partition that says which
 groups there are.
 
+**C2's deliberate violations.** C2 asks for a verdict in both directions: clean
+over the scaffold, and non-zero on defects with the rule that caught each one
+named. One defect per selected ruff family, and one for every React rule the
+profile enables or escalates against its own plugin's default. They live outside
+`src/` for the same reason the probes do - a directory of defects inside the
+clean run would make that run impossible by construction - and
+`react/violations.config.js` is the profile *pointed at another directory*
+rather than a second copy of it.
+
 **C8's control.** C8 asks what ruff's `preview = true` costs. The answer turned
 out to depend on how the selection is spelled, so the case carries its own
 `ruff.toml` — the profile plus preview and the two rules preview reaches — and a
@@ -43,6 +52,8 @@ Then, from `temp/craft-bench/`:
 
     cd python && ruff check --config src/ruff.toml cases/src
     cd python && ruff check --config ruff.toml cases/tests
+    cd python && ruff check --config ruff.toml cases/violations # C2, expected to fire
+    cd react  && npx eslint --config violations.config.js violations  # C2, ditto
     cd python && ruff check cases/preview                      # C8, expected to fire
     cd python && ruff check --config ruff.toml cases/preview    # C8, expected clean
     cd python && ruff check --config ruff.toml cases/probes     # C5, expected to fire
@@ -409,6 +420,384 @@ class Wide:
     def m25(self) -> int:
         \"\"\"One of many.\"\"\"
         return 25
+""",
+    "python/cases/violations/python_violations.py": """\
+\"\"\"C2's deliberate violations: one defect per selected rule family.
+
+Every line here is wrong on purpose. The file is linted, never imported and
+never run - it exists so that "the configuration produces a verdict in both
+directions" is a run rather than a claim, and so that a family which has
+silently stopped firing cannot look like a family with nothing to say.
+
+It carries no `__init__.py` on purpose either: that is the INP001 defect.
+\"\"\"
+
+from typing import Optional  # I001 + UP045: unsorted, and a legacy Optional
+import hashlib
+import logging
+import os.path
+
+from .. import something  # TID252: a relative import from the parent
+
+BUILTIN = 1
+
+
+class lowercase_class:  # N801: not PascalCase
+    defaults = {}  # RUF012: a mutable class default, unannotated
+
+    def reach(self, other: "lowercase_class") -> int:
+        return other._private  # SLF001: private member access
+
+
+def mutable_default(items: list[int] = []) -> None:  # B006: mutable default
+    \"\"\"Two defects: the default above, and the unused argument below.\"\"\"
+
+
+def unused_argument(used: int, ignored: int) -> int:  # ARG001: never read
+    return used
+
+
+def positional_flag(value: int, verbose: bool) -> int:  # FBT001: a boolean trap
+    return value if verbose else 0
+
+
+def rebind_global() -> None:
+    global BUILTIN  # PLW0603: rebinding module state
+    BUILTIN = 2
+
+
+def blind() -> None:
+    try:
+        rebind_global()
+    except Exception:  # BLE001: catches everything
+        pass  # S110 + SIM105: swallowed in silence
+
+
+def bare() -> None:
+    try:
+        rebind_global()
+    except:  # E722: a bare except
+        raise ValueError("no context")  # B904: raised without `from`
+
+
+def naive_time() -> object:
+    import datetime  # PLC0415 is not selected; this is here for DTZ below
+
+    return datetime.datetime.now()  # DTZ005: no timezone
+
+
+def weak_hash(payload: bytes) -> str:
+    return hashlib.md5(payload).hexdigest()  # S324: an insecure hash
+
+
+def joined(root: str, name: str) -> str:
+    return os.path.join(root, name)  # PTH118: os.path rather than pathlib
+
+
+def unnecessary_call(values: list[int]) -> list[int]:
+    return list([value for value in values])  # C411: a list around a comprehension
+
+
+def appended(values: list[int]) -> list[int]:
+    out = []
+    for value in values:
+        out.append(value * 2)  # PERF401: an append loop
+    return out
+
+
+def legacy(value: Optional[int]) -> int:  # UP045: not PEP 604
+    return value or 0
+
+
+def many(a: int, b: int, c: int, d: int, e: int, f: int) -> int:  # PLR0913
+    return a + b + c + d + e + f
+
+
+def long_body() -> int:
+    \"\"\"PLR0915: past the twenty-five statements C6 settled on.\"\"\"
+    n01 = 1
+    n02 = 2
+    n03 = 3
+    n04 = 4
+    n05 = 5
+    n06 = 6
+    n07 = 7
+    n08 = 8
+    n09 = 9
+    n10 = 10
+    n11 = 11
+    n12 = 12
+    n13 = 13
+    n14 = 14
+    n15 = 15
+    n16 = 16
+    n17 = 17
+    n18 = 18
+    n19 = 19
+    n20 = 20
+    n21 = 21
+    n22 = 22
+    n23 = 23
+    n24 = 24
+    n25 = 25
+    n26 = 26
+    return (
+        n01 + n02 + n03 + n04 + n05 + n06 + n07 + n08 + n09 + n10 + n11 + n12 + n13
+        + n14 + n15 + n16 + n17 + n18 + n19 + n20 + n21 + n22 + n23 + n24 + n25 + n26
+    )
+
+
+def logged(count):  # ANN001 + ANN201: unannotated
+    logging.info(f"count is {count}")  # G004 + LOG015: f-string, root logger
+
+
+def tangled(values: list[int]) -> int:
+    \"\"\"C901: past the complexity ceiling of ten.\"\"\"
+    total = 0
+    for value in values:
+        if value == 1:
+            total += 1
+        elif value == 2:
+            total += 2
+        elif value == 3:
+            total += 3
+        elif value == 4:
+            total += 4
+        elif value == 5:
+            total += 5
+        elif value == 6:
+            total += 6
+        elif value == 7:
+            total += 7
+        elif value == 8:
+            total += 8
+        elif value == 9:
+            total += 9
+        else:
+            total -= 1
+    return total
+
+
+# result = joined("a", "b")
+def trailing() -> int:
+    return 1
+""",
+    "python/cases/violations/test_violations.py": """\
+\"\"\"C2's deliberate violations for the pytest family, which only fire in a test.
+
+Linted, never collected. `pytest` is imported for the decorators the rules read.
+\"\"\"
+
+from __future__ import annotations
+
+import pytest
+
+
+@pytest.mark.parametrize("value,expected", ((1, 2), (2, 3)))  # PT006 + PT007
+def test_parametrised(value: int, expected: int) -> None:
+    assert value + 1 == expected
+
+
+def test_raises_too_broad() -> None:
+    with pytest.raises(Exception):  # PT011: no `match`, and too broad
+        raise ValueError
+
+
+def test_raises_with_multiple_statements() -> None:
+    with pytest.raises(ValueError, match="x"):  # PT012: more than one statement
+        value = 1
+        raise ValueError(value)
+
+
+def test_composite_assertion() -> None:
+    value = 2
+    assert value > 0 and value < 10  # PT018: a composite assertion
+""",
+    "react/violations/Violations.tsx": """\
+/* Every defect in this file is deliberate. */
+import { createContext, useEffect, useState, forwardRef, useContext } from 'react'
+import * as React from 'react'
+
+const NumberContext = createContext<{ n: number } | null>(null)
+
+export class Legacy extends React.Component {
+  render() {
+    return <div />
+  }
+}
+
+export function Unknown() {
+  return <div class="wrong" />
+}
+
+export function TargetBlank() {
+  return <a href="https://example.com" target="_blank">Away</a>
+}
+
+export function DuplicateKeys() {
+  return (
+    <ul>
+      <li key="a">one</li>
+      <li key="a">two</li>
+    </ul>
+  )
+}
+
+export function LeakedConditional({ count }: { count: number }) {
+  return <div>{count && <p>some</p>}</div>
+}
+
+export function UnstableContext({ n }: { n: number }) {
+  return (
+    <NumberContext.Provider value={{ n }}>
+      <span />
+    </NumberContext.Provider>
+  )
+}
+
+export function DerivedInEffect({ first, last }: { first: string; last: string }) {
+  const [full, setFull] = useState('')
+  useEffect(() => {
+    setFull(`${first} ${last}`)
+  }, [first, last])
+  return <p>{full}</p>
+}
+
+export function IncompleteDeps({ id }: { id: string }) {
+  const [seen, setSeen] = useState('')
+  useEffect(() => {
+    setSeen(id)
+  }, [])
+  return <p>{seen}</p>
+}
+
+export function IndexKeys({ rows }: { rows: string[] }) {
+  return (
+    <ul>
+      {rows.map((row, index) => (
+        <li key={index}>{row}</li>
+      ))}
+    </ul>
+  )
+}
+
+export const Forwarded = forwardRef<HTMLDivElement>((_props, ref) => <div ref={ref} />)
+
+export function UsesContext() {
+  const value = useContext(NumberContext)
+  return <span>{value?.n}</span>
+}
+
+export function CommentTextNode() {
+  return <div>// this renders as text</div>
+}
+
+export function Dangerous({ html }: { html: string }) {
+  return <div dangerouslySetInnerHTML={{ __html: html }} />
+}
+
+export function RoleOverTag() {
+  return <div role="button" tabIndex={0} onClick={() => {}} onKeyDown={() => {}} />
+}
+
+export function BadLang() {
+  return <html lang="foo" />
+}
+
+export function MisusedPromise({ save }: { save: () => Promise<void> }) {
+  return <button type="button" onClick={save} />
+}
+
+export function Leaks({ el }: { el: HTMLElement }) {
+  useEffect(() => {
+    el.addEventListener('click', () => {})
+    setTimeout(() => {}, 100)
+    setInterval(() => {}, 100)
+    void fetch('/x')
+    new IntersectionObserver(() => {}).observe(el)
+    new ResizeObserver(() => {}).observe(el)
+  }, [el])
+  return null
+}
+
+export function UnlabelledControl() {
+  return (
+    <form>
+      <input type="text" />
+    </form>
+  )
+}
+""",
+    "react/violations/types.ts": """\
+/* Deliberate: the type-aware @typescript-eslint rules, plus the two scoped ones. */
+declare const loose: any
+
+export function unsafeReturn() {
+  return loose
+}
+export function unsafeCall(): void {
+  loose()
+}
+export function unsafeMember(): unknown {
+  return loose.field
+}
+export function unsafeAssign(): void {
+  const taken: string = loose
+  void taken
+}
+export function unsafeArgument(): void {
+  JSON.stringify(loose as string, loose)
+}
+export function nonNull(value?: string): number {
+  return value!.length
+}
+export function thrown(): void {
+  throw 'a string, not an Error'
+}
+export async function work(): Promise<void> {
+  await Promise.resolve()
+}
+export function floating(): void {
+  work()
+}
+""",
+    "react/violations.config.js": """\
+// C2's violation configuration. **It is not the profile** — it is the profile
+// pointed at another directory.
+//
+// The deliberate defects cannot live under `src/`, because C2's other half is a
+// clean run over `src/` and a directory of defects would make that impossible
+// by construction. So the profile's blocks are remapped from `src/` to
+// `violations/`, which keeps one definition of what is enabled: if a rule is
+// dropped from the profile it stops being demonstrated here too, rather than
+// this file quietly asserting a rule the profile no longer has.
+import profile from './eslint.config.js'
+
+const remap = (pattern) =>
+  pattern.startsWith('src/') ? pattern.replace(/^src\\//, 'violations/') : pattern
+
+export default profile.map((block) => {
+  const moved = { ...block }
+  if (Array.isArray(block.files)) moved.files = block.files.map(remap)
+  if (Array.isArray(block.ignores)) moved.ignores = block.ignores.map(remap)
+  if (block.languageOptions?.parserOptions?.projectService) {
+    moved.languageOptions = {
+      ...block.languageOptions,
+      parserOptions: {
+        ...block.languageOptions.parserOptions,
+        projectService: false,
+        project: './tsconfig.violations.json',
+      },
+    }
+  }
+  return moved
+})
+""",
+    "react/tsconfig.violations.json": """\
+{
+  "extends": "./tsconfig.json",
+  "include": ["violations"]
+}
 """,
     "react/src/cases/Witness.tsx": """\
 import { createContext, useCallback, useMemo, useState } from 'react'

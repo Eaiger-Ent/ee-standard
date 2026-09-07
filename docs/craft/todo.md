@@ -256,6 +256,20 @@ indistinguishable from a completed one.
       declined, since declining is S4's. One risk is named rather than
       dismissed: preview also gates behaviour changes to stable rules, and a
       clean diff over the scaffold and witnesses is not a guarantee
+- [x] Show the configuration running in both directions, and every rule the
+      profile enables against its own plugin's default firing on a case written
+      for it — C2. **Added by the stage**: the criterion had no box, and the
+      evidence it asks for is more than a document section. Done 2026-09-07.
+      Clean in both stacks, and non-zero on `cases/violations`, where **all 26
+      selected ruff families fire from 37 rules**. The React checklist is
+      derived rather than taken from the register's ten: **32 rules**, twenty
+      enabled where the plugin ships them off or absent and **twelve whose
+      severity is raised**, all 32 demonstrated. Eleven of the twelve are
+      `@eslint-react` rules shipped at `warn`, which in a merge gate is a rule
+      that looks enabled and blocks nothing — finding 1's shape a second time.
+      **The scaffold was not clean when the configuration met it**: five
+      findings, including three `E501`s at this repository's 100 columns rather
+      than the profile's 88
 - [ ] Demote what fails, recording the case that demoted it
 - [x] Have a second reader resolve S2's contested classifications. Done
       2026-09-06: every recommendation in
