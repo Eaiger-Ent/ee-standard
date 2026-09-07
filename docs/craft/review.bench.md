@@ -12,8 +12,9 @@ own output against a mark it drew afterwards has measured nothing — which is w
 `plan.md` § S3 puts the ordering first and why this file exists before there is
 anything to put in its second half.
 
-As of 2026-09-06 only the first half exists. The sections it owes are named at
-the end so their absence is visible rather than inferred.
+The second half began on 2026-09-07 with the candidate configuration. The
+sections still owed are named at the end so their absence is visible rather
+than inferred.
 
 ## What this stage is measuring, and what it stopped measuring
 
@@ -49,10 +50,11 @@ this stage and it is not a sample of anything.
 gitignored, the same place S1 put its `llm-toolkit` clone. The first attempt
 committed the tree and this repository rejected it, correctly and twice over:
 
-- A scaffold's `pyproject.toml` grows a `[tool.ruff]` section at the next step,
-  and ruff resolves every file against the *nearest* configuration. A tracked
-  one would quietly become the lint definition `ruff check .` applies to part of
-  this tree, in a repository whose central invariant is that there is one.
+- A scaffold grows a ruff configuration of its own at the next step — a
+  `ruff.toml`, as it turned out — and ruff resolves every file against the
+  *nearest* one. A tracked config would quietly become the lint definition
+  `ruff check .` applies to part of this tree, in a repository whose central
+  invariant is that there is one.
 - Tracked Python that must **fail** a check cannot coexist with TYP-001 and
   LNT-001, which claim all first-party source and admit no exemption. The
   committed attempt failed
@@ -361,12 +363,120 @@ three clauses hold, however many of C1 to C9 are ticked** — the same rule
 `todo.md` states about boxes, applied to a document that could otherwise grade
 itself generously by counting its own headings.
 
+## The candidate configuration
+
+Built **2026-09-07** from the resolved register, and materialised by
+[`scripts/craft_profile.py`](../../scripts/craft_profile.py) into the same
+gitignored `temp/craft-bench/` the scaffolds are written to.
+
+**It is a second script rather than more of `craft_scaffold.py`, and the split
+is the bench's.** The scaffold is the *subject*; this is the *instrument*. S3
+varies the instrument — a demotion, `preview = true` for C8, a probe flipped on
+for C5 — and must leave the subject exactly as it was, which it cannot do if the
+two share a file. It also means the Python configuration is a `ruff.toml`
+beside the scaffold's `pyproject.toml` rather than a `[tool.ruff]` section
+inside it. Which surface the *installed* profile writes is S4's question and
+this file does not answer it.
+
+| | Python | React |
+| --- | --- | --- |
+| Written to | `python/ruff.toml`, `python/src/ruff.toml` | `react/eslint.config.js` |
+| At | ruff 0.16.5 | ESLint 9.39.5, plus the six plugins the scaffold pins |
+| Size | 65 selectors resolving to **141 rules** | **89 rules named on**, plus one named `off`, over two preset bases |
+| Presets used | none — ruff's default `E4`, `E7`, `E9`, `F` is replaced outright | `@eslint-react` `recommended` and `jsx-a11y` `recommended`, and no others |
+
+The 141 is the selection expanded against the pinned taxonomy, not against a
+ruff run: **none of the 141 is a preview rule and none is removed**, which is
+what C8 predicted — `python.nesting-depth` and `python.class-size` are the two
+properties preview would reach, and neither is selected.
+
+**Two rules of construction, both of them the register's.** Presets are used
+where the register names a preset and nowhere else: `@eslint-react`'s
+`recommended` because the register resolved `react.no-legacy-proptypes` and
+`react.jsx-runtime-assumed` by choosing it, `jsx-a11y`'s because the register
+counts five of its rules as inherited rather than keyed. And **every rule the
+register names is written out even where a base already enables it** — finding 1
+is a rule this workstream wants that its plugin ships `off`, and the same
+mechanism removes a rule from a preset in a later release without saying so.
+
+### Where the citation had to be read more closely than it was written
+
+Nine places. None of them is a change to the register: each is what building a
+configuration from a prose citation costs, and every one is a candidate finding
+for the Craft register's schema at S4, where an instrument is data rather than a
+sentence.
+
+| # | The register says | The configuration does | Why |
+| --- | --- | --- | --- |
+| 1 | `python.annotate-public-api` — ruff `ANN001`, `ANN201`, `ANN2xx` | Selects `ANN001`, `ANN201`, `ANN204`, `ANN205`, `ANN206` | `ANN202` is the *private* function's return type and the property says public. Reading `ANN2xx` literally would enforce the opposite of what the row asserts |
+| 2 | the same row | Leaves out `ANN002` and `ANN003` | `*args` and `**kwargs` annotations are not cited, and a configuration that adds what it was not given is not built from the register |
+| 3 | `python.timezone-aware-datetimes` — `DTZ001`–`DTZ012` | Selects the linter, `DTZ` | The range predates `DTZ901`, which asserts the same property under 0.16.5 |
+| 4 | `python.pathlib-over-os-path` — `PTH100`–`PTH210` | Selects `PTH` | Same shape: `PTH211` is outside the range and inside the property |
+| 5 | `python.naming-form` — `N801`–`N818` | Selects `N` | Same shape again: `N999` |
+| 6 | `python.no-assert-for-enforcement` — `S101` **scoped to the package source path** | A nested `src/ruff.toml` that extends the root and adds `S101` | Ruff has no per-path *select*. It has `per-file-ignores`, which is the exemption the resolution rejected. The scope costs a second configuration file, and an installer writing this profile writes two |
+| 7 | `react.list-keys`, `react.no-unknown-dom-property`, `react.safe-external-links`, `react.no-deprecated-api`, `react.props-and-state-immutable` — an `eslint-plugin-react` rule **and** an `@eslint-react` rule | Takes the `@eslint-react` instrument in every case | Naming both is finding 2's double-report at a different pair of plugins. One property, one instrument |
+| 8 | `react.no-comment-textnodes` — `react/jsx-no-comment-textnodes` | Takes `@eslint-react/jsx-no-comment-textnodes` | The plugin the register did not cite here has the rule, and the citation is the only reason to prefer the one that would drag a second plugin's preset in |
+| 9 | `react.explicit-return-types` — exported non-component functions | `@typescript-eslint/explicit-module-boundary-types` on `src/**/*.ts` and not on `*.tsx` | A file pattern is the closest ESLint gets to "not a component". A component written in a `.ts` file defeats it, which is a real limit and C6's to settle |
+
+Row 7 has a consequence worth stating on its own. **`eslint-plugin-react` ends
+up carrying exactly one rule** — `jsx-no-duplicate-props`, the one property in
+the register with no `@eslint-react` instrument. The plugin is one rule away
+from being unnecessary, which is the shape of the answer the C9 coverage
+question is looking for rather than the answer itself.
+
+### What this already puts to the criteria, without settling any of it
+
+Three things the build ran into. Each belongs to a criterion that has not been
+run yet, and each is recorded here so the criterion meets it rather than
+discovers it.
+
+- **C1 asks for both `disable-conflict` configs applied; this configuration
+  applies one.** `disable-conflict-eslint-plugin-react-hooks` is applied,
+  because `react-hooks` owns the nine names finding 2 lists.
+  `disable-conflict-eslint-plugin-react` is not, because nothing from
+  `eslint-plugin-react`'s presets is installed and a single rule outside them
+  has nothing to stand down. Whether C1's clause is satisfied, unsatisfiable, or
+  pointing at a better configuration is C1's to decide — the criterion is not
+  edited to fit what was built.
+- **C4 has a candidate pair that finding 2 does not list.**
+  `react-hooks/static-components` and
+  `@eslint-react/no-nested-component-definitions` are cited by the register for
+  one property, `react.no-nested-component-definitions`, under two different
+  rule names — so the conflict config, which works by name, will not separate
+  them. Both are selected, deliberately, so that C4 has the pair in front of it.
+- **C9's premise is off by one.** The installed `eslint-plugin-react` 7.37.5
+  carries **103** rules, not the 104 `todo.md` names. The coverage question is
+  unchanged; the number it is asked against is corrected here.
+
+### What has not happened
+
+**Nothing in either configuration has been run.** The React config's module
+loads and its imports resolve, which was checked while writing it and is not
+C1: `eslint --print-config` over one file of each kind is C1, and it has not
+been run. The ruff selection has been expanded against the pinned taxonomy and
+not passed to ruff.
+
+Two settings are carried at ruff's own defaults and marked provisional in the
+file, because they are C6's to justify and C6 has not run: `max-complexity = 10`
+and `max-statements = 50`, both halves of `python.function-length`.
+`line-length = 88` is the register's own proposal and satisfies its constraint
+by construction — one key serves `ruff format` and `E501`, so the two cannot
+disagree — but the number still owes C6 its paragraph.
+
+One question the build could not answer and C1 can. `target-version` is absent
+from `ruff.toml`, deliberately, on the same reasoning `CLAUDE.md` gives for this
+repository: ruff derives the floor and writing it out is a second copy. Whether
+ruff still derives it from `requires-python` in a *sibling* `pyproject.toml`
+when the configuration it is reading is a `ruff.toml` is not something reading
+the taxonomy answers.
+
 ## What this document still owes
 
 Named so their absence is visible, in the order they will be written:
 
-- **The candidate configuration** — the default-on selection per stack, built
-  from the resolved register.
+- ~~**The candidate configuration** — the default-on selection per stack, built
+  from the resolved register.~~ Written 2026-09-07 — § The candidate
+  configuration.
 - **What ran** — C1, C2, C4 and C8, with versions and commands.
 - **What fought** — C3's pass: the method, the pairs cleared, and anything found.
 - **What was probed** — C5, one case per rule, with the outcome of each.

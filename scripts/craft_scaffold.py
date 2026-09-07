@@ -46,12 +46,11 @@ FILES: dict[str, str] = {
 # for, on its first day. It is written for `docs/craft/review.bench.md` and is
 # not a sample of anything.
 #
-# No `[tool.ruff]` section yet. The candidate default-on selection is the next
-# step of S3, and writing it here before it is built would make this file the
-# configuration rather than the thing the configuration runs against. Until it
-# arrives, ruff resolves these files against the repository root's config, which
-# is what keeps this directory honest: a scaffold that cannot pass the lint of
-# the repository carrying it is a scaffold of bad code.
+# No `[tool.ruff]` section, and there will not be one. The candidate default-on
+# selection lives in a `ruff.toml` beside this file, written by
+# `scripts/craft_profile.py`, so that the bench can vary the configuration
+# without touching the code it is measuring. This file is the subject; that one
+# is the instrument.
 
 [project]
 name = "ledger"
