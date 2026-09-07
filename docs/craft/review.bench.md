@@ -669,6 +669,134 @@ are not a coverage question. They are recorded here so that "64 rules have no
 counterpart" cannot later be read as a gap when 56 of them are a surface nobody
 selected.
 
+## What fought — C3, the contradiction pass
+
+Run **2026-09-07**. C3 asks for an exhaustive pass **by a method recorded here
+rather than by having looked**, and for the pairs cleared as well as any found.
+The method is three passes and a stated limit; the result is **no contradicting
+pair among the selected rules**, one rule-versus-configuration conflict that
+measurement dissolved, and seven pairs cleared by name.
+
+### The method
+
+**A pair contradicts if satisfying one *necessarily* violates the other on code
+that is otherwise correct.** That word is what makes the search tractable: a
+single piece of code where both rules **apply** and both are **satisfied**
+refutes it. So the pass is not an argument about 9,870 pairs; it is a reduction
+followed by witnesses.
+
+**Pass 1 — the formatter.** `python.consistent-formatting` is met by running
+`ruff format`, so a selected rule that fights the formatter is a contradiction
+between two things this profile requires. Ruff answers this itself.
+
+```bash
+ruff format --check --config ruff.toml src      # the candidate selection
+```
+
+It prints no warning. **That negative result is only worth something because the
+check was shown able to fire**: the same command over a copy of the selection
+with `COM812`, `ISC001` and `W191` added prints
+
+> warning: The following rule may cause conflicts when used with the formatter:
+> `missing-trailing-comma` (`COM812`) …
+
+so the silence over the candidate selection is ruff saying nothing is wrong
+rather than ruff not looking.
+
+**Pass 2 — reduce by construct.** Two rules can only contradict if both can
+apply to the same construct. Each of the 141 selected rules is assigned the
+construct it constrains, and only pairs inside one construct are candidates.
+Then one further removal: within a family whose rules target **disjoint**
+constructs by construction — `PTH`, `DTZ`, `N`, `C4`, `ARG`, `G` — no two rules
+can apply to one expression at all, so no pair inside them is a candidate
+either.
+
+| | Pairs |
+| --- | --- |
+| Brute force over 141 rules | 9,870 |
+| Same construct | 1,220 |
+| **After removing the disjoint-target families** | **273** |
+
+| Construct | Rules | Candidate pairs |
+| --- | --- | --- |
+| signature | 20 | 180 |
+| security-sensitive call | 7 | 21 |
+| test | 7 | 21 |
+| comprehension | 20 | 19 |
+| exception handler | 6 | 15 |
+| binding | 4 | 6 |
+| logging call | 5 | 4 |
+| import | 3 | 3 |
+| line layout | 3 | 3 |
+| body size | 2 | 1 |
+| filesystem call, datetime call, name | 35, 10, 16 | 0 — disjoint targets |
+| attribute access, comment, suppression | 1 each | 0 — nothing to pair with |
+
+**Pass 3 — a witness per construct.** For each group, one piece of code in which
+every rule in the group applies and every rule is satisfied. A clean witness
+clears every pair in its group at once. The witnesses are
+[`scripts/craft_cases.py`](../../scripts/craft_cases.py) — committed, because a
+cleared pair nobody can re-derive is a claim.
+
+```bash
+cd temp/craft-bench/python && ruff check --config src/ruff.toml cases/src
+cd temp/craft-bench/python && ruff check --config ruff.toml cases/tests
+cd temp/craft-bench/react  && npx eslint src && npx tsc --noEmit
+```
+
+All clean, and the Python test witness's four tests pass. The React witness
+type-checks as well as lints, because "otherwise correct code" has to compile
+before a lint result about it means anything.
+
+**The limit, stated rather than left to be found.** The construct partition is a
+judgement, not a proof: a pair that contradicts only through some third
+construct would pass straight through it. And a witness clears the shapes it
+exercises, not every shape of its group. This pass is a reduction plus evidence,
+and it is stronger than reading 273 pairs and weaker than deciding 9,870.
+
+### The pairs worth naming, and why each is clear
+
+| Pair | Why it is not a contradiction |
+| --- | --- |
+| `jsx-a11y/no-static-element-interactions` ↔ `jsx-a11y/prefer-tag-over-role` | **The sharpest one.** A `div` with an `onClick` and no role trips the first; add `role="button"` and it trips the second. Neither horn is satisfiable — and that is the point: both are satisfied by a native `<button>`, which is the fix both rules were asking for. A pair that cannot be satisfied *in the construct it complains about* is not contradictory if the correct code is a different construct |
+| `@eslint-react/no-missing-key` ↔ `@eslint-react/no-array-index-key` | A key is required and the index is banned. A stable id satisfies both; the pair only bites where there is no id, which is a data problem rather than a rule fight |
+| `react-hooks/exhaustive-deps` ↔ `preserve-manual-memoization` ↔ `use-memo` | One dependency array satisfies all three. The witness carries a `useCallback` inside a `useMemo`'s dependencies, which is where they would collide if they did |
+| `@typescript-eslint/no-floating-promises` ↔ `no-misused-promises` | The first wants the promise handled, the second wants the handler not to *be* a promise. A `void`-returning handler that calls `.catch()` satisfies both |
+| ruff `SIM105` ↔ `S110`, `S112` | The register flagged this one itself and restated the property as *explicit* suppression. `contextlib.suppress` — SIM105's own fix — is not a `try/except/pass`, so the other two do not fire on it |
+| ruff `FBT001`, `FBT002` ↔ `PLR0917` | FBT's remedy is to make the boolean keyword-only, which *reduces* the positional count `PLR0917` limits. They pull the same way |
+| ruff `E501` ↔ `ruff format` | Not a rule pair but the documented residue: the formatter cannot split a long string or comment, so `E501` can still fire on formatted code. It is a leftover finding rather than a fight, and `line-length` is one key serving both |
+
+### The one thing that did fight, and what settled it
+
+**`INP001` against pytest's own layout guidance.** `python.test-layout` cites
+two instruments — ruff `INP001` and pytest's import-mode configuration — and on
+the scaffold they disagreed: `INP001` fires on every test file in a directory
+with no `__init__.py`, which is the layout pytest's good practices describe for
+a `src` project.
+
+This is worse than a pair contradiction if it holds, because it is a property's
+two instruments contradicting each other. **It does not hold, and the way that
+was settled was to try it rather than to argue it:**
+
+```bash
+touch cases/tests/__init__.py
+ruff check --config ruff.toml cases/tests   # INP001 gone
+python -m pytest cases/tests                 # 4 passed
+```
+
+Both instruments are satisfied by the same tree. `INP001` is a layout
+requirement rather than a conflict, and what it costs is one empty file. **The
+scaffold owes that file**, and its absence is one of the findings C2 has to
+clear rather than a demotion C3 makes.
+
+### What was already known and stays out
+
+`python.return-count` is the register's one `incompatible` row — ruff `PLR0911`
+counts exit points and an early return is the recommended fix for the nesting
+`clean-code 102` warns about. It is **not selected**, so it is not a pair this
+pass could find; it is recorded here so that "no contradicting pair among the
+selected rules" is read as what it says.
+
 ## What this document still owes
 
 Named so their absence is visible, in the order they will be written:
@@ -678,7 +806,8 @@ Named so their absence is visible, in the order they will be written:
   configuration.
 - **What ran** — ~~C1~~ done 2026-09-07; C2, C4 and C8 still owed, with
   versions and commands.
-- **What fought** — C3's pass: the method, the pairs cleared, and anything found.
+- ~~**What fought** — C3's pass: the method, the pairs cleared, and anything
+  found.~~ Done 2026-09-07 — § What fought.
 - **What was probed** — C5, one case per rule, with the outcome of each.
 - **What each rule costs** — C7's table.
 - **The four numbers** — C6, each with its rationale.
