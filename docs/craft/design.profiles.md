@@ -4,7 +4,9 @@ Stage **S4** of [`plan.md`](plan.md). What gets built, decided before it is
 built.
 
 **Four of this stage's decisions were taken ahead of it**, on 2026-09-06, and are
-Accepted ADRs: [0051](../adr/0051-a-craft-rule-becomes-a-control-by-being-installed.md)
+Accepted ADRs — a fifth,
+[0055](../adr/0055-craft-writes-into-a-gated-section.md), was produced by this
+document's first section rather than ahead of it: [0051](../adr/0051-a-craft-rule-becomes-a-control-by-being-installed.md)
 on the craft/register boundary, [0052](../adr/0052-a-profile-is-a-stack-and-a-strictness.md)
 on the profile model, [0053](../adr/0053-the-craft-mapping-is-register-data.md) on
 where the mapping lives, and [0054](../adr/0054-craft-cites-its-sources-and-copies-none.md)
@@ -19,7 +21,7 @@ than one that says which half.
 
 Started **2026-09-07**.
 
-## What the four ADRs left to this stage
+## What the ADRs taken ahead of this stage left it
 
 | ADR settled | S4 owes |
 | --- | --- |
@@ -166,12 +168,18 @@ section's, not this one's — C5 measured that its narrow cousin `ANN401` alread
 fires on a legitimate `repr` helper, and the wide key would flag every
 `dict[str, Any]` a JSON boundary needs.
 
-**What this does not decide.** Whether a Craft profile may write into
-`[tool.mypy]` at all is a boundary question: that section is TYP-001's gated
+**The boundary question this raised, and how it was answered.** Writing into
+`[tool.mypy]` at all is a boundary question — that section is TYP-001's gated
 configuration, and a Craft profile editing it is a craft rule touching a
-control's surface without crossing ADR 0051's route. The register's
-`variance: narrowing-only` says adding a key is permitted; it does not say
-whether Craft is the thing that should add it. Recorded as owed.
+control's surface without crossing ADR 0051's route. It turned out not to be
+about mypy: a craft rule installed into *any* mandated tool blocks a merge under
+a control's name while appearing in neither register, which is already true of
+every ruff selector this profile writes. `[tool.mypy]` is only where it became
+visible, because that section has a control reading its contents.
+[ADR 0055](../adr/0055-craft-writes-into-a-gated-section.md) settles it:
+**Craft may write into a gated section, may never write a key that control
+asserts, and records every key it writes.** `disallow_any_explicit` is not a key
+TYP-001 asserts, so a Python strictness level may set it.
 
 ### What pins the tool version
 
@@ -232,6 +240,9 @@ generated half holds. The pinned half is the lockfile's, per the section above.
 Named now so that a reader can tell a gap from an omission, and so that a later
 slice cannot quietly drop one.
 
+One row less than this section first carried: the `[tool.mypy]` question it
+raised was answered by ADR 0055 rather than by a later slice.
+
 | Owed | Which box in `todo.md` |
 | --- | --- |
 | The strictness levels: how many, what each turns on, and what names them | Specify the profile: its axes, its naming, its versioning |
@@ -239,9 +250,9 @@ slice cannot quietly drop one.
 | What happens when a profile changes under a repository that installed it — including whether **removing** a rule from a level is a loosening under LNT-001's `variance: narrowing-only` | Specify what happens when a profile changes |
 | The Craft register's schema, and its answer to ADR 0053's unresolved question about `assess.rules.md` | Write `design.profiles.md` |
 | Which artefact gates each `any.` group, and where the installer records what it switched on | ADR 0052's evidence-gate consequence |
-| Whether a Craft profile may write into `[tool.mypy]`, which is TYP-001's gated surface | Raised by § The type checker above |
 | S3's remaining hand-forwards: one instrument per property, and the range-versus-linter citation the register has to choose between | `review.bench.md` § What S3 hands forward, items 1 and 2 |
 
-`plan.md`'s exit criterion for S4 is *every ADR it names is Accepted*. The four
-above are, which does not finish the stage: this document is the deliverable, and
-it is one section long.
+`plan.md`'s exit criterion for S4 is *every ADR it names is Accepted*. All five
+are — the four taken ahead of the stage, and ADR 0055, which this document's
+first section produced. That does not finish S4: the deliverable is this
+document, and it is one section long.
