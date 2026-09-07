@@ -7,7 +7,7 @@ to *decide a criterion*, and it is a third file because a case has a different
 lifetime from both. A case exists to answer one question, it is named after the
 criterion that asked, and it stays afterwards so the answer can be re-derived.
 
-**What is here now: C3's witnesses.** C3 asks whether any two selected rules
+**C3's witnesses.** C3 asks whether any two selected rules
 contradict — whether satisfying one necessarily violates the other on otherwise
 correct code. A single piece of code where both rules *apply* and both are
 *satisfied* refutes the "necessarily" for that pair, so a construct group whose
@@ -15,6 +15,13 @@ rules are jointly satisfied by one witness contains no contradicting pair. The
 witnesses below are those, one section per group, and
 `docs/craft/review.bench.md` § What fought records the partition that says which
 groups there are.
+
+**C5's probes.** C5 asks what a rule with a known false-positive reputation does
+to code that is *correct*. Each probe is that code, and the probe fires or it
+does not; either way the case is recorded. Two of them need a rule the profile
+leaves `off` or scopes away, which is what `react/probes.config.js` is for — and
+the React probes live outside `src/` so that a probe for a rule the profile
+*does* enable cannot make C2's clean run dirty by design.
 
 They are written into the same gitignored `temp/craft-bench/` as the scaffold,
 for the reasons `craft_scaffold.py` gives, and the React witness lands inside
@@ -30,7 +37,10 @@ Then, from `temp/craft-bench/`:
 
     cd python && ruff check --config src/ruff.toml cases/src
     cd python && ruff check --config ruff.toml cases/tests
+    cd python && ruff check --config ruff.toml cases/probes    # C5, expected to fire
+    cd python && ruff check --config src/ruff.toml cases/tests # C5, S101 unscoped
     cd react  && npx eslint src && npx tsc --noEmit
+    cd react  && npx eslint --config probes.config.js probes   # C5, expected to fire
 """
 
 from __future__ import annotations
@@ -203,6 +213,49 @@ def test_an_unknown_table_is_a_witness_error() -> None:
 def test_the_two_statements_differ() -> None:
     assert query("entries") != query("totals")
 """,
+    "python/cases/probes/__init__.py": """\
+""",
+    "python/cases/probes/false_positives.py": """\
+\"\"\"C5's probes: correct code that a rule with a reputation is known to flag.
+
+Each function is code a reviewer would pass. If the rule fires here, the finding
+is a false positive and `docs/craft/review.bench.md` records the case whether the
+rule survives it or not.
+\"\"\"
+
+from __future__ import annotations
+
+import random
+from typing import Any
+
+
+def jitter(base: float) -> float:
+    \"\"\"S311. Sampling jitter is not a secret, and `secrets` is the wrong tool.\"\"\"
+    return base * random.uniform(0.9, 1.1)
+
+
+def select_from(table: str) -> str:
+    \"\"\"S608. The table name is chosen from a fixed set, so nothing user-supplied
+    reaches the statement - but it is still interpolated.
+    \"\"\"
+    allowed = {"entries", "totals"}
+    if table not in allowed:
+        message = "unknown table"
+        raise ValueError(message)
+    return f"SELECT id FROM {table} WHERE recorded_at > ?"
+
+
+def describe(value: Any) -> str:
+    \"\"\"ANN401. A `repr` helper genuinely takes anything.\"\"\"
+    return repr(value)
+
+
+# The wire format this module reads, documented for a reader rather than run:
+# entries = [{"amount": "1.00", "recorded_at": "2026-09-01T09:00:00+00:00"}]
+def documented() -> int:
+    \"\"\"ERA001. The comment above is a documented example, not dead code.\"\"\"
+    return 1
+""",
     "react/src/cases/Witness.tsx": """\
 import { createContext, useCallback, useMemo, useState } from 'react'
 
@@ -270,6 +323,94 @@ export function Witness({ rows, onSave }: WitnessProps) {
     </SelectionContext>
   )
 }
+""",
+    "react/probes/Probes.tsx": """\
+import { useState } from 'react'
+
+const STEPS = ['Basket', 'Delivery', 'Payment'] as const
+
+/** `no-array-index-key`. A frozen literal list with no ids and no reordering. */
+export function Steps() {
+  return (
+    <ol>
+      {STEPS.map((step, index) => (
+        <li key={index}>{step}</li>
+      ))}
+    </ol>
+  )
+}
+
+/** `anchor-ambiguous-text`. The visible text is on the rule's own ambiguous
+ * list; the `aria-label` says exactly where the link goes. */
+export function Checkout() {
+  return (
+    <a href="/checkout" aria-label="Continue to checkout">
+      Learn more
+    </a>
+  )
+}
+
+/** `explicit-module-boundary-types`. An exported component, inferred as JSX. */
+export function Counter() {
+  const [count, setCount] = useState(0)
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setCount((current) => current + 1)
+      }}
+    >
+      {count}
+    </button>
+  )
+}
+""",
+    "react/probes/Control.tsx": """\
+/** The control for the `anchor-ambiguous-text` probe: the same ambiguous text
+ * with no `aria-label`. If this does not fire, the probe proves nothing. */
+export function Bare() {
+  return <a href="/checkout">Learn more</a>
+}
+""",
+    "react/probes.config.js": """\
+// C5's probe configuration. **It is not the profile.**
+//
+// A probe is correct code that a rule with a reputation is known to flag, and
+// some of those rules the profile leaves `off` or scopes away - so they need a
+// configuration that turns them on before they can be shown doing it. The
+// probes live outside `src/`, because a probe for a rule the profile *does*
+// enable would otherwise make C2's clean run dirty by design.
+//
+// No project service: none of the probed rules needs type information, and
+// asking for types here would put the probes in the scaffold's `tsconfig`.
+import jsxA11y from 'eslint-plugin-jsx-a11y'
+import eslintReact from '@eslint-react/eslint-plugin'
+import tseslint from 'typescript-eslint'
+
+export default [
+  {
+    ...tseslint.configs.base,
+    files: ['probes/**/*.tsx'],
+  },
+  { ...eslintReact.configs.recommended, files: ['probes/**/*.tsx'] },
+  { ...jsxA11y.flatConfigs.recommended, files: ['probes/**/*.tsx'] },
+  {
+    files: ['probes/**/*.tsx'],
+    rules: {
+      // On in the profile. Probed because a frozen literal list has no id to
+      // use instead of the index.
+      '@eslint-react/no-array-index-key': 'error',
+      // `off` in the profile - `react.a11y-link-purpose` is bucket 3 and this
+      // rule is the register's named false-positive case.
+      'jsx-a11y/anchor-ambiguous-text': 'error',
+      // Scoped to `*.ts` in the profile, so a component never meets it.
+      '@typescript-eslint/explicit-module-boundary-types': [
+        'error',
+        { allowTypedFunctionExpressions: true },
+      ],
+    },
+  },
+]
 """,
 }
 

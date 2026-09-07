@@ -797,6 +797,76 @@ counts exit points and an early return is the recommended fix for the nesting
 pass could find; it is recorded here so that "no contradicting pair among the
 selected rules" is read as what it says.
 
+## What was probed — C5, the false positives
+
+Run **2026-09-07**. C5 asks for a probe per rule with a known false-positive
+reputation: **correct** code that the rule is known to flag, written
+deliberately, and the case recorded whether the rule survives or not.
+
+Seven probes. **Five fired, one did not, and one is a scoping demonstration
+rather than a rule under suspicion.** Every probe is in
+[`scripts/craft_cases.py`](../../scripts/craft_cases.py), so each result can be
+reproduced rather than believed.
+
+```bash
+cd temp/craft-bench/python && ruff check --config ruff.toml cases/probes
+cd temp/craft-bench/python && ruff check --config src/ruff.toml cases/tests
+cd temp/craft-bench/react  && npx eslint --config probes.config.js probes
+```
+
+| Probe | Correct code it was given | Fired |
+| --- | --- | --- |
+| ruff `S311` | Sampling jitter — `random.uniform(0.9, 1.1)` on a retry delay, which is not a secret | **yes** |
+| ruff `S608` | A statement whose table name is checked against a fixed allow-list before interpolation | **yes** |
+| ruff `ANN401` | A `repr` helper that genuinely takes anything | **yes** |
+| ruff `ERA001` | A comment documenting the wire format the module reads | **yes** |
+| `@eslint-react/no-array-index-key` | A frozen literal list of three step names, with no id to key on | **yes** |
+| `@typescript-eslint/explicit-module-boundary-types` | Three exported components whose return type is inferred JSX | **yes**, three times |
+| `jsx-a11y/anchor-ambiguous-text` | A link reading "Learn more" carrying `aria-label="Continue to checkout"` | **no** |
+
+And one demonstration rather than a probe: ruff `S101` against a test file. Under
+the profile's scoping it reports nothing on the test witness; under the `src`
+configuration, where it is selected, it reports **two** — one per pytest
+assertion. The scoping the register resolved is doing exactly the work it was
+resolved to do, and this is what it would cost without it.
+
+### The one that did not fire, which is the finding
+
+`assess.rules.md` keeps `react.a11y-link-purpose` in bucket 3 with no
+instrument, and gives two reasons: `jsx-a11y/anchor-ambiguous-text`
+"false-positives on legitimate copy **and cannot see `aria-label`**".
+
+**The second reason is not true of 6.10.2.** The probe carries text from the
+rule's own ambiguous list — "Learn more" — and an `aria-label` that says where
+the link goes, and the rule passes it. That result only means something because
+a control was written beside it: the same anchor with the same text and **no**
+`aria-label` draws the finding, quoting the word list back. So the rule is live
+on the probe file and chose not to fire.
+
+The first reason may still stand: a link whose visible text really is "Learn
+more" with nothing else to go on **is** ambiguous, and flagging it is the rule
+working rather than failing. That reading would make this rule an instrument for
+a property the register currently says has none.
+
+**This document does not promote it.** The register's classification is S2's,
+the profile's selection is S4's, and what S3 owes is the measurement — which is
+that one of the two stated reasons for leaving it out does not survive contact
+with the installed plugin.
+
+### What each fired probe costs, and what happens to the rule
+
+None is demoted. C5 permits a rule to survive a probe that fired, and requires
+the case either way; the case is above and the reasoning is here.
+
+| Rule | Verdict | Why |
+| --- | --- | --- |
+| `S311` | **Keep** | Nothing can distinguish jitter from key material by reading the call. The cost is one suppression per legitimate use, and `RUF100` is selected, so a suppression that stops being needed is itself a finding |
+| `S608` | **Keep** | The false positive is on exactly the pattern worth a second look — a table name spliced into a statement — and an allow-list is one review away from not being one. One suppression per site |
+| `ANN401` | **Keep** | The register narrowed this property to *public signatures*, which is what fired. A `repr` helper is the documented exception rather than evidence against the rule |
+| `no-array-index-key` | **Keep** | A frozen literal list is the narrow case, and it has a way out: key on the value, which is stable precisely because the list is frozen |
+| `explicit-module-boundary-types` | **Keep, and the scoping is now evidence-backed** | It fired on all three components, which is what `react.explicit-return-types`' resolution predicted when it put component files out of scope. Unscoped, this profile would demand a written return type on every component in the repository |
+| `ERA001` | **Keep, and it is the one to watch at S6** | It flagged a comment that documents a data format, which is the commonest shape of prose that looks like code. It is the probe with the widest blast radius and the weakest defence, and it is named here so S6 has something specific to ask the team about |
+
 ## What this document still owes
 
 Named so their absence is visible, in the order they will be written:
@@ -808,7 +878,8 @@ Named so their absence is visible, in the order they will be written:
   versions and commands.
 - ~~**What fought** — C3's pass: the method, the pairs cleared, and anything
   found.~~ Done 2026-09-07 — § What fought.
-- **What was probed** — C5, one case per rule, with the outcome of each.
+- ~~**What was probed** — C5, one case per rule, with the outcome of each.~~
+  Done 2026-09-07 — § What was probed.
 - **What each rule costs** — C7's table.
 - **The four numbers** — C6, each with its rationale.
 - ~~**What was read from an installed tree** — C9's two answers.~~ Both done

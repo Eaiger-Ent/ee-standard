@@ -209,10 +209,18 @@ indistinguishable from a completed one.
       instruments disagreeing rather than a rule pair, and `touch
       tests/__init__.py` satisfied both with the tests still passing. The
       scaffold owes that file, which is C2's to clear
-- [ ] Probe the rules with a known false-positive reputation, one deliberate
+- [x] Probe the rules with a known false-positive reputation, one deliberate
       case each — `anchor-ambiguous-text` against a link with an `aria-label`,
       `S101` against a test, `explicit-module-boundary-types` against a
-      component
+      component. Done 2026-09-07, **seven probes rather than the three named**,
+      with `S311`, `S608`, `ANN401` and `ERA001` added. Five fired, one did not,
+      and none is demoted — C5 allows a rule to survive a probe and requires the
+      case either way. **The one that did not fire is the finding**:
+      `anchor-ambiguous-text` reads the `aria-label`, so half of the register's
+      stated reason for leaving `react.a11y-link-purpose` without an instrument
+      is not true of 6.10.2, and a control with no label proves the rule was
+      live. `ERA001` is the one to watch at S6: it flagged a comment documenting
+      a data format
 - [ ] Record cost per finding from ruff's `fix_availability`, which needs no run:
       421 of 812 stable rules carry no fix
 - [ ] Settle the four numbers the resolutions left owed —
