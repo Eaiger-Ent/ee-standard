@@ -196,9 +196,19 @@ indistinguishable from a completed one.
       `jsx-no-duplicate-props`, is the one the configuration already takes
       directly. One rule is genuinely lost — `no-unescaped-entities`, which no
       register row asserts — and it is recorded rather than dropped quietly
-- [ ] Find every pair of selected rules that contradict. `python.return-count`
+- [x] Find every pair of selected rules that contradict. `python.return-count`
       is one and is already recorded as `incompatible`; the search is for the
-      others
+      others. Done 2026-09-07, and **none found**. The method is the deliverable
+      rather than the verdict: ruff's own formatter-conflict check, shown able to
+      fire before its silence was believed; a construct partition taking 9,870
+      pairs to 273; and a witness per group in
+      [`scripts/craft_cases.py`](../../scripts/craft_cases.py) — code where every
+      rule in a group applies and every rule holds, which clears the group's
+      pairs at once. Seven pairs are named individually. **One thing did fight**:
+      `INP001` against the layout pytest recommends, which is a property's two
+      instruments disagreeing rather than a rule pair, and `touch
+      tests/__init__.py` satisfied both with the tests still passing. The
+      scaffold owes that file, which is C2's to clear
 - [ ] Probe the rules with a known false-positive reputation, one deliberate
       case each — `anchor-ambiguous-text` against a link with an `aria-label`,
       `S101` against a test, `explicit-module-boundary-types` against a
