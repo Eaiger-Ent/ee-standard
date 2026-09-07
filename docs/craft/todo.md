@@ -361,8 +361,15 @@ owes is the list of what has not been written — not restated here.
       — **ADR 0053** applies 0018's test to the mapping and answers *data*. The
       test still applies per rule as Craft's code is written, and 0053 requires
       each exception to carry its reason there
-- [ ] Get every ADR this stage names to Accepted — the four above are, and the
-      box stays open because `design.profiles.md` may name one they did not
+- [x] Draft the ADR on writing into a control's gated configuration — **ADR
+      0055**, Accepted 2026-09-07. **Not anticipated by the four**: the config
+      surface slice found that a craft rule installed into a mandated tool
+      blocks a merge under a control's name while appearing in neither register,
+      which is true of every ruff selector and not only of the mypy key that
+      made it visible. Craft may write a gated section, may never write a key
+      that control asserts, and records what it wrote
+- [ ] Get every ADR this stage names to Accepted — the five above are, and the
+      box stays open because the slices still owed may name one they did not
       anticipate
 - [ ] Write `design.profiles.md`
 

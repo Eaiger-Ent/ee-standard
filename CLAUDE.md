@@ -161,9 +161,10 @@ for where anything lives. Both are more current than any list kept here.
 
 ## Decisions in force
 
-Every ADR in `docs/adr/` is Accepted and binding. **Read the ADR rather than a
-summary** — a restatement here is a second copy, which is the failure this
-repository exists to prevent, and this file has already carried a drifted one.
+Every ADR in `docs/adr/` is Accepted and binding, except any the row above marks
+`Proposed`. **Read the ADR rather than a summary** — a restatement here is a
+second copy, which is the failure this repository exists to prevent, and this
+file has already carried a drifted one.
 
 The ones most likely to catch you out, by what they govern:
 
@@ -179,7 +180,7 @@ The ones most likely to catch you out, by what they govern:
 | Loci, pins, digests, or a bot's config | ADRs 0020, 0039, 0041 |
 | Writing or amending an ADR | ADRs 0024, 0025, 0026 |
 | The adopter's route, or the marketplace | ADRs 0032, 0042, 0043, 0044 |
-| Anything in the Craft workstream | **ADRs 0051, 0052, 0053, 0054** |
+| Anything in the Craft workstream | **ADRs 0051, 0052, 0053, 0054, 0055** |
 
 **Naming (ADR 0031).** The plugin is `control-register`, the checker is
 `register-check`, the non-gate skills are `register-*`. The gates keep their
