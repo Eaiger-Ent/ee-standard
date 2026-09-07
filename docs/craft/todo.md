@@ -221,8 +221,16 @@ indistinguishable from a completed one.
       is not true of 6.10.2, and a control with no label proves the rule was
       live. `ERA001` is the one to watch at S6: it flagged a comment documenting
       a data format
-- [ ] Record cost per finding from ruff's `fix_availability`, which needs no run:
-      421 of 812 stable rules carry no fix
+- [x] Record cost per finding from ruff's `fix_availability`, which needs no run:
+      421 of 812 stable rules carry no fix. Done 2026-09-07, **both stacks**, by
+      [`scripts/craft_cost.py`](../../scripts/craft_cost.py) rather than by hand,
+      because S5 needs the answer for the versions it installs rather than the
+      versions this bench read. 274 rules, 169 of them hand-work. The Python
+      half is 51% against the taxonomy's own 52%, so the selection is
+      representative rather than costly; the React half is 73%, and **every one
+      of `jsx-a11y`'s 34 rules** is hand-work against `react-hooks`' 1 of 12.
+      The reading also exposed that **the profile pins no tool version in
+      anything it materialises**, which is S4's to fix
 - [ ] Settle the four numbers the resolutions left owed —
       `python.function-length`'s threshold, `python.line-length`'s default,
       `python.no-any`'s strict variant and `react.explicit-return-types`' scope.
