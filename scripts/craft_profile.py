@@ -267,8 +267,13 @@ export default [
       '@eslint-react/jsx-no-comment-textnodes': 'error',
       // react.no-leaked-conditional-render - type-checked only
       '@eslint-react/no-leaked-conditional-rendering': 'error',
-      // react.no-nested-component-definitions
-      '@eslint-react/no-nested-component-definitions': 'error',
+      // react.no-nested-component-definitions is instrumented by
+      // `react-hooks/static-components` below, and **not** by this rule.
+      // C4 demoted it: one nested component drew both, from two plugins under
+      // two different names, so no name-keyed `disable-conflict` config can
+      // ever separate them. `review.bench.md` § No defect reported twice has
+      // the case.
+      '@eslint-react/no-nested-component-definitions': 'off',
       // react.context-value-stability - strict only
       '@eslint-react/no-unstable-context-value': 'error',
       // react.no-class-components - strict only

@@ -25,6 +25,12 @@ clean run would make that run impossible by construction - and
 `react/violations.config.js` is the profile *pointed at another directory*
 rather than a second copy of it.
 
+**C4's shared names.** C4 asks whether one defect ever draws two diagnostics.
+`react/violations/Shared.tsx` is one deliberate defect per rule name both
+plugins ship, and the count per defect is the answer. It found the pair that a
+`disable-conflict` config cannot reach, because that pair is one property under
+*two different* names rather than one name in two plugins.
+
 **C8's control.** C8 asks what ruff's `preview = true` costs. The answer turned
 out to depend on how the selection is spelled, so the case carries its own
 `ruff.toml` — the profile plus preview and the two rules preview reaches — and a
@@ -728,6 +734,58 @@ export function UnlabelledControl() {
   )
 }
 """,
+    "react/violations/Shared.tsx": """\
+/* C4: one deliberate defect per rule name both plugins ship. Each should draw
+ * exactly one diagnostic, from one plugin. */
+import { useMemo, useRef, useState } from 'react'
+
+export function ConditionalHook({ on }: { on: boolean }) {
+  if (on) {
+    const [n] = useState(0)
+    return <p>{n}</p>
+  }
+  return null
+}
+
+export function ImpureRender() {
+  return <p>{Date.now()}</p>
+}
+
+export function GlobalInRender() {
+  window.scrollTo(0, 0)
+  return <p>global</p>
+}
+
+export function MutatesProps({ item }: { item: { n: number } }) {
+  item.n = 1
+  return <p>{item.n}</p>
+}
+
+export function SetsStateInRender() {
+  const [n, setN] = useState(0)
+  setN(n + 1)
+  return <p>{n}</p>
+}
+
+export function ReadsRefInRender() {
+  const ref = useRef<number>(0)
+  return <p>{ref.current}</p>
+}
+
+export function BadMemo({ n }: { n: number }) {
+  const value = useMemo(() => {
+    n + 1
+  }, [n])
+  return <p>{String(value)}</p>
+}
+
+export function NestedComponent() {
+  function Inner() {
+    return <span>inner</span>
+  }
+  return <Inner />
+}
+""",
     "react/violations/types.ts": """\
 /* Deliberate: the type-aware @typescript-eslint rules, plus the two scoped ones. */
 declare const loose: any
@@ -760,6 +818,16 @@ export async function work(): Promise<void> {
 export function floating(): void {
   work()
 }
+""",
+    "react/violations/Debug.test.tsx": """\
+/* Deliberate: the testing-library rules the profile escalates or adds. */
+import { render, screen } from '@testing-library/react'
+
+it('leaves debug output behind', () => {
+  render(<p>hello</p>)
+  screen.debug()
+  expect(screen.getByText('hello')).toBeTruthy()
+})
 """,
     "react/violations.config.js": """\
 // C2's violation configuration. **It is not the profile** — it is the profile
