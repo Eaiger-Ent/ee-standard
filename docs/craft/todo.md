@@ -514,7 +514,28 @@ are two documents.
       explain the file `INP001` asks for, wrong since the day it was written
       because no `standard` rule reads a docstring's shape. Corrected in
       `craft_scaffold.py`, `standard`'s runs re-verified untouched
-- [ ] C3's construct partition and witnesses, over the 32 new rules
+- [x] C3's construct partition and witnesses, over the 32 new rules. Done
+      2026-09-07: **5,008 new pairs down to 125 candidates**, six witnesses
+      clean at both levels, and **no contradicting pair**. The sharpest
+      candidate the additions brought — `TC`'s `if TYPE_CHECKING:` remedy
+      against `PLC0415`'s *no import below the top level* — was cleared by
+      running it rather than arguing it. The witnesses are the first bench's
+      **extended**, so one set has to be clean at both levels rather than two
+      sets free to disagree. Two findings about the witnesses themselves: the
+      React one had no `useEffect` in it at all, so the rule that group gained
+      cleared nothing until an effect was added and shown to fire when broken;
+      and the test witness got the docstrings the scaffold did not, because a
+      case exists to satisfy the instrument and a subject does not
+- [ ] Resolve `python.no-untracked-todo`, whose eleven codes cannot all be
+      satisfied by a file containing a TODO. C3's marker-comment group has no
+      clean witness: a comment with an upper-case tag, an author, a colon, a
+      space, a description and an issue link — everything `TD001`–`TD007` ask
+      for — still fails `FIX002`, which asserts *no TODO at all*. So seven of
+      the property's codes can never fire on a file that passes, and the
+      property as installed forbids marker comments rather than requiring them
+      to be tracked. The choice is C5's: drop `FIX001`–`FIX004` so the property
+      becomes what it says, or drop `TD001`–`TD007` and rename it to what it
+      does
 - [ ] C5 — probes for the rules with a false-positive reputation
 - [ ] C7 — cost per finding for the 32, from `fix_availability`
 - [ ] Run the mypy half at all. `disallow_any_explicit` is written and has met

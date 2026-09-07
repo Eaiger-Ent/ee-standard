@@ -105,6 +105,9 @@ A pair of rules contradicts if satisfying one necessarily violates the other on
 otherwise-correct code. A single piece of code where both rules *apply* and both
 are *satisfied* refutes the "necessarily" for that pair, so a group whose rules
 are jointly satisfied by one witness contains no contradicting pair.
+
+The groups carry the rules `strict` adds as well as the ones `standard` selects,
+because a level that adds rules to a group re-opens every pair in it.
 \"\"\"
 
 from __future__ import annotations
@@ -114,22 +117,46 @@ import logging
 import secrets
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ledger.entries import Entry
 
 logger = logging.getLogger(__name__)
+
+# --- import: F401, I001, TID252, PLC0415, TC001, TC002, TC003 ---
+#
+# Every import above is at the top level, sorted, absolute, and used. The two
+# that are needed only by an annotation are in the `TYPE_CHECKING` block, which
+# is TC001's and TC003's remedy — and the block is a module-level `if`, so
+# PLC0415 has nothing to say about the imports inside it. That pair was the
+# sharpest candidate the additions brought, and this is where it is cleared.
+#
+# TC002 has nothing to apply to: the scaffold declares no third-party
+# dependency. The limit is stated in `docs/craft/review.strict.md`.
+
+
+def described(entry: Entry) -> str:
+    \"\"\"Render an entry, so the first-party import is used by an annotation.\"\"\"
+    return repr(entry)
 
 
 # --- signature: ANN, ARG, PLR0913, PLR0917, FBT, B006, B008, RUF012, UP ---
 @dataclass(frozen=True)
 class Settings:
-    \"\"\"RUF012 wants a mutable class default to be annotated ClassVar; this is not.\"\"\"
+    \"\"\"Hold the roots and labels a resolution runs against.
+
+    RUF012 wants a mutable class default to be annotated ClassVar; this is not.
+    \"\"\"
 
     roots: tuple[Path, ...] = ()
     labels: list[str] = field(default_factory=list)
 
 
 def resolve(root: Path, name: str, *, strict: bool = False) -> Path | None:
-    \"\"\"Three parameters, all read, all annotated, no mutable or called default.
+    \"\"\"Resolve a name under a root, with three parameters and no mutable default.
 
     `strict` is a boolean and is keyword-only, which is FBT's remedy and leaves
     PLR0917's positional count at two.
@@ -142,13 +169,18 @@ def resolve(root: Path, name: str, *, strict: bool = False) -> Path | None:
     return root
 
 
-# --- exception handler: E722, BLE001, B904, S110, S112, SIM105 ---
+# --- exception handler: E722, BLE001, B904, S110, S112, SIM105, EM101,
+#     EM102, TRY003 ---
 class WitnessError(Exception):
-    \"\"\"A domain error, so nothing has to raise a bare Exception.\"\"\"
+    \"\"\"Name a domain error, so nothing has to raise a bare Exception.\"\"\"
 
 
 def read(path: Path) -> str:
-    \"\"\"Names what it catches, chains from it, and suppresses nothing silently.\"\"\"
+    \"\"\"Read a witness file, naming what it catches and chaining from it.
+
+    The message is bound to a name before the raise, which is EM101's remedy and
+    EM102's, and it is what leaves TRY003 with nothing to report.
+    \"\"\"
     try:
         return path.read_text(encoding="utf-8")
     except OSError as failure:
@@ -156,9 +188,14 @@ def read(path: Path) -> str:
         raise WitnessError(message) from failure
 
 
-# --- binding: F841, PLW2901, PLW0603, B023 ---
+# --- binding: F841, PLW2901, PLW0603, B023, RET504 ---
 def totals(rows: list[list[int]]) -> list[int]:
-    \"\"\"No unused local, no rebound loop variable, no global, no captured closure.\"\"\"
+    \"\"\"Total each row without an unused local, a rebind, a global or a capture.
+
+    RET504 joins this group at `strict`: `running` is built across the loop
+    rather than bound on the line above the return, so there is nothing to
+    inline away.
+    \"\"\"
     running: list[int] = []
     for row in rows:
         scaled = [value * 2 for value in row]
@@ -168,25 +205,28 @@ def totals(rows: list[list[int]]) -> list[int]:
 
 # --- comprehension: C4xx, PERF401 ---
 def names(rows: list[str]) -> set[str]:
-    \"\"\"A set comprehension rather than a set() around a list comprehension.\"\"\"
+    \"\"\"Build a set comprehension rather than a set() around a list one.\"\"\"
     return {row.strip() for row in rows if row.strip()}
 
 
 # --- logging call: G001-G004, LOG015 ---
 def announce(count: int) -> None:
-    \"\"\"Deferred %-formatting on a module logger, not the root and not an f-string.\"\"\"
+    \"\"\"Log deferred %-formatting on a module logger, not the root or an f-string.\"\"\"
     logger.info("counted %d rows", count)
 
 
-# --- security-sensitive call: S105-S107, S311, S324, S501, S608 ---
+# --- security-sensitive call: S105-S107, S311, S324, S501, S608, S104 ---
+LISTEN_HOST = "127.0.0.1"
+
+
 def token() -> str:
-    \"\"\"A cryptographic source, a strong hash, no literal secret.\"\"\"
+    \"\"\"Derive a token from a cryptographic source and a strong hash.\"\"\"
     raw = secrets.token_bytes(32)
     return hashlib.sha256(raw).hexdigest()
 
 
 def query(table: str) -> str:
-    \"\"\"SQL is built here, and it is chosen from fixed statements rather than spliced.\"\"\"
+    \"\"\"Choose SQL from fixed statements rather than splicing it.\"\"\"
     statements = {
         "entries": "SELECT id FROM entries WHERE recorded_at > ?",
         "totals": "SELECT id FROM totals WHERE recorded_at > ?",
@@ -198,12 +238,94 @@ def query(table: str) -> str:
         raise WitnessError(message) from unknown
 
 
-# --- body size: PLR0915, C901 ---
+# --- body size: PLR0915, C901, PLR1702 ---
 def stamped(when: datetime | None = None) -> str:
-    \"\"\"Short and unbranching, so neither statement count nor complexity bites.\"\"\"
+    \"\"\"Stamp a time, short and unbranching.\"\"\"
     return (when or datetime.now(UTC)).isoformat()
+
+
+def deepest(rows: list[list[int]], *, only_positive: bool) -> int:
+    \"\"\"Walk two levels under two guards, which is four blocks against a cap of five.
+
+    PLR1702 joins this group at `strict`. The witness nests as far as the rule
+    allows and no further, so the rule has applied and is satisfied rather than
+    having found nothing to look at.
+    \"\"\"
+    total = 0
+    if only_positive:
+        for row in rows:
+            for value in row:
+                if value > 0:
+                    total += value
+    return total
+
+
+# --- class body: PLR0904 ---
+class Focused:
+    \"\"\"Keep a class under the public-method ceiling.
+
+    PLR0904's target is a class body, where every other size rule in the
+    profile targets a function, so it pairs with nothing.
+    \"\"\"
+
+    def one(self) -> int:
+        \"\"\"Return the first.\"\"\"
+        return 1
+
+    def two(self) -> int:
+        \"\"\"Return the second.\"\"\"
+        return 2
+
+
+# --- docstring: D100-D107, D205, D401 ---
+class Documented:
+    \"\"\"Carry a docstring on every definition D1xx reaches.
+
+    Each docstring below is multi-line with a blank line after an imperative
+    summary, so D205 and D401 have applied to it and passed. That is what
+    clears their seventeen pairs with D1xx: a documented definition is one
+    node both halves of the property look at.
+    \"\"\"
+
+    class Nested:
+        \"\"\"Document a public nested class, which is D106's target.
+
+        D101 does not reach here and D106 does, which is why the two are
+        disjoint rather than paired.
+        \"\"\"
+
+    def __init__(self) -> None:
+        \"\"\"Bind the witness value.
+
+        D107's target is this method and no other.
+        \"\"\"
+        self.value = 1
+
+    def __str__(self) -> str:
+        \"\"\"Render the witness.
+
+        D105's target is a magic method, which no other D1xx rule reaches.
+        \"\"\"
+        return "documented"
+
+    def method(self) -> int:
+        \"\"\"Return the witness value.
+
+        D102's target is a public method.
+        \"\"\"
+        return self.value
+
+
+def documented() -> int:
+    \"\"\"Return one, from a public function.
+
+    D103's target is a public function, and this docstring is the shape D205
+    and D401 ask for.
+    \"\"\"
+    return 1
 """,
     "python/cases/tests/__init__.py": """\
+\"\"\"Hold C3's test-construct witness, which D104 asks a package to document.\"\"\"
 """,
     "python/cases/tests/test_witness.py": """\
 \"\"\"C3's witness for the test construct group: PT006, PT007, PT011, PT012, PT018.
@@ -223,7 +345,7 @@ class WitnessError(Exception):
 
 
 def query(table: str) -> str:
-    \"\"\"The subject. Fixed statements, chosen rather than spliced.\"\"\"
+    \"\"\"Choose SQL from fixed statements rather than splicing it.\"\"\"
     statements = {
         "entries": "SELECT id FROM entries WHERE recorded_at > ?",
         "totals": "SELECT id FROM totals WHERE recorded_at > ?",
@@ -243,15 +365,28 @@ def query(table: str) -> str:
     ],
 )
 def test_query_returns_a_fixed_statement(table: str, expected: str) -> None:
+    \"\"\"Return the statement the table names.
+
+    D103 reaches a test function like any other, and a case is written to
+    satisfy the instrument where the scaffold is not.
+    \"\"\"
     assert query(table) == expected
 
 
 def test_an_unknown_table_is_a_witness_error() -> None:
+    \"\"\"Raise a witness error for a table that is not in the set.
+
+    The docstring is D103's, and the narrow `pytest.raises` is PT011's.
+    \"\"\"
     with pytest.raises(WitnessError, match="unknown table"):
         query("nowhere")
 
 
 def test_the_two_statements_differ() -> None:
+    \"\"\"Distinguish the two statements.
+
+    One behaviour and one assertion, which is what PT018 asks for.
+    \"\"\"
     assert query("entries") != query("totals")
 """,
     "python/cases/probes/__init__.py": """\
@@ -1046,7 +1181,7 @@ export default profile.map((block) => {
 })
 """,
     "react/src/cases/Witness.tsx": """\
-import { createContext, useCallback, useMemo, useState } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 
 interface Row {
   readonly id: string
@@ -1063,9 +1198,10 @@ const SelectionContext = createContext<WitnessContext | null>(null)
 interface WitnessProps {
   readonly rows: readonly Row[]
   readonly onSave: (id: string) => Promise<void>
+  readonly onWatch: (id: string) => () => void
 }
 
-export function Witness({ rows, onSave }: WitnessProps) {
+export function Witness({ rows, onSave, onWatch }: WitnessProps) {
   const [selected, setSelected] = useState<string | null>(null)
 
   // `use-memo` and `preserve-manual-memoization` both apply here, and
@@ -1075,6 +1211,17 @@ export function Witness({ rows, onSave }: WitnessProps) {
     setSelected(id)
   }, [])
   const value = useMemo<WitnessContext>(() => ({ selected, select }), [selected, select])
+
+  // The effect group. `exhaustive-effect-dependencies` joins it at `strict`
+  // and is the only rule in the profile that reads the array in *both*
+  // directions, so the witness lists every reactive value the body reads and
+  // no others. `set-state-in-effect` and `no-deriving-state-in-effects` apply
+  // to the same effect and are satisfied by it synchronising with something
+  // outside React rather than computing state.
+  useEffect(() => {
+    if (selected === null) return undefined
+    return onWatch(selected)
+  }, [onWatch, selected])
 
   // `no-floating-promises` and `no-misused-promises` both apply to an async
   // handler: the promise is caught rather than dropped, and the handler passed

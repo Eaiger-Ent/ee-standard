@@ -80,7 +80,11 @@ nothing on any code until C2 wrote a case for it. § React's one added rule was
 inert. The number is unchanged by the correction, which is the point of the
 finding rather than an aside to it.
 
-## C3 — the contradiction the design predicted is absent, and shown to be
+## C3 — no contradicting pair, and one family that shadows another
+
+Three passes, and the result is **no contradicting pair among the 5,008 the
+additions open**, one candidate that measurement cleared, and one group with no
+clean witness whose absence is a finding rather than a failure.
 
 C3's first pass is ruff's own formatter-conflict check, and the first bench
 established the discipline that comes with it: **a negative result is worth
@@ -108,8 +112,134 @@ codes or a coextensive linter and never a range; this is that argument run
 rather than reasoned. The rule it produced is the reason the strict level has no
 contradiction to report.
 
-The rest of C3 — the construct partition and a witness per group, over the 32
-new rules — has not run. § What has not run.
+### Pass 2 — the additions re-open a group, so what is counted is new pairs
+
+The first bench cleared 9,870 pairs over `standard`'s 141 rules. `strict` is 173,
+which is 14,878 pairs, so **5,008 of them are new**: 4,512 where an addition
+meets a rule `standard` already selected, and 496 among the additions
+themselves. A rule added to a group re-opens every pair in that group, and the
+pairs a level does not touch stay cleared.
+
+The construct partition is the first bench's, re-derived for the additions.
+**The standard members of each group are named** so the assignment can be
+checked rather than taken; the method itself, and the limit it carries, are
+`review.bench.md` § The method and are not restated.
+
+| Construct | `standard` | added | pairs | already cleared | disjoint | candidates |
+| --- | --- | --- | --- | --- | --- | --- |
+| marker comment | `ERA001` | 11 | 66 | 0 | 6 | **60** |
+| exception handler | 6 | 3 | 36 | 15 | 1 | **20** |
+| docstring | none | 10 | 45 | 0 | 28 | **17** |
+| import | 3 | 4 | 21 | 3 | 3 | **15** |
+| security literal | 7 | 1 | 28 | 21 | 0 | **7** |
+| binding | 4 | 1 | 10 | 6 | 0 | **4** |
+| body size | 2 | 1 | 3 | 1 | 0 | **2** |
+| class body | none | `PLR0904` | 0 | 0 | 0 | **0** |
+| | | **32** | | | | **125** |
+
+**5,008 down to 125.** The disjoint column is the first bench's second removal,
+applied to the families the additions bring: `TC001`/`TC002`/`TC003` split an
+import three ways by origin, `FIX001`–`FIX004` split a line four ways by tag,
+`EM101` and `EM102` split a raise argument into a literal and an f-string, and
+`D100`–`D107` split eight *different definitions* between them. No two rules in
+any of those can apply to one node.
+
+**`D100`–`D107` against `D205` and `D401` is not disjoint, and the reason is
+worth a sentence.** It is tempting to read them as absence-versus-content and
+call them exclusive. They are not: a documented public function is one node
+where `D103` has looked and passed *and* `D205` and `D401` are reading the
+docstring `D103` required. Sixteen of the docstring group's seventeen candidate
+pairs are that shape.
+
+### Pass 3 — a witness per group that gained a rule
+
+Seven groups gained a rule and six of them have a witness. The witnesses are the
+first bench's, extended rather than duplicated: `cases/src/wit/groups.py`
+carries the strict members of each group alongside the standard ones, so there
+is one witness set that has to be clean at **both** levels.
+
+```bash
+ruff check --config src/ruff.toml   cases/src   # standard
+ruff check --config src/strict.toml cases/src   # strict
+ruff check --config ruff.toml       cases/tests
+ruff check --config strict.toml     cases/tests
+npx eslint src && npx eslint --config strict.config.js src && npx tsc --noEmit
+```
+
+All six exit `0`, at both levels, and the test witness's four tests still pass.
+Two of the extensions are worth naming.
+
+**The React witness had no effect in it at all.** `exhaustive-effect-dependencies`
+joins the hook group, and until this pass the group's witness used `useMemo` and
+`useCallback` and never called `useEffect` — so the added rule had nothing to
+apply to and cleared nothing. The witness now carries an effect that subscribes
+and returns its own teardown, with every reactive value listed and no others.
+**Shown to have applied**: drop `selected` from the array and the added rule
+reports *Found missing effect dependencies* alongside `exhaustive-deps`; put it
+back and both are silent.
+
+**The test witness needed docstrings and the scaffold did not get them.** `D103`
+reaches a test function, which is C2's standing finding. A *case* exists to
+satisfy the instrument, so the witness is written to pass; the *scaffold* is
+what is being measured, so it is left alone and its four findings stand. That
+line — case yes, subject no — is the same one the `D401` and `D205` corrections
+were argued on from the other side.
+
+### The pairs worth naming, and why each is clear
+
+| Pair | Why it is not a contradiction |
+| --- | --- |
+| `TC001`, `TC003` ↔ `PLC0415` | **The sharpest one the additions brought.** `TC`'s remedy is to move the import into an `if TYPE_CHECKING:` block, and `PLC0415` forbids an import that is not at the top level of the file. Run rather than argued: the block is a module-level `if`, `PLC0415` does not reach inside it, and the import witness carries both satisfied |
+| `D100`–`D107` ↔ `D205`, `D401` | Sixteen pairs on one shape — a definition that carries a docstring of the form the other two ask for. The witness documents a module, a package, a class, a nested class, a method, a magic method, an `__init__` and a function, each with an imperative summary and a blank line after it |
+| `EM101`, `EM102`, `TRY003` ↔ `B904` | The message bound to a name before the `raise`, chained with `from`. One line satisfies four rules, and it is the line the standard witness already carried — the additions joined a group that was already answering them |
+| `RET504` ↔ `F841` | They look opposed: one wants the binding gone, the other wants it used. Both are satisfied by a binding used somewhere other than the line below it, which is what a loop accumulator is |
+| `PLR1702` ↔ `C901`, `PLR0915` | Nesting, complexity and statement count pull the same way — flattening reduces all three. The witness nests to four against a cap of five, so the rule has looked rather than found nothing |
+| `S104` ↔ `S105`–`S107` | Both read a string constant. A loopback literal satisfies `S104` and is not a credential, so one constant clears the seven pairs at once |
+| `react-hooks/exhaustive-effect-dependencies` ↔ `exhaustive-deps` | One dependency array satisfies both, in both directions. This is also C4's React duplicate, and the two criteria disagree about it in the ordinary way: cleared here, counted there |
+
+### The marker-comment group has no witness, and that is the finding
+
+Sixty of the 125 candidate pairs are in one group, and the group has no clean
+witness. Not because one was hard to write — because none exists.
+
+```console
+$ cat b.py
+# TODO(nc): reconcile the register (https://github.com/Eaiger-Ent/ee-standard/issues/1)
+$ ruff check --config strict.toml b.py
+b.py:1:3: line-contains-todo: Line contains TODO, consider resolving the issue
+```
+
+That comment has an upper-case tag, an author, a colon, a space after it, a
+description and an issue link. It is everything `TD001`–`TD007` ask for, and
+`FIX002` fails it anyway. **No file containing a TODO can satisfy the group**,
+and the only files that do satisfy it are files where `TD001`–`TD007` have
+nothing to look at.
+
+**C3 does not fail on this**, and the reason is the first bench's own. A pair
+contradicts if satisfying one *necessarily* violates the other; a file with no
+marker comment satisfies all twelve rules, and that file is what both halves are
+asking for — the same clearing the first bench gave
+`no-static-element-interactions` against `prefer-tag-over-role`, where neither
+horn is satisfiable and the correct code is a third thing.
+
+What the pass found instead is a property whose instrument asserts something
+else. `assess.rules.md` states `python.no-untracked-todo` as *a TODO names an
+owner or an issue*. Ruff states `FIX002` as *checks for "TODO" comments …
+consider resolving the issue before deploying the code*. Those are different
+claims, and the register cites both codes for the one property, so:
+
+- **`TD001`–`TD007` can never fire on a file that passes.** Seven of the
+  property's eleven codes cannot change a verdict.
+- **The property as installed forbids marker comments**, which is not what its
+  own text says and is a much stronger rule than the sources support.
+
+This is the third instrument this bench has found not measuring its property —
+after `TRY003` inside `EM101`, and `D103` reaching test functions the property
+did not have in view. It differs from those two in being a *whole family*
+shadowed rather than a rule, and in needing no probe: the console block above is
+the evidence. **The verdict is C5's**, and it is a choice between dropping
+`FIX001`–`FIX004`, so the property becomes what it says, and dropping
+`TD001`–`TD007` and renaming the property to what it does.
 
 ## C2 — both directions, and neither was quiet
 
@@ -396,9 +526,9 @@ Named so that this document cannot be read as more finished than it is.
 | --- | --- |
 | C1 | **Done**, both stacks |
 | C2 | **Done**, both directions and both stacks. The clean run produced four findings and the violation run demonstrated all 33 additions, by a command rather than a reading |
-| C3 | **Pass 1 only.** The formatter check is clean and shown able to fire; the construct partition and witnesses over the 32 new rules have not run |
+| C3 | **Done**, all three passes. 5,008 new pairs to 125 candidates, six witnesses clean at both levels, no contradicting pair — and the marker-comment group's missing witness, which is a shadowing rather than a fight |
 | C4 | **Done**, and it was recorded as not applicable until the React rule started reporting. One duplicated defect per stack |
-| C5 | **Not started, and it now inherits three cases with the argument already made** — `TC003`, `D103` on tests, and `TRY003`. `D401` and `EM101` still want a probe of their own |
+| C5 | **Not started, and it now inherits four cases with the argument already made** — `TC003`, `D103` on tests, `TRY003`, and `TD001`–`TD007` under `FIX002`. `D401` and `EM101` still want a probe of their own |
 | C7 | **Not started.** Cost per finding for the 32, from `fix_availability` |
 | C6, C8, C9 | **Not applicable, and stated rather than skipped.** C6's four numbers are `standard`'s and unchanged; C8 is answered above; C9 was S2's deferral and is closed |
 | The mypy half | **Nothing has run it.** `mypy-strict.ini` is written and `disallow_any_explicit` has not met a line of code |
@@ -408,7 +538,13 @@ precondition is really about: the strict level's one type-checker key is still
 exactly as unmeasured as C6 left it.
 
 **And C2 changed what the earlier rows are worth.** C1 counted React's added
-rule and C3 found nothing to report about it, both correctly, while the rule
-could not have reported anything at all. Neither criterion was wrong; a count
-and a conflict check cannot see an inert rule, and only a case written for the
-rule can. Where a row above says a number, read it as a number.
+rule and C3's first pass found nothing to report about it, both correctly, while
+the rule could not have reported anything at all. Neither criterion was wrong; a
+count and a conflict check cannot see an inert rule, and only a case written for
+the rule can. Where a row above says a number, read it as a number.
+
+C3's third pass found the same shape once more, from the other end: the React
+witness cleared the hook group without ever calling `useEffect`, so the rule
+that group gained had nothing to apply to. A clean witness is worth what the
+rules it exercises are worth, which is why the pass now shows the rule firing
+when the witness is broken.
