@@ -16,6 +16,12 @@ witnesses below are those, one section per group, and
 `docs/craft/review.bench.md` § What fought records the partition that says which
 groups there are.
 
+**C8's control.** C8 asks what ruff's `preview = true` costs. The answer turned
+out to depend on how the selection is spelled, so the case carries its own
+`ruff.toml` — the profile plus preview and the two rules preview reaches — and a
+module built to trip both. If the control is clean, preview did not take effect
+and the measurement beside it proves nothing.
+
 **C5's probes.** C5 asks what a rule with a known false-positive reputation does
 to code that is *correct*. Each probe is that code, and the probe fires or it
 does not; either way the case is recorded. Two of them need a rule the profile
@@ -37,7 +43,9 @@ Then, from `temp/craft-bench/`:
 
     cd python && ruff check --config src/ruff.toml cases/src
     cd python && ruff check --config ruff.toml cases/tests
-    cd python && ruff check --config ruff.toml cases/probes    # C5, expected to fire
+    cd python && ruff check cases/preview                      # C8, expected to fire
+    cd python && ruff check --config ruff.toml cases/preview    # C8, expected clean
+    cd python && ruff check --config ruff.toml cases/probes     # C5, expected to fire
     cd python && ruff check --config src/ruff.toml cases/tests # C5, S101 unscoped
     cd react  && npx eslint src && npx tsc --noEmit
     cd react  && npx eslint --config probes.config.js probes   # C5, expected to fire
@@ -255,6 +263,152 @@ def describe(value: Any) -> str:
 def documented() -> int:
     \"\"\"ERA001. The comment above is a documented example, not dead code.\"\"\"
     return 1
+""",
+    "python/cases/preview/__init__.py": """\
+""",
+    "python/cases/preview/ruff.toml": """\
+# C8's configuration, and **not** the profile.
+#
+# The register expected `preview = true` to arrive with all of ruff's preview
+# rules, because a broad selector picks up its own preview rules once preview is
+# on. This selection is almost entirely exact codes, so it picks up none — which
+# is what makes the two properties reachable at all. The file exists so that
+# claim can be run rather than read.
+
+extend = "../../ruff.toml"
+preview = true
+
+[lint]
+extend-select = [
+  "PLR1702",  # python.nesting-depth
+  "PLR0904",  # python.class-size
+]
+""",
+    "python/cases/preview/control.py": """\
+\"\"\"C8's control: the two properties preview would reach, made to fire.
+
+If these are clean, `preview = true` did not take effect and the C8
+measurement beside them proves nothing.
+\"\"\"
+
+from __future__ import annotations
+
+
+def nested(rows: list[list[list[int]]], *, flag: bool) -> int:
+    \"\"\"PLR1702. Six levels, which is past the default of five.\"\"\"
+    total = 0
+    if flag:
+        for outer in rows:
+            for middle in outer:
+                for value in middle:
+                    if value > 0:
+                        while total < value:
+                            total += 1
+    return total
+
+
+class Wide:
+    \"\"\"PLR0904. Twenty-five public methods, past the default of twenty.\"\"\"
+
+    def m01(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 1
+
+    def m02(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 2
+
+    def m03(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 3
+
+    def m04(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 4
+
+    def m05(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 5
+
+    def m06(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 6
+
+    def m07(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 7
+
+    def m08(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 8
+
+    def m09(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 9
+
+    def m10(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 10
+
+    def m11(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 11
+
+    def m12(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 12
+
+    def m13(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 13
+
+    def m14(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 14
+
+    def m15(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 15
+
+    def m16(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 16
+
+    def m17(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 17
+
+    def m18(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 18
+
+    def m19(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 19
+
+    def m20(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 20
+
+    def m21(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 21
+
+    def m22(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 22
+
+    def m23(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 23
+
+    def m24(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 24
+
+    def m25(self) -> int:
+        \"\"\"One of many.\"\"\"
+        return 25
 """,
     "react/src/cases/Witness.tsx": """\
 import { createContext, useCallback, useMemo, useState } from 'react'
