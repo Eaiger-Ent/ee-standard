@@ -185,9 +185,17 @@ indistinguishable from a completed one.
       believing the reverse, and seven rules were resolving twice as a result.
       Neither is applied now and the copies are turned off by hand.
       `review.bench.md` § The defect C1 found is the record
-- [ ] Check `@eslint-react`'s coverage against the 104 rules
+- [x] Check `@eslint-react`'s coverage against the 104 rules
       `eslint-plugin-react` carries, which is what rows 10 and 11 were resolved
-      contingent on
+      contingent on. **103, not 104.** Done 2026-09-07 from the installed trees,
+      and read from `disable-conflict-eslint-plugin-react` — which is the
+      replacing plugin's own declaration of what it overlaps, rather than a name
+      match, and a name match would have reported every counterpart as a gap
+      because they are not named alike. **The contingency holds:** of the eight
+      rules the register cites, seven are covered and the eighth,
+      `jsx-no-duplicate-props`, is the one the configuration already takes
+      directly. One rule is genuinely lost — `no-unescaped-entities`, which no
+      register row asserts — and it is recorded rather than dropped quietly
 - [ ] Find every pair of selected rules that contradict. `python.return-count`
       is one and is already recorded as `incompatible`; the search is for the
       others

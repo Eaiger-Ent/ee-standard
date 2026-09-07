@@ -450,7 +450,8 @@ discovers it.
   them. Both are selected, deliberately, so that C4 has the pair in front of it.
 - **C9's premise is off by one.** The installed `eslint-plugin-react` 7.37.5
   carries **103** rules, not the 104 `todo.md` names. The coverage question is
-  unchanged; the number it is asked against is corrected here.
+  unchanged; the number it is asked against is corrected here, and § What was
+  read from an installed tree answers it.
 
 ### What has not happened
 
@@ -599,6 +600,75 @@ deliberate cases.
   `--print-config` echoes. A version recorded from the resolved configuration
   would be wrong; this document takes plugin versions from the lockfile.
 
+## What was read from an installed tree — C9's coverage answer
+
+`assess.contested.md` rows 10 and 11 took option **B** — `@eslint-react`'s
+`recommended` as the JSX-correctness base, `eslint-plugin-react`'s `recommended`
+not installed — and left the decision *contingent on S3 confirming rule
+coverage*. This is that confirmation, read on **2026-09-07** from the installed
+5.18.9 and 7.37.5 rather than from either plugin's documentation.
+
+**The contingency holds.** One rule of the register's own is uncovered, and it
+is the one the configuration already takes directly. One rule outside the
+register is genuinely lost, and it is named below rather than left to be
+discovered.
+
+### The method, and why it is not a name match
+
+`@eslint-react` ships `disable-conflict-eslint-plugin-react`, and that config
+**is the plugin author's own declaration of what it overlaps**: 40 entries, all
+`react/*`, all `off`. Coverage read from it is coverage the replacing plugin
+asserts, not coverage inferred by matching names — which would have failed
+immediately, because the counterparts are not named alike. `react/no-danger`
+is `@eslint-react/dom-no-dangerously-set-innerhtml`; `react/jsx-key` is
+`no-missing-key`. A name match would have reported both as gaps.
+
+The number is **103 rules, not the 104** `todo.md` carried.
+
+### Recommended against recommended
+
+`eslint-plugin-react`'s `flat.recommended` turns on 21 rules. Thirteen are
+declared covered. The eight that are not, read by hand:
+
+| Rule | What B does about it |
+| --- | --- |
+| `react/jsx-no-duplicate-props` | **A real gap, and the one the register cites.** `react.no-duplicate-props` has no `@eslint-react` instrument, which is why the configuration takes this single rule from `eslint-plugin-react` outside its presets |
+| `react/no-unescaped-entities` | **A real loss.** No counterpart, and no register row asserts the property either — so B drops a rule A would have installed, silently, unless it is written down. It is written down here |
+| `react/react-in-jsx-scope` | Not covered because it is obsolete. This is `react.jsx-runtime-assumed`, and not having it is the whole point of row 11 |
+| `react/jsx-uses-react` | The other half of the same obsolescence — it exists to mark `React` used for a `no-unused-vars` rule that no longer needs it |
+| `react/jsx-uses-vars` | Marks JSX-referenced identifiers as used for core `no-unused-vars`. This profile enables no unused-variable rule on the React side, so nothing depends on it. **A strictness level that adds one would need it back**, and that is S4's to remember |
+| `react/jsx-no-undef` | An undefined JSX identifier is a TypeScript error before a lint rule sees it. Covered by the compiler, which `react.strict-type-checking` already requires |
+| `react/no-is-mounted` | Class-component legacy. `react.no-class-components` is on, so the construct it guards cannot exist |
+| `react/require-render-return` | The same: a `render` method needs a class |
+
+So of the eight, one is handled directly, one is a recorded loss, two are the
+obsolescence row 11 exists to shed, and four are made unreachable by rules this
+profile already enables.
+
+### What the register actually needed
+
+The register cites eight `eslint-plugin-react` rule names across six properties.
+**Seven are declared covered; `jsx-no-duplicate-props` is the eighth.**
+
+| Cited | Covered |
+| --- | --- |
+| `jsx-key`, `jsx-no-comment-textnodes`, `jsx-no-target-blank`, `no-unknown-property`, `no-deprecated`, `no-direct-mutation-state`, `no-danger` | yes |
+| `jsx-no-duplicate-props` | **no** |
+
+That is the same answer the configuration reached when it was built, arrived at
+from the other direction: five properties took an `@eslint-react` instrument
+because one existed, and this one did not.
+
+### The other 56
+
+Fifty-six of the 103 are uncovered *and* outside `recommended` — the plugin's
+opinionated and stylistic surface: `jsx-sort-props`, `jsx-max-depth`,
+`forbid-component-props`, `function-component-definition`, and the JSX spacing
+family. **Neither option installs them and no register row cites one**, so they
+are not a coverage question. They are recorded here so that "64 rules have no
+counterpart" cannot later be read as a gap when 56 of them are a surface nobody
+selected.
+
 ## What this document still owes
 
 Named so their absence is visible, in the order they will be written:
@@ -612,8 +682,8 @@ Named so their absence is visible, in the order they will be written:
 - **What was probed** — C5, one case per rule, with the outcome of each.
 - **What each rule costs** — C7's table.
 - **The four numbers** — C6, each with its rationale.
-- **What was read from an installed tree** — C9's second answer, the coverage
-  comparison. The first, what the two `disable-conflict` configs contain, was
-  read by C1 and is under it.
+- ~~**What was read from an installed tree** — C9's two answers.~~ Both done
+  2026-09-07: the `disable-conflict` configs under C1, the coverage comparison
+  in its own section.
 - **What was demoted, and the case that demoted it** — the criterion each
   demotion cites.
