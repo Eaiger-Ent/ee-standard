@@ -2088,12 +2088,15 @@ live run by forty-four minutes: an expiry is a timestamp, and a token issued for
 what a policy costs to state in hours — not slack granted to make a report
 green.
 
-#### If your repository takes pull requests from forks
+#### If your repository takes fork pull requests, or lets Dependabot open them
 
-A fork pull request receives no repository secret and no environment secret.
-SEC-001's remote block cannot answer, and with `--require-complete` the run
-fails a contributor for a credential you deliberately did not give them. Tolerate
-exit `3` on that path, **and only `3`**:
+Two run shapes receive no repository secret and no environment secret: a pull
+request **from a fork**, and anything **Dependabot** opens — GitHub keeps
+Dependabot's secrets in a store of its own and hands a `pull_request` run none
+of the Actions ones. SEC-001's remote block cannot answer in either, and with
+`--require-complete` the run fails a contributor, or a dependency update, for a
+credential you deliberately did not give them. Tolerate exit `3` on that path,
+**and only `3`**:
 
 ```yaml
   register-check:
@@ -2105,9 +2108,9 @@ exit `3` on that path, **and only `3`**:
           GITHUB_TOKEN: ${{ secrets.PLATFORM_READ_TOKEN || github.token }}
           # Read into the environment rather than interpolated into the script:
           # an expression expanded into shell is a shape worth not having.
-          FROM_A_FORK: ${{ github.event.pull_request.head.repo.fork }}
+          NO_REPOSITORY_SECRET: ${{ github.event.pull_request.head.repo.fork || github.event.pull_request.user.login == 'dependabot[bot]' }}
         run: |
-          if [ "$FROM_A_FORK" = "true" ]; then
+          if [ "$NO_REPOSITORY_SECRET" = "true" ]; then
             uv run register-check && status=0 || status=$?
             if [ "$status" -ne 0 ] && [ "$status" -ne 3 ]; then
               exit "$status"
@@ -2117,12 +2120,24 @@ exit `3` on that path, **and only `3`**:
           fi
 ```
 
-A verified violation still fails a fork run, and the incompleteness is still
+A verified violation still fails either run, and the incompleteness is still
 printed. **Test both branches**, in a test that runs the step's own script
 rather than a copy of it: a carve-out nobody exercises is one that quietly
 becomes general, which is exactly what happened to the tolerance it replaces.
-If your repository takes no fork pull requests, do not write this — an unused
-branch is a tolerance waiting to be widened.
+If your repository takes neither fork pull requests nor Dependabot ones, do not
+write this — an unused branch is a tolerance waiting to be widened.
+
+**Name the condition, not one of its instances.** This repository wrote
+`FROM_A_FORK` and had to widen it on 2026-09-07 when a Dependabot bump sat
+unmergeable on precisely the verdict the fork branch exists to tolerate. And key
+it on the pull request rather than on the secret: `if the token is empty` reads
+identically on the happy path and lets a revoked or misspelled secret silently
+downgrade every run to the tolerant branch.
+
+The alternative — putting the token in Dependabot's own secret store — makes
+those runs complete rather than tolerated, and is the wrong trade here: a
+standing credential readable by a run that checks out a bot's dependency change
+is a wider blast radius than the one control it settles.
 
 #### What none of this checks
 

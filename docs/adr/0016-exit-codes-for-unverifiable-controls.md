@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-17
-**Revision:** 5
+**Revision:** 6
 
 Ratified decision from
 [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
@@ -184,6 +184,35 @@ checker stubbed and asserts both branches, because a tolerance nobody exercises
 is one that quietly becomes general, which is what happened to the tolerance
 this replaces.
 
+**Amended 2026-09-07: the case that survives is not only a fork.** The
+paragraphs above named one instance of the condition and read as though it were
+the condition. A **Dependabot** pull request receives no repository secret
+either — GitHub keeps Dependabot's secrets in a store of its own and hands a
+`pull_request` run none of the Actions ones — so the same expression resolves to
+the same job token and the same two controls report `UNCLASSIFIED`. PR #156
+sat unmergeable on exactly that: *12 passed, 0 failed, 2 unclassified*, promoted
+to exit `1` by `--require-complete`.
+
+Nothing decided here changes. The tolerance is still exit `3` and only `3`, its
+two guards are still the first two bullets above, and it is still bounded by a
+fact about the platform rather than by a phase. What changes is that the fact
+has two instances rather than one, and the step now names the condition —
+`NO_REPOSITORY_SECRET` — instead of one of its instances.
+
+The alternative was to put `PLATFORM_READ_TOKEN` in the Dependabot secret store,
+which would have made those runs complete. It was rejected: a standing
+credential readable by a run that checks out a bot's dependency change is a
+wider blast radius than the one control it would settle, and the separation
+GitHub enforces between the two stores exists for that reason. An adopter is
+also not obliged to have a second store configured, while the tolerance
+generalises to any repository.
+
+**The flag is keyed on the pull request, not on the secret.** `if the token is
+empty` would read identically on the happy path and would let a revoked or
+misspelled secret silently downgrade every run to the tolerant branch — the
+carve-out-becomes-general shape this ADR has already been through once, arriving
+by way of a typo rather than a decision.
+
 ## Consequences
 
 **Positive outcomes:**
@@ -238,5 +267,6 @@ this replaces.
 | 3 | 2026-08-17 | § Ratified tolerance added on implementation. `main` became a required status check with no bypass actors, so "CI turns red" had become "no pull request can merge, including the ones that would fix it". The workflow tolerates exit `3` and only `3`. | Nathan Carney |
 | 4 | 2026-08-23 | § Ratified tolerance's third bullet corrected. "Expires by construction" did not hold: Phase 3 landed and the tolerance did not expire, because the Actions `GITHUB_TOKEN` cannot read `security_and_analysis`. The bound moved to [ADR 0022](0022-a-platform-token-ci-carries.md) requirements 1 and 2. | Nathan Carney |
 | 5 | 2026-08-24 | § Ratified tolerance ended. The Conformance step passes `--require-complete`; a pull request from a fork tolerates exit `3` and only `3`, because a fork receives no repository secret. Records that the 2026-08-23 bound named the token and not GOV-001's `partial:`, and so was short by one thing. | Nathan Carney |
+| 6 | 2026-09-07 | § Ratified tolerance amended: the surviving case is any run the platform denies a repository secret, of which a fork is one instance and a Dependabot pull request the other. The tolerance, its two guards and its bound are unchanged; the step's flag is renamed to name the condition. Records why the Dependabot secret store was rejected as the alternative. | Nathan Carney |
 
 Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.

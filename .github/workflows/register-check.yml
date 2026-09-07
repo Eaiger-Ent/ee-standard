@@ -14,10 +14,10 @@ on:
   # Without this they are noticed by the next pull request, which in a quiet
   # month is nobody.
   #
-  # A schedule run has no pull request, so `FROM_A_FORK` is empty and the step
-  # below takes the `--require-complete` branch — which is right: the run is on
-  # the default branch and carries the repository secret, so there is no
-  # credential it should be excused for lacking.
+  # A schedule run has no pull request, so `NO_REPOSITORY_SECRET` evaluates
+  # `false` and the step below takes the `--require-complete` branch — which is
+  # right: the run is on the default branch and carries the repository secret,
+  # so there is no credential it should be excused for lacking.
   #
   # It stays out of CI-001's `required_checks:`. A required check is evaluated
   # on a pull request; adding a trigger changes when this workflow runs, never
@@ -135,20 +135,36 @@ jobs:
         # SEC-001's remote block cannot see `security_and_analysis` and reports
         # UNCLASSIFIED over a repository where push protection is on.
         #
-        # The fallback is not belt-and-braces. A pull request **from a fork**
-        # receives no repository secret, so the expression is empty there and
-        # the job token answers what it can: this repository is public, fork
-        # pull requests are a shape it must survive, and a run that reported
-        # SKIPPED (no credentials) because one secret was absent would decline
-        # to answer CI-001 as well, which the job token can answer perfectly
-        # well.
+        # The fallback is not belt-and-braces. **Two run shapes receive no
+        # repository secret**, so the expression is empty in both and the job
+        # token answers what it can: this repository is public, and a run that
+        # reported SKIPPED (no credentials) because one secret was absent would
+        # decline to answer CI-001 as well, which the job token can answer
+        # perfectly well.
+        #
+        # The two are a pull request **from a fork**, and anything **Dependabot**
+        # opens: GitHub keeps Dependabot's secrets in a store of its own and
+        # hands a `pull_request` run none of the Actions ones. Both are the
+        # platform withholding the credential by design, not a misconfiguration
+        # to repair — and a repository secret readable by a run that checks out
+        # a bot's dependency change is a wider blast radius than the one
+        # UNCLASSIFIED control it would settle.
         env:
           GITHUB_TOKEN: ${{ secrets.PLATFORM_READ_TOKEN || github.token }}
           # Read into the environment rather than interpolated into the script
           # below. The value is a boolean GitHub computes and could not carry an
           # injection, but an expression expanded into shell is a shape worth
           # not having in a file other repositories read.
-          FROM_A_FORK: ${{ github.event.pull_request.head.repo.fork }}
+          #
+          # It names the condition rather than one instance of it. Both
+          # disjuncts are properties of the **pull request**, not of the
+          # credential: keying on the secret being empty would let a revoked or
+          # misspelled secret silently downgrade every run to the tolerant
+          # branch, which is the carve-out-becomes-general shape this step has
+          # already been through once. `user.login` rather than `github.actor`
+          # because a human re-running a Dependabot check is still a run
+          # Dependabot's pull request triggered.
+          NO_REPOSITORY_SECRET: ${{ github.event.pull_request.head.repo.fork || github.event.pull_request.user.login == 'dependabot[bot]' }}
         # Exit codes per ADR 0016: 0 fully verified and clean, 1 a verified
         # violation, 3 no violation but something could not be verified.
         #
@@ -161,16 +177,21 @@ jobs:
         # GOV-001 dropping its `partial:` (contract 26) removed the thing that
         # denied this run a 0 by design whatever the credentials.
         #
-        # One case survives, and it is not a residue of the old tolerance. A
-        # pull request from a fork receives no repository secret, so the token
-        # above resolves to the job token, SEC-001's remote block cannot read
-        # `security_and_analysis`, and the run reports UNCLASSIFIED for a
-        # control that holds. Failing there would fail a contributor for a
-        # credential this repository deliberately does not give them. So a fork
-        # run tolerates 3, and only 3 — a verified violation still fails, and
-        # the incompleteness is still printed on every run.
+        # Two cases survive, and neither is a residue of the old tolerance.
+        # Where the run receives no repository secret the token above resolves
+        # to the job token, SEC-001's remote block cannot read
+        # `security_and_analysis`, SEC-003's cannot read the token's expiry, and
+        # the run reports UNCLASSIFIED for controls that hold. Failing there
+        # would fail a contributor, or a dependency update, for a credential
+        # this repository deliberately does not give them. So those runs
+        # tolerate 3, and only 3 — a verified violation still fails, and the
+        # incompleteness is still printed on every run.
+        #
+        # Dependabot was the second case, added 2026-09-07 after PR #156 sat
+        # unmergeable: 12 passed, 0 failed, 2 unclassified, exit 1. The fork
+        # bound was right about the platform and short by one instance of it.
         run: |
-          if [ "$FROM_A_FORK" = "true" ]; then
+          if [ "$NO_REPOSITORY_SECRET" = "true" ]; then
             uv run register-check && status=0 || status=$?
             if [ "$status" -ne 0 ] && [ "$status" -ne 3 ]; then
               exit "$status"
