@@ -586,10 +586,10 @@ of the survey's finding 9: a tool source says what the tool will flag, not what
 good code is.
 
 **4. WCAG's largest failure class has no static rule.** Contrast, 1.4.3, is a
-rendered-pixel property. `jsx-a11y` has thirty-nine rules and none of them can
-see a colour. Registering `react.a11y-contrast` as bucket 2 with *no* instrument
-is the honest entry; quietly leaving it out would have let the accessibility
-group read as complete.
+rendered-pixel property. `jsx-a11y` ships thirty-nine rules — the profile
+selects thirty-four of them — and not one can see a colour. Registering
+`react.a11y-contrast` as bucket 2 with *no* instrument is the honest entry;
+quietly leaving it out would have let the accessibility group read as complete.
 
 **5. Five sources this register needs were not registered, and S1 has them now.**
 `commitlint` carries four `any.` rows and `spectral` carries nine; neither

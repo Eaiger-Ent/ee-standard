@@ -106,7 +106,9 @@ Candidates to start from:
   `typescript-eslint` recommended-type-checked; `eslint-plugin-jsx-a11y` and
   WCAG; Testing Library's guiding principles; one opinionated style config read
   as a source rather than adopted.
-- **Neutral** — the six transferable `llm-toolkit` files.
+- **Neutral** — the transferable `llm-toolkit` files. Six when this was
+  written; S1 registered **seven**, having found `rules/platform/security.md`
+  language-neutral despite its path.
 
 Also in S1: the licence and upstream-contact question, which is outward-facing
 and needs a named yes before anyone acts on it.
