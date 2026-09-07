@@ -493,7 +493,7 @@ tools:
     # holds. `github-releases` would split it in two and find nothing, since
     # that manager strips a leading `v` for gitleaks' tags and uv's carry none.
     # renovate: datasource=pypi depName=uv
-    version: "0.12.9"
+    version: "0.12.10"
     # The x86_64 asset's checksum, matching the `gitleaks` entry's convention;
     # `.devcontainer/setup.sh` carries both architectures. Unlike gitleaks, uv
     # publishes this beside the artefact as `<asset>.sha256` — so a bump can
