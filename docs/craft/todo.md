@@ -329,7 +329,20 @@ owes is the list of what has not been written — not restated here.
 - [x] Decide from S2's evidence whether "archetype" is a real axis or whether
       stack alone carries it — **stack alone**, with the `any.` rows gating on
       evidence rather than on a declared archetype. ADR 0052
-- [ ] Specify the profile: its axes, its naming, its versioning
+- [ ] Specify the profile: its axes, its naming, its versioning. **The levels
+      are done** — [`design.profiles.md`](design.profiles.md) § The strictness
+      levels, 2026-09-07: two per stack, nested, drawn from the register's own
+      `Default` column rather than from a fresh opinion. `standard` is exactly
+      what S3 benched; `strict` adds eleven Python properties and **one** React
+      one. Three findings came with it — the widest reading of
+      `python.docstring-form` brings in **`D203` against `D211` and `D212`
+      against `D213`**, which ruff warns about and then silently resolves by
+      dropping one; **nothing has run `strict`**, so ADR 0051's third
+      precondition bars every strict-only rule from ever becoming a control; and
+      the axis is asymmetric enough to be suspect, since React's `standard`
+      already carries the `Any` appetite Python's `strict` is defined by, for no
+      reason but which preset each ecosystem ships. The box stays open for
+      naming and versioning
 - [ ] Specify what happens when a profile changes under a repository that has
       already installed it
 - [x] Specify the config surface per stack, and confirm it introduces no new
