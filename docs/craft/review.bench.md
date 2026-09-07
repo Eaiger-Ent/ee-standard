@@ -461,12 +461,15 @@ C1: `eslint --print-config` over one file of each kind is C1, and it has not
 been run. The ruff selection has been expanded against the pinned taxonomy and
 not passed to ruff.
 
-Two settings are carried at ruff's own defaults and marked provisional in the
-file, because they are C6's to justify and C6 has not run: `max-complexity = 10`
-and `max-statements = 50`, both halves of `python.function-length`.
+Two settings were carried at ruff's own defaults and marked provisional in the
+file, because they are C6's to justify: `max-complexity = 10` and
+`max-statements = 50`, both halves of `python.function-length`.
 `line-length = 88` is the register's own proposal and satisfies its constraint
 by construction — one key serves `ruff format` and `E501`, so the two cannot
-disagree — but the number still owes C6 its paragraph.
+disagree — but the number still owed C6 its paragraph. **C6 has since run**:
+complexity stays at 10 and is cited rather than chosen, `max-statements` moves
+to **25** because 50 left the property unenforced, and the line length stands.
+§ The four numbers is the record.
 
 One question the build could not answer and C1 can. `target-version` is absent
 from `ruff.toml`, deliberately, on the same reasoning `CLAUDE.md` gives for this
@@ -1006,6 +1009,111 @@ argument for the Craft register binding properties to exact rule IDs rather than
 to linter prefixes, and it belongs with the range-citation finding in § The
 candidate configuration, which pushed the other way.
 
+## The four numbers — C6
+
+`assess.rules.md` § Resolved ends with four rows that are *resolved as
+classifications and unmeasured as settings*. C6 asks for a value and a paragraph
+per row, and fails a rationale that **cites a corpus measurement this stage did
+not make**. None below does. Where a number has an external citation it is cited
+rather than chosen; where it does not, the paragraph says which way it errs and
+what would change it.
+
+### 1. `python.function-length` — `max-complexity = 10`, `max-statements = 25`
+
+Two numbers, because the register rewrote this property to what the tools
+actually measure: branching and size.
+
+**Complexity is cited, not chosen.** Ten is McCabe's own published
+recommendation from the 1976 paper the metric comes from, and it is ruff's
+default. No source in this register disputes it, so choosing anything else would
+be this stage substituting a preference for a citation.
+
+**Size is chosen, and it moves off ruff's default.** Fifty statements leaves the
+property unenforced in the case it exists for: a function can sit under the
+complexity ceiling and still run to fifty straight-line statements, which is
+exactly what `clean-code 002` objects to and exactly what `C901` will never see.
+So `max-statements` is the rule carrying this property, and at 50 it carries
+nothing.
+
+**Why 25.** The source says twenty *lines*. Statements are not lines — blanks,
+comments and a docstring do not count — so twenty-five statements admits a
+function of roughly thirty-five to forty physical lines. That is a **generous**
+reading of the source rather than a faithful one, and generous is the right
+direction for a number nothing has measured: a threshold that fires on
+well-formed code gets raised or ignored, and one that is slightly loose still
+catches the case it was written for. **What would change it:** S6 reporting that
+it fires on functions the team considers well made, which lowers confidence in
+the reading; or that long functions pass under it, which lowers the number.
+
+### 2. `python.line-length` — 88
+
+**The property is the agreement, not the number**, and the register's resolution
+says so: the limit must equal `ruff format`'s. In ruff that constraint is
+satisfied structurally — `line-length` is one top-level key that both the
+formatter and `E501` read — so **any** value keeps them in agreement and the
+enforceable half of this property is already met by the shape of the
+configuration rather than by the choice.
+
+**Why 88 for the value that remains.** The sources disagree and each has its own
+reason: PEP 8's 79 is a terminal width from before wide displays, Google's 80 is
+a house rule, and 88 is what ruff and the formatter that popularised it default
+to. Taking the tool's default means a repository that never touches this key
+agrees with the wider ecosystem, and it keeps the profile from asserting a
+number no tool would otherwise have.
+
+**This is a default, not a mandate**, and the evidence is close to hand: **this
+repository runs at 100**, and is not wrong to. **What would change it:** a team
+setting it, which the profile should make a one-key change rather than an
+argument.
+
+### 3. `python.no-any`'s strict variant — **not taken, and the prior question is why**
+
+The register keeps mypy's `disallow_any_explicit` as a strict-profile variant
+for S3 to measure. Measuring it turned up the question underneath it first.
+
+**The candidate configuration configures no type checker at all.** Nothing in
+`ruff.toml` or beside it mentions mypy, while the register cites mypy as an
+instrument for two rows — `disallow_untyped_defs` for
+`python.annotate-public-api` and `disallow_any_explicit` here. So the Python
+profile as built is ruff-only, and the strict variant of `no-any` cannot be
+measured against a checker that is not there.
+
+What *can* be said, from C5 rather than from a corpus: `ANN401` — the narrow
+rule the register says is "exactly this scope" — already fired on a legitimate
+`repr` helper. `disallow_any_explicit` asserts the wider property, forbidding
+`Any` anywhere rather than in public signatures, so it would flag that helper
+**and** every `dict[str, Any]` a JSON boundary needs. The narrow rule already
+costs a suppression; the wide one would cost more, and nothing here has measured
+how many more.
+
+**So: the strict variant is not taken, and the recorded reason is that the
+profile owes a type checker before it can owe a strictness.** ADR 0052 makes
+strictness an axis, which makes this a real S4 question rather than a deferral.
+**What would change it:** S4 adding mypy to the Python config surface, at which
+point the variant is measurable and this row comes back.
+
+### 4. `react.explicit-return-types`' scope — `src/**/*.ts`, and not `*.tsx`
+
+The property is *exported non-component functions*. ESLint scopes by file
+pattern, and a `.tsx` extension is the conventional marker for a file containing
+JSX, so "not a `.tsx` file" is the closest a pattern gets to "not a component".
+
+**This is measured, in the one way S3 could measure it.** C5's probe put
+`explicit-module-boundary-types` over three components with inferred JSX return
+types, and it fired on all three. Unscoped, this profile would demand a written
+return type on every component in the repository — which is the cost the
+register's resolution predicted and the reason the scope exists.
+
+**What it gets wrong, in both directions.** A component written in a `.ts` file
+— no JSX, a factory returning another component — is asked for a return type it
+should not need. An exported helper living in a `.tsx` file beside its component
+escapes the rule that should cover it. The scoping prefers the **miss** to the
+**false positive**, which is C5's own premise applied: on a new repository there
+is no legacy noise for a wrong finding to hide in, so a false positive is the
+whole of what a developer sees, and a miss is merely a rule doing less than it
+could. **What would change it:** S6 reporting either that components commonly
+live in `.ts` files, or that exported helpers commonly live in `.tsx` ones.
+
 ## What this document still owes
 
 Named so their absence is visible, in the order they will be written:
@@ -1021,7 +1129,8 @@ Named so their absence is visible, in the order they will be written:
   Done 2026-09-07 — § What was probed.
 - ~~**What each rule costs** — C7's table.~~ Done 2026-09-07 — § What each
   rule costs.
-- **The four numbers** — C6, each with its rationale.
+- ~~**The four numbers** — C6, each with its rationale.~~ Done 2026-09-07 —
+  § The four numbers.
 - ~~**What was read from an installed tree** — C9's two answers.~~ Both done
   2026-09-07: the `disable-conflict` configs under C1, the coverage comparison
   in its own section.

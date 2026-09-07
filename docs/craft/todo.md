@@ -231,11 +231,20 @@ indistinguishable from a completed one.
       of `jsx-a11y`'s 34 rules** is hand-work against `react-hooks`' 1 of 12.
       The reading also exposed that **the profile pins no tool version in
       anything it materialises**, which is S4's to fix
-- [ ] Settle the four numbers the resolutions left owed —
+- [x] Settle the four numbers the resolutions left owed —
       `python.function-length`'s threshold, `python.line-length`'s default,
       `python.no-any`'s strict variant and `react.explicit-return-types`' scope.
       **Each is now a choice with a stated rationale, revisable at S6**, not a
-      corpus calibration
+      corpus calibration. Done 2026-09-07. Complexity stays at **10** and is
+      *cited* — McCabe's own number — rather than chosen; `max-statements` moves
+      off ruff's default to **25**, because at 50 a function can sit under the
+      complexity ceiling and still run to fifty straight-line statements, which
+      is the case the property exists for; **88** stands, with the note that the
+      agreement is the property and this repository itself runs at 100. The
+      third is **not taken**, and the reason is the prior question it uncovered:
+      **the profile configures no type checker at all**, while the register
+      cites mypy for two rows, so a strictness cannot be owed before a checker
+      is. S4's
 - [x] Measure what ruff's `preview = true` costs, since two Python properties are
       reachable only by enabling all 140 preview rules at once. Done 2026-09-07,
       and **the premise does not hold for this configuration**: preview arrives

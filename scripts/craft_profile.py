@@ -144,13 +144,21 @@ select = [
 ]
 
 [lint.mccabe]
-# python.function-length, the branching half. Ruff's own default, carried
-# deliberately rather than by omission — provisional, C6 owes it a rationale.
+# python.function-length, the branching half. Ten is McCabe's own published
+# recommendation and ruff's default, and no source in this register disputes it,
+# so this number is cited rather than chosen. C6 § The four numbers.
 max-complexity = 10
 
+# python.function-length, the size half. **Not ruff's default of 50**, which
+# leaves the property unenforced: a function under the complexity ceiling can
+# still run to fifty straight-line statements, which is exactly what
+# `clean-code 002` objects to and what `C901` will never see. Twenty-five admits
+# a function of roughly thirty-five to forty physical lines once blanks,
+# comments and a docstring are counted back in, which is a generous reading of
+# the source's twenty lines rather than a strict one. Generous is the right side
+# to err on for a number nothing has measured. C6 § The four numbers.
 [lint.pylint]
-# python.function-length, the size half. Provisional — C6.
-max-statements = 50
+max-statements = 25
 # python.function-parameter-count. The register resolved a contest here: the
 # sources were counting different things, so both numbers stand.
 max-args = 5
