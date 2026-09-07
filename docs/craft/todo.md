@@ -473,19 +473,18 @@ are two documents.
       scaffold's own defect — PEP 257 asks for imperative mood and no `standard`
       rule reads docstring prose, so nothing had ever looked; corrected in
       `craft_scaffold.py`, with `standard`'s runs re-verified untouched
-- [ ] Resolve the three demotion candidates the clean and violation runs left
-      standing. **`TC003`**: correct on idiomatic code, and the member of its
-      trio with the smallest payoff — a `TYPE_CHECKING` block to defer a stdlib
-      import; demoting it alone would split `python.typing-only-imports` along a
-      line the register does not draw. **`D103` on every test**, where the
-      remedy the ecosystem reaches for is `per-file-ignores` and that is the
-      exemption `design.profiles.md` § The config surface refused, so `strict`
-      has two of its own decisions against each other. **`TRY003`**, which
-      cannot fire without `EM101` or `EM102` firing on the same line and goes
-      quiet on a remedy that leaves the message outside the exception class —
-      the one property whose instrument does not measure it. All three are C5's,
-      and the third needs a verdict rather than a probe: `review.strict.md`
-      already carries the table that decides it
+- [x] Resolve the demotion candidates the clean and violation runs left
+      standing. Done 2026-09-07, C5. **`TRY003` is demoted** — it is satisfied
+      by `EM101`'s own remedy while the message stays outside the exception
+      class, which is a rule claiming enforcement it does not have, and
+      `plan.md` says this workstream will not ship one. It costs no verdict:
+      every defect it reported is still reported by `EM101` or `EM102`.
+      **`TC003` is kept and the profile was missing a key** — the probe showed
+      the remedy raising `NameError` where `get_type_hints` resolves the
+      annotation, and ruff's `runtime-evaluated-decorators` clears exactly that
+      shape, so nothing needs splitting after all. **`D103` on tests is not
+      C5's to take**: it is a selection question, and the mechanism that fits is
+      the one `S101` already uses
 - [x] C2's other half — one deliberate defect per new rule. Done 2026-09-07:
       `cases/strict/` is the 32, split by what a defect has to *be* rather than
       by property, with the two preview rules keeping the cases C8 wrote for
@@ -526,18 +525,21 @@ are two documents.
       cleared nothing until an effect was added and shown to fire when broken;
       and the test witness got the docstrings the scaffold did not, because a
       case exists to satisfy the instrument and a subject does not
-- [ ] Resolve `python.no-untracked-todo`, whose eleven codes cannot all be
-      satisfied by a file containing a TODO. C3's marker-comment group has no
-      clean witness: a comment with an upper-case tag, an author, a colon, a
-      space, a description and an issue link — everything `TD001`–`TD007` ask
-      for — still fails `FIX002`, which asserts *no TODO at all*. So seven of
-      the property's codes can never fire on a file that passes, and the
-      property as installed forbids marker comments rather than requiring them
-      to be tracked. The choice is C5's: drop `FIX001`–`FIX004` so the property
-      becomes what it says, or drop `TD001`–`TD007` and rename it to what it
-      does
-- [ ] C5 — probes for the rules with a false-positive reputation
-- [ ] C7 — cost per finding for the 32, from `fix_availability`
+- [x] Resolve `python.no-untracked-todo`, whose eleven codes could not all be
+      satisfied by a file containing a TODO. Done 2026-09-07, C5's second
+      demotion: **`FIX001`-`FIX004` are dropped**, because the property's text
+      is *a TODO names an owner or an issue* and `FIX002` asserts *no TODO at
+      all* — a stronger claim than any source in the register proposes, and one
+      that made seven of the eleven codes unreachable. The demotion pays for
+      itself in the same run: the marker-comment group now has the clean witness
+      C3 could not write
+- [x] C5 — probes for the rules with a false-positive reputation. Done
+      2026-09-07: six probes, three fired, **two did not and each has a control
+      beside it** — `RET504` skips an annotated assignment and `D401` exempts a
+      property, so two of the six were written against a version of the rule
+      that no longer exists. `S104`, `PLC0415` and `EM101` are kept with the
+      reason each; `PLC0415` is this level's `ERA001`, the one to put to S6
+- [ ] C7 — cost per finding for the 27, from `fix_availability`
 - [ ] Run the mypy half at all. `disallow_any_explicit` is written and has met
       no code, so the strict level's one type-checker key is as unmeasured as
       C6 left it — which is the row ADR 0051's precondition is really about

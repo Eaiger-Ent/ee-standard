@@ -57,6 +57,10 @@ ruff check --config src/strict.toml --show-settings src/ledger/entries.py
 | No selector matches nothing | None. Ruff rejects an unknown selector outright |
 | The level is a superset | **Nothing is removed.** Diffing the two enabled sets: 32 added, 0 dropped |
 
+**These are the numbers of the run C1 records, and C5 has since changed them.**
+Two demotions remove five selectors, so the level now resolves to 168 rules
+under `src` and 167 under `tests`, with 27 added. § What the demotions changed.
+
 **32 is the design's own number**, and it is the narrow reading of
 `python.docstring-form` rather than the wide one — `D205` and `D401` as exact
 codes, where `D2xx` and `D4xx` would have brought 68. That the configuration
@@ -137,7 +141,10 @@ checked rather than taken; the method itself, and the limit it carries, are
 | class body | none | `PLR0904` | 0 | 0 | 0 | **0** |
 | | | **32** | | | | **125** |
 
-**5,008 down to 125.** The disjoint column is the first bench's second removal,
+**5,008 down to 125.** C5 has since demoted five of the additions, which removes
+candidates and can create none, so this result holds over the smaller selection
+without re-running — and the marker-comment group below now has the witness this
+pass could not write. The disjoint column is the first bench's second removal,
 applied to the families the additions bring: `TC001`/`TC002`/`TC003` split an
 import three ways by origin, `FIX001`–`FIX004` split a line four ways by tag,
 `EM101` and `EM102` split a raise argument into a literal and an f-string, and
@@ -387,8 +394,12 @@ uv run python scripts/craft_cost.py --fires
 
 | | Added | Fired on a case | Silent |
 | --- | --- | --- | --- |
-| Python | 32 | **32** | 0 |
+| Python | 32, now **27** | **all of them** | 0 |
 | React | 1 | **1** | 0 |
+
+The Python row is a range because C5 demoted two rules after this ran and took
+their cases with them. The command is the same and reports 27 of 27; § What the
+demotions changed is why.
 
 The check is mechanical rather than visual, and the mechanism is the point: the
 additions are derived by resolving the strict selection against the standard one
@@ -518,6 +529,155 @@ consequence: the React pair reports one defect twice and both diagnostics are
 true, while the Python pair reports one defect twice and one of the two goes
 quiet on a remedy that does not satisfy it.
 
+## What was probed — C5, and two rules are demoted
+
+Run **2026-09-07**. C5 asks for a probe per rule with a known false-positive
+reputation — **correct** code the rule is known to flag, written deliberately —
+and for the case to be recorded whether the rule survives or not.
+
+Six probes and four cases the earlier criteria already made. **Three probes
+fired, two did not, one is a demonstration, and two rules are demoted.** The
+probes are in [`scripts/craft_cases.py`](../../scripts/craft_cases.py), so every
+result below can be re-derived rather than believed.
+
+```bash
+cd temp/craft-bench/python
+ruff check --config strict.toml cases/probes/strict.py
+ruff check --config cases/probes/runtime-evaluated.toml cases/probes/strict.py
+cd ../react && npx eslint --config strict-probes.config.js probes/Effects.tsx
+```
+
+| Probe | Correct code it was given | Fired |
+| --- | --- | --- |
+| ruff `TC003` | A dataclass whose annotations `get_type_hints` resolves at runtime | **yes** |
+| ruff `S104` | A container listening on every interface, which is the correct configuration there | **yes** |
+| ruff `PLC0415` | A deferred import — the documented remedy for an optional or circular dependency | **yes** |
+| ruff `EM101` | A one-line `NotImplementedError` stub | **yes** |
+| ruff `RET504` | An **annotated** intermediate that names what the number is | **no** |
+| ruff `D401` | A `@property` whose docstring is a noun phrase | **no** |
+| `react-hooks/exhaustive-effect-dependencies` | An effect writing to a ref, which is not reactive and must not be listed | **no** |
+
+**Each negative has a control beside it**, because the first bench established
+that a silent rule is worth nothing until it is shown to be looking. The same
+assignment without the annotation draws `RET504`; the same docstring on a method
+rather than a property draws `D401`; an effect missing a real dependency draws
+the React rule. All three controls fire.
+
+### The two that did not fire already carry the escape hatch their reputation is about
+
+`RET504` and `D401` are the rules this bench expected to argue with, and neither
+needed the argument. Ruff skips an annotated assignment, which is exactly the
+case people complain about — an intermediate that exists to name the value. And
+ruff exempts a property, which is the convention PEP 257 documents for one.
+
+That is a finding about reputations rather than about rules: two of the six
+probes were written against a version of the rule that no longer exists.
+
+### `TC003` fired, and the remedy breaks working code
+
+The probe is a dataclass whose annotation something resolves at runtime.
+`get_type_hints` evaluates the annotation string, so the import the rule wants
+deferred is the import that call needs:
+
+```console
+$ python model.py     # the TC003 remedy applied
+NameError: name 'Decimal' is not defined
+```
+
+**This is the first probe in either bench where complying makes the program
+wrong**, rather than merely verbose. Everything the first bench probed cost a
+suppression; this costs a `NameError` at import time in whatever resolves the
+hints — a serialiser, a validator, a dependency injector.
+
+**The rule is not demoted, because ruff has a setting for exactly this shape**
+and the profile was missing it:
+
+```toml
+[lint.flake8-type-checking]
+runtime-evaluated-decorators = ["dataclasses.dataclass"]
+```
+
+With that key the probe is clean and nothing else in the file changes — six
+findings to five, and the one that goes is `TC003`. The key is now in
+`strict.toml`, and `cases/probes/runtime-evaluated.toml` is the configuration
+the comparison ran against.
+
+**What is left unmeasured, and said so.** The same problem arrives through
+`runtime-evaluated-base-classes` — pydantic, attrs, SQLAlchemy — and that list
+is **not** set, because the scaffold declares no third-party dependency and a
+list nothing here can run is a guess. S6 is where a repository with a real
+dependency answers it.
+
+**And this dissolves the question C2 left open.** The earlier record said
+demoting `TC003` alone would split `python.typing-only-imports` along a line the
+register does not draw. Nothing needs splitting: the family is kept whole and
+configured. What survives of C2's objection is that `TC003`'s payoff is the
+smallest of the three, which is a cost question and therefore C7's.
+
+### The three that fired and are kept
+
+| Rule | Verdict | Why |
+| --- | --- | --- |
+| `S104` | **Keep** | Nothing can tell a container's correct bind-all from a careless one by reading the literal. One suppression per site, and `RUF100` is selected, so a suppression that stops being needed is itself a finding — the first bench's reasoning for `S311`, arriving unchanged |
+| `PLC0415` | **Keep, and it is the one to watch at S6** | The deferred import is documented practice for an optional dependency and the standard escape from a circular one, and the rule has no option that can tell those from carelessness. It is this level's widest blast radius with the weakest defence, which is what `ERA001` was at `standard` |
+| `EM101` | **Keep** | It fired by design rather than in error: the probe measures what the remedy costs on a one-line stub, not a defect in the rule. With `TRY003` demoted below, `EM101` and `EM102` are the only instrument either exception-message property has |
+
+### The first demotion — `TRY003`, which is satisfied without its property being
+
+C2 measured that `TRY003` fires only where `EM101` or `EM102` already fires: on
+a string literal or f-string of **more than one word**, a strict subset of *any
+literal, any f-string*. No probe was needed and none is written; the table in
+§ `TRY003` cannot be made to fire alone is the evidence.
+
+What decides it is the remedy. `EM101` says *assign to variable first*, and
+doing so silences `TRY003` — while the message sits in a local one line above
+the `raise`, which is not what `python.exception-type-carries-its-message` asks
+for and is not inside the exception class. **A rule that can be satisfied
+without its property being satisfied is not an instrument for that property.**
+
+`plan.md` § What this workstream will not do names this exactly: *ship a rule
+that claims enforcement it does not have.* So `TRY003` is removed from
+`strict.toml`, and `python.exception-type-carries-its-message` has no instrument
+at this level and is judgment-only.
+
+**The demotion costs no verdict.** Every defect `TRY003` reported is still
+reported, by `EM101` or `EM102`, on the same line.
+
+### The second demotion — `FIX001`–`FIX004`, which made seven codes unreachable
+
+C3's marker-comment group had no clean witness: a comment with an upper-case
+tag, an author, a colon, a space after it, a description and an issue link —
+everything `TD001`–`TD007` ask for — still failed `FIX002`.
+
+The register states `python.no-untracked-todo` as *a TODO names an owner or an
+issue*. Ruff states `FIX002` as *checks for "TODO" comments … consider resolving
+the issue before deploying the code*. The second is a different and much
+stronger claim, and citing both codes for one property meant **no file
+containing a TODO could pass**, so seven of the property's eleven codes could
+never change a verdict.
+
+The choice was between dropping the four so the property becomes what it says,
+and dropping the seven and renaming the property to what it does. **The four are
+dropped**, because the property's own text is the thing the register is
+accountable for and no source in it proposes a ban on marker comments.
+
+The demotion pays for itself immediately: `cases/src/wit/groups.py` now carries a
+well-formed TODO, and the marker-comment group has the clean witness C3 could
+not write.
+
+### What the demotions changed, in the numbers the earlier sections report
+
+Five selectors leave the level, so `strict` is **27 additions rather than 32**,
+and it resolves to **168 rules** under `src` and **167** under `tests` against
+the 173 and 172 C1 recorded.
+
+- **C1 and C2** are restated by that. `--fires` now reports 27 of 27 and 1 of 1,
+  and the case files for the demoted rules are gone with them.
+- **C3 is not, and does not need re-running.** Removing rules from a selection
+  can only remove pairs, never create one, so *no contradicting pair among the
+  5,008 the additions opened* holds over the smaller set a fortiori. Its
+  arithmetic stands as the record of what was searched, which was more.
+
 ## What has not run
 
 Named so that this document cannot be read as more finished than it is.
@@ -528,8 +688,9 @@ Named so that this document cannot be read as more finished than it is.
 | C2 | **Done**, both directions and both stacks. The clean run produced four findings and the violation run demonstrated all 33 additions, by a command rather than a reading |
 | C3 | **Done**, all three passes. 5,008 new pairs to 125 candidates, six witnesses clean at both levels, no contradicting pair — and the marker-comment group's missing witness, which is a shadowing rather than a fight |
 | C4 | **Done**, and it was recorded as not applicable until the React rule started reporting. One duplicated defect per stack |
-| C5 | **Not started, and it now inherits four cases with the argument already made** — `TC003`, `D103` on tests, `TRY003`, and `TD001`–`TD007` under `FIX002`. `D401` and `EM101` still want a probe of their own |
-| C7 | **Not started.** Cost per finding for the 32, from `fix_availability` |
+| C5 | **Done.** Six probes, three fired, two did not with a control each, and two rules demoted with the case that demoted them. `D103` on tests is the one verdict it did **not** take: § What has not run's last row but one |
+| `D103` on tests | **Open, and it is a selection question rather than a probe.** The case is the scaffold's four tests; the remedy the ecosystem uses is `per-file-ignores`, which the design refused. The mechanism that fits is the one `S101` already uses — select `D100`–`D107` in `src/strict.toml` rather than the root — and taking it is S4's, not this document's |
+| C7 | **Not started.** Cost per finding for the 27, from `fix_availability` |
 | C6, C8, C9 | **Not applicable, and stated rather than skipped.** C6's four numbers are `standard`'s and unchanged; C8 is answered above; C9 was S2's deferral and is closed |
 | The mypy half | **Nothing has run it.** `mypy-strict.ini` is written and `disallow_any_explicit` has not met a line of code |
 

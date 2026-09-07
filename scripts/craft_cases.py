@@ -143,6 +143,17 @@ def described(entry: Entry) -> str:
     return repr(entry)
 
 
+# --- marker comment: ERA001, TD001-TD007 ---
+#
+# TODO(craft): keep this witness in step with the register (https://github.com/Eaiger-Ent/ee-standard/issues/1)
+#
+# One well-formed marker: an upper-case tag, an author, a colon, a space, a
+# description and an issue link. **It could not be written while
+# `FIX001`-`FIX004` were selected** - C3 found the group had no clean witness
+# because FIX fails any file containing a TODO at all - and C5's demotion is
+# what makes the group clearable rather than only arguable.
+
+
 # --- signature: ANN, ARG, PLR0913, PLR0917, FBT, B006, B008, RUF012, UP ---
 @dataclass(frozen=True)
 class Settings:
@@ -431,6 +442,158 @@ def describe(value: Any) -> str:
 def documented() -> int:
     \"\"\"ERA001. The comment above is a documented example, not dead code.\"\"\"
     return 1
+""",
+    "python/cases/probes/strict.py": """\
+\"\"\"C5's probes for the rules `strict` adds: correct code a rule is known to flag.
+
+Each probe is code a reviewer would pass. Where a probe does **not** fire, a
+control sits beside it — the same shape without the thing that excuses it — so
+that a silent rule is shown to be looking rather than assumed to be. The first
+bench established that discipline on `anchor-ambiguous-text` and it is the only
+reason a negative result here is worth anything.
+
+`docs/craft/review.strict.md` § What was probed records what each one did.
+\"\"\"
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import get_type_hints
+
+BIND_ALL = "0.0.0.0"  # S104. A container listens on every interface by design.
+
+
+def render(payload: dict[str, object]) -> str:
+    \"\"\"Render a payload, importing the renderer only when one is asked for.
+
+    PLC0415. A deferred import is the documented remedy for an optional
+    dependency and for a circular one, and the rule cannot tell either from a
+    careless import.
+    \"\"\"
+    import json
+
+    return json.dumps(payload)
+
+
+@dataclass
+class Money:
+    \"\"\"Hold an amount whose annotation a runtime consumer has to resolve.
+
+    TC003. `get_type_hints` below evaluates this annotation, so moving `Decimal`
+    into a type-checking block raises `NameError` rather than deferring
+    anything. The rule reads the annotation and not its consumer.
+    \"\"\"
+
+    amount: Decimal
+
+
+def field_types() -> dict[str, object]:
+    \"\"\"Resolve the annotations at runtime, which is what needs `Decimal` imported.\"\"\"
+    return dict(get_type_hints(Money))
+
+
+def settled(rows: list[int]) -> int:
+    \"\"\"Total the rows through a name that says what the number is.
+
+    RET504, and it does **not** fire: ruff skips an annotated assignment, which
+    is the escape hatch the rule's reputation is about. `unsettled` below is the
+    control.
+    \"\"\"
+    settlement: int = sum(rows)
+    return settlement
+
+
+def unsettled(rows: list[int]) -> int:
+    \"\"\"Control for RET504: the same shape with the annotation removed.\"\"\"
+    settlement = sum(rows)
+    return settlement
+
+
+class Ledger:
+    \"\"\"Hold a balance behind a property.\"\"\"
+
+    def __init__(self, balance: int) -> None:
+        \"\"\"Bind the balance.\"\"\"
+        self._balance = balance
+
+    @property
+    def balance(self) -> int:
+        \"\"\"The amount currently held.
+
+        D401, and it does **not** fire: ruff exempts a property, which is the
+        convention PEP 257 documents for one. `held` below is the control.
+        \"\"\"
+        return self._balance
+
+    def held(self) -> int:
+        \"\"\"The amount currently held.
+
+        Control for D401: the same docstring on a method rather than a property.
+        \"\"\"
+        return self._balance
+
+    def area(self) -> float:
+        \"\"\"Return the area, in a stub a subclass is expected to replace.
+
+        EM101. The remedy binds a name for a one-line stub, which is the cost
+        this probe is about rather than a defect in the rule.
+        \"\"\"
+        raise NotImplementedError("subclasses must implement area")
+""",
+    "python/cases/probes/runtime-evaluated.toml": """\
+# C5's TC003 escape hatch, and **not** the profile.
+#
+# The probe beside it shows the rule breaking a dataclass whose annotations
+# `get_type_hints` resolves. Ruff has a setting for exactly that shape, and the
+# file exists so that the claim is a run rather than a reading: with this
+# configuration the probe is clean and nothing else changes.
+
+extend = "../../strict.toml"
+
+[lint.flake8-type-checking]
+runtime-evaluated-decorators = ["dataclasses.dataclass"]
+""",
+    "react/probes/Effects.tsx": """\
+/* C5's probe for the rule `strict` adds: correct code it is known to flag.
+ *
+ * A ref is deliberately not reactive — React guarantees the object identity is
+ * stable — so a dependency array that omits it is correct. A rule that demanded
+ * it listed would be asking for a dependency that can never change. */
+import { useEffect, useRef } from 'react'
+
+export function RefInEffect({ id }: { id: string }) {
+  const seenRef = useRef<string | null>(null)
+  useEffect(() => {
+    seenRef.current = id
+  }, [id])
+  return <p>{id}</p>
+}
+
+export function Control({ id, other }: { id: string; other: string }) {
+  useEffect(() => {
+    console.log(id, other)
+  }, [id])
+  return <p>{id}</p>
+}
+""",
+    "react/strict-probes.config.js": """\
+import reactHooks from 'eslint-plugin-react-hooks'
+import base from './probes.config.js'
+
+export default [
+  ...base,
+  {
+    files: ['probes/**/*.tsx'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: {
+      'react-hooks/exhaustive-effect-dependencies': [
+        'error',
+        { environment: { validateExhaustiveEffectDependencies: 'all' } },
+      ],
+    },
+  },
+]
 """,
     "python/cases/preview/__init__.py": """\
 """,
@@ -810,26 +973,25 @@ def not_imperative() -> int:
     return 1
 """,
     "python/cases/strict/todo_comments.py": """\
-\"\"\"TD001 to TD007 and FIX001 to FIX004: one malformed marker comment each.
+\"\"\"TD001 to TD007: one malformed marker comment each.
 
-Every line below draws two findings rather than one, and that is the shape of
-the two properties rather than a defect in the cases. `python.no-untracked-todo`
-is TD, which reads the *form* of the marker; FIX reads the marker's *presence*.
-A comment cannot be malformed without being present, so the FIX finding rides
-along with each TD one.
+**`FIX001`-`FIX004` were here and are demoted**, C5's second demotion. They read
+the marker's *presence* where TD reads its *form*, so every line below used to
+draw a FIX finding as well - and, worse, so did a marker comment with nothing
+wrong with it. `cases/src/wit/groups.py` now carries the well-formed TODO that
+was unwritable while they were selected.
 \"\"\"
 
 from __future__ import annotations
 
-# FIXME: TD001 wants the tag to be TODO, and FIX001 objects to the line at all
+# FIXME: TD001 wants the tag to be TODO
 # TODO: TD002 - no author
 # TODO(nc): TD003 - no issue link
 # TODO(nc) TD004 - no colon
 # TODO(nc):
 # todo(nc): TD006 - the tag is not upper case
 # TODO(nc):TD007 - no space after the colon
-# XXX: FIX003 objects to this line
-# HACK: FIX004 objects to this one
+# XXX: TD001 again, with the other invalid tag
 """,
     "python/cases/strict/strict_violations.py": """\
 \"\"\"The strict additions that are neither docstrings nor marker comments.
@@ -860,12 +1022,12 @@ def imports_inside(path: Path) -> str:
 
 
 def raises_a_literal() -> None:
-    \"\"\"EM101, and TRY003 with it: a string literal on a vanilla exception.\"\"\"
+    \"\"\"EM101: a string literal handed to an exception.\"\"\"
     raise ValueError("the ledger is closed")
 
 
 def raises_an_fstring(day: str) -> None:
-    \"\"\"EM102, and TRY003 with it: an f-string on a vanilla exception.\"\"\"
+    \"\"\"EM102: an f-string handed to an exception.\"\"\"
     raise ValueError(f"the ledger is closed on {day}")
 
 
