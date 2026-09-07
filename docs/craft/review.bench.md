@@ -12,9 +12,10 @@ own output against a mark it drew afterwards has measured nothing — which is w
 `plan.md` § S3 puts the ordering first and why this file exists before there is
 anything to put in its second half.
 
-The second half began on 2026-09-07 with the candidate configuration. The
-sections still owed are named at the end so their absence is visible rather
-than inferred.
+The second half was written on **2026-09-07**, in the order the criteria were
+answered. Both halves are now complete, and the last section says whether
+`plan.md`'s exit criterion holds — which is a different question from whether
+every criterion here was met, and the one that finishes the stage.
 
 ## What this stage is measuring, and what it stopped measuring
 
@@ -1284,25 +1285,94 @@ fewer for the demotion and two more from a corrected reading of the plugin
 defaults, now that the derivation is a committed command rather than an ad-hoc
 one.
 
-## What this document still owes
+## What this document owed, and where each landed
 
-Named so their absence is visible, in the order they will be written:
+Every section named on 2026-09-06 as owed now exists. Kept as a list rather than
+deleted, because a promise nobody can check was kept is a promise nobody made.
 
-- ~~**The candidate configuration** — the default-on selection per stack, built
-  from the resolved register.~~ Written 2026-09-07 — § The candidate
-  configuration.
-- ~~**What ran** — C1, C2, C4 and C8, with versions and commands.~~ All four
-  done 2026-09-07.
-- ~~**What fought** — C3's pass: the method, the pairs cleared, and anything
-  found.~~ Done 2026-09-07 — § What fought.
-- ~~**What was probed** — C5, one case per rule, with the outcome of each.~~
-  Done 2026-09-07 — § What was probed.
-- ~~**What each rule costs** — C7's table.~~ Done 2026-09-07 — § What each
-  rule costs.
-- ~~**The four numbers** — C6, each with its rationale.~~ Done 2026-09-07 —
-  § The four numbers.
-- ~~**What was read from an installed tree** — C9's two answers.~~ Both done
-  2026-09-07: the `disable-conflict` configs under C1, the coverage comparison
-  in its own section.
-- **What was demoted, and the case that demoted it** — the criterion each
-  demotion cites.
+| Owed | Where |
+| --- | --- |
+| The candidate configuration | § The candidate configuration |
+| What ran — C1, C2, C4, C8 | § What ran — C1; § What ran — C2; § No defect reported twice; § The preview question |
+| What fought — C3 | § What fought |
+| What was probed — C5 | § What was probed |
+| What each rule costs — C7 | § What each rule costs |
+| The four numbers — C6 | § The four numbers |
+| What was read from an installed tree — C9 | § The defect C1 found; § What was read from an installed tree |
+| What was demoted, and the case | § No defect reported twice — one demotion, one case |
+
+## Does the exit criterion hold
+
+`plan.md` § S3's criterion is three clauses, and this stage is finished when they
+hold **however many of C1 to C9 are ticked**.
+
+> the configuration assembles and runs clean on a scaffold of each stack, no
+> selected rule contradicts another, and every demotion cites the case that
+> demoted it.
+
+| Clause | Held by | Verdict |
+| --- | --- | --- |
+| assembles and runs clean on a scaffold of each stack | C1 and C2 | **Yes.** 141 ruff rules and 133 ESLint rules resolve, every ESLint rule name checked against its plugin, the type-checked rules demonstrated bound; both stacks exit `0` on the scaffold and the witnesses, and non-zero on deliberate defects |
+| no selected rule contradicts another | C3 | **Yes**, by a recorded method with a stated limit, and one rule-versus-configuration conflict resolved by measurement rather than argument |
+| every demotion cites the case that demoted it | C4 | **Yes.** One demotion, one case: the nested component that drew two diagnostics |
+
+**Met.** The five criteria beyond the exit criterion — C4, C6, C7, C8, C9 — are
+also answered, which is what they were added for: each one closes a question
+`assess.rules.md` or `plan.md` would otherwise have handed to somebody to
+rediscover.
+
+### What is true of this verdict, and what is not
+
+**Not everything the stage touched came out clean, and the criterion does not
+ask it to.** Four of C4's twelve shared rule names could not be tripped at all;
+C3's partition is a judgement rather than a proof; C8's preview behaviour risk is
+unmeasured over anything larger than five hundred lines. Each is recorded where
+it belongs. A criterion met over a set of stated residues is worth more than one
+met over a set of unstated ones.
+
+**And the stage measured a configuration, not an experience.** `plan.md` says so
+in terms: since the rewrite, S6 is the only stage that observes the profile in a
+repository somebody is working in. Nothing here says the profile is pleasant, or
+that its numbers are right — only that it assembles, runs, does not fight itself,
+and costs what it costs.
+
+## What S3 hands forward
+
+Eight things, each already argued where it was found, listed here so that the
+stage that needs it does not have to read the whole document to find it.
+
+**To S4, about the register's schema:**
+
+1. **A property that cites two instruments is a double report waiting to
+   happen.** Finding 2's nine were twelve; C1 found that from the conflict
+   config; C4 found a thirteenth pair that no name comparison could see. One
+   instrument per property, alternatives recorded as alternatives.
+2. **A range citation rots and a linter citation over-reaches.** `DTZ001`–`DTZ012`
+   missed `DTZ901`; but C8 showed that spelling a selector as a linter is what
+   makes `preview = true` expensive, while exact codes make it free. The two
+   findings pull in opposite directions and the register has to choose.
+3. **The profile pins no tool version in anything it materialises** — C7. An
+   installed profile whose posture is a pinned binary reading a pinned config
+   cannot ship a rule selection without the version it was selected against.
+4. **The Python profile configures no type checker**, while the register cites
+   mypy for two rows — C6. A strictness axis cannot be defined before the tool
+   that would carry it.
+
+**To S4, about the profile's shape:**
+
+1. **Scoping a rule can cost a second configuration file.** `S101` scoped rather
+   than exempted needs a nested `ruff.toml`, because ruff has no per-path
+   `select` — C3 and § The candidate configuration.
+2. **The accessibility group decides the ESLint major version.** `jsx-a11y`
+   6.10.2 holds the profile at ESLint 9 — § The scaffolds. Dropping the group to
+   reach a supported ESLint is a real option with a measured price.
+
+**To S5:** `craft_cost.py --per-rule` is the cost table the installer was
+promised, and `--against-default` is the list of rules a repository would not get
+from any plugin's `recommended` — which is the honest answer to *what does this
+profile add*.
+
+**To S6:** `ERA001` is the rule to ask about first. It flagged a comment
+documenting a data format, it has the widest blast radius of anything probed, and
+its defence is the weakest. After it, `S311` and `S608`, whose suppressions a
+team will feel one site at a time.
