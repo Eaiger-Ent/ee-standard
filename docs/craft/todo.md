@@ -270,7 +270,21 @@ indistinguishable from a completed one.
       **The scaffold was not clean when the configuration met it**: five
       findings, including three `E501`s at this repository's 100 columns rather
       than the profile's 88
-- [ ] Demote what fails, recording the case that demoted it
+- [x] Show that one defect draws one diagnostic — C4. **Added by the stage**, on
+      the same reasoning as the C2 box. Done 2026-09-07 from
+      `violations/Shared.tsx`: one deliberate defect per rule name both plugins
+      ship, and a count. Six draw exactly one. **One draws two**, and it is not
+      the kind the conflict configs exist for — `react-hooks/static-components`
+      and `@eslint-react/no-nested-component-definitions` are one property under
+      **two different names**, which no name-keyed configuration can ever match.
+      Four of the twelve could not be tripped at all, which is recorded as a gap
+      in the count rather than a pass
+- [x] Demote what fails, recording the case that demoted it. Done 2026-09-07,
+      and **one demotion**, from C4: `@eslint-react/no-nested-component-definitions`
+      is off and `react-hooks/static-components` carries the property alone. The
+      case is the nested component that drew both. Nothing else was demoted —
+      C5's five fired probes each kept their rule with the reasoning recorded,
+      which C5 permits and requires
 - [x] Have a second reader resolve S2's contested classifications. Done
       2026-09-06: every recommendation in
       [`assess.contested.md`](assess.contested.md) was taken. Fourteen of the

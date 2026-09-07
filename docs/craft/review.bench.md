@@ -1184,17 +1184,26 @@ configuration against each plugin's own `recommended` gives **thirty-two**:
 | | Count |
 | --- | --- |
 | Enabled where the plugin's default has the rule **off** or absent | 20 |
-| **Severity raised** above the plugin's default | 12 |
-| Checklist total | **32** |
-| Demonstrated firing on a deliberate case | **32** |
+| **Severity raised** above the plugin's default | 13 |
+| Checklist total | **33** |
+| Demonstrated firing on a deliberate case | **33** |
 
-The twelve escalations are worth their own sentence. `@eslint-react`'s
+```bash
+uv run python scripts/craft_cost.py --against-default   # the checklist itself
+```
+
+The checklist was first derived ad hoc and came to 32. It is now a committed
+command and comes to **33**: C4 demoted one rule off the list, and a corrected
+reading of the plugin defaults put two more on. A number in a document nobody
+can re-run is the number that drifts, which is why this one is a command.
+
+The escalations are worth their own sentence. `@eslint-react`'s
 `recommended` ships eleven of its rules at **`warn`**, and `react-hooks` ships
 `exhaustive-deps` at `warn` — and a rule at `warn` in a merge gate is a rule
 that looks enabled and blocks nothing. That is finding 1's shape a second time:
 the first was a rule shipped `off`, this is a rule shipped unable to fail a
-build. The profile raises all twelve to `error`, and the case file shows each
-one firing.
+build. The profile raises them all to `error`, and the case file shows each one
+firing.
 
 ```bash
 npx eslint --config violations.config.js violations   # exit 1
@@ -1213,6 +1222,68 @@ least able to see. It is now the clause with the most evidence behind it, and
 the evidence is a list a machine compares rather than a paragraph a reader
 trusts.
 
+## No defect reported twice — C4, and the pair no config could reach
+
+Run **2026-09-07**. C4 asks for one deliberate defect per rule name both plugins
+ship, and a count of the diagnostics: **exactly one**.
+
+`cases`' `violations/Shared.tsx` is that file. It found a double report, and the
+double report is not the kind C1's conflict configs exist for.
+
+### What fired, and how many times
+
+| Defect | Diagnostic | Count |
+| --- | --- | --- |
+| `useState` inside a condition | `react-hooks/rules-of-hooks` | 1 |
+| `Date.now()` read during render | `react-hooks/purity` | 1 |
+| A prop mutated | `react-hooks/immutability` | 1 |
+| `setState` during render | `react-hooks/set-state-in-render` | 1 |
+| A ref read during render | `react-hooks/refs` | 1 |
+| A component defined inside a component | `react-hooks/static-components` **and** `@eslint-react/no-nested-component-definitions` | **2** |
+
+**Four of the twelve shared names could not be tripped** with a deliberate case
+in reasonable effort — `globals`, `use-memo`, `error-boundaries` and
+`unsupported-syntax`. That is a gap in the count rather than a pass, and it is
+recorded as one: a rule nobody could make fire is a rule nobody has shown to
+work. Two of the four are `@eslint-react`'s and arrive through its
+`recommended` rather than through a choice this profile made, which lowers the
+stakes without closing the gap.
+
+### The demotion, and why it is a different problem
+
+`@eslint-react/no-nested-component-definitions` is now **off**, and
+`react.no-nested-component-definitions` is instrumented by
+`react-hooks/static-components` alone.
+
+**The reason matters more than the fix.** `assess.rules.md` finding 2 catalogues
+rules that both plugins ship *under the same name*, which is exactly what
+`disable-conflict-eslint-plugin-react-hooks` is built to separate — it turns off
+a list of `react-hooks/*` names. This pair is **one property under two different
+names**, so no name-keyed configuration can ever match it, and no amount of
+composing the plugins' own conflict configs would have found it. It took one
+defect and a count.
+
+`react-hooks/static-components` is kept rather than the other because the
+profile already gives `react-hooks` ownership of the overlap, per C1, and
+because it is the compiler-backed rule of the two.
+
+**What this predicts for the register.** The overlap between these two plugins
+is bigger than a name comparison shows. Finding 2's list of nine was really
+twelve, C1 found that by reading the conflict config, and this pair was invisible
+to both. **A property that cites two instruments is a double-report waiting to
+happen**, and the Craft register should carry one instrument per property with
+the alternative recorded as an alternative — which is a schema question for S4,
+not a selection question for here.
+
+### What the demotion cost
+
+Nothing measurable. The demoted rule and its replacement fired on the same
+defect at the same place, so the property is still instrumented and C2's
+checklist re-derives to **33 rules, all of them demonstrated firing** — one
+fewer for the demotion and two more from a corrected reading of the plugin
+defaults, now that the derivation is a committed command rather than an ad-hoc
+one.
+
 ## What this document still owes
 
 Named so their absence is visible, in the order they will be written:
@@ -1220,8 +1291,8 @@ Named so their absence is visible, in the order they will be written:
 - ~~**The candidate configuration** — the default-on selection per stack, built
   from the resolved register.~~ Written 2026-09-07 — § The candidate
   configuration.
-- **What ran** — ~~C1~~, ~~C2~~, ~~C8~~ done 2026-09-07; C4 still owed, with
-  versions and commands.
+- ~~**What ran** — C1, C2, C4 and C8, with versions and commands.~~ All four
+  done 2026-09-07.
 - ~~**What fought** — C3's pass: the method, the pairs cleared, and anything
   found.~~ Done 2026-09-07 — § What fought.
 - ~~**What was probed** — C5, one case per rule, with the outcome of each.~~
