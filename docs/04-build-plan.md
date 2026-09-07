@@ -695,6 +695,15 @@ unreachable — and only a remote check catches it.
       which is what happened to the tolerance it replaces
       ([`11-phase-3-review.md`](11-phase-3-review.md) § The ninth slice).
 
+      **A second case was found on 2026-09-07**, and it is the same fact about
+      the platform rather than a new tolerance: a **Dependabot** pull request
+      receives no repository secret either, because GitHub keeps Dependabot's
+      secrets in a store of its own. PR #156 sat unmergeable on it — *12 passed,
+      0 failed, 2 unclassified*. The bound above was right and named one
+      instance of itself; the step now names the condition, and
+      [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md) revision 6
+      records it with the alternative it rejected
+
       What ADR 0022 records about the cost of a stronger token, and the controls
       the register needed **before** one was introduced, stands as written; so
       does its finding that SEC-002 could not see a platform token at all,
