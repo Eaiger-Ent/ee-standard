@@ -597,7 +597,18 @@ export default [
       // `react.dev` does not document it, which is `assess.rules.md` finding 1
       // a third time: the rule this stack most needs is the one its own plugin
       // leaves disabled.
-      'react-hooks/exhaustive-effect-dependencies': 'error',
+      //
+      // **The option is not decoration, and `'error'` alone is inert.** The
+      // rule is a view onto the compiler's own analysis, and that analysis is
+      // gated by `validateExhaustiveEffectDependencies`, which the published
+      // bundle defaults to `'off'`. Set to `'error'` and nothing else, the rule
+      // resolves, prints at severity 2 under `--print-config`, and cannot
+      // report anything — C2's third clause exactly, on the only rule this
+      // level has. `docs/craft/review.strict.md` § C2 records the run.
+      'react-hooks/exhaustive-effect-dependencies': [
+        'error',
+        { environment: { validateExhaustiveEffectDependencies: 'all' } },
+      ],
     },
   },
 ]

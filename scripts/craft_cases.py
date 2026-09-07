@@ -25,6 +25,15 @@ clean run would make that run impossible by construction - and
 `react/violations.config.js` is the profile *pointed at another directory*
 rather than a second copy of it.
 
+At `strict` the same criterion is per *rule* rather than per family, because the
+level is defined as thirty-two named additions and a family is too coarse to
+show each one working. `python/cases/strict/` is those, split by what a defect
+has to be — a file with no docstrings, a file with malformed ones, a file of
+marker comments, and a file of everything else — and the two preview rules keep
+the cases C8 already wrote for them rather than getting a second pair.
+`react/violations/Effects.tsx` is the React half, one case per direction the one
+added rule reports.
+
 **C4's shared names.** C4 asks whether one defect ever draws two diagnostics.
 `react/violations/Shared.tsx` is one deliberate defect per rule name both
 plugins ship, and the count per defect is the answer. It found the pair that a
@@ -66,6 +75,13 @@ Then, from `temp/craft-bench/`:
     cd python && ruff check --config src/ruff.toml cases/tests # C5, S101 unscoped
     cd react  && npx eslint src && npx tsc --noEmit
     cd react  && npx eslint --config probes.config.js probes   # C5, expected to fire
+
+And at `strict`, where the check that every addition fired is a command rather
+than a reading:
+
+    cd python && ruff check --config strict.toml cases/strict cases/preview/control.py
+    cd react  && npx eslint --config strict-violations.config.js violations
+    uv run python scripts/craft_cost.py --fires  # C2 at strict, both stacks
 """
 
 from __future__ import annotations
@@ -619,6 +635,120 @@ def test_composite_assertion() -> None:
     value = 2
     assert value > 0 and value < 10  # PT018: a composite assertion
 """,
+    "python/cases/strict/__init__.py": "",
+    "python/cases/strict/undocumented.py": """\
+from __future__ import annotations
+
+
+class Undocumented:
+    class Nested:
+        pass
+
+    def __init__(self) -> None:
+        self.value = 1
+
+    def __str__(self) -> str:
+        return "undocumented"
+
+    def method(self) -> int:
+        return self.value
+
+
+def function() -> int:
+    return 1
+""",
+    "python/cases/strict/docstring_form.py": """\
+\"\"\"D205 and D401: docstrings that exist and are the wrong shape.\"\"\"
+
+from __future__ import annotations
+
+
+def no_blank_line_after_summary() -> int:
+    \"\"\"Return one, in a summary line.
+    D205: there is no blank line between that summary and this description.
+    \"\"\"
+    return 1
+
+
+def not_imperative() -> int:
+    \"\"\"Returns one, in the indicative mood PEP 257 does not ask for.\"\"\"
+    return 1
+""",
+    "python/cases/strict/todo_comments.py": """\
+\"\"\"TD001 to TD007 and FIX001 to FIX004: one malformed marker comment each.
+
+Every line below draws two findings rather than one, and that is the shape of
+the two properties rather than a defect in the cases. `python.no-untracked-todo`
+is TD, which reads the *form* of the marker; FIX reads the marker's *presence*.
+A comment cannot be malformed without being present, so the FIX finding rides
+along with each TD one.
+\"\"\"
+
+from __future__ import annotations
+
+# FIXME: TD001 wants the tag to be TODO, and FIX001 objects to the line at all
+# TODO: TD002 - no author
+# TODO(nc): TD003 - no issue link
+# TODO(nc) TD004 - no colon
+# TODO(nc):
+# todo(nc): TD006 - the tag is not upper case
+# TODO(nc):TD007 - no space after the colon
+# XXX: FIX003 objects to this line
+# HACK: FIX004 objects to this one
+""",
+    "python/cases/strict/strict_violations.py": """\
+\"\"\"The strict additions that are neither docstrings nor marker comments.
+
+PLR1702 and PLR0904 are deliberately **not** here. Their cases were written for
+C8, in `cases/preview/control.py`, and they are exactly the defects C2 needs;
+writing a second six-deep function and a second twenty-five-method class would
+be a copy free to drift from the one the preview measurement reads.
+\"\"\"
+
+from __future__ import annotations
+
+from datetime import datetime
+from pathlib import Path
+
+import pytest
+
+from ledger.entries import Entry
+
+HOST = "0.0.0.0"
+
+
+def imports_inside(path: Path) -> str:
+    \"\"\"PLC0415: an import that is not at the top level.\"\"\"
+    import json
+
+    return json.dumps(str(path))
+
+
+def raises_a_literal() -> None:
+    \"\"\"EM101, and TRY003 with it: a string literal on a vanilla exception.\"\"\"
+    raise ValueError("the ledger is closed")
+
+
+def raises_an_fstring(day: str) -> None:
+    \"\"\"EM102, and TRY003 with it: an f-string on a vanilla exception.\"\"\"
+    raise ValueError(f"the ledger is closed on {day}")
+
+
+def assigns_before_return(rows: list[int]) -> int:
+    \"\"\"RET504: a name bound only to be returned on the next line.\"\"\"
+    total = sum(rows)
+    return total
+
+
+def annotated(entry: Entry, *, when: datetime, path: Path, item: pytest.Item) -> str:
+    \"\"\"TC001, TC002 and TC003: four imports used only in this signature.
+
+    The three named parameters are keyword-only so that PLR0917, which is a
+    `standard` rule and not one of the additions, has nothing to say about a
+    case written for something else.
+    \"\"\"
+    return f"{entry} {when} {path} {item}"
+""",
     "react/violations/Violations.tsx": """\
 /* Every defect in this file is deliberate. */
 import { createContext, useEffect, useState, forwardRef, useContext } from 'react'
@@ -866,6 +996,54 @@ export default profile.map((block) => {
   "extends": "./tsconfig.json",
   "include": ["violations"]
 }
+""",
+    "react/violations/Effects.tsx": """\
+/* C2 at `strict`: cases written for react-hooks/exhaustive-effect-dependencies,
+ * the one rule that level adds. Both directions the rule reports, because the
+ * missing one overlaps `exhaustive-deps` and the extra one does not. */
+import { useEffect, useState } from 'react'
+
+export function MissingDep({ id }: { id: string }) {
+  const [seen, setSeen] = useState('')
+  useEffect(() => {
+    console.log(id)
+    setSeen('x')
+  }, [])
+  return <p>{seen}</p>
+}
+
+export function ExtraDep({ id, other }: { id: string; other: string }) {
+  useEffect(() => {
+    console.log(id)
+  }, [id, other])
+  return <p>{id}</p>
+}
+""",
+    "react/strict-violations.config.js": """\
+// C2's violation configuration at `strict`, and it is `violations.config.js`
+// one level up: the **strict** profile pointed at `violations/` rather than a
+// second copy of what that level enables.
+import profile from './strict.config.js'
+
+const remap = (pattern) =>
+  pattern.startsWith('src/') ? pattern.replace(/^src\\//, 'violations/') : pattern
+
+export default profile.map((block) => {
+  const moved = { ...block }
+  if (Array.isArray(block.files)) moved.files = block.files.map(remap)
+  if (Array.isArray(block.ignores)) moved.ignores = block.ignores.map(remap)
+  if (block.languageOptions?.parserOptions?.projectService) {
+    moved.languageOptions = {
+      ...block.languageOptions,
+      parserOptions: {
+        ...block.languageOptions.parserOptions,
+        projectService: false,
+        project: './tsconfig.violations.json',
+      },
+    }
+  }
+  return moved
+})
 """,
     "react/src/cases/Witness.tsx": """\
 import { createContext, useCallback, useMemo, useState } from 'react'

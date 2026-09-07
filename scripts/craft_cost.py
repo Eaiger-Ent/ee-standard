@@ -13,6 +13,14 @@ That is the checklist C2 has to demonstrate firing, and deriving it beats taking
 it from a document — `assess.rules.md` names ten, and reading the resolved
 configuration against each plugin's default gives three times as many.
 
+`--fires` answers C2's per-rule half at `strict`: **did every rule the level adds
+report on a case written for it?** The additions are derived by resolving the
+strict selection against the standard one rather than typed out, the findings
+come from a run over `cases/strict/`, and the two sets are compared — so a rule
+that has quietly stopped firing shows up as a missing rule rather than as a run
+that still looks busy. It exits non-zero when one is missing. The mode needs a
+level with one below it, which `standard` has not.
+
 It reports the versions it read. It deliberately **pins nothing**: the profile
 does not yet pin its own tools in anything it materialises — that gap is S4's,
 recorded in the bench — and a pin here would be a second copy of a version this
@@ -25,6 +33,7 @@ Run it against a materialised bench:
     uv run python scripts/craft_cost.py            # totals
     uv run python scripts/craft_cost.py --per-rule # every rule, one per line
     uv run python scripts/craft_cost.py --against-default  # C2's checklist
+    uv run python scripts/craft_cost.py --fires            # C2 per rule, at strict
 """
 
 from __future__ import annotations
@@ -143,43 +152,68 @@ console.log(JSON.stringify({ versions, rows }))
 """
 
 
-def _run(command: list[str], *, cwd: Path) -> str:
+def _run(command: list[str], *, cwd: Path, expect_findings: bool = False) -> str:
     result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, check=False)
-    if result.returncode != 0:
+    # A linter asked for violations exits non-zero when it finds them, which is
+    # the whole point of the run rather than a failure of it.
+    if result.returncode != 0 and not (expect_findings and result.stdout.strip()):
         print(f"failed: {' '.join(command)}\n{result.stderr}", file=sys.stderr)
         raise SystemExit(1)
     return result.stdout
 
 
-def python_costs(target: Path) -> tuple[str, list[tuple[str, str, str]]]:
-    """Every selected ruff rule as (code, linter, cost), with ruff's version."""
-    root = target / "python"
-    version = _run(["ruff", "--version"], cwd=root).strip()
+#: Which ruff config files carry a level's selection, and under which key. The
+#: `strict` pair *extends* the `standard` one, so both have to be read to
+#: resolve it — which is the same statement the profile makes, read back.
+PYTHON_LEVELS = {
+    "standard": (("ruff.toml", "select"), ("src/ruff.toml", "extend-select")),
+    "strict": (
+        ("ruff.toml", "select"),
+        ("src/ruff.toml", "extend-select"),
+        ("strict.toml", "extend-select"),
+        ("src/strict.toml", "extend-select"),
+    ),
+}
+
+#: Where C2's per-rule cases live at `strict`. `cases/preview/control.py` is in
+#: the list because the two preview rules keep the cases C8 wrote for them.
+STRICT_CASES = ("cases/strict", "cases/preview/control.py")
+
+
+def _parts(code: str) -> tuple[str, str]:
+    match = re.match(r"([A-Z]+)(\d*)", code)
+    if match is None:  # pragma: no cover - every ruff code has this shape
+        message = f"unreadable rule code: {code}"
+        raise ValueError(message)
+    return match.group(1), match.group(2)
+
+
+def _resolve(root: Path, level: str) -> dict[str, tuple[str, str, str]]:
+    """Resolve a level's selectors to (code, linter, cost), keyed by code."""
     taxonomy = json.loads(_run(["ruff", "rule", "--all", "--output-format", "json"], cwd=root))
     rules = [rule for rule in taxonomy if rule.get("code")]
 
     selectors: list[str] = []
-    configs = ((root / "ruff.toml", "select"), (root / "src" / "ruff.toml", "extend-select"))
-    for config, key in configs:
-        selectors += tomllib.loads(config.read_text(encoding="utf-8"))["lint"][key]
-
-    def parts(code: str) -> tuple[str, str]:
-        match = re.match(r"([A-Z]+)(\d*)", code)
-        if match is None:  # pragma: no cover - every ruff code has this shape
-            message = f"unreadable rule code: {code}"
-            raise ValueError(message)
-        return match.group(1), match.group(2)
+    for name, key in PYTHON_LEVELS[level]:
+        selectors += tomllib.loads((root / name).read_text(encoding="utf-8"))["lint"][key]
 
     selected: dict[str, tuple[str, str, str]] = {}
     for selector in selectors:
-        alpha, digits = parts(selector)
+        alpha, digits = _parts(selector)
         for rule in rules:
-            code_alpha, code_digits = parts(rule["code"])
+            code_alpha, code_digits = _parts(rule["code"])
             if code_alpha == alpha and code_digits.startswith(digits):
                 available = rule["fix_availability"]
                 cost = "none" if available == "None" else "fix"
                 selected[rule["code"]] = (rule["code"], rule["linter"], cost)
-    return version, sorted(selected.values())
+    return selected
+
+
+def python_costs(target: Path, level: str = "standard") -> tuple[str, list[tuple[str, str, str]]]:
+    """Every selected ruff rule as (code, linter, cost), with ruff's version."""
+    root = target / "python"
+    version = _run(["ruff", "--version"], cwd=root).strip()
+    return version, sorted(_resolve(root, level).values())
 
 
 def react_costs(target: Path) -> tuple[dict[str, str], list[tuple[str, str, str]]]:
@@ -219,6 +253,55 @@ def against_default(target: Path) -> list[tuple[str, str]]:
     return [(row["id"], row["why"]) for row in json.loads(raw)]
 
 
+def python_fires(target: Path) -> tuple[list[str], list[str]]:
+    """The rules `strict` adds, split into those that fired on a case and those that did not."""
+    root = target / "python"
+    added = sorted(set(_resolve(root, "strict")) - set(_resolve(root, "standard")))
+    command = [
+        "ruff",
+        "check",
+        "--config",
+        "strict.toml",
+        "--output-format",
+        "json",
+        *STRICT_CASES,
+    ]
+    raw = _run(command, cwd=root, expect_findings=True)
+    fired = {finding["code"] for finding in json.loads(raw)}
+    return [code for code in added if code in fired], [code for code in added if code not in fired]
+
+
+def react_fires(target: Path) -> tuple[list[str], list[str]]:
+    """The same question for React, where `strict` adds one rule."""
+    root = target / "react"
+    standard = _run(["npx", "eslint", "--print-config", REACT_FILES[0]], cwd=root)
+    strict = _run(
+        ["npx", "eslint", "--config", "strict.config.js", "--print-config", REACT_FILES[0]],
+        cwd=root,
+    )
+
+    def enabled(config: str) -> set[str]:
+        rules = json.loads(config)["rules"].items()
+        severities = {name: v[0] if isinstance(v, list) else v for name, v in rules}
+        return {name for name, severity in severities.items() if severity not in (0, "off")}
+
+    before, after = enabled(standard), enabled(strict)
+    added = sorted(after - before)
+
+    command = [
+        "npx",
+        "eslint",
+        "--config",
+        "strict-violations.config.js",
+        "--format",
+        "json",
+        "violations",
+    ]
+    raw = _run(command, cwd=root, expect_findings=True)
+    fired = {message["ruleId"] for report in json.loads(raw) for message in report["messages"]}
+    return [name for name in added if name in fired], [name for name in added if name not in fired]
+
+
 def report(title: str, rows: list[tuple[str, str, str]]) -> None:
     counts = Counter(cost for _, _, cost in rows)
     total = len(rows)
@@ -243,7 +326,29 @@ def main() -> int:
         action="store_true",
         help="print C2's checklist instead: React rules enabled against a plugin default",
     )
+    parser.add_argument(
+        "--fires",
+        action="store_true",
+        help="C2 per rule at strict: did every rule the level adds report on a case?",
+    )
     args = parser.parse_args()
+
+    if args.fires:
+        missing = 0
+        for stack, (fired, silent) in (
+            ("Python", python_fires(args.target)),
+            ("React", react_fires(args.target)),
+        ):
+            print(f"\n{stack}: {len(fired) + len(silent)} rules added at strict")
+            print(f"  fired on a case  {len(fired):>4}")
+            print(f"  silent           {len(silent):>4}")
+            for name in silent:
+                print(f"    {name}")
+            missing += len(silent)
+        if missing:
+            print(f"\n{missing} added rules never fired.", file=sys.stderr)
+            return 1
+        return 0
 
     if args.against_default:
         rows = against_default(args.target)
