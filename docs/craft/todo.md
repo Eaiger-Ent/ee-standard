@@ -395,6 +395,23 @@ owes is the list of what has not been written — not restated here.
       `assess.rules.md`, which becomes a stage record like `survey.sources.md`
       beside it, with a superset test rather than a promise holding them
       together
+- [x] Design the evidence gates for the 42 stack-neutral rows — ADR 0052's one
+      binding consequence. Done 2026-09-07, `design.profiles.md` § The evidence
+      gates. **The gate is a `controls.yaml` predicate, not a new mechanism**:
+      `terraform: any *.tf file exists` is the infrastructure group's gate
+      already written and already read, so a group names a predicate rather than
+      describing one, and a name defined in both registers is a schema error.
+      The one predicate that does not exist — `openapi-document` — belongs in
+      the Craft register and is keyed on the document's own top-level `openapi`
+      key rather than on a filename, because a glob both misses and over-matches
+      where the tool's own resolution does neither. **The model fits 15 of the
+      42**, and the other four groups needed answers about scope: the commit
+      group has no artefact and is simply on (its problem is that `commitlint`
+      is Node-only and no Python instrument is registered); and the five
+      platform rows are **out of scope for a profile** — two cannot even go in
+      `gate-repo`'s recorded ruleset, which fails anything not targeting
+      `~DEFAULT_BRANCH` — making them candidates for ADR 0051's crossing route
+      alongside the one that ADR already names
 - [x] Draft the ADR on writing into a control's gated configuration — **ADR
       0055**, Accepted 2026-09-07. **Not anticipated by the four**: the config
       surface slice found that a craft rule installed into a mandated tool
@@ -420,7 +437,10 @@ owes is the list of what has not been written — not restated here.
 - [ ] Write the pinned configuration at every locus the profile declares
 - [ ] Record what was written, **including which stack-neutral groups the
       evidence gates switched on and what switched them** — ADR 0052 requires it,
-      because a gate nobody can see is the invisible suppression it rejected
+      because a gate nobody can see is the invisible suppression it rejected.
+      **The gates are designed** — [`design.profiles.md`](design.profiles.md)
+      § The evidence gates, 2026-09-07 — and the stamp line is specified there;
+      writing it is this box
 - [ ] Emit the judgment-only residue as prose an assistant loads, labelled
       unenforced
 - [ ] Make a second run over its own output change nothing

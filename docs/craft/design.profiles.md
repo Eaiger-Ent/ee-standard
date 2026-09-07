@@ -598,16 +598,200 @@ to grow past the stage that started it. S5 owns it.
 - **The migration.** Nothing here writes the 182 rows. Turning the prose into
   data is work, and it belongs with the installer that reads it.
 
+## The evidence gates
+
+ADR 0052 removed the archetype axis by grouping the 42 stack-neutral properties
+by the artefact they read, switching each group on when that artefact is
+present, so that a repository declares nothing. It named one consequence as
+binding: **the installer must report which groups it switched on and which
+artefact switched them**, because a gate nobody can see is the invisible
+suppression that ADR rejected the declared archetype for.
+
+This section says what the groups are, what gates each, and where the record
+goes. It also reports that the model fits fewer of the rows than the ADR assumed
+— which is a finding about the other rows rather than about the model.
+
+### The 42 rows do not all group by an artefact
+
+Read against `assess.rules.md`'s stack-neutral section, keyed on what each row's
+Instrument column actually names:
+
+| Group | Rows | Gated by an artefact? |
+| --- | --- | --- |
+| `spectral` over an OpenAPI document | 11 | **Yes** — the ADR's own example |
+| An infrastructure analyser over Terraform | 4 | **Yes** |
+| `commitlint` over commit messages | 3 | **No.** Every repository has commits |
+| A GitHub ruleset or repository setting | 5 | **No.** Platform state, not a file |
+| Already a control — SEC-001/002, CI-001, SUP-002 | 4 | n/a, and excluded from the shares |
+| Bucket 3, no instrument at all | 10 | Nothing to gate |
+| Bucket 2, no instrument yet | 5 | Nothing to gate |
+
+**Fifteen of the forty-two gate on an artefact the way ADR 0052 describes.** The
+model is right about those and it was never wrong — it was stated over the whole
+`any.` scope when the evidence supports it over two groups. The other four
+groups need answers of their own, and three of them turn out to be answers about
+scope rather than about gating.
+
+### The gate is a register predicate, not a new mechanism
+
+`controls.yaml` already carries the thing this needs:
+
+```yaml
+predicates:
+  always: true
+  python: pyproject.toml exists
+  typescript: tsconfig.json exists
+  container: any Dockerfile exists
+  terraform: any *.tf file exists
+  github-actions: .github/workflows/ exists
+  devcontainer: .devcontainer/devcontainer.json exists
+```
+
+That is a named set of *does this artefact exist* tests, read by
+`_applicable_gates` to decide which controls apply to a repository. IAC-001's
+`applies_to: [terraform]` is the infrastructure group's gate already written,
+already read, and already true of the same repository at the same moment.
+
+**So a Craft group names a predicate rather than describing one.**
+
+```yaml
+any.https-everywhere:
+  gated_on: terraform          # resolves in controls.yaml
+```
+
+Predicates resolve from `controls.yaml` first and from the Craft register's own
+`predicates:` block second, and **a name defined in both is a schema error**.
+That is the same move the schema slice made with `coextensive:` — duplication
+made illegal rather than discouraged, because two definitions of *is there
+Terraform here* would eventually disagree about a repository and nobody would
+know which one the profile used.
+
+**The OpenAPI predicate does not exist and belongs in the Craft register**, not
+in `controls.yaml`. No control gates on it, and adding a predicate to the control
+register purely for Craft's benefit is the direction ADR 0053 sent Craft data
+away from:
+
+```yaml
+predicates:
+  openapi-document: any file with a top-level `openapi` key exists
+```
+
+**Keyed on the document's own declaration, not on its name.** `openapi.yaml`,
+`api/spec.yaml` and `docs/openapi/v1.json` are all real conventions and a glob
+over them would both miss and over-match — a `spectral` run finds nothing in a
+file that does not declare itself, and finds plenty in one that does whatever it
+is called. This is ADR 0052's own requirement applied literally: the gate reads
+the same fact the rule needs to run at all, so the two cannot disagree.
+
+### The commit group has no artefact, and its gate is a cost
+
+Three rows — `any.conventional-commits`, `any.commit-subject-length`,
+`any.commit-references-work-item` — are instrumented by `commitlint`, and every
+repository has commit messages for it to read. There is no artefact whose
+absence makes the property inapplicable, so **there is nothing here to gate on
+and the group is simply on**.
+
+What there is instead is a cost the register has a word for. `commitlint` is a
+Node package, so a Python repository with no `package.json` acquires a Node
+toolchain and a second lockfile to check its commit messages — which is a real
+objection a Python team would be right to make, and it is not a gate, because
+gating on `package.json` would mean a Python repository never gets commit
+conventions for a reason that has nothing to do with commit conventions.
+
+**No Python-ecosystem instrument for this group is registered.** That is survey
+work, and the schema slice already settled how it arrives: `sources:` is register
+data now, so a new source is added there and `survey.sources.md` stays the record
+of the original sweep rather than a document anybody edits. Until one is
+registered the group is Node-only, and an installer that would drag a toolchain
+into a repository to satisfy it should say so and let the team decline —
+which is a report, not a gate.
+
+### The platform group is not a profile's to write
+
+Five rows name a GitHub ruleset or a repository setting: `any.branch-naming`,
+`any.linear-merged-history`, `any.signed-commits`, `any.semver-release-tags` and
+`any.delete-merged-branches`. None of them is configuration in a file a profile
+writes, and reading CI-001 against them splits them three ways — none of which
+ends in a Craft profile:
+
+- **`linear-merged-history` and `signed-commits`** are default-branch
+  properties, and could be added to the ruleset `gate-repo` records:
+  `_ruleset_problems` checks that the recording *falls short* of nothing the
+  register requires, so an extra rule is a narrowing it permits. But that file
+  carries `gate-repo`'s provenance stamp, and a second writer to a gate's own
+  recorded artefact is a worse version of the problem ADR 0055 solved for
+  `pyproject.toml` — there the control asserted three keys; here the file *is*
+  the control's deployment.
+- **`branch-naming` and `semver-release-tags`** cannot go in that file at all.
+  `ruleset_recorded_matches_register` fails a ruleset whose conditions target
+  anything but `~DEFAULT_BRANCH`, and these two target feature branches and
+  tags. They need a ruleset of their own, which is a second ruleset for a
+  repository to reconcile.
+- **`delete-merged-branches`** is a repository setting rather than a ruleset rule
+  — a different API call again.
+
+All three are platform state applied through the GitHub API after an explicit
+confirmation, which is what `gate-repo` does and what a profile writing
+configuration files does not. **So the platform group is out of scope for a
+Craft profile**, and those five properties are the clearest candidates in the
+register for ADR 0051's crossing route: become controls, deployed by the gate
+that already owns that surface. `any.dependency-vulnerability-scanning` is
+already named there by that ADR, and this is four more of the same shape.
+
+### The fifteen rows with nothing to gate
+
+Ten bucket-3 properties have no instrument by their own classification —
+`any.authorise-separately-from-authenticate`, `any.validate-at-boundaries`,
+`any.threat-modelling` and seven others — and five bucket-2 rows have none yet.
+They are not gated because there is nothing to switch on. They are the
+judgment-only residue `plan.md` § S5 says the installer hands back as prose an
+assistant loads, **labelled unenforced**, and the label is the whole of what
+makes them honest.
+
+### What the installer records, and where
+
+ADR 0052 requires the record and ADR 0055 settled its shape. The stamp carries,
+per group: the predicate consulted, what it matched, and the resulting state.
+
+```text
+# ee-craft: python/standard@1  gates: terraform=no(0 *.tf) openapi-document=yes(api/openapi.yaml) commit=on
+```
+
+Two properties of that line are the point of it.
+
+**It names the artefact, not just the answer.** *The API group is off* is not
+reviewable; *the API group is off because no file declares a top-level `openapi`
+key* is, and it tells a reader exactly what to add to change it.
+
+**It goes stale visibly rather than silently.** ADR 0052 names the transition it
+worries about: writing a first OpenAPI document enables eleven rules on a
+codebase never checked against them, and it *will* feel like a regression at the
+worst moment. The stamp is what makes that legible — it records the answer as of
+the install, so a reader can see that the profile was installed before the
+document existed, and a re-run is what turns the group on. Nothing switches on
+under a repository that is not looking, which is the same guarantee ADR 0052
+gives for the profile version.
+
+### What this section does not settle
+
+- **How the fifteen ungated rows are worded as prose.** The residue is S5's
+  deliverable, and *labelled unenforced* is a requirement rather than a wording.
+- **Whether the five platform properties become controls.** ADR 0051's route is
+  open to them and its three preconditions still bind; nothing here mints
+  anything.
+- **The Node-toolchain question for the commit group.** It needs a registered
+  Python-ecosystem instrument, and registering one is survey work.
+
 ## What this document still owes
 
 Named now so that a reader can tell a gap from an omission, and so that a later
 slice cannot quietly drop one.
 
-Four rows have left this table since it was first written — the `[tool.mypy]`
-question answered by ADR 0055, the strictness levels, and both of S3's remaining
-hand-forwards, which § The Craft register's schema closes by making the two
-measured mistakes unspellable. Two have joined it, each raised by the slice that
-closed something else.
+Five rows have left this table since it was first written — the `[tool.mypy]`
+question answered by ADR 0055, the strictness levels, both of S3's remaining
+hand-forwards, and the evidence gates. Four have joined it. **Every slice so far
+has closed more than it opened and opened something**, which is what a design
+document doing its job looks like from the inside.
 
 | Owed | Which box in `todo.md` |
 | --- | --- |
@@ -616,9 +800,10 @@ closed something else.
 | What happens when a profile changes under a repository that installed it — including whether **removing** a rule from a level is a loosening under LNT-001's `variance: narrowing-only` | Specify what happens when a profile changes |
 | The Craft register's **validation**, and whether `craft_contract` gates anything — the schema itself is settled above | Write `design.profiles.md` |
 | The migration: turning `assess.rules.md`'s 182 rows into register data | Raised by § The Craft register's schema |
-| Which artefact gates each `any.` group, and where the installer records what it switched on | ADR 0052's evidence-gate consequence |
+| Whether the five platform properties take ADR 0051's route to becoming controls — the evidence-gate section put them out of a profile's scope but mints nothing | Raised by § The evidence gates |
+| A registered Python-ecosystem instrument for the commit group, so it is not Node-only | Raised by § The evidence gates; survey work under the schema slice's `sources:` |
 
 `plan.md`'s exit criterion for S4 is *every ADR it names is Accepted*. All five
 are — the four taken ahead of the stage, and ADR 0055, which this document's
 first section produced. That does not finish S4: the deliverable is this
-document, and it is three sections long.
+document, and it is four sections long.
