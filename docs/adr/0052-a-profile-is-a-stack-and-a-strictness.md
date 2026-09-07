@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-06
-**Revision:** 2
+**Revision:** 3
 
 ## Background
 
@@ -21,12 +21,20 @@ rows barely vary at all: a mutable default argument is a defect in a library and
 in a service, and `useEffect` deriving state is wrong in every React codebase
 that has one.
 
-**Nine of the 42 stack-neutral rows cannot be checked at all without an
-artefact.** Every `spectral` row needs an OpenAPI document. `assess.rules.md`
-records this as a condition on the bucket rather than a property of the rule:
-where a repository has none, the whole group is bucket 3 by default. That is the
-observation the axis question turns on — the variation is not really about what
-kind of application it is, it is about whether the evidence exists.
+**Some stack-neutral rows cannot be checked at all without an artefact.** Every
+`spectral` row needs an OpenAPI document. `assess.rules.md` records this as a
+condition on the bucket rather than a property of the rule: where a repository
+has none, the whole group is bucket 3 by default. That is the observation the
+axis question turns on — the variation is not really about what kind of
+application it is, it is about whether the evidence exists.
+
+**Amended 2026-09-07: this paragraph opened with a count, and the count was
+wrong.** It read *nine of the 42*, taken from `assess.rules.md` finding 5, which
+said the same and was wrong on the day it was published — the register carries
+eleven `spectral` rows. The number is **removed rather than corrected**, because
+a count of another document's rows is a second copy of that document's state and
+this is what one drifting looks like. What the argument needs is the sentence
+after it: every `spectral` row needs an OpenAPI document. That does not rot.
 
 **The target is new codebases.** Confirmed 2026-09-06. That removes a third
 candidate axis before it is proposed: codebase age.
@@ -57,10 +65,10 @@ versioning is already the hardest part of this model.
 
 Stack and strictness; `any.` taken whole or not at all.
 
-**Rejected.** A library that wants commit conventions would also get nine API
-rows it cannot satisfy, on a repository with no OpenAPI document for them to read.
-That is findings-on-install with no possible fix, which is precisely the noise S3
-exists to measure and prevent. The simplicity is real and it is bought with the
+**Rejected.** A library that wants commit conventions would also get the whole
+API group — rows it cannot satisfy, on a repository with no OpenAPI document for
+them to read. That is findings-on-install with no possible fix, which is
+precisely the noise S3 exists to measure and prevent. The simplicity is real and it is bought with the
 one outcome the workstream has said it will not ship.
 
 ### Option 3: Two axes, with the stack-neutral rules gating on evidence
@@ -82,10 +90,21 @@ wrongly, and there is no third axis to version.
   populate. What the levels are is S3's and S4's to settle; that there are
   exactly two axes is settled here.
 
-**Archetype is not an axis.** The 42 `any.` properties are grouped by the
-artefact they read, and each group switches on when that artefact is present:
-an OpenAPI document turns the API group on, its absence leaves the group off. A
-repository declares nothing.
+**Archetype is not an axis.** Where an `any.` group reads an artefact, the group
+switches on when that artefact is present: an OpenAPI document turns the API
+group on, its absence leaves the group off. A repository declares nothing.
+
+**Amended 2026-09-07: this said *the 42 `any.` properties are grouped by the
+artefact they read*, and not all of them are.** S4 read the rows against their
+instruments and found the mechanism applies to the two groups that have an
+artefact — `spectral` over an OpenAPI document, and an analyser over Terraform.
+The rest have no artefact to gate on: some have no instrument at all, some are
+already controls, some are platform state, and the commit-convention group needs
+none because every repository has commit messages. **The decision is unchanged
+and so is the mechanism** — what was wrong is a sentence claiming it over rows it
+was never about. `docs/craft/design.profiles.md` § The evidence gates is the
+reading, and the scope answers for the other groups are S4's rather than this
+record's.
 
 **There is no codebase-age axis.** Craft targets new codebases and encodes
 current practice. `react.no-class-components` is on; `react/prop-types` and
@@ -110,8 +129,8 @@ it. An evidence gate nobody can see is the invisible suppression this ADR
 rejected option 1 for.
 
 **Adding an artefact to a repository turns rules on.** Writing a first OpenAPI
-document enables nine rules that were previously inert, on a codebase that has
-never been checked against them. That is correct — the rules were never
+document enables every rule in the API group, previously inert, on a codebase
+that has never been checked against them. That is correct — the rules were never
 satisfied, only unchecked — and it will feel like a regression at the worst
 moment. S3 owes a measurement of that specific transition, not only of the
 install case.
@@ -159,3 +178,4 @@ more honest claim than a profile that pretends to serve both.
 | --- | --- | --- | --- |
 | 1 | 2026-09-06 | Original decision: two axes — stack and strictness — with no archetype axis and no codebase-age axis, and the stack-neutral rules gating on evidence. | Nathan Carney |
 | 2 | 2026-09-06 | § Consequences corrected: the evidence for amending this ADR will be in `review.bench.md`. S3's deliverable was renamed from `review.noise.md` when the stage was rewritten away from a corpus, and this record named a file that will not exist. The decision is unchanged. | Nathan Carney |
+| 3 | 2026-09-07 | Two corrections found by S4's evidence-gate design. § Background opened with a count of `spectral` rows that was wrong when written; that count and the two others this record repeated, in § Alternatives and § Consequences, are removed rather than corrected — a count of another document's rows is a second copy free to drift, and this is what one drifting looks like. § Decision claimed the artefact grouping over all 42 `any.` properties; it holds for the two groups that read an artefact, and is narrowed to say so. The decision — two axes, no archetype, no codebase age — is unchanged. | Nathan Carney |

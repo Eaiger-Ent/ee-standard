@@ -592,9 +592,12 @@ selects thirty-four of them — and not one can see a colour. Registering
 quietly leaving it out would have let the accessibility group read as complete.
 
 **5. Five sources this register needs were not registered, and S1 has them now.**
-`commitlint` carries four `any.` rows and `spectral` carries nine; neither
+`commitlint` carries three `any.` rows and `spectral` carries eleven; neither
 appeared in `survey.sources.md`, nor did `eslint-plugin-promise`, which carries
-one React row. Nor did the two standards the first two approximate —
+one React row. **Corrected 2026-09-07** — this finding published *four* and
+*nine*, and both were wrong against the rows it was published beside.
+[ADR 0052](../adr/0052-a-profile-is-a-stack-and-a-strictness.md) had taken the
+nine, and its revision 3 removes it rather than restating it. Nor did the two standards the first two approximate —
 Conventional Commits and the OpenAPI Specification — which belong there for the
 same reason WCAG sits beside `jsx-a11y`. They were reached by asking *what would
 enforce this* rather than *what did we register*, which is the right direction
