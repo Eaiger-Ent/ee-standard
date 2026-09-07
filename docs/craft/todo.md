@@ -142,8 +142,17 @@ indistinguishable from a completed one.
       written with no scaffold in existence. Five of the nine are more than the
       exit criterion asks — that section says which, and why leaving them out
       would have left five deferred questions for somebody to rediscover
-- [ ] Build a minimal scaffold per stack — a new repository of the shape the
-      profile is for, not a sample of an existing one
+- [x] Build a minimal scaffold per stack — a new repository of the shape the
+      profile is for, not a sample of an existing one. Done 2026-09-07:
+      twelve files, written by
+      [`scripts/craft_scaffold.py`](../../scripts/craft_scaffold.py) into
+      gitignored `temp/` rather than tracked. **The first attempt was tracked
+      and this repository rejected it** — a scaffold's `[tool.ruff]` is a second
+      lint definition, and tracked Python that must fail a check cannot coexist
+      with TYP-001's allow-list, which is what
+      `test_h7_this_repository_declares_coverage_for_every_tracked_module`
+      failed on. `review.bench.md` § The scaffolds is the record, including the
+      two version ceilings the build surfaced
 - [ ] Build the candidate default-on configuration for each stack from the
       resolved register
 - [ ] Confirm the React config assembles at all: six plugins, three presets, the

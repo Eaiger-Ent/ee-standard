@@ -42,7 +42,27 @@ Two consequences worth stating before the criteria rather than after:
 
 **A scaffold, per stack.** A repository of the shape the profile is for: the
 files a new project has on its first day and nothing else. It is written for
-this stage, committed with the bench, and it is not a sample of anything.
+this stage and it is not a sample of anything.
+
+**It is materialised rather than tracked**, by
+[`scripts/craft_scaffold.py`](../../scripts/craft_scaffold.py), into `temp/` —
+gitignored, the same place S1 put its `llm-toolkit` clone. The first attempt
+committed the tree and this repository rejected it, correctly and twice over:
+
+- A scaffold's `pyproject.toml` grows a `[tool.ruff]` section at the next step,
+  and ruff resolves every file against the *nearest* configuration. A tracked
+  one would quietly become the lint definition `ruff check .` applies to part of
+  this tree, in a repository whose central invariant is that there is one.
+- Tracked Python that must **fail** a check cannot coexist with TYP-001 and
+  LNT-001, which claim all first-party source and admit no exemption. The
+  committed attempt failed
+  `test_h7_this_repository_declares_coverage_for_every_tracked_module` on its
+  first run, which is that check doing exactly what it is for. C2's deliberate
+  violations and C5's probes are the same problem, larger.
+
+What is committed is the means to rebuild both scaffolds byte for byte. A
+measurement nobody can re-derive is a claim, and a scaffold nobody can rebuild
+is the same thing one directory down.
 
 **The constraint that makes that meaningful:** no measurement in this document
 may be taken over code that was not written for it. If a number here ever comes
@@ -54,6 +74,72 @@ bench runs at the versions the profile pins and names them in the result. A
 measurement whose version is unrecorded rots the way `survey.sources.md`'s
 maintenance signals rot, and this document owes the same re-derivable answer:
 the version, and the command that produced it.
+
+## The scaffolds
+
+Two, built 2026-09-07 and rebuilt from
+[`scripts/craft_scaffold.py`](../../scripts/craft_scaffold.py) on every run.
+Twelve files between them. Both were run before being recorded here: the Python
+scaffold's four tests pass and the React scaffold type-checks clean under
+`tsc --noEmit` and passes its three.
+
+| | Python — `ledger` | React — `storefront` |
+| --- | --- | --- |
+| Manifest | `pyproject.toml`, `src` layout, `pythonpath = ["src"]` | `package.json`, `tsconfig.json` with the strict family on, `vitest.config.ts` |
+| Source | `src/ledger/entries.py` — a frozen dataclass, a domain error, `pathlib`, `Decimal`, timezone-aware datetimes | `src/lib/money.ts` (no React), `src/components/Basket.tsx` and `BasketRow.tsx` |
+| Tests | `tests/test_entries.py`, four cases | `src/components/Basket.test.tsx`, three cases, Testing Library and `user-event` |
+
+They are small deliberately. A scaffold is not a demonstration of the language;
+it is the smallest thing that gives every selected rule somewhere to look. What
+each file is there to carry:
+
+- **A component, a plain module and a test**, because C1 resolves the
+  configuration for one file of each kind and the type-checked rules need a
+  `tsconfig` that actually covers them.
+- **A hook, a `useMemo` and a `setState` in an event handler**, so the
+  Rules-of-React and effects rules have a subject. `Basket.tsx` derives its
+  total during render rather than in an effect, which is the property
+  `react.no-derived-state-in-effect` asserts — the anti-pattern React's own
+  documentation opens with, and the rule its plugin ships `off`.
+- **A link whose text is ambiguous and whose `aria-label` is not.**
+  `<a href="/checkout" aria-label="Continue to checkout">Continue</a>` is C5's
+  first probe, written into the scaffold rather than bolted on: correct code
+  that `jsx-a11y/anchor-ambiguous-text` is known to flag because it cannot see
+  the label.
+- **`assert` in a test and nowhere else**, which is what
+  `python.no-assert-for-enforcement` scoped to the source path has to
+  distinguish.
+
+### What building them already found
+
+**The profile's ESLint version is decided by its quietest dependency.** Read
+from the published peer ranges rather than the release notes:
+
+| Package | Peer range | Consequence |
+| --- | --- | --- |
+| `eslint-plugin-jsx-a11y` 6.10.2 | `^3 \|\| … \|\| ^9` | ESLint 10 is out |
+| `eslint-plugin-react` 7.37.5 | `^3 \|\| … \|\| ^9.7` | ESLint 10 is out |
+| `typescript-eslint` 8.69.0 | `typescript >=4.8.4 <6.1.0` | TypeScript 7 is out |
+| `eslint-plugin-react-hooks` 7.1.1, `eslint-plugin-testing-library` 7.16.2 | `^10.0.0` accepted | not the constraint |
+
+ESLint is at **10.10.0** and TypeScript at **7.0.2**. The scaffold pins ESLint
+**9.39.5** and TypeScript **5.9.3**, and npm reports 9.39.5 as no longer
+supported on install.
+
+That is not a scaffold decision, it is a profile one, and it is the survey's
+finding 8 arriving with a bill: `jsx-a11y` was registered as *the quietest
+source here* on a last publish of 2024-10-26, and it is the only instrument for
+eleven accessibility properties. A profile that wants them is on ESLint 9. The
+alternative — dropping the accessibility group to reach a supported ESLint — is
+a real option and belongs to S4, with this measurement under it rather than a
+preference.
+
+**The Python scaffold needs `pythonpath` rather than an install.** `src` layout
+with no packaging step; pytest's own good practices recommend installing the
+package first, which would put a second virtualenv and a second lockfile inside
+the repository carrying the scaffold for no gain. Recorded because
+`python.test-layout` is a selected property and this is the shape it will be
+measured against.
 
 ## The acceptance criteria
 
@@ -279,7 +365,6 @@ itself generously by counting its own headings.
 
 Named so their absence is visible, in the order they will be written:
 
-- **The scaffold** — what is in each, and the commit that added them.
 - **The candidate configuration** — the default-on selection per stack, built
   from the resolved register.
 - **What ran** — C1, C2, C4 and C8, with versions and commands.
