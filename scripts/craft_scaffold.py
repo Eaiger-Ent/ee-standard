@@ -131,7 +131,7 @@ def total(entries: list[Entry]) -> Decimal:
 
 
 def recorded_today(entries: list[Entry], *, now: datetime | None = None) -> list[Entry]:
-    \"\"\"The entries recorded on the current UTC day.\"\"\"
+    \"\"\"Return the entries recorded on the current UTC day.\"\"\"
     today = (now or datetime.now(UTC)).date()
     return [entry for entry in entries if entry.recorded_at.date() == today]
 """,

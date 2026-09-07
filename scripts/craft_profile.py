@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run python
-"""Materialise the Craft candidate default-on configuration — S3's bench.
+"""Materialise a Craft profile's configuration — S3's bench, at either level.
 
 **Why this is a second script and not more of `craft_scaffold.py`.** The
 scaffold is the *subject* — a new repository of the shape the profile is for.
@@ -21,10 +21,18 @@ It writes into the same gitignored `temp/craft-bench/` that
 [`craft_scaffold.py`](craft_scaffold.py) writes, for the reasons that script's
 docstring gives, and it refuses to overwrite a file that has been edited.
 
+**Two levels, and `strict` extends `standard` rather than restating it.** S4's
+`design.profiles.md` § The strictness levels defines `strict` as `standard` plus
+the rows the register proposes `off` that have an instrument, so the files this
+writes say exactly that: `strict.toml` is `extend = "ruff.toml"` and the
+selectors it adds. A second full selector list would be a second copy of the
+first, free to drift from the level it is defined as a superset of.
+
 Run it:
 
-    uv run python scripts/craft_scaffold.py   # the subject, first
-    uv run python scripts/craft_profile.py    # the instrument, over the top
+    uv run python scripts/craft_scaffold.py                  # the subject, first
+    uv run python scripts/craft_profile.py                   # standard
+    uv run python scripts/craft_profile.py --level strict    # and the level above it
 """
 
 from __future__ import annotations
@@ -36,7 +44,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_TARGET = REPO_ROOT / "temp" / "craft-bench"
 
-#: The candidate configuration, keyed by its path under the target directory.
+#: The `standard` configuration, keyed by its path under the target directory.
 #: Read the configuration here rather than anywhere else — every entry carries
 #: the property identity it exists for, so the selection reads back against
 #: `docs/craft/assess.rules.md` rather than being trusted.
@@ -485,10 +493,132 @@ export default [
 }
 
 
-def write(target: Path, *, force: bool = False) -> int:
-    """Write every configuration file under `target`. Returns the number written."""
+#: The `strict` addition, keyed the same way. Every entry **extends** its
+#: `standard` counterpart rather than restating it, because S4 defines the level
+#: as a superset and two selector lists would be free to disagree about that.
+STRICT_FILES: dict[str, str] = {
+    "python/strict.toml": """\
+# Craft `python/strict` — `python/standard` plus the rows the register proposes
+# `off` that have an instrument to turn on. `docs/craft/design.profiles.md`
+# § What `strict` adds, per stack is the list; this is that list as ruff reads
+# it, and nothing here restates a selector `ruff.toml` already carries.
+
+extend = "ruff.toml"
+
+# Two of the selectors below are preview rules, and C8 measured what that costs
+# for a selection spelled in exact codes: nothing. `preview = true` against a
+# *family* selector picks up preview rules wholesale; against exact codes it
+# picks up only the codes named. This selection names codes.
+preview = true
+
+[lint]
+extend-select = [
+  "PLC0415",                                        # python.no-import-inside-function
+  "EM101", "EM102",                                 # python.exception-message-not-a-literal
+  "TRY003",                                         # python.exception-type-carries-its-message
+  "RET504",                                         # python.no-redundant-assign-before-return
+  "TC001", "TC002", "TC003",                        # python.typing-only-imports
+  "S104",                                           # python.no-bind-all-interfaces
+  "D100", "D101", "D102", "D103",                   # python.docstring-presence
+  "D104", "D105", "D106", "D107",                   # (the same property, D1xx entire)
+
+  # python.docstring-form, and **exact codes rather than `D2xx`, `D4xx`**.
+  # S4's schema slice made this the rule rather than a preference: the wide
+  # reading brings in `D203` against `D211` and `D212` against `D213`, which
+  # ruff warns about and then silently resolves by dropping one — a docstring
+  # convention nobody chose. The narrow reading has no such pair.
+  "D205", "D401",
+
+  "TD001", "TD002", "TD003", "TD004",               # python.no-untracked-todo
+  "TD005", "TD006", "TD007",
+  "FIX001", "FIX002", "FIX003", "FIX004",           # (the same property)
+  "PLR1702",                                        # python.nesting-depth — preview
+  "PLR0904",                                        # python.class-size — preview
+]
+
+[lint.pylint]
+# python.class-size. Ruff's own default for PLR0904 is 20 public methods; the
+# property is about focus rather than about a number, and no source in the
+# register proposes one. The default is taken rather than chosen, and this
+# comment is the record that it was not measured.
+max-public-methods = 20
+""",
+    "python/src/strict.toml": """\
+# The `strict` counterpart of `src/ruff.toml`: the same S101 scoping, over the
+# strict selection instead of the standard one. `python.no-assert-for-enforcement`
+# is a `standard` property and does not change at this level — what changes is
+# the file it has to extend.
+
+extend = "../strict.toml"
+
+[lint]
+extend-select = ["S101"]
+""",
+    "python/mypy-strict.ini": """\
+; Craft `python/strict`'s one type-checker key, and the whole of Craft's
+; type-checking contribution across both stacks.
+;
+; `docs/craft/design.profiles.md` § The type checker: TYP-001 already requires
+; mypy at `strict`, which covers `python.annotate-public-api` outright, so the
+; only key Craft adds is the one `--strict` does not set.
+; ADR 0055 cleared it — `disallow_any_explicit` is not a key TYP-001 asserts.
+;
+; **This is a bench file, not the surface an installed profile writes.** The
+; design says the profile writes `pyproject.toml [tool.mypy]`; the bench keeps
+; instrument and subject in separate files for the same reason it writes
+; `ruff.toml` rather than `[tool.ruff]`, and because the scaffold's
+; `pyproject.toml` belongs to `craft_scaffold.py`.
+
+[mypy]
+; TYP-001's requirement, reproduced here because a bench file is not the
+; repository's config and mypy has no default strict mode.
+strict = True
+
+; Craft's addition, and the row S3's C6 could not measure because the bench
+; configured no type checker at all.
+disallow_any_explicit = True
+""",
+    "react/strict.config.js": """\
+// Craft `react/strict` — `react/standard` plus the one row the register
+// proposes `off` that has an instrument to turn on.
+//
+// One rule. `docs/craft/design.profiles.md` § What `strict` adds records the
+// asymmetry and does not explain it away: Python's strict level adds up to 68
+// rules and React's adds this.
+
+import standard from './eslint.config.js'
+
+export default [
+  ...standard,
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      // react.effect-dependencies-exhaustive. `react-hooks` ships it off and
+      // `react.dev` does not document it, which is `assess.rules.md` finding 1
+      // a third time: the rule this stack most needs is the one its own plugin
+      // leaves disabled.
+      'react-hooks/exhaustive-effect-dependencies': 'error',
+    },
+  },
+]
+""",
+}
+
+
+#: What each level materialises. `strict` writes `standard` too, because it is
+#: defined as a superset and its files extend the ones below it — a `strict.toml`
+#: whose `extend = "ruff.toml"` has no `ruff.toml` beside it is not a level, it
+#: is a broken config.
+LEVELS: dict[str, dict[str, str]] = {
+    "standard": FILES,
+    "strict": {**FILES, **STRICT_FILES},
+}
+
+
+def write(target: Path, *, level: str = "standard", force: bool = False) -> int:
+    """Write one level's configuration under `target`. Returns the number written."""
     written = 0
-    for relative, contents in FILES.items():
+    for relative, contents in LEVELS[level].items():
         path = target / relative
         if path.exists() and path.read_text(encoding="utf-8") != contents and not force:
             print(f"refusing to overwrite an edited file: {path}", file=sys.stderr)
@@ -508,17 +638,23 @@ def main() -> int:
         help=f"where to write the configuration (default: {DEFAULT_TARGET})",
     )
     parser.add_argument(
+        "--level",
+        choices=sorted(LEVELS),
+        default="standard",
+        help="which profile level to materialise (default: standard)",
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         help="overwrite files that differ from the candidate rather than stopping",
     )
     args = parser.parse_args()
 
-    written = write(args.target, force=args.force)
+    written = write(args.target, level=args.level, force=args.force)
     if written < 0:
         print("nothing was written. Re-run with --force to discard those edits.", file=sys.stderr)
         return 1
-    print(f"wrote {written} files to {args.target}")
+    print(f"wrote {written} files to {args.target} for {args.level}")
     return 0
 
 
