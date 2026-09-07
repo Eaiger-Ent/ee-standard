@@ -380,6 +380,12 @@ the question ADR 0055 named as unanswered in its consequences, and it is
 answered for level changes specifically rather than in general — a hand-edited
 `select` list is still outside anything Craft can see.
 
+**Corrected by § Naming, versioning, and what a re-run does**: *reports it* is
+too permissive. A loosening of a `narrowing-only` control is a violation rather
+than a disclosure, so the installer refuses the write instead of narrating it.
+The paragraph stands as written because a correction is worth more than a
+deletion, and the floor it argues for is unchanged.
+
 `react.explicit-return-types`' scope is the one dial that looks like a third
 level and is not. C6 set it to `src/**/*.ts` and not `*.tsx` because the
 unscoped rule fired on all three of C5's components. Widening it is available
@@ -787,23 +793,178 @@ gives for the profile version.
 - **The Node-toolchain question for the commit group.** It needs a registered
   Python-ecosystem instrument, and registering one is survey work.
 
+## Naming, versioning, and what a re-run does
+
+The last design question. ADR 0052 settled that a profile is versioned and
+pinned by the consumer in the shape `.claude/skill-config.yaml` already uses,
+that an installed repository keeps the version it pinned until someone re-runs
+the installer, and that the installer reports what moved. What it did not settle
+is what a version *is*, and this section found that the obvious answer is wrong
+in a way worth writing down.
+
+### A profile is named by its two axes and nothing else
+
+`python/standard`, `python/strict`, `react/standard`, `react/strict`. Stack and
+level, per ADR 0052, with the levels § The strictness levels named. There is no
+third component because there is no third axis, and a name with room in it for
+one is an invitation.
+
+### The version is a counter, because semver would point the wrong way
+
+The obvious answer is semver, and it is wrong here. Semver's major position
+means *this will break you*, and for a lint profile the change that breaks a
+consumer is the one semver would call minor:
+
+| Change | What it does to a consumer's build | Semver would say | What the register cares about |
+| --- | --- | --- | --- |
+| A rule is added | **Fails on code that passed yesterday** | minor — a compatible addition | narrowing, which `narrowing-only` permits |
+| A rule is removed | Passes more than it did | major — a removal | **loosening**, which is the governance event |
+
+**The two notions of significance point in opposite directions**, and one number
+cannot carry both without misleading somebody. A consumer reading `2.0.0` would
+brace for a build full of findings and get a quieter one; a reviewer reading
+`1.3.0` would relax at the version that just removed a rule.
+
+So a profile version is a **monotonic integer** — `python/standard@7` — and the
+direction of each change is recorded separately and explicitly, in the
+vocabulary this repository already has:
+
+```yaml
+python/standard:
+  version: 7
+  changes:
+    - version: 7
+      moved: narrowing        # narrowing | loosening | neither
+      what: "python.no-import-inside-function added — PLC0415"
+```
+
+**`narrowing`, `loosening` and `neither` are `register-variance`'s three
+answers**, not three new words, and its rule comes with them unchanged: *a mixed
+delta is a loosening*. A version that adds two rules and drops one is a
+loosening, and the profile does not get to average them out any more than a
+repository does.
+
+The counter is what makes *what moved between the pinned version and the current
+one* answerable as ADR 0052 requires: the installer reads the entries between
+the two numbers and reports them, rather than inferring severity from a position
+in a version string.
+
+### What a consumer pins
+
+Per ADR 0042, keyed by the skill name, read verbatim, and reported as coming
+from the file:
+
+```yaml
+# .claude/skill-config.yaml
+craft-install:
+  profile: python/standard
+  version: 7
+```
+
+**Absent file, absent key, absent value is not a default here**, which is the one
+place Craft departs from ADR 0042's part 3. That part says an absent value gets
+today's behaviour, and for `lint-md` there is a sensible default to fall back on.
+There is no sensible default level: a profile is a decision about how much a team
+wants to be told, and guessing it is the declared-archetype failure ADR 0052
+rejected wearing different clothes. With no pin, the installer infers the stack,
+presents the levels with what each costs, and takes an explicit yes — which is
+what `plan.md` § S5 already requires of it.
+
+### `craft_contract` is needed, and it is not the profile version
+
+The schema slice proposed `meta.craft_contract` and left whether it gates
+anything to here. It does, for the same reason `controls.yaml` carries
+`register_contract`: **the installer is versioned and pinned by a consumer**, so
+a repository can hold an installer from six months ago and read a register
+written last week. A field that installer does not understand is one it will
+either ignore or mis-apply, and ignoring a field silently is how a rule stops
+being installed without anybody noticing.
+
+**The two numbers move for different reasons and must not be one number.**
+
+| | Moves when | Read by |
+| --- | --- | --- |
+| `craft_contract` | The **schema** changes — a new field, a new instrument shape | The installer, to refuse a register it cannot read |
+| A profile's `version` | The **rules** change — a binding added, a threshold moved | The installer, to report what moved to a consumer |
+
+Conflating them would make every rule change look like a format change, which
+is the failure `register_contract` avoids by moving only when a skill reading
+the register must understand something new.
+
+### What a re-run does, and the three things it compares
+
+ADR 0052 guarantees that nothing changes under a repository that is not looking.
+A re-run is the moment of looking, and there are three deltas to report — not
+one, which is the part worth designing rather than discovering:
+
+1. **The pinned version against the current one.** The `changes` entries
+   between them, each with its direction. This is ADR 0052's requirement.
+2. **The stamp against the file as it stands.** ADR 0055 rule 2's stamp records
+   what Craft wrote; comparing it to what is there now detects **hand edits made
+   since**. A re-run that silently overwrote a team's deliberate change would be
+   worse than one that refused, and without the stamp it could not tell the
+   difference.
+3. **The evidence gates now against the gates at install.** This is ADR 0052's
+   named worst moment — writing a first OpenAPI document turns on a group of
+   rules against code never checked against them. The gate line in the stamp is
+   what makes it a reported change rather than a surprise.
+
+### The installer never writes a loosening, and an earlier sentence was wrong
+
+§ The strictness levels said a downgrade from `strict` to `standard` stays
+possible and *the installer reports it as the loosening it is*. **That is too
+permissive and this section corrects it.**
+
+Craft's rules live in LNT-001's gated configuration, and LNT-001 is
+`variance: narrowing-only`. A change that removes selectors is a loosening of a
+narrowing-only control, which is a **violation** — `register-variance` exits `1`
+on it and `register-check` fails on the next run. An installer that performed
+that write would be knowingly leaving a repository non-conformant, and reporting
+it honestly on the way out does not make it defensible.
+
+**So the installer will not write it.** A team that wants a lower level makes
+that change themselves and answers for it in the way the register already
+provides for — which is the same shape as ADR 0055's rule 1, where Craft cannot
+weaken a control, applied to the level mechanism rather than to a key.
+
+What the installer does instead is say so: *`python/strict@4` is pinned;
+`python/standard` would remove nineteen rules, which is a loosening of LNT-001
+and not mine to write.* That is a more useful sentence than a silent success,
+and it is the only one that leaves the repository conformant.
+
+The floor from § The strictness levels is unchanged and this is why it exists:
+with `standard` as the lowest level, the only downgrade available is one the
+installer refuses, so the ordinary case never reaches this rule at all.
+
+### What this section does not settle
+
+- **Where the profile's `changes` entries live.** They are Craft register data
+  by ADR 0053's test and the schema slice's shape has no place for them yet.
+  A field, not a decision.
+- **Whether an installer may refuse to run at all** on a repository whose stamp
+  shows hand edits, or only report them. That is an installer behaviour and S5's.
+
 ## What this document still owes
 
 Named now so that a reader can tell a gap from an omission, and so that a later
 slice cannot quietly drop one.
 
-Five rows have left this table since it was first written — the `[tool.mypy]`
-question answered by ADR 0055, the strictness levels, both of S3's remaining
-hand-forwards, and the evidence gates. Four have joined it. **Every slice so far
-has closed more than it opened and opened something**, which is what a design
-document doing its job looks like from the inside.
+**Every slice has closed more than it opened, and opened something** — which is
+what a design document doing its job looks like from the inside. No count of
+that is kept here, because a tally of another list's rows is the shape ADR 0052
+revision 3 removed.
+
+What is left is **no longer design.** Three entries are work — the second bench,
+the migration, and the register's validation, which ADR 0053 assigns to the
+implementing work in terms. One is a schema field somebody adds without deciding
+anything, one is a decision that is not this document's to take, and one is
+survey work.
 
 | Owed | Which box in `todo.md` |
 | --- | --- |
-| Profile naming and versioning, and what a consumer pins — the levels themselves are settled above | Specify the profile: its axes, its naming, its versioning |
 | A second bench, over `strict`. Until it runs, no strict-only rule can ever become a control — ADR 0051's third precondition | Raised by § The strictness levels |
-| What happens when a profile changes under a repository that installed it — including whether **removing** a rule from a level is a loosening under LNT-001's `variance: narrowing-only` | Specify what happens when a profile changes |
-| The Craft register's **validation**, and whether `craft_contract` gates anything — the schema itself is settled above | Write `design.profiles.md` |
+| The Craft register's **validation** — what checks it, given ADR 0053 says `register-check` must not | Write `design.profiles.md` |
+| Where a profile's `changes` entries live in the schema — a field, not a decision | Raised by § Naming, versioning |
 | The migration: turning `assess.rules.md`'s 182 rows into register data | Raised by § The Craft register's schema |
 | Whether the five platform properties take ADR 0051's route to becoming controls — the evidence-gate section put them out of a profile's scope but mints nothing | Raised by § The evidence gates |
 | A registered Python-ecosystem instrument for the commit group, so it is not Node-only | Raised by § The evidence gates; survey work under the schema slice's `sources:` |
@@ -811,4 +972,6 @@ document doing its job looks like from the inside.
 `plan.md`'s exit criterion for S4 is *every ADR it names is Accepted*. All five
 are — the four taken ahead of the stage, and ADR 0055, which this document's
 first section produced. That does not finish S4: the deliverable is this
-document, and it is four sections long.
+document. It is five sections long and **no design question is outstanding**;
+what remains under the heading above is work, a decision, and a source to
+register.
