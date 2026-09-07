@@ -9,10 +9,11 @@ copies of the same statement are free to drift, and a ticked box is not an exit
 criterion: a stage is finished when `plan.md`'s criterion is met, however many
 boxes are ticked.
 
-Written 2026-09-05. S1 and S2 are complete. S3 was rewritten 2026-09-06 after
-ADR 0052 named new codebases as the target and left its original premise
-measuring a risk this workstream does not carry; S4 onwards is untouched apart
-from the boxes that premise reached.
+Written 2026-09-05. S1, S2 and S3 are complete. S3 was rewritten 2026-09-06
+after ADR 0052 named new codebases as the target and left its original premise
+measuring a risk this workstream does not carry; it met its exit criterion on
+2026-09-07, and `review.bench.md` § Does the exit criterion hold is the record.
+S4 onwards is untouched apart from the boxes that premise reached.
 
 ## S1 — Survey
 
@@ -295,7 +296,15 @@ indistinguishable from a completed one.
       recommendation, which proposed an axis that ADR has since ruled out. The
       register is 182 rows and the shares are re-derived: 71% Python, 76% React,
       21% stack-neutral
-- [ ] Write `review.bench.md`
+- [x] Write `review.bench.md`. Done 2026-09-07. The acceptance criteria were
+      written on 2026-09-06 before a scaffold existed; everything after them is
+      the result, and the document ends with a verdict against **`plan.md`'s**
+      exit criterion rather than against its own heading count. **The criterion
+      holds**, over a set of stated residues rather than unstated ones — four
+      shared rule names nobody could trip, a contradiction partition that is a
+      judgement rather than a proof, and a preview behaviour risk unmeasured
+      over anything larger than five hundred lines. § What S3 hands forward is
+      the eight things the later stages need
 - [x] ~~Choose the trial repositories — at least two Python, at least two React —
       and record why each is representative~~ — struck 2026-09-06. Representative
       of an existing codebase, which is not the target
