@@ -502,6 +502,25 @@ STRICT_FILES: dict[str, str] = {
 # `off` that have an instrument to turn on. `docs/craft/design.profiles.md`
 # § What `strict` adds, per stack is the list; this is that list as ruff reads
 # it, and nothing here restates a selector `ruff.toml` already carries.
+#
+# **Two demotions, both C5's, both with the case in
+# `docs/craft/review.strict.md`.** The list below is 27 selectors rather than
+# the design's 32.
+#
+# `TRY003` is gone. It fires only where `EM101` or `EM102` already fires — a
+# literal or f-string of more than one word — and `EM101`'s own remedy, bind the
+# message to a name, silences it while leaving the message outside the exception
+# class. A rule that is satisfied without the property being satisfied is a rule
+# claiming enforcement it does not have, which `docs/craft/plan.md` says this
+# workstream will not ship. `python.exception-type-carries-its-message` has no
+# instrument at this level and is judgment-only.
+#
+# `FIX001`-`FIX004` are gone. `python.no-untracked-todo` is *a TODO names an
+# owner or an issue*; `FIX002` is *checks for "TODO" comments*, which is a
+# different and much stronger claim, and it made `TD001`-`TD007` unreachable —
+# no file containing a TODO could pass, so seven of the property's eleven codes
+# could never change a verdict. Dropping the four makes the property what its
+# own text says and gives C3's marker-comment group the witness it had none of.
 
 extend = "ruff.toml"
 
@@ -515,7 +534,6 @@ preview = true
 extend-select = [
   "PLC0415",                                        # python.no-import-inside-function
   "EM101", "EM102",                                 # python.exception-message-not-a-literal
-  "TRY003",                                         # python.exception-type-carries-its-message
   "RET504",                                         # python.no-redundant-assign-before-return
   "TC001", "TC002", "TC003",                        # python.typing-only-imports
   "S104",                                           # python.no-bind-all-interfaces
@@ -531,10 +549,19 @@ extend-select = [
 
   "TD001", "TD002", "TD003", "TD004",               # python.no-untracked-todo
   "TD005", "TD006", "TD007",
-  "FIX001", "FIX002", "FIX003", "FIX004",           # (the same property)
   "PLR1702",                                        # python.nesting-depth — preview
   "PLR0904",                                        # python.class-size — preview
 ]
+
+[lint.flake8-type-checking]
+# python.typing-only-imports. C5's probe showed the rule's remedy *breaking*
+# working code: move an annotation's import into a type-checking block and
+# `get_type_hints` on the class raises `NameError`, because it evaluates the
+# annotation the block deferred. Ruff has a setting for that shape and this is
+# it. The base-class list — pydantic, attrs, SQLAlchemy — is the same problem
+# and is **not** set, because the scaffold declares no third-party dependency
+# and a list nothing here can run is a guess rather than a measurement.
+runtime-evaluated-decorators = ["dataclasses.dataclass"]
 
 [lint.pylint]
 # python.class-size. Ruff's own default for PLR0904 is 20 public methods; the
