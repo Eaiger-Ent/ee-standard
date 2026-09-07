@@ -235,18 +235,180 @@ the four rows above. `plan.md` § S4 asks for "real tool configuration —
 generated and pinned. Not a new format, and not a second copy of one." The
 generated half holds. The pinned half is the lockfile's, per the section above.
 
+## The strictness levels
+
+ADR 0052 made strictness one of two axes and left what the levels are to this
+stage. With archetype gone and codebase age gone, **every question of the form
+*should this repository get more or fewer rules* resolves here**, which is that
+ADR's own warning about how much weight this section carries.
+
+### The register already drew the line, and this names it
+
+`assess.rules.md`'s **Default** column is a two-valued proposal per row — `on`,
+`off`, or `n/a` where nothing can be switched. That is a level boundary already
+present in the data, proposed by S2 and measured by S3, and inventing a
+different one here would be a second opinion about rows somebody has already
+read twice.
+
+| | `on` | `off` | `n/a` |
+| --- | --- | --- | --- |
+| Python | 42 | 16 | 12 |
+| React | 51 | 5 | 10 |
+| Stack-neutral | 11 | 17 | 14 |
+
+**So: two levels per stack, nested.** `standard` is the `on` rows. `strict` is
+`standard` plus the `off` rows that have an instrument to turn on. A level is a
+superset of the one below it, which is what makes *upgrade* and *downgrade*
+mean anything.
+
+**`standard` is exactly what S3 benched.** 65 selectors resolving to 141 ruff
+rules, 87 ESLint rules named on over two preset bases — every number in
+`review.bench.md` describes this level and no other. That is the reason to make
+it the base rather than a convenience: it is the only rule set anything has
+been run against.
+
+### What `strict` adds, per stack
+
+**Python, eleven properties with a real instrument.** The other five `off` rows
+are bucket 2 with nothing to enable — `python.no-duplication` needs a clone
+detector, `python.shallow-inheritance` and `python.class-dependency-count` need
+a check nobody has written — and one, `python.return-count`, is the register's
+`incompatible` row and is never selected at any level.
+
+| Property | Instrument |
+| --- | --- |
+| `python.no-import-inside-function` | `PLC0415` |
+| `python.exception-message-not-a-literal` | `EM101`, `EM102` |
+| `python.exception-type-carries-its-message` | `TRY003` |
+| `python.no-redundant-assign-before-return` | `RET504` |
+| `python.typing-only-imports` | `TC001`–`TC003` |
+| `python.no-bind-all-interfaces` | `S104` |
+| `python.docstring-presence` | `D100`–`D107` |
+| `python.docstring-form` | `D205`, `D401`, `D2xx`, `D4xx` |
+| `python.no-untracked-todo` | `TD001`–`TD007`, `FIX001`–`FIX004` |
+| `python.nesting-depth` | `PLR1702` — preview |
+| `python.class-size` | `PLR0904` — preview |
+
+Plus the one key ADR 0055 cleared: mypy `disallow_any_explicit`, which
+`assess.rules.md` marks as this property's strict variant in terms.
+
+**React, one property.** `react.effect-dependencies-exhaustive`, instrumented by
+`react-hooks/exhaustive-effect-dependencies`, which the plugin ships `off` and
+`react.dev` does not document. The remaining four `off` rows have no instrument
+that can simply be enabled: three are bucket 2 with nothing asserting them, and
+`react.naming-form` cites `@typescript-eslint/naming-convention`, which needs a
+written selector list rather than a flip and is therefore a rule somebody has to
+author before a level can contain it.
+
+### Three things fall out, and none of them is comfortable
+
+**1. The Python strict level contains two contradicting pairs, and ruff resolves
+them by choosing for you.** Expanding `python.docstring-form`'s citation the
+widest way it can be read — `D2xx` and `D4xx` whole — takes the strict addition
+from 32 rules to 68, and brings in `D203` against `D211` and `D212` against
+`D213`:
+
+```console
+$ uv run ruff format --check --config ruff.toml m.py
+warning: `incorrect-blank-line-before-class` (D203) and `no-blank-line-before-class`
+  (D211) are incompatible. Ignoring `incorrect-blank-line-before-class`.
+warning: `multi-line-summary-first-line` (D212) and `multi-line-summary-second-line`
+  (D213) are incompatible. Ignoring `multi-line-summary-second-line`.
+```
+
+These are the same shape as `python.return-count`, which C3 recorded as the
+register's only `incompatible` pair — and C3 could not have found these, because
+it ran over `standard` and no `D` code is in it. **Ruff does not fail on them;
+it warns and silently drops one**, so a profile shipping the widest reading
+ships a docstring convention nobody chose.
+
+**The narrow reading has no conflict at all.** `D205` and `D401` as exact codes
+bring in neither pair. So the contradiction is not in the property — it is in
+the citation, and it is S3's second hand-forward arriving with a consequence
+attached: *a range citation rots and a linter citation over-reaches, and the
+register has to choose.* `python.docstring-form` is where choosing wrong costs
+something visible.
+
+**2. Nothing has run `strict`.** C1 to C9 measured `standard`. The strict level
+has not been assembled, has not been run, has had no contradiction pass and no
+probe. That is not a gap this document can close by writing more of itself, and
+it has a consequence with teeth: **ADR 0051's third precondition is that S3 has
+measured the property**, so no rule that exists only at `strict` is eligible to
+become a control, however obviously good it looks. A second bench is owed before
+`strict` ships, and `review.bench.md`'s scripts are parameterised on the
+selection rather than on the level, so it is a smaller job than the first.
+
+**3. The axis is asymmetric to the point of being suspect.** Python's strict
+level adds up to 68 rules; React's adds one. Worse, the two stacks disagree
+about where the same property sits:
+
+| Property | Python | React |
+| --- | --- | --- |
+| `Any` is not used explicitly | mypy `disallow_any_explicit` — **strict only** | `@typescript-eslint/no-explicit-any` — **`standard`**, because `recommended` ships it |
+| Unsafe `any` flows are not followed | not asserted | `@typescript-eslint/no-unsafe-*` — **`standard`** |
+
+The same appetite for `Any` lands two levels apart, and the reason is not a
+judgement anyone made about Python or React. It is that `typescript-eslint`'s
+`recommended` preset happens to carry the rule and mypy's `--strict` happens not
+to. **As the register stands, the strictness axis partly measures what each
+ecosystem's defaults ship rather than what a team wants**, which is the tool
+source speaking as though it were a stack source — `survey.sources.md` finding
+9, arriving in the profile model.
+
+This does not refute ADR 0052; two axes are still the model, and nothing here
+argues for a third. It says the axis needs a definition that is about the
+property rather than about the preset, and that `strict` should mean *the same
+appetite in both stacks* even where the two toolchains reach it from different
+defaults. Writing that definition is what the Craft register schema has to
+support, and it is the strongest argument yet for ADR 0053's register carrying a
+level per binding rather than a level per rule.
+
+### No level below `standard`
+
+**There are two levels and the lower one is the floor.** A third, looser level
+was considered and is not proposed, for a reason the last slice made concrete:
+Craft's rules live in `[tool.ruff.lint] select`, which is LNT-001's gated
+configuration at `variance: narrowing-only`. Removing selectors is a change to
+that configuration in the loosening direction, so a level *below* the benched
+base would ship a loosening as a supported option.
+
+That does not make a downgrade impossible — a repository can move from `strict`
+to `standard`, and that is the same loosening. What the model says is that
+**Craft never performs one silently**: the installer reports a level change that
+removes rules as what it is, and the justification is the repository's. This is
+the question ADR 0055 named as unanswered in its consequences, and it is
+answered for level changes specifically rather than in general — a hand-edited
+`select` list is still outside anything Craft can see.
+
+`react.explicit-return-types`' scope is the one dial that looks like a third
+level and is not. C6 set it to `src/**/*.ts` and not `*.tsx` because the
+unscoped rule fired on all three of C5's components. Widening it is available
+and it belongs to `strict` if it belongs anywhere, not to a level of its own.
+
+### What this section does not settle
+
+- **Profile naming and versioning.** `standard` and `strict` are level names
+  within a stack; what a whole profile is called and how it is versioned is the
+  next slice's, with ADR 0052's pinning paragraph as the constraint.
+- **Whether `strict` ships at all.** It is unbenched, and finding 2 says what
+  that costs. Shipping one level is a defensible outcome of the second bench.
+- **The 17 stack-neutral `off` rows.** They gate on evidence rather than on a
+  level (ADR 0052), so they are the evidence-gate slice's and not this one's.
+
 ## What this document still owes
 
 Named now so that a reader can tell a gap from an omission, and so that a later
 slice cannot quietly drop one.
 
-One row less than this section first carried: the `[tool.mypy]` question it
-raised was answered by ADR 0055 rather than by a later slice.
+Two rows have left this table since it was first written — the `[tool.mypy]`
+question, answered by ADR 0055, and the strictness levels — and one has joined
+it, because § The strictness levels found that nothing has run the level it
+proposes.
 
 | Owed | Which box in `todo.md` |
 | --- | --- |
-| The strictness levels: how many, what each turns on, and what names them | Specify the profile: its axes, its naming, its versioning |
-| How a profile is versioned, and what a consumer pins | The same box, and ADR 0052's pinning paragraph |
+| Profile naming and versioning, and what a consumer pins — the levels themselves are settled above | Specify the profile: its axes, its naming, its versioning |
+| A second bench, over `strict`. Until it runs, no strict-only rule can ever become a control — ADR 0051's third precondition | Raised by § The strictness levels |
 | What happens when a profile changes under a repository that installed it — including whether **removing** a rule from a level is a loosening under LNT-001's `variance: narrowing-only` | Specify what happens when a profile changes |
 | The Craft register's schema, and its answer to ADR 0053's unresolved question about `assess.rules.md` | Write `design.profiles.md` |
 | Which artefact gates each `any.` group, and where the installer records what it switched on | ADR 0052's evidence-gate consequence |
@@ -255,4 +417,4 @@ raised was answered by ADR 0055 rather than by a later slice.
 `plan.md`'s exit criterion for S4 is *every ADR it names is Accepted*. All five
 are — the four taken ahead of the stage, and ADR 0055, which this document's
 first section produced. That does not finish S4: the deliverable is this
-document, and it is one section long.
+document, and it is two sections long.
