@@ -323,14 +323,35 @@ indistinguishable from a completed one.
 
 ## S4 — Design
 
+`design.profiles.md` is written in slices, and its § What this document still
+owes is the list of what has not been written — not restated here.
+
 - [x] Decide from S2's evidence whether "archetype" is a real axis or whether
       stack alone carries it — **stack alone**, with the `any.` rows gating on
       evidence rather than on a declared archetype. ADR 0052
 - [ ] Specify the profile: its axes, its naming, its versioning
 - [ ] Specify what happens when a profile changes under a repository that has
       already installed it
-- [ ] Specify the config surface per stack, and confirm it introduces no new
-      format
+- [x] Specify the config surface per stack, and confirm it introduces no new
+      format. Done 2026-09-07:
+      [`design.profiles.md`](design.profiles.md) § The config surface. **The
+      answer was mostly already written** — `controls.yaml`'s `stacks:` block
+      names the tool and the ordered config locations per stack, so Craft
+      chooses what goes in a configuration and not where it lives. Writing the
+      files again would have been theme T-2 by the most ordinary route
+      available. Two of S3's six hand-forwards close here rather than in a later
+      slice: **the lockfile is the version pin** and a version in `ruff.toml`
+      would be a second copy of it, with the provenance question S3 was actually
+      reaching for handed to the register schema in ADR 0038's shape; and **the
+      profile was never missing a type checker** — TYP-001 already requires mypy
+      and `tsc` at `strict`, which covers two of the register's three
+      type-checker rows outright, so Craft's whole contribution across both
+      stacks is the one mypy key `--strict` does not set. The section also
+      settles which ruff surface the installer writes, on a precedence the bench
+      had backwards: a `ruff.toml` **overrides** a sibling `[tool.ruff]` while
+      the checker reads the sibling first, so a profile writing the bench's file
+      would leave LNT-001 auditing a section ruff no longer applies, and nothing
+      warns
 - [x] Draft the ADR on the craft/register boundary — when, if ever, a craft rule
       becomes a control. **ADR 0051**, Accepted 2026-09-06
 - [x] Draft the ADR on the profile model — **ADR 0052**, Accepted 2026-09-06
