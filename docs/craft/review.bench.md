@@ -933,6 +933,79 @@ The script also reads plugin versions from each package's `package.json` rather
 than from `meta.version`, because C1 found `eslint-plugin-react-hooks` 7.1.1
 reporting itself as 7.0.0.
 
+## The preview question — C8, answered by enumeration
+
+C8 requires the preview decision to be **an enumeration rather than a
+preference**, and to end with the two properties recorded as *unreachable* or
+*declined* — never one written as the other.
+
+**Neither, as it turns out. They are reachable, at no cost in other rules, and
+the premise the question was built on does not hold for this configuration.**
+
+### The premise, and why it fails here
+
+`assess.rules.md` records `python.nesting-depth` and `python.class-size` as
+bucket 1 with the `preview` marker, reachable "only by enabling all 140 preview
+rules at once", which "cannot be enabled for one of them". That is true of a
+selection spelled in **families**: with `preview = true`, a selector like `PL`
+picks up its own preview rules, so preview arrives wholesale.
+
+**This selection is spelled in exact codes.** Sixty-one of its sixty-five
+selectors name a single rule, and the four that name a linter — `DTZ`, `PTH`,
+`N`, `C4` — contain **no preview rules at all**. Enumerated against the pinned
+taxonomy:
+
+| | Count |
+| --- | --- |
+| Preview rules in ruff 0.16.5 | 140, of which **139 are addressable** — `pytest-fixture-autouse` has no code, which is `assess.rules.md` finding 9 |
+| Preview rules **this selection would pick up** under `preview = true` | **0** |
+| Preview rules that would arrive if the two wanted codes are added explicitly | 2 — `PLR1702` and `PLR0904`, and nothing else |
+
+The 139 that stay out are mostly `pycodestyle` (42), Ruff-specific (25) and
+`Pylint` (19); none of them is reachable from a selector this profile uses.
+
+### Run rather than reasoned
+
+The enumeration says what *should* happen; the case says what does.
+[`scripts/craft_cases.py`](../../scripts/craft_cases.py) writes
+`cases/preview/`, which carries its own `ruff.toml` — the profile, plus preview,
+plus the two codes — and a module built to trip both rules.
+
+```bash
+cd temp/craft-bench/python
+ruff check cases/preview                    # PLR1702 and PLR0904, both fire
+ruff check --config ruff.toml cases/preview # the profile: clean
+```
+
+The second command is the control. A module with six nested blocks and
+twenty-five public methods is silent under the profile as it stands, which is
+the two properties being unenforced; it draws both findings under preview. So
+preview took effect, the two codes resolved, and nothing else appeared.
+
+### What is left unmeasured, and said so
+
+Ruff's preview mode gates **behaviour changes to existing rules** as well as new
+rules, and the taxonomy does not say which stable rules change. Running the
+selection over the scaffold and both witnesses with preview on and off produced
+**no difference** — but that is a small body of code, and a clean diff over five
+hundred lines is not a guarantee about a repository. The residual risk is named
+here rather than dismissed: preview may change what a selected stable rule says
+about code this bench has not written.
+
+### The recommendation, which is S4's to take
+
+**The two properties are `reachable`.** Recording them as *unreachable* would now
+be wrong, and recording them as *declined* would be a decision this stage does
+not get to make. What S3 hands S4 is the cost, and the cost is: `preview = true`,
+two extra selectors, no other rule, and one unmeasured behaviour risk.
+
+The finding worth carrying further is the one underneath. **How a selection is
+spelled changes what a tool setting costs** — the same `preview = true` is
+expensive against a family selector and free against exact codes. That is an
+argument for the Craft register binding properties to exact rule IDs rather than
+to linter prefixes, and it belongs with the range-citation finding in § The
+candidate configuration, which pushed the other way.
+
 ## What this document still owes
 
 Named so their absence is visible, in the order they will be written:
@@ -940,7 +1013,7 @@ Named so their absence is visible, in the order they will be written:
 - ~~**The candidate configuration** — the default-on selection per stack, built
   from the resolved register.~~ Written 2026-09-07 — § The candidate
   configuration.
-- **What ran** — ~~C1~~ done 2026-09-07; C2, C4 and C8 still owed, with
+- **What ran** — ~~C1~~, ~~C8~~ done 2026-09-07; C2 and C4 still owed, with
   versions and commands.
 - ~~**What fought** — C3's pass: the method, the pairs cleared, and anything
   found.~~ Done 2026-09-07 — § What fought.

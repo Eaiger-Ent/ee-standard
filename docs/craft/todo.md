@@ -236,8 +236,17 @@ indistinguishable from a completed one.
       `python.no-any`'s strict variant and `react.explicit-return-types`' scope.
       **Each is now a choice with a stated rationale, revisable at S6**, not a
       corpus calibration
-- [ ] Measure what ruff's `preview = true` costs, since two Python properties are
-      reachable only by enabling all 140 preview rules at once
+- [x] Measure what ruff's `preview = true` costs, since two Python properties are
+      reachable only by enabling all 140 preview rules at once. Done 2026-09-07,
+      and **the premise does not hold for this configuration**: preview arrives
+      wholesale against a *family* selector, and this selection is spelled in
+      exact codes, so it picks up **zero** preview rules. The two properties cost
+      `preview = true` and two extra selectors and nothing else, proven by a
+      case that is silent under the profile and draws both findings under
+      preview. They are recorded as **reachable** — neither unreachable nor
+      declined, since declining is S4's. One risk is named rather than
+      dismissed: preview also gates behaviour changes to stable rules, and a
+      clean diff over the scaffold and witnesses is not a guarantee
 - [ ] Demote what fails, recording the case that demoted it
 - [x] Have a second reader resolve S2's contested classifications. Done
       2026-09-06: every recommendation in
