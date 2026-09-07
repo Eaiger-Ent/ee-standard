@@ -395,26 +395,230 @@ and it belongs to `strict` if it belongs anywhere, not to a level of its own.
 - **The 17 stack-neutral `off` rows.** They gate on evidence rather than on a
   level (ADR 0052), so they are the evidence-gate slice's and not this one's.
 
+## The Craft register's schema
+
+[ADR 0053](../adr/0053-the-craft-mapping-is-register-data.md) put the enforceable
+mapping in data, in a register of its own, and left the schema to this stage. It
+also left one question open in terms: whether that register is generated from
+`assess.rules.md`, replaces it, or is written fresh — *the two must not both be
+maintained as sources*. Both halves are settled here.
+
+The schema has four jobs. It has to say what a property binds to, which level
+that binding sits at, what evidence switches it on, and where the citation
+points — and it has to make the two mistakes S3 measured impossible to spell
+rather than merely discouraged.
+
+### One instrument per property, and alternatives recorded as alternatives
+
+S3's first hand-forward: *a property that cites two instruments is a double
+report waiting to happen.* The measured case is C4's —
+`react-hooks/static-components` and `@eslint-react/no-nested-component-definitions`
+are one property under two names, they both fired on one defect, and **no
+name-keyed conflict configuration could ever have separated them** because the
+names do not match.
+
+So a property has exactly one `instrument`. Anything else that could carry it
+goes in `alternatives`, which is documentation and is never emitted:
+
+```yaml
+react.no-nested-component-definitions:
+  instrument:
+    tool: eslint
+    rule: react-hooks/static-components
+  alternatives:
+    - rule: "@eslint-react/no-nested-component-definitions"
+      why: >
+        One property under two names. C4 measured the double report and demoted
+        this one; `react-hooks` owns the overlap per C1.
+```
+
+The `why` is not decoration. An alternative with no reason is a rule somebody
+will re-enable, and the reason is the thing that stops them.
+
+### An instrument is a closed set or a linter, and never a range
+
+S3's second hand-forward said the register has to choose between a range
+citation and a linter citation, and that the two findings pulled in opposite
+directions. They do — and the strictness slice showed the choice is not between
+those two at all, because **a range is the worst of both**.
+
+| Spelling | What went wrong, measured |
+| --- | --- |
+| Range — `DTZ001`–`DTZ012` | **Rots.** Missed `DTZ901`, which asserts the same property. Same for `PTH100`–`PTH210` missing `PTH211`, and `N801`–`N818` missing `N999` |
+| Range read widely — `D2xx`, `D4xx` | **Over-reaches into contradiction.** Brings in `D203` against `D211` and `D212` against `D213`; ruff warns and silently drops one of each |
+| Linter — `PL` under `preview = true` | **Over-reaches into cost.** C8: a linter selector picks up preview rules wholesale, where exact codes pick up none |
+
+So the schema admits exactly two spellings and no third:
+
+```yaml
+python.timezone-aware-datetimes:
+  instrument:
+    tool: ruff
+    linter: flake8-datetimez        # an OPEN set: whatever this linter holds
+    coextensive: >
+      All ten of its rules assert the property and any rule it adds would too —
+      it exists for exactly this. Verified preview-free at 0.16.5.
+
+python.docstring-form:
+  instrument:
+    tool: ruff
+    codes: [D205, D401]             # a CLOSED set: these, and nothing else
+```
+
+**The test for `linter:` is coextensiveness, and it is a real test rather than a
+preference:** *would every rule this linter could contain be an assertion of
+this property?* Read against the pinned taxonomy, the two answers are not close:
+
+| Linter | Rules | Preview | Coextensive with the property? |
+| --- | --- | --- | --- |
+| `flake8-datetimez` | 10 | 0 | **Yes.** Every rule is a naive-datetime call |
+| `flake8-use-pathlib` | 35 | 0 | **Yes** |
+| `pep8-naming` | 16 | 0 | **Yes** |
+| `flake8-comprehensions` | 19 | 0 | **Yes** |
+| `pydocstyle` | 48 | 2 | **No.** It carries *both sides* of two conventions — a property cannot assert `D203` and `D211` |
+
+That is the whole of the finding: the four linters `standard` spells as linters
+pass the test, and the one the strict level would have spelled as a range fails
+it. `python.docstring-form` is `codes:`, and the contradiction never arises.
+
+**`coextensive:` is required whenever `linter:` is used**, and its absence is a
+schema error rather than a default. A linter citation is a standing bet that the
+tool will only ever add rules asserting your property; a bet nobody wrote down is
+one nobody will re-check.
+
+### The rest of the fields
+
+```yaml
+meta:
+  craft_contract: 1
+
+levels: [standard, strict]          # ordered; each a superset of the one below
+
+sources:                            # ADR 0054: cite every source, copy none
+  ruff:
+    title: ruff's rule taxonomy
+    url: https://docs.astral.sh/ruff/rules/
+    licence: MIT
+
+properties:
+  python.no-any:
+    asserts: "`Any` does not appear in a public signature"
+    bucket: 1
+    sources: [typescript]           # keys into `sources:` above
+    instrument: {tool: ruff, codes: [ANN401]}
+    level: standard
+  python.no-any-anywhere:
+    asserts: "`Any` does not appear at all"
+    bucket: 1
+    sources: [typescript]
+    instrument: {tool: mypy, setting: disallow_any_explicit, value: true}
+    level: strict
+
+  python.line-length:
+    settings: {line-length: 88}     # C6's numbers live with their property
+    level: standard
+
+  any.api-response-shape:
+    gated_on: openapi-document      # ADR 0052's evidence gate
+    level: standard
+```
+
+Four things about that shape are decisions rather than notation.
+
+**`level` sits on the binding, not on the property.** The strictness slice found
+the same appetite for `Any` landing two levels apart across the stacks because
+of what each toolchain's defaults ship. Keying the level to the binding is what
+lets a property say *`standard` in React and `strict` in Python* without minting
+two identities, and it is the schema change that finding asked for.
+
+**`sources:` is in the register, not only in `survey.sources.md`.** ADR 0054
+requires every rule to cite its source, and a citation key that resolves only
+into prose is not a citation anything can emit. The installer has to be able to
+hand a team the source behind a rule, which means the source register is data
+too.
+
+**No file location appears anywhere.** [ADR
+0055](../adr/0055-craft-writes-into-a-gated-section.md) settled that the surface
+comes from `controls.yaml`'s `stacks:`, so a `file:` key here would be the second
+copy that ADR exists to prevent. The Craft register names the **tool and the
+keys**; the control register names **where they go**.
+
+**No tool version appears either**, for the reason § What pins the tool version
+gives: the lockfile is the pin. What the register does carry is the taxonomy
+version a binding was *read against*, as provenance — which is a different
+question and goes stale visibly.
+
+### What may live in Craft's Python, and why each is allowed
+
+ADR 0053 permits the checker-class of rule — properties of the format, not of
+any repository — and **requires each to carry its reason where it is written**.
+Four, on ADR 0018's test: *could a reasonable Equal Experts repository need this
+to differ without changing the code?*
+
+| Rule | Why it is format, not data |
+| --- | --- |
+| The identity grammar — lowercase, dotted, one of three scopes | `plan.md`'s naming standard is a property of Craft's vocabulary. A repository wanting `Python.FunctionLength` is not a repository with a different need |
+| Levels are ordered and nested | The relation *is* the model ADR 0052 chose. A register that could declare them unordered would be declaring a different model |
+| The instrument shapes are a closed set — `codes`, `linter`, `rule`, `setting` | A fifth shape is a change to what an instrument means, which no repository varies |
+| `linter:` requires `coextensive:` | The measured rule above. A repository that wanted to omit it would be a repository wanting the `D203`/`D211` failure |
+
+And what may **not**: which linter is coextensive, which codes a property binds,
+which level a binding sits at, every threshold, and every evidence artefact.
+Those are the ordinary case ADR 0053 sent to data.
+
+### `assess.rules.md` becomes a stage record, and stops being a source
+
+ADR 0053's open question, answered: **the register replaces it.** Not generated
+from it — a markdown table is not a schema, and a parser over one is a second
+copy with a regex in the middle. Not written alongside it either, which that ADR
+forbids outright.
+
+`assess.rules.md` keeps its 182 rows and becomes what `survey.sources.md` and
+`review.bench.md` already are: **the record of a stage**, dated, describing how
+the classification was reached and what it found. Its counts stay true of
+2026-09-06 and stop being true of the register the moment either moves, which is
+what a stage record is for. `survey.sources.md` goes the same way for the same
+reason, since its rows become the `sources:` block above.
+
+The freeze needs one check rather than a promise. **Every identity in
+`assess.rules.md` must exist in the Craft register** — a superset test, cheap to
+write, and it fails exactly when somebody adds a property to the prose and
+forgets the data. It does not check the reverse, because the register is allowed
+to grow past the stage that started it. S5 owns it.
+
+### What this section does not settle
+
+- **The Craft register's own validation.** ADR 0053 says `register-check` has no
+  business reading this file and that what validates it is the implementing
+  work's to build. This names the schema, not the checker.
+- **Whether `craft_contract` gates anything.** `controls.yaml`'s
+  `register_contract` exists because skills read it to detect a stale
+  deployment. Whether Craft needs the same mechanism depends on the installer,
+  which is S5's.
+- **The migration.** Nothing here writes the 182 rows. Turning the prose into
+  data is work, and it belongs with the installer that reads it.
+
 ## What this document still owes
 
 Named now so that a reader can tell a gap from an omission, and so that a later
 slice cannot quietly drop one.
 
-Two rows have left this table since it was first written — the `[tool.mypy]`
-question, answered by ADR 0055, and the strictness levels — and one has joined
-it, because § The strictness levels found that nothing has run the level it
-proposes.
+Four rows have left this table since it was first written — the `[tool.mypy]`
+question answered by ADR 0055, the strictness levels, and both of S3's remaining
+hand-forwards, which § The Craft register's schema closes by making the two
+measured mistakes unspellable. Two have joined it, each raised by the slice that
+closed something else.
 
 | Owed | Which box in `todo.md` |
 | --- | --- |
 | Profile naming and versioning, and what a consumer pins — the levels themselves are settled above | Specify the profile: its axes, its naming, its versioning |
 | A second bench, over `strict`. Until it runs, no strict-only rule can ever become a control — ADR 0051's third precondition | Raised by § The strictness levels |
 | What happens when a profile changes under a repository that installed it — including whether **removing** a rule from a level is a loosening under LNT-001's `variance: narrowing-only` | Specify what happens when a profile changes |
-| The Craft register's schema, and its answer to ADR 0053's unresolved question about `assess.rules.md` | Write `design.profiles.md` |
+| The Craft register's **validation**, and whether `craft_contract` gates anything — the schema itself is settled above | Write `design.profiles.md` |
+| The migration: turning `assess.rules.md`'s 182 rows into register data | Raised by § The Craft register's schema |
 | Which artefact gates each `any.` group, and where the installer records what it switched on | ADR 0052's evidence-gate consequence |
-| S3's remaining hand-forwards: one instrument per property, and the range-versus-linter citation the register has to choose between | `review.bench.md` § What S3 hands forward, items 1 and 2 |
 
 `plan.md`'s exit criterion for S4 is *every ADR it names is Accepted*. All five
 are — the four taken ahead of the stage, and ADR 0055, which this document's
 first section produced. That does not finish S4: the deliverable is this
-document, and it is two sections long.
+document, and it is three sections long.
