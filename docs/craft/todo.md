@@ -329,7 +329,7 @@ owes is the list of what has not been written — not restated here.
 - [x] Decide from S2's evidence whether "archetype" is a real axis or whether
       stack alone carries it — **stack alone**, with the `any.` rows gating on
       evidence rather than on a declared archetype. ADR 0052
-- [ ] Specify the profile: its axes, its naming, its versioning. **The levels
+- [x] Specify the profile: its axes, its naming, its versioning. **The levels
       are done** — [`design.profiles.md`](design.profiles.md) § The strictness
       levels, 2026-09-07: two per stack, nested, drawn from the register's own
       `Default` column rather than from a fresh opinion. `standard` is exactly
@@ -341,10 +341,24 @@ owes is the list of what has not been written — not restated here.
       precondition bars every strict-only rule from ever becoming a control; and
       the axis is asymmetric enough to be suspect, since React's `standard`
       already carries the `Any` appetite Python's `strict` is defined by, for no
-      reason but which preset each ecosystem ships. The box stays open for
-      naming and versioning
-- [ ] Specify what happens when a profile changes under a repository that has
-      already installed it
+      reason but which preset each ecosystem ships. **Naming and versioning
+      done 2026-09-07**, `design.profiles.md` § Naming, versioning, and what a
+      re-run does: a profile is `<stack>/<level>` and nothing more, and its
+      version is a **counter rather than semver** — semver's major position
+      means *this will break you*, and for a lint profile the breaking change is
+      the added rule semver calls minor, so one number cannot carry both notions
+      of significance. Direction is recorded per version instead, in
+      `register-variance`'s own three words with its mixed-delta rule unchanged
+- [x] Specify what happens when a profile changes under a repository that has
+      already installed it. Done 2026-09-07, same section. A re-run compares
+      **three** things rather than one: the pinned version against the current,
+      the stamp against the file as it stands (which is what detects a hand edit
+      made since), and the evidence gates now against the gates at install —
+      ADR 0052's named worst moment. **And the installer never writes a
+      loosening**: removing selectors is a loosening of LNT-001, which is
+      `narrowing-only`, so performing it would knowingly leave a repository
+      non-conformant. This **corrects the strictness slice**, which said the
+      installer reports a downgrade rather than refusing it
 - [x] Specify the config surface per stack, and confirm it introduces no new
       format. Done 2026-09-07:
       [`design.profiles.md`](design.profiles.md) § The config surface. **The
@@ -422,7 +436,16 @@ owes is the list of what has not been written — not restated here.
 - [ ] Get every ADR this stage names to Accepted — the five above are, and the
       box stays open because the slices still owed may name one they did not
       anticipate
-- [ ] Write `design.profiles.md`
+- [x] Settle whether `craft_contract` gates anything — **it does**, and it is
+      not the profile version. The installer is versioned and pinned by a
+      consumer, so a repository can hold an old installer reading a new
+      register; `craft_contract` moves when the **schema** changes and a
+      profile's version when the **rules** do, and conflating them would make
+      every rule change look like a format change
+- [ ] Write `design.profiles.md` — five sections written and **no design
+      question outstanding**; what the document still owes is work, one
+      decision and one source to register, listed in its own § What this
+      document still owes
 
 ## S5 — Build the chooser and the installer
 
