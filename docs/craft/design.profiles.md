@@ -632,6 +632,11 @@ model is right about those and it was never wrong — it was stated over the who
 groups need answers of their own, and three of them turn out to be answers about
 scope rather than about gating.
 
+**ADR 0052 has since been amended to say so** — revision 3, 2026-09-07, which
+narrows its Decision to the groups that read an artefact and removes a count of
+`spectral` rows that was wrong when written. The decision it records is
+unchanged, and this section is the reading that found it.
+
 ### The gate is a register predicate, not a new mechanism
 
 `controls.yaml` already carries the thing this needs:
