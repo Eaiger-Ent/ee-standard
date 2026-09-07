@@ -135,6 +135,12 @@ def recorded_today(entries: list[Entry], *, now: datetime | None = None) -> list
     today = (now or datetime.now(UTC)).date()
     return [entry for entry in entries if entry.recorded_at.date() == today]
 """,
+    "python/tests/__init__.py": """\
+\"\"\"Tests are a package, which is what INP001 asks for. C3 measured the
+alternative: without this file every test file draws a finding, and pytest
+collects and passes either way.
+\"\"\"
+""",
     "python/tests/test_entries.py": """\
 \"\"\"The scaffold's tests. Small on purpose: this is a repository's first day.\"\"\"
 
@@ -146,6 +152,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+
 from ledger.entries import Entry, LedgerError, read_entries, recorded_today, total
 
 
@@ -164,8 +171,16 @@ def test_total_sums_without_losing_precision() -> None:
 def test_read_entries_returns_the_newest_first(tmp_path: Path) -> None:
     path = tmp_path / "ledger.json"
     raw = [
-        {"description": "tea", "amount": "1.00", "recorded_at": "2026-09-01T09:00:00+00:00"},
-        {"description": "cake", "amount": "2.00", "recorded_at": "2026-09-02T09:00:00+00:00"},
+        {
+            "description": "tea",
+            "amount": "1.00",
+            "recorded_at": "2026-09-01T09:00:00+00:00",
+        },
+        {
+            "description": "cake",
+            "amount": "2.00",
+            "recorded_at": "2026-09-02T09:00:00+00:00",
+        },
     ]
     path.write_text(json.dumps(raw), encoding="utf-8")
     assert [entry.description for entry in read_entries(path)] == ["cake", "tea"]
@@ -179,7 +194,8 @@ def test_a_missing_ledger_is_a_ledger_error(tmp_path: Path) -> None:
 def test_recorded_today_reads_the_clock_it_is_given() -> None:
     entries = [_entry("1.00", day=1), _entry("2.00", day=2)]
     now = datetime(2026, 9, 2, 18, 0, tzinfo=UTC)
-    assert [entry.amount for entry in recorded_today(entries, now=now)] == [Decimal("2.00")]
+    recorded = recorded_today(entries, now=now)
+    assert [entry.amount for entry in recorded] == [Decimal("2.00")]
 """,
     "react/package.json": """\
 {

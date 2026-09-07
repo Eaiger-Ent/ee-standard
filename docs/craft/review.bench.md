@@ -540,7 +540,9 @@ asks — and 132 on a test.
 `npx eslint src` **exits 0 over the scaffold's five files with no diagnostics**.
 That is half of C2 arriving early. It is not C2: the other half is a deliberate
 violation per rule family and the checklist of rules that had to be enabled
-against their own plugin's default, and neither has been written.
+against their own plugin's default, and neither has been written. **Both have
+since been written** — § What ran — C2, where the Python half of the same clean
+run turned out not to be clean.
 
 ### The defect C1 found: both conflict configs point the other way
 
@@ -1114,6 +1116,103 @@ whole of what a developer sees, and a miss is merely a rule doing less than it
 could. **What would change it:** S6 reporting either that components commonly
 live in `.ts` files, or that exported helpers commonly live in `.tsx` ones.
 
+## What ran — C2, and it is shown to be running
+
+Run **2026-09-07**. C2 asks for a verdict in **both** directions — clean over the
+scaffold, non-zero on deliberate defects — and, separately, for **every rule the
+profile enables against its own plugin's default to fire on a case written for
+it**. The third clause is the one worth the trouble: a rule that resolves and
+then never runs is indistinguishable from a rule that is working.
+
+### Clean, in the direction that is easy to fake
+
+| Command | Exit |
+| --- | --- |
+| `ruff check --config src/ruff.toml src` | `0` |
+| `ruff check --config ruff.toml tests` | `0` |
+| `ruff format --check src tests` | 4 files already formatted |
+| `python -m pytest` | 4 passed |
+| `npx eslint src` | `0` |
+| `npx tsc --noEmit` | `0` |
+| `npx vitest run` | 3 passed |
+
+**The scaffold was not clean when the configuration first met it**, and what it
+took to make it so is the useful part. Five findings, all in
+`tests/test_entries.py`, none of them the configuration's fault:
+
+- `INP001` — no `tests/__init__.py`. C3 measured the fix rather than arguing it:
+  the empty file satisfies the rule and pytest collects and passes either way.
+  The scaffold now ships it.
+- `I001` — `pytest` and `ledger` in one import block with no blank line between
+  third-party and first-party.
+- `E501` ×3 — lines written at 100 columns, which is **this repository's** limit
+  rather than the profile's 88. A scaffold written before the configuration
+  existed inherited the habits of the repository carrying it, which is exactly
+  the kind of drift the profile is for.
+
+### Non-zero, per rule family
+
+`cases/violations/` is one deliberate defect per **selected ruff family**,
+linted and never imported. It carries no `__init__.py` on purpose — that is the
+`INP001` defect.
+
+```bash
+ruff check --config ruff.toml cases/violations   # exit 1
+```
+
+**All 26 selected families fire, from 37 distinct rules.** The check is
+mechanical rather than visual: the families are derived from the selection, the
+findings are parsed from the run, and the two sets are compared — so a family
+that stops firing shows up as a missing family rather than as a run that still
+looks busy.
+
+One defect was written and then removed: a line with trailing whitespace, for
+`W291`. It cannot live inside a tracked Python string in **this** repository,
+whose own lint would flag it. The `pycodestyle` family is carried by `E722`
+instead, and the omission is recorded here rather than left as a silent gap.
+
+### Every rule enabled against its plugin's default, fired
+
+For Python this clause is nearly vacuous — ruff's default selection is `E4`,
+`E7`, `E9` and `F`, so 138 of the 141 selected rules are enabled against it, and
+the per-family demonstration above is the honest form of the question.
+
+For React it is the real thing, and **the checklist is derived rather than
+taken**. `assess.rules.md` names ten such rules; reading the profile's resolved
+configuration against each plugin's own `recommended` gives **thirty-two**:
+
+| | Count |
+| --- | --- |
+| Enabled where the plugin's default has the rule **off** or absent | 20 |
+| **Severity raised** above the plugin's default | 12 |
+| Checklist total | **32** |
+| Demonstrated firing on a deliberate case | **32** |
+
+The twelve escalations are worth their own sentence. `@eslint-react`'s
+`recommended` ships eleven of its rules at **`warn`**, and `react-hooks` ships
+`exhaustive-deps` at `warn` — and a rule at `warn` in a merge gate is a rule
+that looks enabled and blocks nothing. That is finding 1's shape a second time:
+the first was a rule shipped `off`, this is a rule shipped unable to fail a
+build. The profile raises all twelve to `error`, and the case file shows each
+one firing.
+
+```bash
+npx eslint --config violations.config.js violations   # exit 1
+```
+
+`violations.config.js` is **the profile pointed at another directory** — it maps
+the profile's `files` globs from `src/` to `violations/` rather than restating
+what is enabled. A second copy would drift: a rule dropped from the profile
+would go on being demonstrated here, and the demonstration would be of something
+nobody ships.
+
+### What this leaves
+
+C2's own text says the third clause is the failure this workstream would be
+least able to see. It is now the clause with the most evidence behind it, and
+the evidence is a list a machine compares rather than a paragraph a reader
+trusts.
+
 ## What this document still owes
 
 Named so their absence is visible, in the order they will be written:
@@ -1121,7 +1220,7 @@ Named so their absence is visible, in the order they will be written:
 - ~~**The candidate configuration** — the default-on selection per stack, built
   from the resolved register.~~ Written 2026-09-07 — § The candidate
   configuration.
-- **What ran** — ~~C1~~, ~~C8~~ done 2026-09-07; C2 and C4 still owed, with
+- **What ran** — ~~C1~~, ~~C2~~, ~~C8~~ done 2026-09-07; C4 still owed, with
   versions and commands.
 - ~~**What fought** — C3's pass: the method, the pairs cleared, and anything
   found.~~ Done 2026-09-07 — § What fought.
