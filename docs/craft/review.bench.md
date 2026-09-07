@@ -437,7 +437,11 @@ discovers it.
   `eslint-plugin-react`'s presets is installed and a single rule outside them
   has nothing to stand down. Whether C1's clause is satisfied, unsatisfiable, or
   pointing at a better configuration is C1's to decide — the criterion is not
-  edited to fit what was built.
+  edited to fit what was built. **C1 has since decided, and the belief in this
+  bullet was wrong**: the config applied here stands down the wrong plugin, and
+  the configuration now applies neither. § The defect C1 found is what happened.
+  The bullet stands as written because a prediction corrected is worth more than
+  a prediction deleted.
 - **C4 has a candidate pair that finding 2 does not list.**
   `react-hooks/static-components` and
   `@eslint-react/no-nested-component-definitions` are cited by the register for
@@ -470,6 +474,131 @@ ruff still derives it from `requires-python` in a *sibling* `pyproject.toml`
 when the configuration it is reading is a `ruff.toml` is not something reading
 the taxonomy answers.
 
+## What ran — C1, the configuration assembles
+
+Run **2026-09-07**, at ruff **0.16.5** and ESLint **9.39.5** with the plugin
+versions the scaffold pins. Every command below is re-runnable against a
+scaffold rebuilt from the two scripts.
+
+**C1 is met on both stacks, and it found a defect on the way.** The defect is
+the third subsection; it is recorded before the verdict rather than after,
+because a criterion that reports only its verdict has thrown away the thing it
+was for.
+
+### Python
+
+```bash
+cd temp/craft-bench/python
+ruff check --show-settings src/ledger/entries.py
+ruff check --show-settings tests/test_entries.py
+```
+
+| What C1 asks | What resolved |
+| --- | --- |
+| The selected set resolves | **141 rules** under `src/`, **140** under `tests/` |
+| No selector matches nothing | None. Ruff rejects an unknown selector outright, and the 141 is the same number the pinned taxonomy gave when the selection was written |
+| `python.no-assert-for-enforcement` is scoped, not exempted | `S101` is in the `src/` set and absent from the `tests/` set, and `linter.per_file_ignores = {}` in both. The scope holds and no exemption exists to drift |
+
+Two settings the criterion did not ask about and the last slice left open.
+**`target_version` resolves to 3.14** — `linter.unresolved_target_version`,
+`formatter.unresolved_target_version` and `analyze.target_version` all read it —
+so ruff *does* infer the floor from `requires-python` in a sibling
+`pyproject.toml` when the configuration it is reading is a `ruff.toml`. The
+question that opened was whether writing the version out could be avoided; it
+can. And `linter.line_length` and `formatter.line_width` both resolve to 88 from
+the single key, which is `python.line-length`'s constraint demonstrated rather
+than asserted.
+
+### React
+
+```bash
+cd temp/craft-bench/react
+npx eslint --print-config src/components/Basket.tsx   # a component
+npx eslint --print-config src/lib/money.ts            # a plain module
+npx eslint --print-config src/components/Basket.test.tsx
+npx eslint src                                        # it executes
+```
+
+| What C1 asks | What resolved |
+| --- | --- |
+| A resolved configuration for one file of each kind | All three print, with no error |
+| All six plugins loaded | Six: `@eslint-react` 5.18.9, `@typescript-eslint` 8.69.0, `jsx-a11y` 6.10.2, `eslint-plugin-react`, `react-hooks`, and `testing-library` 7.16.2 on the test file only |
+| No rule name unknown to its plugin | **133 distinct rules enabled across the three files, and every one of them is in its plugin's `rules` map.** Checked by reading the plugins rather than by waiting for ESLint to say so |
+| The type-checked rules bound to a real `tsconfig` | `projectService: true` with a `tsconfigRootDir` in all three, **and demonstrated**: a throwaway file with an unawaited promise drew `@typescript-eslint/no-floating-promises`, which cannot fire without type information |
+| All three presets resolved | **Two**, not three, and the shortfall is a correction rather than a failure — see below |
+| Both `disable-conflict` configs applied | **Neither, deliberately.** See below |
+
+The counts per file: 121 rules on a component, 122 on a plain module — the extra
+one is `explicit-module-boundary-types`, which is scoped to `*.ts` and so lands
+on the module and not the component, exactly as `react.explicit-return-types`
+asks — and 132 on a test.
+
+`npx eslint src` **exits 0 over the scaffold's five files with no diagnostics**.
+That is half of C2 arriving early. It is not C2: the other half is a deliberate
+violation per rule family and the checklist of rules that had to be enabled
+against their own plugin's default, and neither has been written.
+
+### The defect C1 found: both conflict configs point the other way
+
+`assess.rules.md` finding 2 says `@eslint-react` ships
+`disable-conflict-eslint-plugin-react` and
+`disable-conflict-eslint-plugin-react-hooks` because the enforceable React set
+is covered twice, and left what they contain to be read here. Read from the
+installed tree, they are:
+
+| Config | Contains |
+| --- | --- |
+| `disable-conflict-eslint-plugin-react` | 40 entries, all `off`, **all of them `react/*`** |
+| `disable-conflict-eslint-plugin-react-hooks` | 12 entries, all `off`, **all of them `react-hooks/*`** |
+
+**Both stand down the other plugin so that `@eslint-react` owns the overlap.**
+That is a coherent design and it is the opposite of what this register cites:
+most Rules-of-React and effects rows name a `react-hooks` rule, and the two
+rules this profile most wants — `no-deriving-state-in-effects`, which is
+finding 1, and `preserve-manual-memoization` — have no `@eslint-react`
+equivalent at all.
+
+The candidate configuration had applied
+`disable-conflict-eslint-plugin-react-hooks` **believing it stood down
+`@eslint-react`'s copies**. It did not, and because the `react-hooks` block came
+after it and re-enabled the twelve it had turned off, the config was a no-op and
+**seven rules were resolving twice**: `rules-of-hooks`, `purity`,
+`set-state-in-render`, `set-state-in-effect`, `exhaustive-deps`, `use-memo` and
+`static-components`. On a new repository that is one defect arriving under two
+rule names on the first commit, which is what C4 exists to prevent — and it
+would have been invisible to anything short of resolving the configuration and
+counting.
+
+**What changed.** Neither shipped config is applied. `react-hooks` keeps the
+ownership the register gives it, and the seven `@eslint-react` copies are turned
+off by hand in the same block that claims them, so the claim and the standing-down
+read together. `disable-conflict-eslint-plugin-react` stays unapplied for the
+reason the last slice guessed and this run confirmed: it turns off forty
+`react/*` rules and this profile enables one, `jsx-no-duplicate-props`, which is
+not among them. After the change **no rule name resolves twice** across the
+three files.
+
+That is C1's verdict on its own last clause: the clause asked for both configs
+and the answer is that applying either would have been the defect rather than the
+fix. The criterion is not edited to match; it is answered, and what it was
+standing in for — one defect, one diagnostic — is still C4's to measure with
+deliberate cases.
+
+### Three corrections this run makes to the register
+
+- **The overlap is twelve rule names, not nine.** `assess.rules.md` finding 2
+  lists nine; the plugins ship `globals`, `immutability` and `refs` under both
+  names too. Seven of the twelve were the ones actually resolving twice here,
+  because the other five are enabled on one side only.
+- **There are two rule-carrying presets, not three.** `@eslint-react`'s
+  `recommended` and `jsx-a11y`'s. The third thing this configuration composes,
+  `tseslint.configs.base`, carries a parser and a plugin registration and **no
+  rules**, so counting it as a preset would inflate what was inherited.
+- **`eslint-plugin-react-hooks` misreports its own version.** The installed
+  package is 7.1.1 and its `meta.version` says 7.0.0, which is what
+  `--print-config` echoes. A version recorded from the resolved configuration
+  would be wrong; this document takes plugin versions from the lockfile.
+
 ## What this document still owes
 
 Named so their absence is visible, in the order they will be written:
@@ -477,11 +606,14 @@ Named so their absence is visible, in the order they will be written:
 - ~~**The candidate configuration** — the default-on selection per stack, built
   from the resolved register.~~ Written 2026-09-07 — § The candidate
   configuration.
-- **What ran** — C1, C2, C4 and C8, with versions and commands.
+- **What ran** — ~~C1~~ done 2026-09-07; C2, C4 and C8 still owed, with
+  versions and commands.
 - **What fought** — C3's pass: the method, the pairs cleared, and anything found.
 - **What was probed** — C5, one case per rule, with the outcome of each.
 - **What each rule costs** — C7's table.
 - **The four numbers** — C6, each with its rationale.
-- **What was read from an installed tree** — C9's two answers.
+- **What was read from an installed tree** — C9's second answer, the coverage
+  comparison. The first, what the two `disable-conflict` configs contain, was
+  read by C1 and is under it.
 - **What was demoted, and the case that demoted it** — the criterion each
   demotion cites.

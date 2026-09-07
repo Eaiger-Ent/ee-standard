@@ -164,14 +164,27 @@ indistinguishable from a completed one.
       the nine places a prose citation had to be read more closely than it was
       written, and three things it puts to C1, C4 and C9 without settling any of
       them. Nothing has been run
-- [ ] Confirm the React config assembles at all: six plugins, three presets, the
+- [x] Confirm the React config assembles at all: six plugins, three presets, the
       two `disable-conflict` configs, and type-checked rules that need a
-      `tsconfig`
-- [ ] Resolve what `@eslint-react`'s `disable-conflict-eslint-plugin-react` and
+      `tsconfig`. Done 2026-09-07 with the Python half of C1 beside it, because
+      half a criterion is not a verdict. It resolves for a component, a plain
+      module and a test; **133 distinct rules, none unknown to its plugin**; the
+      type-checked rules are bound, demonstrated by a floating promise drawing
+      the rule that cannot fire without types. Three of this box's own words
+      turned out to be wrong and `review.bench.md` § What ran says so: there are
+      **two** rule-carrying presets rather than three, and **neither**
+      `disable-conflict` config may be applied
+- [x] Resolve what `@eslint-react`'s `disable-conflict-eslint-plugin-react` and
       `disable-conflict-eslint-plugin-react-hooks` configs contain, from an
       installed tree. S2 could not read them from the published bundle and
       recorded that rather than asserting it — and a React profile naming both
-      plugins without one of these double-reports
+      plugins without one of these double-reports. Read 2026-09-07: 40 entries
+      and 12 entries, **and both stand down the *other* plugin** so that
+      `@eslint-react` owns the overlap, which is the opposite of what this
+      register cites. The candidate configuration had applied one of them
+      believing the reverse, and seven rules were resolving twice as a result.
+      Neither is applied now and the copies are turned off by hand.
+      `review.bench.md` § The defect C1 found is the record
 - [ ] Check `@eslint-react`'s coverage against the 104 rules
       `eslint-plugin-react` carries, which is what rows 10 and 11 were resolved
       contingent on

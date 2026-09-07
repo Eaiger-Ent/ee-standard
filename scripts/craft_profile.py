@@ -240,13 +240,6 @@ export default [
 
   // JSX correctness. The base the register chose, then the rules it names.
   { ...eslintReact.configs.recommended, files: SOURCE },
-  // Finding 2: nine rule names ship in both this plugin and `react-hooks`.
-  // `react-hooks` owns them below, so this config stands them down here. What
-  // it actually contains is C9's to read from the installed tree; this names it.
-  {
-    ...eslintReact.configs['disable-conflict-eslint-plugin-react-hooks'],
-    files: SOURCE,
-  },
   {
     files: SOURCE,
     rules: {
@@ -295,10 +288,29 @@ export default [
   // The Rules of React and the effects rules. No preset: finding 1 is that
   // installing `recommended` and stopping leaves off the rule the React
   // documentation opens with.
+  //
+  // **This block also stands `@eslint-react`'s copies down**, by hand, because
+  // the shipped `disable-conflict-eslint-plugin-react-hooks` config stands down
+  // the *other* plugin: it turns twelve `react-hooks/*` rules off so that
+  // `@eslint-react` owns them. That is the opposite of what the register cites
+  // - most Rules-of-React rows name a `react-hooks` rule, and two of the rules
+  // this profile most wants, `no-deriving-state-in-effects` and
+  // `preserve-manual-memoization`, have no `@eslint-react` equivalent at all.
+  // So neither shipped conflict config is applied and the seven names that were
+  // resolving twice are turned off on the `@eslint-react` side here, next to the
+  // ownership claim they qualify. C1 found this; `review.bench.md` records it.
   {
     files: SOURCE,
     plugins: { 'react-hooks': reactHooks },
     rules: {
+      // `@eslint-react`'s copies of what this block owns.
+      '@eslint-react/rules-of-hooks': 'off',
+      '@eslint-react/purity': 'off',
+      '@eslint-react/set-state-in-render': 'off',
+      '@eslint-react/set-state-in-effect': 'off',
+      '@eslint-react/exhaustive-deps': 'off',
+      '@eslint-react/use-memo': 'off',
+      '@eslint-react/static-components': 'off',
       // react.hooks-at-top-level, react.hooks-only-from-react-functions
       'react-hooks/rules-of-hooks': 'error',
       // react.components-are-idempotent, react.no-side-effects-in-render
@@ -328,9 +340,9 @@ export default [
   // One rule, and its presets deliberately not installed. Five of the six
   // properties the register cites this plugin for have an `@eslint-react`
   // instrument that is taken above; this is the sixth, which does not.
-  // `disable-conflict-eslint-plugin-react` is therefore *not* applied - there
-  // is nothing to stand down - and C1 names it as a config this profile would
-  // apply. The case is in `docs/craft/review.bench.md`.
+  // `disable-conflict-eslint-plugin-react` is not applied either: it turns off
+  // forty `react/*` rules, and this profile enables one, which is not among
+  // them. Reading it was how that was settled rather than assumed.
   {
     files: SOURCE,
     plugins: { react },
