@@ -136,9 +136,12 @@ def recorded_today(entries: list[Entry], *, now: datetime | None = None) -> list
     return [entry for entry in entries if entry.recorded_at.date() == today]
 """,
     "python/tests/__init__.py": """\
-\"\"\"Tests are a package, which is what INP001 asks for. C3 measured the
-alternative: without this file every test file draws a finding, and pytest
-collects and passes either way.
+\"\"\"Make the tests a package, which is what INP001 asks for.
+
+C3 measured the alternative: without this file every test file draws a finding,
+and pytest collects and passes either way. The blank line above is D205's, found
+by the second bench - `standard` selects no rule that reads a docstring's shape,
+so nothing had looked at this one either.
 \"\"\"
 """,
     "python/tests/test_entries.py": """\

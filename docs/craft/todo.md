@@ -473,12 +473,47 @@ are two documents.
       scaffold's own defect — PEP 257 asks for imperative mood and no `standard`
       rule reads docstring prose, so nothing had ever looked; corrected in
       `craft_scaffold.py`, with `standard`'s runs re-verified untouched
-- [ ] Resolve `TC003`, which stands: correct on idiomatic code, and the member
-      of its trio with the smallest payoff — a `TYPE_CHECKING` block to defer a
-      stdlib import. Demoting it alone would split `python.typing-only-imports`
-      along a line the register does not draw, so it needs C5's probe and a
-      verdict rather than a quiet drop
-- [ ] C2's other half — one deliberate defect per new rule
+- [ ] Resolve the three demotion candidates the clean and violation runs left
+      standing. **`TC003`**: correct on idiomatic code, and the member of its
+      trio with the smallest payoff — a `TYPE_CHECKING` block to defer a stdlib
+      import; demoting it alone would split `python.typing-only-imports` along a
+      line the register does not draw. **`D103` on every test**, where the
+      remedy the ecosystem reaches for is `per-file-ignores` and that is the
+      exemption `design.profiles.md` § The config surface refused, so `strict`
+      has two of its own decisions against each other. **`TRY003`**, which
+      cannot fire without `EM101` or `EM102` firing on the same line and goes
+      quiet on a remedy that leaves the message outside the exception class —
+      the one property whose instrument does not measure it. All three are C5's,
+      and the third needs a verdict rather than a probe: `review.strict.md`
+      already carries the table that decides it
+- [x] C2's other half — one deliberate defect per new rule. Done 2026-09-07:
+      `cases/strict/` is the 32, split by what a defect has to *be* rather than
+      by property, with the two preview rules keeping the cases C8 wrote for
+      them; `react/violations/Effects.tsx` is the React half. **The check is a
+      command** — `craft_cost.py --fires` derives the additions by resolving the
+      strict selection against the standard one and compares them against a run,
+      and it is shown able to fire. **Two findings, and the second is the one
+      C2 exists for.** `TRY003` fires only inside `EM101`/`EM102`, above; and
+      **React's one added rule was inert** — `'error'` alone resolves at
+      severity 2 and reports nothing, because the rule is a view onto the
+      compiler analysis that `validateExhaustiveEffectDependencies` gates `off`,
+      reachable from the rule's options and not from its severity. Corrected in
+      `craft_profile.py`. C1's count of 121 against 120 was true before the
+      correction and after it, which is what a count cannot see
+- [x] C4 at `strict`, which was recorded as not applicable and is not. Done
+      2026-09-07: one duplicated defect per stack — React's added rule against
+      `exhaustive-deps` on a missing dependency, where the added rule's whole
+      margin is the *extra*-dependency direction, and `TRY003` against `EM101`
+      in Python. `'extra-only'` would remove the React duplicate and is **not
+      taken**: narrowing an instrument to dodge a duplicate leaves the register
+      asserting a property its configuration no longer enforces, so the
+      alternative and its reason go in the Craft register's `alternatives:`
+      field, which is the mechanism S4's schema slice built for it
+- [x] The scaffold's second defect, found the same way as the first. `D205` on
+      `tests/__init__.py` — a docstring written during the *first* bench, to
+      explain the file `INP001` asks for, wrong since the day it was written
+      because no `standard` rule reads a docstring's shape. Corrected in
+      `craft_scaffold.py`, `standard`'s runs re-verified untouched
 - [ ] C3's construct partition and witnesses, over the 32 new rules
 - [ ] C5 — probes for the rules with a false-positive reputation
 - [ ] C7 — cost per finding for the 32, from `fix_availability`
