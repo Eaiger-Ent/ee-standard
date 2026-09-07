@@ -59,7 +59,7 @@ One file cannot hold both policies.
 | `src/` | `src/register_check/` — the checker. One assert implementation, read by every locus |
 | `tests/` | The suite. Several tests hold rules that govern *this* repository rather than a conformant one |
 | `plugins/` | `plugins/control-register/` — what an adopter installs: nine skills, the templates they write from, and the shared prose |
-| `scripts/` | `scripts/plan_progress.py`, the derived view of the build plan's exit criteria |
+| `scripts/` | `scripts/plan_progress.py`, the derived view of the build plan's exit criteria; `scripts/craft_scaffold.py`, which materialises S3's bench scaffolds into the gitignored working directory this repository also clones sources into — they cannot be tracked, and `docs/craft/review.bench.md` § What the criteria are measured on says why |
 | `.github/` | `.github/workflows/` (four), `.github/dependabot.yml`, and `.github/rulesets/default-branch.json` — the record of what the platform is asked to enforce |
 | `.devcontainer/` | The container this repository is developed in. `.devcontainer/setup.sh` installs the tools; `.devcontainer/check-auth.sh` reports what is missing |
 | `.claude/` | `.claude/hooks/md-lint.py`, `.claude/settings.json`, and `.claude/skills/` — tracked symlinks into the plugin ([ADR 0033](adr/0033-the-submission-tool-reaches-the-skills-by-symlink.md)) |
