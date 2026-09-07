@@ -153,8 +153,17 @@ indistinguishable from a completed one.
       `test_h7_this_repository_declares_coverage_for_every_tracked_module`
       failed on. `review.bench.md` § The scaffolds is the record, including the
       two version ceilings the build surfaced
-- [ ] Build the candidate default-on configuration for each stack from the
-      resolved register
+- [x] Build the candidate default-on configuration for each stack from the
+      resolved register. Done 2026-09-07: 65 ruff selectors resolving to 141
+      rules, and 89 ESLint rules named on over two preset bases, written by
+      [`scripts/craft_profile.py`](../../scripts/craft_profile.py) into the same
+      gitignored `temp/` the scaffolds go to. **A second script, not more of
+      `craft_scaffold.py`** — the scaffold is the subject and this is the
+      instrument, and S3 varies one while holding the other still.
+      `review.bench.md` § The candidate configuration is the record, including
+      the nine places a prose citation had to be read more closely than it was
+      written, and three things it puts to C1, C4 and C9 without settling any of
+      them. Nothing has been run
 - [ ] Confirm the React config assembles at all: six plugins, three presets, the
       two `disable-conflict` configs, and type-checked rules that need a
       `tsconfig`
