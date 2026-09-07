@@ -373,7 +373,28 @@ owes is the list of what has not been written — not restated here.
 - [x] Check anything a machine will read against ADR 0018 before it enters code
       — **ADR 0053** applies 0018's test to the mapping and answers *data*. The
       test still applies per rule as Craft's code is written, and 0053 requires
-      each exception to carry its reason there
+      each exception to carry its reason there. **Four exceptions are now named
+      and reasoned** — [`design.profiles.md`](design.profiles.md) § What may
+      live in Craft's Python: the identity grammar, the level ordering, the
+      closed set of instrument shapes, and the rule that a linter citation owes
+      a `coextensive:` reason
+- [x] Design the Craft register's schema — ADR 0053 left it to this stage. Done
+      2026-09-07, `design.profiles.md` § The Craft register's schema, and it
+      closes **both** of S3's remaining hand-forwards by making each measured
+      mistake unspellable rather than discouraged. One instrument per property,
+      alternatives recorded with the reason that stops somebody re-enabling
+      them; and an instrument is a **closed set of codes or a linter, never a
+      range** — a range rots (`DTZ001`–`DTZ012` missed `DTZ901`) and, read
+      widely, over-reaches into contradiction (`D2xx` brings `D203` against
+      `D211`). `linter:` requires a `coextensive:` reason and its absence is a
+      schema error: the four linters `standard` spells that way all pass the
+      test at 0 preview rules, and `pydocstyle` — 48 rules carrying both sides
+      of two conventions — fails it. `level` sits on the **binding** rather than
+      the property, which is what the strictness slice's third finding asked
+      for. **ADR 0053's open question is answered**: the register *replaces*
+      `assess.rules.md`, which becomes a stage record like `survey.sources.md`
+      beside it, with a superset test rather than a promise holding them
+      together
 - [x] Draft the ADR on writing into a control's gated configuration — **ADR
       0055**, Accepted 2026-09-07. **Not anticipated by the four**: the config
       surface slice found that a craft rule installed into a mandated tool
