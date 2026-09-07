@@ -962,7 +962,7 @@ survey work.
 
 | Owed | Which box in `todo.md` |
 | --- | --- |
-| A second bench, over `strict`. Until it runs, no strict-only rule can ever become a control — ADR 0051's third precondition | Raised by § The strictness levels |
+| A second bench over `strict` — **started 2026-09-07**, [`review.strict.md`](review.strict.md), and its § What has not run is what is left of it | Raised by § The strictness levels |
 | The Craft register's **validation** — what checks it, given ADR 0053 says `register-check` must not | Write `design.profiles.md` |
 | Where a profile's `changes` entries live in the schema — a field, not a decision | Raised by § Naming, versioning |
 | The migration: turning `assess.rules.md`'s 182 rows into register data | Raised by § The Craft register's schema |

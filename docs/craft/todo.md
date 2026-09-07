@@ -447,6 +447,45 @@ owes is the list of what has not been written — not restated here.
       decision and one source to register, listed in its own § What this
       document still owes
 
+## The second bench — `strict`
+
+**Not a stage.** S3 benched `standard` and met its exit criterion; S4 then
+defined a level above it, and ADR 0051's third precondition means no strict-only
+rule is eligible to become a control until somebody measures it.
+[`review.strict.md`](review.strict.md) is that measurement, and its § What has
+not run is the list — not restated here, for the reason `plan.md` and this file
+are two documents.
+
+- [x] Parameterise `craft_profile.py` on the level, and materialise `strict`.
+      Done 2026-09-07, `--level strict`. Every file **extends** its `standard`
+      counterpart rather than restating it, because S4 defines the level as a
+      superset and two selector lists would be free to disagree with that
+- [x] C1 — the strict configuration assembles. Done 2026-09-07: **172 rules**
+      against `standard`'s 140, **32 added and none removed**, which is the
+      design's own narrow-reading number; `preview = true` enabled exactly the
+      two rules it was asked for; React's 121 against 120 is the one-rule
+      asymmetry as configuration
+- [x] C3 pass 1 — the formatter-conflict check, **and shown able to fire**.
+      Silent over the narrow reading; both `D203`/`D211` and `D212`/`D213` warn
+      under the wide reading S4's schema slice rejected, with ruff dropping one
+      side of each. The schema rule run rather than reasoned
+- [x] C2, the clean direction. **The scaffold was not clean.** `D401` was the
+      scaffold's own defect — PEP 257 asks for imperative mood and no `standard`
+      rule reads docstring prose, so nothing had ever looked; corrected in
+      `craft_scaffold.py`, with `standard`'s runs re-verified untouched
+- [ ] Resolve `TC003`, which stands: correct on idiomatic code, and the member
+      of its trio with the smallest payoff — a `TYPE_CHECKING` block to defer a
+      stdlib import. Demoting it alone would split `python.typing-only-imports`
+      along a line the register does not draw, so it needs C5's probe and a
+      verdict rather than a quiet drop
+- [ ] C2's other half — one deliberate defect per new rule
+- [ ] C3's construct partition and witnesses, over the 32 new rules
+- [ ] C5 — probes for the rules with a false-positive reputation
+- [ ] C7 — cost per finding for the 32, from `fix_availability`
+- [ ] Run the mypy half at all. `disallow_any_explicit` is written and has met
+      no code, so the strict level's one type-checker key is as unmeasured as
+      C6 left it — which is the row ADR 0051's precondition is really about
+
 ## S5 — Build the chooser and the installer
 
 - [ ] Specify the skill's configuration contract, in the shape
