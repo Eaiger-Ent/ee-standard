@@ -134,10 +134,14 @@ set over real repositories and holding it to a findings-per-KLOC ceiling. ADR
 originals are struck rather than deleted — a silently removed step is
 indistinguishable from a completed one.
 
-- [ ] Write the acceptance criteria **before** anything is run. They are about
+- [x] Write the acceptance criteria **before** anything is run. They are about
       the configuration, not a corpus: it assembles, it runs, no two selected
       rules contradict, and every probed false-positive case is either clean or
-      the rule is demoted with the case recorded
+      the rule is demoted with the case recorded. Done 2026-09-06:
+      [`review.bench.md`](review.bench.md) § The acceptance criteria, C1 to C9,
+      written with no scaffold in existence. Five of the nine are more than the
+      exit criterion asks — that section says which, and why leaving them out
+      would have left five deferred questions for somebody to rediscover
 - [ ] Build a minimal scaffold per stack — a new repository of the shape the
       profile is for, not a sample of an existing one
 - [ ] Build the candidate default-on configuration for each stack from the
