@@ -474,8 +474,11 @@ worth keeping in the shape it was made.
 measurement. Resolving a row settled its classification and settled none of those
 numbers: `python.function-length`'s threshold, `python.line-length`'s default,
 `python.no-any`'s strict variant, `react.explicit-return-types`' scope and
-`@eslint-react`'s coverage against `eslint-plugin-react`'s 104 rules are all
-still S3's. **A resolved row is not a measured one.**
+`@eslint-react`'s coverage against `eslint-plugin-react`'s rules were all S3's.
+**A resolved row is not a measured one.** S3 has since measured them —
+`review.bench.md` § The four numbers and § What was read from an installed tree
+— and corrected the last of them on the way: the installed 7.37.5 carries **103**
+rules, not the 104 argued against here.
 
 **It added no work.** `todo.md`'s existing second-reader box under S3 is the box
 this document was written for, and taking the recommendations is what closes it.

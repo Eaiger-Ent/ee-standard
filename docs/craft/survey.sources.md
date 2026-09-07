@@ -32,7 +32,7 @@ a different kind of source, not a missing one.
 
 | Source | URL | Licence | Maintenance | Authority | Covers |
 | --- | --- | --- | --- | --- | --- |
-| ruff's rule taxonomy | <https://docs.astral.sh/ruff/rules/> | MIT | 0.16.6, released 2026-09-03 | tool | 969 rules at the 0.16.5 this repository pins — 812 stable, 140 preview, 17 removed — across 58 stable linters. **Corrected 2026-09-06 by S2**, which read the taxonomy as JSON: the 59 counted a rule with no code and no linter — pycodestyle, pyflakes, pylint, bugbear, pyupgrade, isort and more, under stable codes with fix availability declared per rule |
+| ruff's rule taxonomy | <https://docs.astral.sh/ruff/rules/> | MIT | 0.16.6, released 2026-09-03 | tool | 969 rules at the 0.16.5 this repository pins — 812 stable, 140 preview, 17 removed — across 58 stable linters — pycodestyle, pyflakes, pylint, bugbear, pyupgrade, isort and more, under stable codes with fix availability declared per rule. **Corrected 2026-09-06 by S2**, which read the taxonomy as JSON: the 59 counted `pytest-fixture-autouse`, a rule with neither a code nor a linter |
 | PEP 8 — Style Guide for Python Code | <https://peps.python.org/pep-0008/> | **Public domain**, stated in the document's own Copyright section. GitHub reports `NONE` for `python/peps`, which is detection failing rather than an absent grant | Repository last pushed 2026-09-03; the PEP itself is stable by design | stack | Layout, naming, comments, and the explicit instruction that a style rule may be broken when applying it hurts readability |
 | PEP 20 — The Zen of Python | <https://peps.python.org/pep-0020/> | **Public domain**, stated in the document's own Copyright section | Stable; unchanged for years by design | stack | Nineteen aphorisms. Judgment-only in every line — registered because it is the reference other sources appeal to, not because a machine can hold it |
 | PEP 257 — Docstring Conventions | <https://peps.python.org/pep-0257/> | **Public domain**, stated in the document's own Copyright section | Repository last pushed 2026-09-03; the PEP is stable | stack | What a docstring is for, and the one-line and multi-line forms. ruff's entire `D` family implements it through pydocstyle, so this is the authority behind a block of rules the taxonomy alone would leave unexplained |
@@ -134,10 +134,12 @@ alongside it rather than behind it: if the plugin stops, the requirement does
 not.
 
 **6. Python's bucket 1 is large and already written.** ruff carries 969 rules
-across 59 linters at the version this repository pins. Whatever S2 concludes,
-the Python work is overwhelmingly **selection and pinning**, not rule-writing —
-which is exactly the gap the register leaves open, since LNT-001 verifies that
-ruff is wired and says nothing about which of those 969 are selected.
+across 58 stable linters at the version this repository pins — 59 until S2 read
+the taxonomy as JSON and found the extra one was a rule with neither a code nor
+a linter. Whatever S2 concludes, the Python work is overwhelmingly **selection
+and pinning**, not rule-writing — which is exactly the gap the register leaves
+open, since LNT-001 verifies that ruff is wired and says nothing about which of
+those 969 are selected.
 
 **7. Both stacks have first-party authority, and they are asymmetric.** Python's
 is prose that predates the tooling (PEP 8, PEP 20) with the tooling built to
@@ -196,10 +198,12 @@ enforces*.
   for React, not a neutral one. S2's React pass reads it, and a React pass that
   completes without it is a defect rather than a decision. `todo.md` carries the
   box that makes that fail loudly.
-- No Equal Experts consumer of any of these rulesets is registered, because the
-  question is **not answered**: finding out means a code search across the
-  EqualExperts organisation, which is a scan of company repositories and has no
-  authorisation behind it. That S1 box stays open with the reason attached.
+- No Equal Experts consumer of any of these rulesets is registered, and since
+  **2026-09-06 the reason is that there is none** rather than that nobody
+  looked. The question was answered directly. It had been open because the
+  obvious route — a code search across the EqualExperts organisation — is a scan
+  of company repositories with no authorisation behind it; that route is now
+  unnecessary rather than still owed, and nothing here rests on it.
 
 ## How to re-run this sweep
 

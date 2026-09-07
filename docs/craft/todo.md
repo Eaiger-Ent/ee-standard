@@ -19,7 +19,8 @@ S4 onwards is untouched apart from the boxes that premise reached.
 
 Its exit criterion is met — the check is in
 [`survey.sources.md`](survey.sources.md) § Exit criterion, not restated here.
-One box below is still open; it is not part of that criterion.
+Every box below is closed. The last of them was open until 2026-09-06 and was
+never part of that criterion.
 
 - [x] Settle the workstream name — **Craft**, settled 2026-09-05 against
       *Practice*, *Idiom* and *Workmanship*. `docs/practice/` became
@@ -58,7 +59,9 @@ One box below is still open; it is not part of that criterion.
 - [x] Find out whether any Equal Experts repository already consumes these rules,
       and how. **Not authorised as asked** — the obvious route is a code search
       across the EqualExperts org, which is a scan of company repositories and
-      has no yes behind it. Open until that yes or a narrower route
+      has no yes behind it, so the box stayed open on that route. **Closed
+      2026-09-06 without it: no repository does.** Answered directly, which is
+      why the search is not needed rather than still owed
 - [x] ~~**Blocked — needs a named yes.** Ask the `llm-toolkit` codeowners whether
       they hold a view on machine enforcement, and resolve the missing licence~~
       Closed 2026-09-05 **without contact**, which is why it is struck rather
@@ -145,7 +148,8 @@ indistinguishable from a completed one.
       would have left five deferred questions for somebody to rediscover
 - [x] Build a minimal scaffold per stack — a new repository of the shape the
       profile is for, not a sample of an existing one. Done 2026-09-07:
-      twelve files, written by
+      thirteen files — twelve, plus the `tests/__init__.py` C3 found `INP001`
+      and pytest both want — written by
       [`scripts/craft_scaffold.py`](../../scripts/craft_scaffold.py) into
       gitignored `temp/` rather than tracked. **The first attempt was tracked
       and this repository rejected it** — a scaffold's `[tool.ruff]` is a second
@@ -169,8 +173,9 @@ indistinguishable from a completed one.
       two `disable-conflict` configs, and type-checked rules that need a
       `tsconfig`. Done 2026-09-07 with the Python half of C1 beside it, because
       half a criterion is not a verdict. It resolves for a component, a plain
-      module and a test; **133 distinct rules, none unknown to its plugin**; the
-      type-checked rules are bound, demonstrated by a floating promise drawing
+      module and a test; **133 distinct rules, none unknown to its plugin**, and
+      132 once C4 demoted one of them; the type-checked rules are bound,
+      demonstrated by a floating promise drawing
       the rule that cannot fire without types. Three of this box's own words
       turned out to be wrong and `review.bench.md` § What ran says so: there are
       **two** rule-carrying presets rather than three, and **neither**
@@ -226,10 +231,11 @@ indistinguishable from a completed one.
       421 of 812 stable rules carry no fix. Done 2026-09-07, **both stacks**, by
       [`scripts/craft_cost.py`](../../scripts/craft_cost.py) rather than by hand,
       because S5 needs the answer for the versions it installs rather than the
-      versions this bench read. 274 rules, 169 of them hand-work. The Python
+      versions this bench read. 273 rules, 168 of them hand-work. The Python
       half is 51% against the taxonomy's own 52%, so the selection is
       representative rather than costly; the React half is 73%, and **every one
-      of `jsx-a11y`'s 34 rules** is hand-work against `react-hooks`' 1 of 12.
+      of the 34 `jsx-a11y` rules the profile selects** is hand-work against
+      `react-hooks`' 1 of 12.
       The reading also exposed that **the profile pins no tool version in
       anything it materialises**, which is S4's to fix
 - [x] Settle the four numbers the resolutions left owed —
@@ -263,9 +269,9 @@ indistinguishable from a completed one.
       evidence it asks for is more than a document section. Done 2026-09-07.
       Clean in both stacks, and non-zero on `cases/violations`, where **all 26
       selected ruff families fire from 37 rules**. The React checklist is
-      derived rather than taken from the register's ten: **32 rules**, twenty
-      enabled where the plugin ships them off or absent and **twelve whose
-      severity is raised**, all 32 demonstrated. Eleven of the twelve are
+      derived rather than taken from the register's ten: **33 rules**, twenty
+      enabled where the plugin ships them off or absent and **thirteen whose
+      severity is raised**, all 33 demonstrated. Eleven of the thirteen are
       `@eslint-react` rules shipped at `warn`, which in a merge gate is a rule
       that looks enabled and blocks nothing — finding 1's shape a second time.
       **The scaffold was not clean when the configuration met it**: five

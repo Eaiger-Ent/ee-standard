@@ -82,15 +82,16 @@ the version, and the command that produced it.
 
 Two, built 2026-09-07 and rebuilt from
 [`scripts/craft_scaffold.py`](../../scripts/craft_scaffold.py) on every run.
-Twelve files between them. Both were run before being recorded here: the Python
-scaffold's four tests pass and the React scaffold type-checks clean under
-`tsc --noEmit` and passes its three.
+**Thirteen files** between them — twelve when this section was written, and
+`tests/__init__.py` since, which C3 measured and C2 records. Both were run
+before being recorded here: the Python scaffold's four tests pass and the React
+scaffold type-checks clean under `tsc --noEmit` and passes its three.
 
 | | Python — `ledger` | React — `storefront` |
 | --- | --- | --- |
 | Manifest | `pyproject.toml`, `src` layout, `pythonpath = ["src"]` | `package.json`, `tsconfig.json` with the strict family on, `vitest.config.ts` |
 | Source | `src/ledger/entries.py` — a frozen dataclass, a domain error, `pathlib`, `Decimal`, timezone-aware datetimes | `src/lib/money.ts` (no React), `src/components/Basket.tsx` and `BasketRow.tsx` |
-| Tests | `tests/test_entries.py`, four cases | `src/components/Basket.test.tsx`, three cases, Testing Library and `user-event` |
+| Tests | `tests/__init__.py` and `tests/test_entries.py`, four cases | `src/setup-tests.ts` and `src/components/Basket.test.tsx`, three cases, Testing Library and `user-event` |
 
 They are small deliberately. A scaffold is not a demonstration of the language;
 it is the smallest thing that gives every selected rule somewhere to look. What
@@ -383,7 +384,7 @@ this file does not answer it.
 | --- | --- | --- |
 | Written to | `python/ruff.toml`, `python/src/ruff.toml` | `react/eslint.config.js` |
 | At | ruff 0.16.5 | ESLint 9.39.5, plus the six plugins the scaffold pins |
-| Size | 65 selectors resolving to **141 rules** | **89 rules named on**, plus one named `off`, over two preset bases |
+| Size | 65 selectors resolving to **141 rules** | **89 rules named on**, plus one named `off`, over two preset bases. **As it stands: 87 on and 9 off** — C1 turned seven `@eslint-react` copies off by hand and C4 demoted an eighth |
 | Presets used | none — ruff's default `E4`, `E7`, `E9`, `F` is replaced outright | `@eslint-react` `recommended` and `jsx-a11y` `recommended`, and no others |
 
 The 141 is the selection expanded against the pinned taxonomy, not against a
@@ -528,7 +529,7 @@ npx eslint src                                        # it executes
 | --- | --- |
 | A resolved configuration for one file of each kind | All three print, with no error |
 | All six plugins loaded | Six: `@eslint-react` 5.18.9, `@typescript-eslint` 8.69.0, `jsx-a11y` 6.10.2, `eslint-plugin-react`, `react-hooks`, and `testing-library` 7.16.2 on the test file only |
-| No rule name unknown to its plugin | **133 distinct rules enabled across the three files, and every one of them is in its plugin's `rules` map.** Checked by reading the plugins rather than by waiting for ESLint to say so |
+| No rule name unknown to its plugin | **133 distinct rules enabled across the three files, and every one of them is in its plugin's `rules` map.** Checked by reading the plugins rather than by waiting for ESLint to say so. **132 since C4's demotion** — see below |
 | The type-checked rules bound to a real `tsconfig` | `projectService: true` with a `tsconfigRootDir` in all three, **and demonstrated**: a throwaway file with an unawaited promise drew `@typescript-eslint/no-floating-promises`, which cannot fire without type information |
 | All three presets resolved | **Two**, not three, and the shortfall is a correction rather than a failure — see below |
 | Both `disable-conflict` configs applied | **Neither, deliberately.** See below |
@@ -537,6 +538,12 @@ The counts per file: 121 rules on a component, 122 on a plain module — the ext
 one is `explicit-module-boundary-types`, which is scoped to `*.ts` and so lands
 on the module and not the component, exactly as `react.explicit-return-types`
 asks — and 132 on a test.
+
+**Those are the counts as C1 ran them.** C4 has since demoted
+`@eslint-react/no-nested-component-definitions`, which takes one rule off every
+file: the resolved configuration is now **120** on a component, **121** on a
+plain module, **131** on a test, and **132** distinct. Every later count in this
+document is the post-demotion one; these are kept as what C1 resolved.
 
 `npx eslint src` **exits 0 over the scaffold's five files with no diagnostics**.
 That is half of C2 arriving early. It is not C2: the other half is a deliberate
@@ -889,8 +896,13 @@ uv run python scripts/craft_cost.py --per-rule # every rule, one per line
 | | Rules | A fix or a suggestion | Neither — hand-work |
 | --- | --- | --- | --- |
 | Python, ruff 0.16.5 | 141 | 69 | **72 (51%)** |
-| React, six plugins | 133 | 36 | **97 (73%)** |
-| **Both** | **274** | **105** | **169 (62%)** |
+| React, six plugins | 132 | 36 | **96 (73%)** |
+| **Both** | **273** | **105** | **168 (62%)** |
+
+**The React row is one lower than this section first published it**, because C4
+demoted `@eslint-react/no-nested-component-definitions` after C7 was written.
+The numbers above are what the command prints now, which is the point of it
+being a command.
 
 **The Python selection is ordinary, and that is the useful finding.** 51% of it
 carries no fix; 52% of ruff's whole stable taxonomy carries no fix. The profile
@@ -902,11 +914,12 @@ evenly:
 
 | Family | Hand-work of total | What that means on day one |
 | --- | --- | --- |
-| `jsx-a11y` | **34 of 34** | Every accessibility finding is hand-work. Nothing in the group can be auto-fixed, because the fix is a decision about markup |
-| `@eslint-react` | 48 of 64 | |
+| `jsx-a11y` | **34 of 34** | Every one of the 34 rules this profile selects is hand-work. Nothing in the group can be auto-fixed, because the fix is a decision about markup |
+| `@eslint-react` | 47 of 63 | |
 | `@typescript-eslint` | 8 of 11 | The two with suggestions rather than fixes are the type-aware promise rules, where the tool can propose but not choose |
 | `testing-library` | 5 of 11 | |
 | `react-hooks` | **1 of 12** | The cheapest group in either stack. The compiler-backed rules ship fixes, which is what a rule written against a compiler can do |
+| `react` | 1 of 1 | `jsx-no-duplicate-props`, the single rule the profile takes from `eslint-plugin-react`. Listed so the column sums |
 
 The same shape on the Python side, at both ends: `flake8-bandit` and
 `flake8-datetimez` are **10 of 10** hand-work each, and `Pylint`'s five size and
@@ -919,7 +932,7 @@ selection cost almost nothing to satisfy.
 
 `plan.md` § S5 requires the installer to present each profile with **what S3
 found each rule costs to satisfy**. `--per-rule` is that, and it is a command
-rather than a table in this document on purpose: a 274-row table would be stale
+rather than a table in this document on purpose: a 273-row table would be stale
 the first time either tool is bumped, and S5 needs the answer for the versions
 it installs rather than the versions this bench read.
 
@@ -1180,7 +1193,7 @@ the per-family demonstration above is the honest form of the question.
 
 For React it is the real thing, and **the checklist is derived rather than
 taken**. `assess.rules.md` names ten such rules; reading the profile's resolved
-configuration against each plugin's own `recommended` gives **thirty-two**:
+configuration against each plugin's own `recommended` gives **thirty-three**:
 
 | | Count |
 | --- | --- |
@@ -1199,9 +1212,10 @@ reading of the plugin defaults put two more on. A number in a document nobody
 can re-run is the number that drifts, which is why this one is a command.
 
 The escalations are worth their own sentence. `@eslint-react`'s
-`recommended` ships eleven of its rules at **`warn`**, and `react-hooks` ships
-`exhaustive-deps` at `warn` — and a rule at `warn` in a merge gate is a rule
-that looks enabled and blocks nothing. That is finding 1's shape a second time:
+`recommended` ships eleven of its rules at **`warn`**, `react-hooks` ships
+`exhaustive-deps` at `warn` and `testing-library` ships `no-debugging-utils` at
+`warn` — thirteen in all, and a rule at `warn` in a merge gate is a rule that
+looks enabled and blocks nothing. That is finding 1's shape a second time:
 the first was a rule shipped `off`, this is a rule shipped unable to fail a
 build. The profile raises them all to `error`, and the case file shows each one
 firing.
@@ -1312,7 +1326,7 @@ hold **however many of C1 to C9 are ticked**.
 
 | Clause | Held by | Verdict |
 | --- | --- | --- |
-| assembles and runs clean on a scaffold of each stack | C1 and C2 | **Yes.** 141 ruff rules and 133 ESLint rules resolve, every ESLint rule name checked against its plugin, the type-checked rules demonstrated bound; both stacks exit `0` on the scaffold and the witnesses, and non-zero on deliberate defects |
+| assembles and runs clean on a scaffold of each stack | C1 and C2 | **Yes.** 141 ruff rules and 132 ESLint rules resolve, every ESLint rule name checked against its plugin, the type-checked rules demonstrated bound; both stacks exit `0` on the scaffold and the witnesses, and non-zero on deliberate defects |
 | no selected rule contradicts another | C3 | **Yes**, by a recorded method with a stated limit, and one rule-versus-configuration conflict resolved by measurement rather than argument |
 | every demotion cites the case that demoted it | C4 | **Yes.** One demotion, one case: the nested component that drew two diagnostics |
 
