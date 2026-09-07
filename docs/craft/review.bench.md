@@ -867,6 +867,72 @@ the case either way; the case is above and the reasoning is here.
 | `explicit-module-boundary-types` | **Keep, and the scoping is now evidence-backed** | It fired on all three components, which is what `react.explicit-return-types`' resolution predicted when it put component files out of scope. Unscoped, this profile would demand a written return type on every component in the repository |
 | `ERA001` | **Keep, and it is the one to watch at S6** | It flagged a comment that documents a data format, which is the commonest shape of prose that looks like code. It is the probe with the widest blast radius and the weakest defence, and it is named here so S6 has something specific to ask the team about |
 
+## What each rule costs — C7
+
+Read **2026-09-07** from the tools' own metadata, which is why C7 needs no run:
+ruff records `fix_availability` per rule, and an ESLint plugin records
+`meta.fixable` and `meta.hasSuggestions`. The reading is
+[`scripts/craft_cost.py`](../../scripts/craft_cost.py), so the numbers below are
+re-derivable rather than transcribed, and it prints the versions it read.
+
+```bash
+uv run python scripts/craft_cost.py            # the totals below
+uv run python scripts/craft_cost.py --per-rule # every rule, one per line
+```
+
+| | Rules | A fix or a suggestion | Neither — hand-work |
+| --- | --- | --- | --- |
+| Python, ruff 0.16.5 | 141 | 69 | **72 (51%)** |
+| React, six plugins | 133 | 36 | **97 (73%)** |
+| **Both** | **274** | **105** | **169 (62%)** |
+
+**The Python selection is ordinary, and that is the useful finding.** 51% of it
+carries no fix; 52% of ruff's whole stable taxonomy carries no fix. The profile
+is not a costly selection out of a cheap taxonomy — it is a representative one,
+so a team's experience of it will be the experience of ruff.
+
+**The React half is half again as expensive**, and the cost is not spread
+evenly:
+
+| Family | Hand-work of total | What that means on day one |
+| --- | --- | --- |
+| `jsx-a11y` | **34 of 34** | Every accessibility finding is hand-work. Nothing in the group can be auto-fixed, because the fix is a decision about markup |
+| `@eslint-react` | 48 of 64 | |
+| `@typescript-eslint` | 8 of 11 | The two with suggestions rather than fixes are the type-aware promise rules, where the tool can propose but not choose |
+| `testing-library` | 5 of 11 | |
+| `react-hooks` | **1 of 12** | The cheapest group in either stack. The compiler-backed rules ship fixes, which is what a rule written against a compiler can do |
+
+The same shape on the Python side, at both ends: `flake8-bandit` and
+`flake8-datetimez` are **10 of 10** hand-work each, and `Pylint`'s five size and
+argument-count rules are **5 of 5** — nothing can decide for you that a function
+is too long. Against them `flake8-use-pathlib` is 29 of 35 fixable and
+`flake8-comprehensions` 18 of 19, so two of the three largest families in the
+selection cost almost nothing to satisfy.
+
+### What this is for
+
+`plan.md` § S5 requires the installer to present each profile with **what S3
+found each rule costs to satisfy**. `--per-rule` is that, and it is a command
+rather than a table in this document on purpose: a 274-row table would be stale
+the first time either tool is bumped, and S5 needs the answer for the versions
+it installs rather than the versions this bench read.
+
+### One thing the reading exposed
+
+**The profile pins nothing it materialises.** `craft_cost.py` reports the
+versions it read because it has to — nothing in `ruff.toml` or
+`eslint.config.js` names a tool version, and the React versions come from the
+scaffold's `package.json` rather than from the configuration. For a bench that
+is fine, since this document records what it ran at. For an installed profile it
+is not: the register's own posture is that a gate is a **pinned** binary reading
+a pinned config, and a craft profile that ships a rule selection without the
+version it was selected against is shipping half a decision. **S4 owes that**,
+and it is recorded here rather than in a note nobody reads.
+
+The script also reads plugin versions from each package's `package.json` rather
+than from `meta.version`, because C1 found `eslint-plugin-react-hooks` 7.1.1
+reporting itself as 7.0.0.
+
 ## What this document still owes
 
 Named so their absence is visible, in the order they will be written:
@@ -880,7 +946,8 @@ Named so their absence is visible, in the order they will be written:
   found.~~ Done 2026-09-07 — § What fought.
 - ~~**What was probed** — C5, one case per rule, with the outcome of each.~~
   Done 2026-09-07 — § What was probed.
-- **What each rule costs** — C7's table.
+- ~~**What each rule costs** — C7's table.~~ Done 2026-09-07 — § What each
+  rule costs.
 - **The four numbers** — C6, each with its rationale.
 - ~~**What was read from an installed tree** — C9's two answers.~~ Both done
   2026-09-07: the `disable-conflict` configs under C1, the coverage comparison
