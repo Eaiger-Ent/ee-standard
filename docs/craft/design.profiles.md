@@ -727,6 +727,42 @@ registered the group is Node-only, and an installer that would drag a toolchain
 into a repository to satisfy it should say so and let the team decline —
 which is a report, not a gate.
 
+#### Registered 2026-09-08 — `commitizen`, and it moves two rows of three
+
+`gitlint` was read first and **rejected on maintenance**: 0.19.1 released
+2023-03-10, repository last pushed 2024-07-11. That is the test S1 applied to
+Airbnb, applied again — a stale instrument is a liability a profile installs on
+somebody's behalf.
+
+**`commitizen` is registered** — 4.18.0, released 2026-08-19, repository pushed
+2026-09-04, MIT — and it moves two of the three rows:
+
+| Row | Under `commitizen` |
+| --- | --- |
+| `any.conventional-commits` | **Yes.** `cz check` validates a commit against the configured convention |
+| `any.commit-subject-length` | **Yes**, and first-class: `message_length_limit` is a configuration key rather than a regex |
+| `any.commit-references-work-item` | **No**, and the reason is structural |
+
+**The third row did not move, and it is worth saying why rather than counting
+two out of three.** `commitizen` can assert it only through `schema_pattern`,
+which lives under `[tool.commitizen.customize]` and is reached by declaring
+`name = "cz_customize"` — so taking it **replaces** the conventional-commits
+ruleset rather than adding to it. Under that tool the two properties are
+mutually exclusive unless somebody hand-writes a single regex asserting both,
+which is the objection that left `react.naming-form` unenforced and holds here
+for the same reason. The mechanism also carries the tool's own deprecation
+notice: `cz_customize` *is likely to be removed or renamed in the next major
+release*.
+
+**And one thing is unresolved because nothing has run it.** `commitizen`'s
+configuration reference calls `message_length_limit` *the maximum length of the
+commit message*; its command reference calls the same option *the length of the
+first line*. The property is about the subject, so which of the two the key means
+decides whether it asserts the property or something wider. The register records
+the ambiguity against the row rather than picking a reading — a documented key
+whose scope its own docs state two ways is exactly the kind of thing this
+workstream has been wrong about before by reading rather than running.
+
 ### The platform group is not a profile's to write
 
 Five rows name a GitHub ruleset or a repository setting: `any.branch-naming`,
@@ -1104,9 +1140,10 @@ what a design document doing its job looks like from the inside. No count of
 that is kept here, because a tally of another list's rows is the shape ADR 0052
 revision 3 removed.
 
-What is left is **no longer design.** Both remaining entries are work: the
-migration, and one source to register. Everything that was a decision has been
-taken.
+**Nothing is left.** The migration landed on 2026-09-08 across three slices —
+`craft/python.yaml`, `craft/react.yaml` and `craft/any.yaml`, with
+`tests/test_craft_register.py` holding `assess.rules.md` to it — and the last
+source was registered the same day. Every row in the table below is struck.
 
 **Four of the six closed on 2026-09-08**, which is why the table below is
 shorter than the one a reader of an earlier revision saw. They are struck rather
@@ -1119,8 +1156,8 @@ was never owed.
 | ~~The Craft register's **validation**~~ — **`tests/test_craft_register.py`**, not a second checker. § Where the register lives, and what checks it | Write `design.profiles.md` |
 | ~~Where a profile's `changes` entries live~~ — **`profiles:` in `craft/meta.yaml`**, same section | Raised by § Naming, versioning |
 | ~~Whether the five platform properties take ADR 0051's route~~ — **they do not, here.** Recorded with `out_of_scope: profile` and a reason; the route stays open | Raised by § The evidence gates |
-| The migration: turning `assess.rules.md`'s 182 rows into register data | Raised by § The Craft register's schema |
-| A registered Python-ecosystem instrument for the commit group, so it is not Node-only | Raised by § The evidence gates; survey work under the schema slice's `sources:` |
+| ~~The migration: turning `assess.rules.md`'s 182 rows into register data~~ — **done**, three slices, 183 properties. The extra one is `python.no-any-anywhere`, which S4 minted and that document has no row for | Raised by § The Craft register's schema |
+| ~~A registered Python-ecosystem instrument for the commit group~~ — **`commitizen`, registered 2026-09-08.** It moves two rows of three; the third is structurally out of its reach and the section says why | Raised by § The evidence gates; survey work under the schema slice's `sources:` |
 
 `plan.md`'s exit criterion for S4 is *every ADR it names is Accepted*. All five
 are — the four taken ahead of the stage, and ADR 0055, which this document's

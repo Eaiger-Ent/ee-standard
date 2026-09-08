@@ -39,12 +39,13 @@ properties:
       has commit messages, so there is no artefact whose absence makes the property
       inapplicable.
     candidate:
-      tool: commitlint with @commitlint/config-conventional
-      why_not: '`commitlint` is a Node package, so a Python repository with no `package.json`
-        acquires a Node toolchain and a second lockfile to check its commit messages.
-        Gating on `package.json` would be worse: a Python repository would never
-        get commit conventions for a reason that has nothing to do with commit conventions.
-        A Python-ecosystem instrument is survey work and is `docs/craft/todo.md`''s.'
+      tool: 'commitlint with @commitlint/config-conventional, or commitizen `cz check`'
+      why_not: >
+        **No longer Node-only.** `commitizen` was registered 2026-09-08 and its
+        `cz check` validates a commit against the configured convention, so a
+        Python repository can assert this property without acquiring a Node
+        toolchain and a second lockfile. Neither instrument has been benched —
+        S3 measured Python and React only — so nothing is bound.
   any.imperative-commit-subject:
     asserts: A commit subject is imperative present tense
     bucket: 2
@@ -58,8 +59,15 @@ properties:
     - git 003
     unenforced: The same group and the same cost as `any.conventional-commits`.
     candidate:
-      tool: commitlint `header-max-length`
-      why_not: Node-only, for the reason that row gives.
+      tool: 'commitlint `header-max-length`, or commitizen `message_length_limit`'
+      why_not: >
+        **No longer Node-only**, and the Python key is first-class rather than a
+        regex. One thing about it is unresolved and nothing here has run it: the
+        configuration reference calls `message_length_limit` *the maximum length
+        of the commit message* and the command reference calls it *the length of
+        the first line*. This property is about the subject, so which of the two
+        the key means decides whether it asserts the property or something
+        wider.
   any.commit-references-work-item:
     asserts: A commit body or footer names the work item
     bucket: 1
@@ -68,7 +76,17 @@ properties:
     unenforced: The same group and the same cost as `any.conventional-commits`.
     candidate:
       tool: commitlint `references-empty`
-      why_not: Node-only, for the reason that row gives.
+      why_not: >
+        **Still Node-only, and this is the row that did not move.** `commitizen`
+        can assert it only through `schema_pattern`, which lives under
+        `[tool.commitizen.customize]` and is selected by `name = "cz_customize"`
+        — so taking it *replaces* the conventional-commits ruleset rather than
+        adding to it, and this property and `any.conventional-commits` become
+        mutually exclusive unless somebody hand-writes one regex asserting both.
+        That is the objection that left `react.naming-form` unenforced, and it
+        holds here for the same reason. The mechanism also carries the tool's own
+        deprecation notice: `cz_customize` *is likely to be removed or renamed in
+        the next major release*.
   any.no-direct-push-to-default:
     asserts: Nothing lands on the default branch outside a pull request
     bucket: 1

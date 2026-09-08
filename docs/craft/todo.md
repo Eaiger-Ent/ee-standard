@@ -495,9 +495,22 @@ owes is the list of what has not been written — not restated here.
       `openapi-document` predicate is defined, keyed on the document's own
       top-level `openapi` key rather than on a filename, and **the check that a
       predicate is not defined in both registers is shown able to fire**
-- [ ] Register a Python-ecosystem instrument for the commit group, so it is not
-      Node-only. Survey work under the schema slice's `sources:` — `commitlint`
-      is the registered instrument and it needs Node
+- [x] Register a Python-ecosystem instrument for the commit group, so it is not
+      Node-only. Done 2026-09-08: **`commitizen`**, 4.18.0, MIT, released
+      2026-08-19. `gitlint` was read first and **rejected on maintenance** —
+      0.19.1 released 2023-03-10, repository last pushed 2024-07-11 — which is
+      the test S1 applied to Airbnb, applied again. It moves **two rows of
+      three**: `cz check` validates the convention, and `message_length_limit`
+      is a first-class key rather than a regex. **The third did not move and the
+      reason is structural**: `commitizen` reaches
+      `any.commit-references-work-item` only through `schema_pattern`, which is
+      selected by `name = "cz_customize"` and therefore *replaces* the
+      conventional-commits ruleset rather than adding to it — so under that tool
+      the two properties are mutually exclusive unless somebody hand-writes one
+      regex asserting both, which is the objection that left `react.naming-form`
+      unenforced. One ambiguity is recorded rather than resolved, because
+      nothing has run it: the tool's config reference and its command reference
+      describe `message_length_limit`'s scope two different ways
 
 ## The second bench — `strict`
 
@@ -647,6 +660,10 @@ precondition no longer bars any of them.
       moved a check that would have gone quiet: `craft_cost.py --fires` read the
       root config, where eight of the level's own rules would have reported as
       never having fired
+
+**S4 is complete.** Every box above is ticked, `plan.md`'s exit criterion —
+every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
+§ What this document still owes has nothing left in it.
 
 ## S5 — Build the chooser and the installer
 
