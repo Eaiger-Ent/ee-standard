@@ -787,9 +787,10 @@ gives for the profile version.
 
 - **How the fifteen ungated rows are worded as prose.** The residue is S5's
   deliverable, and *labelled unenforced* is a requirement rather than a wording.
-- **Whether the five platform properties become controls.** ADR 0051's route is
-  open to them and its three preconditions still bind; nothing here mints
-  anything.
+- ~~**Whether the five platform properties become controls.**~~ Closed by
+  § Where the register lives, and what checks it: **they do not, here.** They are
+  recorded in `any.yaml` with `out_of_scope: profile` and the reason in place of
+  an instrument. ADR 0051's route stays open and nobody walks it now.
 - **The Node-toolchain question for the commit group.** It needs a registered
   Python-ecosystem instrument, and registering one is survey work.
 
@@ -938,11 +939,150 @@ installer refuses, so the ordinary case never reaches this rule at all.
 
 ### What this section does not settle
 
-- **Where the profile's `changes` entries live.** They are Craft register data
-  by ADR 0053's test and the schema slice's shape has no place for them yet.
-  A field, not a decision.
+- ~~**Where the profile's `changes` entries live.**~~ Closed by § Where the
+  register lives, and what checks it: `profiles:` in `craft/meta.yaml`, keyed by
+  `<stack>/<level>`, because a profile spans the per-scope files and entries
+  kept per-file would split one profile's history across two.
 - **Whether an installer may refuse to run at all** on a repository whose stamp
   shows hand edits, or only report them. That is an installer behaviour and S5's.
+
+## Where the register lives, and what checks it
+
+[ADR 0053](../adr/0053-the-craft-mapping-is-register-data.md) put the mapping in
+data and left this stage the schema; § The Craft register's schema answered what
+a row looks like. Three things it did not answer are answered here: **which
+files**, **where a profile's `changes` entries sit**, and **what validates any of
+it**, given that ADR 0053 rules out the checker this repository already has.
+
+### `craft/`, one file per scope
+
+```text
+ee-standard/
+├─ controls.yaml          # the control register
+└─ craft/
+   ├─ meta.yaml           # craft_contract, levels, sources, profiles
+   ├─ python.yaml
+   ├─ react.yaml
+   └─ any.yaml
+```
+
+**Not under `docs/`.** A register is data a machine reads, and ADR 0053's whole
+finding is that the mapping stops being documentation the moment something
+enforces it. A path that says `docs/` invites the next reader to treat a wrong
+row as a typo rather than a defect, which is what `assess.rules.md` has been.
+
+**Not in `controls.yaml`, and not a section of it.** The two registers assert
+different kinds of thing, and ADR 0051 exists precisely because crossing from
+one to the other is an event. A Craft property living in the control register
+would have crossed by filing.
+
+**One file per scope, rather than one file.** The naming standard already says a
+property's identity carries its scope — `python.`, `react.`, `any.` — so the
+file a row belongs in is *derivable from its own name*, and a row in the wrong
+file is a schema error something can state rather than a matter of taste. That
+is the same move the schema slice made twice: make the mistake unspellable
+rather than discouraged. The cost is that a schema rule now has to hold in four
+places instead of one, which is what the validation below is for.
+
+`any.yaml` is a file and not a fallback. The forty-two stack-neutral rows are
+the ones ADR 0052 gates on evidence, and keeping them together is what makes
+*which gates did this repository switch on* a question about one file.
+
+### A profile's `changes` entries go in `meta.yaml`
+
+§ Naming, versioning, and what a re-run does left this as *a field, not a
+decision*. The field is `profiles:` in `meta.yaml`, keyed by `<stack>/<level>`:
+
+```yaml
+craft_contract: 1
+
+levels: [standard, strict]
+
+profiles:
+  python/standard:
+    version: 7
+    changes:
+      - version: 7
+        moved: narrowing          # narrowing | loosening | neither
+        what: "python.no-import-inside-function added — PLC0415"
+```
+
+**It cannot go in the per-scope files**, and the reason is the one thing that
+made this worth a paragraph: a profile spans them. `python/standard` binds every
+`python.` row at that level **and** every `any.` row whose evidence gate is open,
+so its version moves when either file moves. Entries kept per-file would split
+one profile's history across two, and the installer's *what changed between the
+pinned version and the current one* would have to reassemble it — a second copy
+of a history, which is theme T-2 by the most ordinary route available.
+
+### What checks it — a test, not a second checker
+
+ADR 0053 says `register-check` must not. Two reasons, and the second is the one
+that generalises: the checker is the **control** register's, so a Craft register
+inside it would make Craft look like a control by inspection; and ADR 0018's
+boundary lets the checker hold a rule only when the rule is a property of *the
+register format*, which the Craft format is not.
+
+**A `craft-check` CLI was considered and is not taken.** It would be symmetrical
+with `register-check` and wrong for the same reason a symmetry usually is: a
+second checker to keep current, a second thing in CI, and a second thing an
+adopter would have to run — for a register **only this repository holds**. An
+adopter never reads `craft/`; they read the profile the installer wrote. The
+thing an adopter runs is the installer, and it validates what it loads.
+
+So the register is checked by **`tests/test_craft_register.py`**, in this
+repository's own pytest suite. It rides the existing gate, it fails a commit
+rather than a build, and it has a precedent: `tests/test_posture.py` already
+fails the build if a *document* stops saying something. A register is a smaller
+ask than that.
+
+What it asserts, one test per rule so a failure names the rule rather than the
+file:
+
+| Check | Why it is a test and not a convention |
+| --- | --- |
+| Every identity matches the naming standard's grammar, and **sits in the file its scope names** | The whole reason for four files |
+| Exactly one `instrument` per property; anything else is under `alternatives` | S3's first hand-forward; C4 measured the double report |
+| An instrument is a **closed set of codes or a `linter:`**, never a range | S3's second; a range rots and, read widely, contradicts |
+| `linter:` carries a `coextensive:` reason, and its absence is an error | The schema slice's test, which `pydocstyle` fails and four linters pass |
+| `level` is one of `meta.yaml`'s, and `strict` ⊇ `standard` per stack | ADR 0052 defines the levels as nested; a register that says otherwise is wrong, not merely unusual |
+| `gated_on` names a predicate defined in **exactly one** of the two registers | The evidence-gate slice: a name defined in both is a schema error |
+| Every source cited resolves to a key in `meta.yaml`'s `sources:` | ADR 0054: cite every source |
+| **Every `assess.rules.md` row has a property here** | The superset test ADR 0053's open question was closed on |
+
+The last row is the one that stops the migration losing anything, and it is the
+reason `assess.rules.md` can become a stage record rather than a second source:
+the test, not a promise, is what holds them together. It reads the identities out
+of the markdown table — which is exactly as fragile as it sounds, and is the
+point: when somebody edits that table and the test breaks, the register is what
+they should have edited.
+
+### The platform group: recorded, and nothing minted
+
+§ The evidence gates left open *whether the five platform properties become
+controls*. **S4's answer is that they do not, here.** They are out of a
+profile's scope for the reason that section gives, and they are recorded in
+`any.yaml` with no instrument and the reason in place of one:
+
+```yaml
+any.signed-commits:
+  asserts: "Commits on the default branch are signed"
+  bucket: 2
+  out_of_scope: profile
+  why: >
+    Platform state applied through the GitHub API, not configuration in a file.
+    `gate-repo` owns that surface and records its own ruleset with a provenance
+    stamp; a profile writing into it would be a second writer to a gate's
+    deployment. ADR 0051's crossing route is open and its three preconditions
+    still bind — nothing here mints anything.
+```
+
+ADR 0051's route stays available and **nobody walks it now**. Minting five
+controls to close a documentation row would be the tail wagging the dog: a
+control is a thing this repository then owes a gate, a verify block and an
+evidence trail for, and none of the five has a stated adopter need behind it.
+Recording the verdict costs a field; taking the route costs a register entry
+that somebody would have to keep true.
 
 ## What this document still owes
 
@@ -954,24 +1094,30 @@ what a design document doing its job looks like from the inside. No count of
 that is kept here, because a tally of another list's rows is the shape ADR 0052
 revision 3 removed.
 
-What is left is **no longer design.** Three entries are work — the second bench,
-the migration, and the register's validation, which ADR 0053 assigns to the
-implementing work in terms. One is a schema field somebody adds without deciding
-anything, one is a decision that is not this document's to take, and one is
-survey work.
+What is left is **no longer design.** Both remaining entries are work: the
+migration, and one source to register. Everything that was a decision has been
+taken.
+
+**Four of the six closed on 2026-09-08**, which is why the table below is
+shorter than the one a reader of an earlier revision saw. They are struck rather
+than deleted, because a silently removed row is indistinguishable from one that
+was never owed.
 
 | Owed | Which box in `todo.md` |
 | --- | --- |
-| A second bench over `strict` — **started 2026-09-07**, [`review.strict.md`](review.strict.md), and its § What has not run is what is left of it | Raised by § The strictness levels |
-| The Craft register's **validation** — what checks it, given ADR 0053 says `register-check` must not | Write `design.profiles.md` |
-| Where a profile's `changes` entries live in the schema — a field, not a decision | Raised by § Naming, versioning |
+| ~~A second bench over `strict`~~ — **done**, [`review.strict.md`](review.strict.md). Every criterion answered, and the two rows it could not settle handed here and taken | Raised by § The strictness levels |
+| ~~The Craft register's **validation**~~ — **`tests/test_craft_register.py`**, not a second checker. § Where the register lives, and what checks it | Write `design.profiles.md` |
+| ~~Where a profile's `changes` entries live~~ — **`profiles:` in `craft/meta.yaml`**, same section | Raised by § Naming, versioning |
+| ~~Whether the five platform properties take ADR 0051's route~~ — **they do not, here.** Recorded with `out_of_scope: profile` and a reason; the route stays open | Raised by § The evidence gates |
 | The migration: turning `assess.rules.md`'s 182 rows into register data | Raised by § The Craft register's schema |
-| Whether the five platform properties take ADR 0051's route to becoming controls — the evidence-gate section put them out of a profile's scope but mints nothing | Raised by § The evidence gates |
 | A registered Python-ecosystem instrument for the commit group, so it is not Node-only | Raised by § The evidence gates; survey work under the schema slice's `sources:` |
 
 `plan.md`'s exit criterion for S4 is *every ADR it names is Accepted*. All five
 are — the four taken ahead of the stage, and ADR 0055, which this document's
-first section produced. That does not finish S4: the deliverable is this
-document. It is five sections long and **no design question is outstanding**;
-what remains under the heading above is work, a decision, and a source to
-register.
+first section produced. **No sixth ADR was needed**, and the box that stayed open
+against that possibility can close: the two verdicts the bench handed S4 and the
+four decisions above were all taken within the frame the five already set.
+
+That does not finish S4 by itself: the deliverable is this document. It is six
+sections long, **no design question is outstanding**, and what remains under the
+heading above is work rather than a decision.
