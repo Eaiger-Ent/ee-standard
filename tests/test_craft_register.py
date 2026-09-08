@@ -39,6 +39,17 @@ ASSESS = REPO_ROOT / "docs/craft/assess.rules.md"
 #: keys a row on an upstream rule ID.
 IDENTITY = re.compile(r"^(python|react|any)\.[a-z0-9]+(-[a-z0-9]+)*$")
 
+#: The four states a property can be in, and it must be in exactly one. Three of
+#: them are ways of having no instrument, and they are not the same thing: a
+#: judgement nothing can assert, a property that holds because of a choice made
+#: elsewhere, and a property somebody else's surface owns.
+NO_INSTRUMENT = ("unenforced", "satisfied_by", "out_of_scope")
+
+#: Who owns a property this register does not write. `profile` is platform state
+#: a gate applies through an API; `control` is conformance the register already
+#: requires, where writing it here would be Craft claiming credit for it.
+OWNERS = ("profile", "control")
+
 #: A single rule code: letters then digits, or a plugin-qualified ESLint name.
 #: Anything with a dash in it is a range, which is the spelling the schema
 #: forbids because it rots — `DTZ001`-`DTZ012` had already missed `DTZ901`.
@@ -103,10 +114,30 @@ def test_exactly_one_instrument_per_property() -> None:
     for identity, prop in _properties().items():
         instrument = prop.get("instrument")
         if instrument is None:
-            assert prop.get("unenforced"), f"{identity} has neither an instrument nor a reason"
             continue
         assert isinstance(instrument, dict), identity
         assert "tool" in instrument, identity
+        # `formatter: true` is the one instrument that names nothing, because
+        # running the tool *is* the enforcement — there is no rule to select.
+        named = [
+            key
+            for key in ("codes", "rules", "linter", "setting", "formatter")
+            if key in instrument
+        ]
+        assert named, f"{identity}'s instrument names nothing to enforce"
+
+
+def test_a_property_is_in_exactly_one_state() -> None:
+    """An instrument, or one of the three ways of not having one — never two, never none."""
+    for identity, prop in _properties().items():
+        states = [key for key in ("instrument", *NO_INSTRUMENT) if key in prop]
+        assert len(states) == 1, f"{identity} is in {len(states)} states: {states}"
+        if "out_of_scope" in prop:
+            assert prop["out_of_scope"] in OWNERS, f"{identity}: {prop['out_of_scope']}"
+            assert prop.get("why"), f"{identity} is out of scope and does not say why"
+        for key in NO_INSTRUMENT:
+            if key in prop:
+                assert isinstance(prop[key], str) and prop[key].strip(), f"{identity}: empty {key}"
 
 
 def test_an_instrument_is_a_closed_set_or_a_linter_and_never_a_range() -> None:
@@ -133,7 +164,8 @@ def test_every_level_is_one_the_meta_file_declares() -> None:
         if "level" in prop:
             assert prop["level"] in levels, f"{identity}: {prop['level']}"
         else:
-            assert prop.get("unenforced"), f"{identity} binds no level and says no reason"
+            reasoned = any(key in prop for key in NO_INSTRUMENT)
+            assert reasoned, f"{identity} binds no level and gives no reason"
 
 
 def test_a_property_with_a_level_has_an_instrument_to_carry_it() -> None:

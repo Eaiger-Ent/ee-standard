@@ -1,0 +1,823 @@
+# The Craft register — React.
+#
+# One file per scope: `docs/craft/design.profiles.md` § `craft/`, one file per
+# scope. Every key here begins `react.`. `craft/meta.yaml` holds the contract,
+# the levels, the sources these rows cite and the profiles' version history, and
+# `craft/python.yaml`'s header states what is deliberately absent from every
+# scope file — no file location, no tool version, no list of negatives.
+#
+# **Migrated from `docs/craft/assess.rules.md` on 2026-09-08.** Sixty-eight
+# properties: 48 bound at `standard`, one at `strict`, and 19 bound nowhere.
+#
+# An instrument here names ESLint `rules:` where Python names ruff `codes:`.
+# There is no `linter:` counterpart and there will not be one: an ESLint plugin
+# is not a set of rules asserting one property the way `flake8-datetimez` is,
+# and C1 measured what happens when a whole preset is taken on trust — eleven
+# `@eslint-react` rules arriving at `warn`, which in a merge gate is a rule that
+# looks enabled and blocks nothing.
+#
+# **`alternatives:` earns its keep in this file.** Two plugins cover the same
+# ground and C1 found their own `disable-conflict` configs pointing the opposite
+# way from what this register cited, so every overlap is resolved by hand and
+# the losing rule is recorded with the reason that stops somebody re-enabling
+# it. C4 found the pair no configuration could ever have separated.
+
+properties:
+  react.hooks-at-top-level:
+    asserts: Hooks are not called in loops, conditions or nested functions
+    bucket: 1
+    sources:
+    - ror
+    - hooks
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/rules-of-hooks
+      coextensive: '`@eslint-react/rules-of-hooks` asserts the same property and
+        is turned off. C1 read `disable-conflict-eslint-plugin-react-hooks` from
+        the installed tree and found it standing down the *other* plugin, which
+        is the opposite of what this register cited, so the overlap is resolved
+        by hand.'
+    level: standard
+    alternatives:
+    - tool: eslint
+      rules:
+      - '@eslint-react/rules-of-hooks'
+      why: One property under two names. `react-hooks` owns the overlap per C1;
+        enabling both double-reports and no name-keyed config can separate them.
+  react.hooks-only-from-react-functions:
+    asserts: Hooks are called only from components and other hooks
+    bucket: 1
+    sources:
+    - ror
+    - hooks
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/rules-of-hooks
+      coextensive: 'The same rule carries two properties: it reports both a hook
+        below the top level and a hook called from a plain function. Naming it twice
+        is the register describing one instrument''s two claims, not two instruments.'
+    level: standard
+  react.components-are-idempotent:
+    asserts: The same props, state and context produce the same output
+    bucket: 1
+    sources:
+    - ror
+    - hooks
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/purity
+    level: standard
+  react.no-side-effects-in-render:
+    asserts: Side effects run outside render
+    bucket: 1
+    sources:
+    - ror
+    - hooks
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/purity
+      - react-hooks/globals
+    level: standard
+  react.props-and-state-immutable:
+    asserts: Props and state are not mutated
+    bucket: 1
+    sources:
+    - ror
+    - hooks
+    - rp
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/immutability
+      - '@eslint-react/no-direct-mutation-state'
+    level: standard
+  react.hook-values-immutable:
+    asserts: Values passed to or returned from a hook are not then mutated
+    bucket: 1
+    sources:
+    - ror
+    - hooks
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/immutability
+    level: standard
+  react.jsx-values-immutable:
+    asserts: A value is not mutated after being passed to JSX
+    bucket: 1
+    sources:
+    - ror
+    - hooks
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/immutability
+    level: standard
+  react.no-direct-component-calls:
+    asserts: A component is used in JSX, never called as a function
+    bucket: 2
+    sources:
+    - ror
+    unenforced: Nothing names it directly. `rules-of-hooks` catches the hook consequence
+      of calling a component, not the call.
+  react.no-hooks-as-values:
+    asserts: A hook is not passed around as a value
+    bucket: 2
+    sources:
+    - ror
+    unenforced: Nothing in the registered plugins asserts it.
+  react.no-set-state-in-render:
+    asserts: State is not set during render
+    bucket: 1
+    sources:
+    - ror
+    - hooks
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/set-state-in-render
+    level: standard
+  react.refs-not-read-in-render:
+    asserts: A ref is not read or written during render
+    bucket: 1
+    sources:
+    - ror
+    - hooks
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/refs
+    level: standard
+  react.no-derived-state-in-effect:
+    asserts: State that can be computed during render is not synchronised in an
+      effect
+    bucket: 1
+    sources:
+    - ymnnae
+    - hooks
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/no-deriving-state-in-effects
+    level: standard
+    note: 'Shipped `off` in every preset, which is finding 1: React''s most-documented
+      anti-pattern arrives with its rule disabled. Selected explicitly.'
+  react.no-set-state-in-effect:
+    asserts: An effect does not set state that triggers another render pass
+    bucket: 1
+    sources:
+    - ymnnae
+    - hooks
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/set-state-in-effect
+    level: standard
+  react.effect-dependencies-complete:
+    asserts: An effect declares every reactive value it reads
+    bucket: 1
+    sources:
+    - hooks
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/exhaustive-deps
+    level: standard
+    note: Recommended at `warn`, selected at `error`. In a merge gate a `warn` is
+      a rule that looks enabled and blocks nothing — C2 found eleven more of that
+      shape.
+  react.effect-dependencies-exhaustive:
+    asserts: The stricter, compiler-backed dependency analysis
+    bucket: 1
+    sources:
+    - hooks
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/exhaustive-effect-dependencies
+    settings:
+      environment:
+        validateExhaustiveEffectDependencies: all
+    level: strict
+    note: '**The setting is not decoration.** The rule is a view onto the compiler
+      analysis that `validateExhaustiveEffectDependencies` gates `off`; set to `error`
+      alone it resolves, prints at severity 2 under `--print-config`, and reports
+      nothing. review.strict.md C2 is the run that caught it.'
+  react.no-effect-chains:
+    asserts: One effect does not exist to react to another effect's state write
+    bucket: 3
+    sources:
+    - ymnnae
+    unenforced: Bucket 3. `set-state-in-effect` catches the consequence; the shape
+      is a judgement.
+  react.no-event-logic-in-effect:
+    asserts: Logic belonging to an event handler is not moved into an effect
+    bucket: 3
+    sources:
+    - ymnnae
+    unenforced: Bucket 3.
+  react.no-fetch-in-effect:
+    asserts: Data fetching goes through a framework or a library, not a bare effect
+    bucket: 3
+    sources:
+    - ymnnae
+    unenforced: Bucket 3. *You Might Not Need an Effect* stops short of a rule here
+      and recommends a mechanism.
+  react.state-reset-by-key:
+    asserts: State is reset by remounting on a `key`, not by an effect watching
+      a prop
+    bucket: 3
+    sources:
+    - ymnnae
+    unenforced: Bucket 3.
+  react.external-store-subscription:
+    asserts: An external store is read through `useSyncExternalStore`
+    bucket: 2
+    sources:
+    - ymnnae
+    unenforced: Nothing asserts it. A check could look for `useEffect` beside `subscribe`;
+      none is registered.
+  react.no-leaked-subscriptions:
+    asserts: Timers, listeners and observers are cleaned up
+    bucket: 1
+    sources:
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - '@eslint-react/web-api-no-leaked-event-listener'
+      - '@eslint-react/web-api-no-leaked-fetch'
+      - '@eslint-react/web-api-no-leaked-intersection-observer'
+      - '@eslint-react/web-api-no-leaked-interval'
+      - '@eslint-react/web-api-no-leaked-resize-observer'
+      - '@eslint-react/web-api-no-leaked-timeout'
+    level: standard
+    note: Six rules, and `react-hooks` has no equivalent — this is the clearest
+      place the two plugins are not interchangeable.
+  react.memoization-preserved:
+    asserts: A manual `useMemo`/`useCallback` is not silently invalidated
+    bucket: 1
+    sources:
+    - hooks
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/preserve-manual-memoization
+      - react-hooks/use-memo
+    level: standard
+  react.list-keys:
+    asserts: Every element in a list carries a stable key
+    bucket: 1
+    sources:
+    - rp
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - '@eslint-react/no-missing-key'
+      - '@eslint-react/no-duplicate-key'
+      - '@eslint-react/jsx-no-key-after-spread'
+    level: standard
+    alternatives:
+    - tool: eslint
+      rules:
+      - react/jsx-key
+      why: '`eslint-plugin-react`''s counterpart. `@eslint-react` owns the overlap
+        per C1''s reading of its own disable-conflict config; taking both double-reports.'
+  react.no-array-index-key:
+    asserts: A list key is not the array index
+    bucket: 1
+    sources:
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - '@eslint-react/no-array-index-key'
+    level: standard
+    note: '`react/no-array-index-key` exists and is not in that plugin''s `recommended`,
+      so nothing is being undone by preferring this one.'
+  react.no-duplicate-props:
+    asserts: A JSX element does not set the same prop twice
+    bucket: 1
+    sources:
+    - rp
+    instrument:
+      tool: eslint
+      rules:
+      - react/jsx-no-duplicate-props
+    level: standard
+    note: The one rule the profile takes from `eslint-plugin-react`. C9 found it
+      is also the one `@eslint-react` does not cover.
+  react.no-dangerous-html:
+    asserts: '`dangerouslySetInnerHTML` is not used'
+    bucket: 1
+    sources:
+    - xr
+    - rp
+    - asvs
+    - security 005
+    instrument:
+      tool: eslint
+      rules:
+      - '@eslint-react/dom-no-dangerously-set-innerhtml'
+    level: standard
+  react.safe-external-links:
+    asserts: '`target="_blank"` carries `rel="noreferrer"`'
+    bucket: 1
+    sources:
+    - rp
+    - xr
+    - asvs
+    instrument:
+      tool: eslint
+      rules:
+      - '@eslint-react/dom-no-unsafe-target-blank'
+    level: standard
+    note: '`strict` in the plugin''s own presets, selected explicitly here.'
+  react.no-unknown-dom-property:
+    asserts: A DOM element is not given a property React will drop
+    bucket: 1
+    sources:
+    - rp
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - '@eslint-react/dom-no-unknown-property'
+    level: standard
+  react.no-comment-textnodes:
+    asserts: A `//` comment is not rendered as text
+    bucket: 1
+    sources:
+    - rp
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - '@eslint-react/jsx-no-comment-textnodes'
+    level: standard
+  react.no-leaked-conditional-render:
+    asserts: '`&&` on a non-boolean does not render `0` or an empty string'
+    bucket: 1
+    sources:
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - '@eslint-react/no-leaked-conditional-rendering'
+    level: standard
+    note: '`off` in `recommended` and on in `recommended-type-checked`; selected
+      explicitly so it does not depend on which preset base is taken.'
+  react.no-nested-component-definitions:
+    asserts: A component is not defined inside another component's body
+    bucket: 1
+    sources:
+    - hooks
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - react-hooks/static-components
+    level: standard
+    alternatives:
+    - tool: eslint
+      rules:
+      - '@eslint-react/no-nested-component-definitions'
+      why: '**Demoted 2026-09-07 by review.bench.md C4, with the case.** One property
+        under two *different* names, which no name-keyed conflict config can ever
+        match — the nested component drew both. Re-enabling it restores the double
+        report.'
+  react.context-value-stability:
+    asserts: A context value is not a fresh object on every render
+    bucket: 1
+    sources:
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - '@eslint-react/no-unstable-context-value'
+    level: standard
+    note: '`strict` in the plugin''s presets, selected explicitly.'
+  react.no-deprecated-api:
+    asserts: Deprecated lifecycle and API surface is not used
+    bucket: 1
+    sources:
+    - rp
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - '@eslint-react/no-component-will-mount'
+      - '@eslint-react/no-component-will-receive-props'
+      - '@eslint-react/no-component-will-update'
+      - '@eslint-react/no-create-ref'
+      - '@eslint-react/no-forward-ref'
+      - '@eslint-react/no-use-context'
+    level: standard
+    alternatives:
+    - tool: eslint
+      rules:
+      - react/no-deprecated
+      why: One rule covering the same ground from the other plugin. `@eslint-react`
+        owns the overlap per C1.
+  react.no-class-components:
+    asserts: Components are functions
+    bucket: 1
+    sources:
+    - xr
+    instrument:
+      tool: eslint
+      rules:
+      - '@eslint-react/no-class-component'
+    level: standard
+    note: '`strict` only in the plugin, selected explicitly. Resolved by ADR 0052
+      rather than by S3''s recommendation: there is no codebase-age axis and the
+      target is new codebases.'
+  react.no-legacy-proptypes:
+    asserts: Prop types are types, not runtime `propTypes`
+    bucket: 1
+    sources:
+    - rp
+    satisfied_by: Taking `@eslint-react`'s `recommended` as the JSX-correctness
+      base, which ships no `prop-types` rule. `eslint-plugin-react`'s `recommended`
+      is not installed, so there is nothing to enable and nothing to undo.
+  react.jsx-runtime-assumed:
+    asserts: '`React` need not be in scope for JSX'
+    bucket: 1
+    sources:
+    - rp
+    satisfied_by: 'The same base choice: `@eslint-react`''s `recommended` has no
+      `react-in-jsx-scope`. One contest, resolved once.'
+  react.strict-type-checking:
+    asserts: '`tsconfig` enables the strict family'
+    bucket: 2
+    sources:
+    - typescript 001
+    - tse
+    out_of_scope: control
+    why: 'TYP-001 gates `tsc` and `stacks:` names `strict_key: strict`, so a conformant
+      repository already runs its type checker in strict mode before Craft arrives.
+      Writing it here would be Craft claiming credit for a gate the register already
+      runs. `design.profiles.md` § The type checker.'
+  react.no-explicit-any:
+    asserts: '`unknown` or a real type, never `any`'
+    bucket: 1
+    sources:
+    - typescript 002
+    - tse
+    instrument:
+      tool: eslint
+      rules:
+      - '@typescript-eslint/no-explicit-any'
+    level: standard
+  react.no-unsafe-any-flow:
+    asserts: A value typed `any` does not flow into a call, member access or return
+    bucket: 1
+    sources:
+    - typescript 002
+    - tse
+    instrument:
+      tool: eslint
+      rules:
+      - '@typescript-eslint/no-unsafe-argument'
+      - '@typescript-eslint/no-unsafe-assignment'
+      - '@typescript-eslint/no-unsafe-call'
+      - '@typescript-eslint/no-unsafe-member-access'
+      - '@typescript-eslint/no-unsafe-return'
+    level: standard
+    note: 'Type-checked rules: they need a `tsconfig` bound in the config, and C1
+      demonstrated the binding by a floating promise drawing the rule that cannot
+      fire without types.'
+  react.explicit-return-types:
+    asserts: Exported non-component functions declare their return type
+    bucket: 1
+    sources:
+    - typescript 003
+    instrument:
+      tool: eslint
+      rules:
+      - '@typescript-eslint/explicit-module-boundary-types'
+    settings:
+      allowTypedFunctionExpressions: true
+    level: standard
+    scope: modules
+    note: 'Component files are out of scope: a component''s return type is inferable
+      and annotating it is noise. C6 set the scope to `src/**/*.ts` and not `*.tsx`.
+      In no preset; selected explicitly.'
+  react.no-non-null-assertion:
+    asserts: '`!` is not used to silence the null check'
+    bucket: 1
+    sources:
+    - typescript 004
+    - tse
+    instrument:
+      tool: eslint
+      rules:
+      - '@typescript-eslint/no-non-null-assertion'
+    level: standard
+    note: In `strict`, not `recommended`.
+  react.no-floating-promises:
+    asserts: Every promise is awaited, returned or explicitly ignored
+    bucket: 1
+    sources:
+    - tse
+    instrument:
+      tool: eslint
+      rules:
+      - '@typescript-eslint/no-floating-promises'
+    level: standard
+  react.no-misused-promises:
+    asserts: An async function is not passed where a void callback is expected
+    bucket: 1
+    sources:
+    - tse
+    instrument:
+      tool: eslint
+      rules:
+      - '@typescript-eslint/no-misused-promises'
+    level: standard
+  react.throw-error-objects:
+    asserts: Only `Error` subclasses are thrown
+    bucket: 1
+    sources:
+    - typescript 103
+    - tse
+    instrument:
+      tool: eslint
+      rules:
+      - '@typescript-eslint/only-throw-error'
+    level: standard
+  react.domain-error-types:
+    asserts: Domain failures have their own error types
+    bucket: 3
+    sources:
+    - typescript 103
+    - code-quality
+    unenforced: Bucket 3.
+  react.naming-form:
+    asserts: PascalCase for types and components, camelCase for values
+    bucket: 1
+    sources:
+    - typescript 102
+    - typescript 201
+    - typescript 202
+    unenforced: '`@typescript-eslint/naming-convention` is in no recommended preset
+      and requires a written selector list, which is a configuration nobody here
+      has agreed. Python''s counterpart is enforced because `pep8-naming` needs
+      no such list.'
+  react.readonly-immutability:
+    asserts: Properties and arrays that should not change are `readonly`
+    bucket: 3
+    sources:
+    - typescript 104
+    unenforced: Bucket 3. `prefer-readonly` covers private class fields only, which
+      is not the property.
+  react.discriminated-unions:
+    asserts: State and API responses are modelled as discriminated unions
+    bucket: 3
+    sources:
+    - typescript 105
+    unenforced: Bucket 3.
+  react.barrel-exports:
+    asserts: Modules are re-exported through an `index.ts`
+    bucket: 3
+    sources:
+    - typescript 203
+    unenforced: '**Contested by decision, and it stays that way.** Widely argued
+      against on bundle and circular-import grounds; inverting it needs a source
+      arguing for the inversion and none is registered. The register cites; it does
+      not opine.'
+  react.async-await-over-chains:
+    asserts: '`async`/`await` rather than `.then()` chains'
+    bucket: 2
+    sources:
+    - typescript 204
+    unenforced: Nothing in the registered plugins. `eslint-plugin-promise`'s `prefer-await-to-then`
+      would assert it, and that source is registered without the rule being taken.
+  react.a11y-text-alternatives:
+    asserts: Every non-text element has a text alternative
+    bucket: 1
+    sources:
+    - wcag
+    - a11y
+    instrument:
+      tool: eslint
+      rules:
+      - jsx-a11y/alt-text
+      - jsx-a11y/img-redundant-alt
+      - jsx-a11y/iframe-has-title
+    level: standard
+  react.a11y-form-labels:
+    asserts: Every control has a programmatically associated label
+    bucket: 1
+    sources:
+    - wcag
+    - a11y
+    instrument:
+      tool: eslint
+      rules:
+      - jsx-a11y/label-has-associated-control
+      - jsx-a11y/control-has-associated-label
+    level: standard
+    note: The second is `off` in `recommended`.
+  react.a11y-aria-validity:
+    asserts: ARIA attributes and roles are real and correctly applied
+    bucket: 1
+    sources:
+    - wcag
+    - a11y
+    instrument:
+      tool: eslint
+      rules:
+      - jsx-a11y/aria-props
+      - jsx-a11y/aria-proptypes
+      - jsx-a11y/aria-role
+      - jsx-a11y/aria-unsupported-elements
+      - jsx-a11y/role-has-required-aria-props
+      - jsx-a11y/role-supports-aria-props
+    level: standard
+  react.a11y-keyboard-parity:
+    asserts: Anything usable with a mouse is usable with a keyboard
+    bucket: 1
+    sources:
+    - wcag
+    - a11y
+    instrument:
+      tool: eslint
+      rules:
+      - jsx-a11y/click-events-have-key-events
+      - jsx-a11y/mouse-events-have-key-events
+      - jsx-a11y/interactive-supports-focus
+      - jsx-a11y/no-static-element-interactions
+    level: standard
+  react.a11y-focus-order:
+    asserts: Focus order follows meaning; no positive `tabindex`
+    bucket: 1
+    sources:
+    - wcag
+    - a11y
+    instrument:
+      tool: eslint
+      rules:
+      - jsx-a11y/tabindex-no-positive
+      - jsx-a11y/no-noninteractive-tabindex
+      - jsx-a11y/aria-activedescendant-has-tabindex
+    level: standard
+  react.a11y-document-language:
+    asserts: The document declares its language
+    bucket: 1
+    sources:
+    - wcag
+    - a11y
+    instrument:
+      tool: eslint
+      rules:
+      - jsx-a11y/html-has-lang
+      - jsx-a11y/lang
+    level: standard
+    note: '`lang` extends the property to any element and is not in `recommended`.'
+  react.a11y-media-captions:
+    asserts: Time-based media carries captions
+    bucket: 1
+    sources:
+    - wcag
+    - a11y
+    instrument:
+      tool: eslint
+      rules:
+      - jsx-a11y/media-has-caption
+    level: standard
+  react.a11y-link-has-content:
+    asserts: A link has text content and a real destination
+    bucket: 1
+    sources:
+    - wcag
+    - a11y
+    instrument:
+      tool: eslint
+      rules:
+      - jsx-a11y/anchor-has-content
+      - jsx-a11y/anchor-is-valid
+    level: standard
+    note: A weaker claim than `react.a11y-link-purpose` and an enforceable one,
+      which is why the register carries both.
+  react.a11y-link-purpose:
+    asserts: A link's purpose is clear from its text
+    bucket: 3
+    sources:
+    - wcag
+    unenforced: '`jsx-a11y/anchor-ambiguous-text` is `off` in `recommended` and
+      false-positives on legitimate copy. **Half the stated reason no longer holds**
+      — C5''s probe showed 6.10.2 reading the `aria-label` — and the other half
+      stands, so the row is kept unenforced with the measurement rather than the
+      assumption behind it.'
+  react.a11y-semantic-elements:
+    asserts: A native element is used before a role is added to a `div`
+    bucket: 1
+    sources:
+    - wcag
+    - a11y
+    instrument:
+      tool: eslint
+      rules:
+      - jsx-a11y/no-redundant-roles
+      - jsx-a11y/no-interactive-element-to-noninteractive-role
+      - jsx-a11y/no-noninteractive-element-to-interactive-role
+      - jsx-a11y/prefer-tag-over-role
+    level: standard
+    note: '`prefer-tag-over-role` asserts the property most directly and is not
+      in `recommended`.'
+  react.a11y-no-unexpected-focus:
+    asserts: Focus is not seized on load
+    bucket: 1
+    sources:
+    - wcag
+    - a11y
+    instrument:
+      tool: eslint
+      rules:
+      - jsx-a11y/no-autofocus
+      - jsx-a11y/no-distracting-elements
+    level: standard
+  react.a11y-contrast:
+    asserts: Text meets the contrast minimum
+    bucket: 2
+    sources:
+    - wcag
+    unenforced: '**Nothing static asserts it.** Contrast is a rendered-pixel property;
+      it needs an axe run in a browser, which is a different instrument at a different
+      locus.'
+  react.test-user-visible-queries:
+    asserts: A test finds elements the way a user would
+    bucket: 1
+    sources:
+    - tl
+    - tl+
+    instrument:
+      tool: eslint
+      rules:
+      - testing-library/prefer-screen-queries
+      - testing-library/prefer-presence-queries
+      - testing-library/prefer-query-by-disappearance
+    level: standard
+  react.test-no-implementation-access:
+    asserts: A test does not reach into the DOM tree or the container
+    bucket: 1
+    sources:
+    - tl
+    - tl+
+    instrument:
+      tool: eslint
+      rules:
+      - testing-library/no-container
+      - testing-library/no-node-access
+    level: standard
+  react.test-async-awaited:
+    asserts: Async queries and events are awaited
+    bucket: 1
+    sources:
+    - tl+
+    instrument:
+      tool: eslint
+      rules:
+      - testing-library/await-async-queries
+      - testing-library/await-async-events
+      - testing-library/await-async-utils
+      - testing-library/no-await-sync-queries
+    level: standard
+  react.test-find-over-wait:
+    asserts: '`findBy` replaces a `waitFor` around a `getBy`'
+    bucket: 1
+    sources:
+    - tl+
+    instrument:
+      tool: eslint
+      rules:
+      - testing-library/prefer-find-by
+    level: standard
+  react.test-no-debug-residue:
+    asserts: Debug helpers do not survive into a committed test
+    bucket: 1
+    sources:
+    - tl+
+    instrument:
+      tool: eslint
+      rules:
+      - testing-library/no-debugging-utils
+    level: standard
+  react.test-behaviour-not-implementation:
+    asserts: A test asserts what the user experiences, not how it is built
+    bucket: 3
+    sources:
+    - tl
+    - testing 001
+    unenforced: Bucket 3. The plugin enforces the mechanics; the principle is judgement.

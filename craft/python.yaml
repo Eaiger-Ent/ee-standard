@@ -431,6 +431,7 @@ properties:
     - pep8
     instrument:
       tool: ruff-format
+      formatter: true
     level: standard
     note: A formatter rather than a rule set, which is why the instrument names
       no codes. The property is met by running it, and its line length is python.line-length's
