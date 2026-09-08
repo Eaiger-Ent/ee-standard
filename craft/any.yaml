@@ -1,0 +1,439 @@
+# The Craft register — the stack-neutral scope.
+#
+# Forty-two properties that belong to neither stack, which is why they are a
+# file rather than a fallback: ADR 0052 gates them on the artefact they read
+# being present, and keeping them together makes *which gates did this
+# repository switch on* a question about one file.
+#
+# **Nothing here is bound to a level, and that is the honest state.** S3 benched
+# Python and React; no stack-neutral instrument has ever been run. ADR 0051's
+# third precondition — S3 has measured it — is unmet for every candidate below,
+# so this register does not claim a binding it has not measured. What it does
+# carry is `candidate:`, which names the instrument that would assert a property
+# and why it is not bound, so the gap is stated rather than inferred from a
+# silence.
+#
+# The nine rows with no `candidate:` and no `unenforced:` are `out_of_scope:`,
+# and the two owners are different things:
+#
+# - **`control`** — four rows a control already gates. Writing them here would
+#   be Craft claiming credit for gates the register already runs.
+# - **`profile`** — five rows of platform state applied through the GitHub API.
+#   `gate-repo` owns that surface and records its own ruleset with a provenance
+#   stamp; a profile writing into it would be a second writer to a gate's
+#   deployment. ADR 0051's crossing route is open to them and **nobody walks it
+#   now** — `docs/craft/design.profiles.md` § The platform group: recorded, and
+#   nothing minted.
+#
+# `gated_on:` names a predicate rather than describing one. `terraform` resolves
+# in `controls.yaml`; `openapi-document` is the one predicate `craft/meta.yaml`
+# defines, and a name defined in both registers is a schema error.
+
+properties:
+  any.conventional-commits:
+    asserts: 'Commit subjects follow `type(scope): description`'
+    bucket: 1
+    sources:
+    - git 001
+    unenforced: The instrument exists and the group is simply on — every repository
+      has commit messages, so there is no artefact whose absence makes the property
+      inapplicable.
+    candidate:
+      tool: commitlint with @commitlint/config-conventional
+      why_not: '`commitlint` is a Node package, so a Python repository with no `package.json`
+        acquires a Node toolchain and a second lockfile to check its commit messages.
+        Gating on `package.json` would be worse: a Python repository would never
+        get commit conventions for a reason that has nothing to do with commit conventions.
+        A Python-ecosystem instrument is survey work and is `docs/craft/todo.md`''s.'
+  any.imperative-commit-subject:
+    asserts: A commit subject is imperative present tense
+    bucket: 2
+    sources:
+    - git 002
+    unenforced: Nothing asserts it reliably. A word-list check would be a heuristic.
+  any.commit-subject-length:
+    asserts: A subject fits in 72 characters
+    bucket: 1
+    sources:
+    - git 003
+    unenforced: The same group and the same cost as `any.conventional-commits`.
+    candidate:
+      tool: commitlint `header-max-length`
+      why_not: Node-only, for the reason that row gives.
+  any.commit-references-work-item:
+    asserts: A commit body or footer names the work item
+    bucket: 1
+    sources:
+    - git 004
+    unenforced: The same group and the same cost as `any.conventional-commits`.
+    candidate:
+      tool: commitlint `references-empty`
+      why_not: Node-only, for the reason that row gives.
+  any.no-direct-push-to-default:
+    asserts: Nothing lands on the default branch outside a pull request
+    bucket: 1
+    sources:
+    - git 005
+    out_of_scope: control
+    why: '**Already gated: CI-001.** The control register requires a default-branch
+      ruleset that forbids it, and `gate-repo` records what was applied.'
+  any.ci-green-before-merge:
+    asserts: Every check passes before merge
+    bucket: 1
+    sources:
+    - git 006
+    out_of_scope: control
+    why: '**Already gated: CI-001.** Required status checks are part of the same
+      ruleset.'
+  any.branch-naming:
+    asserts: Branches read `type/short-description`
+    bucket: 1
+    sources:
+    - git 101
+    out_of_scope: profile
+    why: A GitHub ruleset branch-name pattern. It cannot even go in the ruleset
+      `gate-repo` records, which fails anything not targeting `~DEFAULT_BRANCH`.
+      Platform state applied through the API after an explicit confirmation, which
+      is what `gate-repo` does and what a profile writing configuration files does
+      not.
+  any.small-pull-requests:
+    asserts: A pull request is reviewable in under thirty minutes
+    bucket: 2
+    sources:
+    - git 102
+    unenforced: A diff-size threshold could hold it and the number would be arbitrary.
+      No source in the register proposes one.
+  any.linear-merged-history:
+    asserts: Merged history contains only logical commits
+    bucket: 1
+    sources:
+    - git 103
+    out_of_scope: profile
+    why: A GitHub ruleset merge-method restriction. It could be added to the ruleset
+      `gate-repo` records — `_ruleset_problems` treats an extra rule as a narrowing
+      it permits — but that file carries `gate-repo`'s provenance stamp, and a second
+      writer to a gate's own recorded artefact is a worse version of the problem
+      ADR 0055 solved for `pyproject.toml`.
+  any.pull-request-description:
+    asserts: A pull request says what changed, why, and how to verify
+    bucket: 2
+    sources:
+    - git 104
+    unenforced: A template exists; a check that it was filled in does not.
+  any.delete-merged-branches:
+    asserts: Branches are deleted after merge
+    bucket: 1
+    sources:
+    - git 105
+    out_of_scope: profile
+    why: A repository setting, not a rule and not a file. Platform state applied
+      through the API.
+  any.signed-commits:
+    asserts: Commits are signed where policy requires
+    bucket: 1
+    sources:
+    - git 201
+    out_of_scope: profile
+    why: 'A GitHub ruleset signature requirement, and the same objection as `any.linear-merged-history`:
+      it could go in the recorded ruleset, and a profile writing into a gate''s
+      own stamped artefact is the thing ADR 0055 exists to prevent.'
+  any.semver-release-tags:
+    asserts: Releases are tagged `vMAJOR.MINOR.PATCH`
+    bucket: 1
+    sources:
+    - git 202
+    out_of_scope: profile
+    why: A GitHub ruleset tag pattern, which cannot go in the ruleset `gate-repo`
+      records at all — that file fails anything not targeting `~DEFAULT_BRANCH`.
+  any.changelog-maintained:
+    asserts: A changelog is updated as part of release
+    bucket: 2
+    sources:
+    - git 203
+    unenforced: A check that the file moved with the tag could hold it. Nothing
+      registered does.
+  any.rest-resource-nouns:
+    asserts: Paths name resources, not actions
+    bucket: 2
+    sources:
+    - api 001
+    gated_on: openapi-document
+    unenforced: '`spectral` over an OpenAPI document would assert it.'
+    candidate:
+      tool: spectral
+      why_not: No `spectral` ruleset has been written or benched. S3 measured Python
+        and React only, so ADR 0051's *S3 has measured it* precondition is unmet
+        and this register does not claim a binding it has not run.
+  any.plural-collections:
+    asserts: Collections are plural, items are addressed by id
+    bucket: 2
+    sources:
+    - api 101
+    gated_on: openapi-document
+    unenforced: '`spectral` over an OpenAPI document would assert it.'
+    candidate:
+      tool: spectral
+      why_not: No `spectral` ruleset has been written or benched. S3 measured Python
+        and React only, so ADR 0051's *S3 has measured it* precondition is unmet
+        and this register does not claim a binding it has not run.
+  any.http-method-semantics:
+    asserts: Methods carry their standard meanings and idempotency
+    bucket: 3
+    sources:
+    - api 002
+    unenforced: Bucket 3. The spelling is checkable; the semantics are not.
+  any.standard-status-codes:
+    asserts: Responses use the conventional status codes
+    bucket: 2
+    sources:
+    - api 003
+    gated_on: openapi-document
+    unenforced: '`spectral`, against a declared set of status codes.'
+    candidate:
+      tool: spectral
+      why_not: No `spectral` ruleset has been written or benched. S3 measured Python
+        and React only, so ADR 0051's *S3 has measured it* precondition is unmet
+        and this register does not claim a binding it has not run.
+  any.structured-error-body:
+    asserts: Errors carry a code, a message and a correlation id
+    bucket: 2
+    sources:
+    - api 004
+    gated_on: openapi-document
+    unenforced: '`spectral`, against a shared error schema.'
+    candidate:
+      tool: spectral
+      why_not: No `spectral` ruleset has been written or benched. S3 measured Python
+        and React only, so ADR 0051's *S3 has measured it* precondition is unmet
+        and this register does not claim a binding it has not run.
+  any.explicit-api-version:
+    asserts: The API version is explicit from the first release
+    bucket: 2
+    sources:
+    - api 005
+    gated_on: openapi-document
+    unenforced: '`spectral` over an OpenAPI document would assert it.'
+    candidate:
+      tool: spectral
+      why_not: No `spectral` ruleset has been written or benched. S3 measured Python
+        and React only, so ADR 0051's *S3 has measured it* precondition is unmet
+        and this register does not claim a binding it has not run.
+  any.paginated-collections:
+    asserts: No collection endpoint returns an unbounded list
+    bucket: 2
+    sources:
+    - api 006
+    gated_on: openapi-document
+    unenforced: '`spectral` over an OpenAPI document would assert it.'
+    candidate:
+      tool: spectral
+      why_not: No `spectral` ruleset has been written or benched. S3 measured Python
+        and React only, so ADR 0051's *S3 has measured it* precondition is unmet
+        and this register does not claim a binding it has not run.
+  any.documented-endpoints:
+    asserts: Every endpoint has request and response schemas and examples
+    bucket: 2
+    sources:
+    - api 104
+    gated_on: openapi-document
+    unenforced: '`spectral` over an OpenAPI document would assert it.'
+    candidate:
+      tool: spectral
+      why_not: No `spectral` ruleset has been written or benched. S3 measured Python
+        and React only, so ADR 0051's *S3 has measured it* precondition is unmet
+        and this register does not claim a binding it has not run.
+  any.iso8601-datetimes:
+    asserts: Date and time fields are ISO 8601 strings
+    bucket: 2
+    sources:
+    - api 106
+    gated_on: openapi-document
+    unenforced: '`spectral`, against a format assertion.'
+    candidate:
+      tool: spectral
+      why_not: No `spectral` ruleset has been written or benched. S3 measured Python
+        and React only, so ADR 0051's *S3 has measured it* precondition is unmet
+        and this register does not claim a binding it has not run.
+  any.location-header-on-created:
+    asserts: A 201 carries a `Location`
+    bucket: 2
+    sources:
+    - api 105
+    gated_on: openapi-document
+    unenforced: '`spectral` over an OpenAPI document would assert it.'
+    candidate:
+      tool: spectral
+      why_not: No `spectral` ruleset has been written or benched. S3 measured Python
+        and React only, so ADR 0051's *S3 has measured it* precondition is unmet
+        and this register does not claim a binding it has not run.
+  any.filter-and-sort-documented:
+    asserts: Collection query parameters are documented
+    bucket: 2
+    sources:
+    - api 102
+    gated_on: openapi-document
+    unenforced: '`spectral` over an OpenAPI document would assert it.'
+    candidate:
+      tool: spectral
+      why_not: No `spectral` ruleset has been written or benched. S3 measured Python
+        and React only, so ADR 0051's *S3 has measured it* precondition is unmet
+        and this register does not claim a binding it has not run.
+  any.correlation-id-propagated:
+    asserts: A request id is present in every response and traced through
+    bucket: 3
+    sources:
+    - api 103
+    unenforced: Bucket 3. The header is checkable; propagation is not.
+  any.health-endpoint:
+    asserts: A health endpoint reports service and dependency state
+    bucket: 2
+    sources:
+    - api 202
+    gated_on: openapi-document
+    unenforced: '`spectral` for its presence, and for nothing about its truthfulness.'
+    candidate:
+      tool: spectral
+      why_not: No `spectral` ruleset has been written or benched. S3 measured Python
+        and React only, so ADR 0051's *S3 has measured it* precondition is unmet
+        and this register does not claim a binding it has not run.
+  any.conditional-requests:
+    asserts: Frequently polled resources support `ETag`
+    bucket: 3
+    sources:
+    - api 203
+    unenforced: Bucket 3.
+  any.json-merge-patch:
+    asserts: Partial updates use RFC 7396
+    bucket: 3
+    sources:
+    - api 201
+    unenforced: Bucket 3.
+  any.no-secrets-in-vcs:
+    asserts: No credential is committed
+    bucket: 1
+    sources:
+    - security 001
+    - asvs
+    out_of_scope: control
+    why: '**Already gated: SEC-001 and SEC-002.** Two loci, one class of defect.'
+  any.dependency-vulnerability-scanning:
+    asserts: Known CVEs in dependencies are surfaced
+    bucket: 1
+    sources:
+    - security 202
+    - asvs
+    out_of_scope: control
+    why: '**Adjacent to SUP-002 rather than identical.** That control gates update
+      proposals; CVE surfacing is a different claim about the same dependencies.
+      ADR 0051 names this row as Craft''s to close by the crossing route rather
+      than by widening SUP-002, and nothing here mints it.'
+  any.https-everywhere:
+    asserts: HTTP is rejected or redirected; HSTS is set
+    bucket: 2
+    sources:
+    - security 002
+    - asvs
+    gated_on: terraform
+    unenforced: Checkable in infrastructure code where the listener is declared.
+      IAC-001 is adjacent.
+    candidate:
+      tool: an infrastructure analyser
+      why_not: No infrastructure analyser is registered as a source and none has
+        been benched. IAC-001 gates the same artefact for a different property,
+        which is why the gate name already exists and the instrument does not.
+  any.security-response-headers:
+    asserts: CSP, `nosniff`, frame options and referrer policy are set
+    bucket: 2
+    sources:
+    - security 101
+    - asvs
+    gated_on: terraform
+    unenforced: Checkable in infrastructure code, or in a response test at a different
+      locus.
+    candidate:
+      tool: an infrastructure analyser
+      why_not: No infrastructure analyser is registered as a source and none has
+        been benched. IAC-001 gates the same artefact for a different property,
+        which is why the gate name already exists and the instrument does not.
+  any.authenticate-non-public-endpoints:
+    asserts: Every non-public endpoint authenticates
+    bucket: 3
+    sources:
+    - security 003
+    - asvs
+    unenforced: Bucket 3.
+  any.authorise-separately-from-authenticate:
+    asserts: Permission is checked as well as identity
+    bucket: 3
+    sources:
+    - security 004
+    - asvs
+    unenforced: Bucket 3, and **the single most consequential property in this register
+      and the least checkable.** Recorded rather than dropped, because the residue
+      is what the installer hands back as prose labelled unenforced, and this is
+      the row that label exists for.
+  any.validate-at-boundaries:
+    asserts: Input is validated at the system boundary
+    bucket: 3
+    sources:
+    - security 005
+    - asvs
+    unenforced: Bucket 3.
+  any.rate-limit-sensitive-endpoints:
+    asserts: Authentication and sensitive writes are rate limited
+    bucket: 2
+    sources:
+    - security 102
+    - asvs
+    gated_on: terraform
+    unenforced: Checkable in infrastructure code where the limit is declared.
+    candidate:
+      tool: an infrastructure analyser
+      why_not: No infrastructure analyser is registered as a source and none has
+        been benched. IAC-001 gates the same artefact for a different property,
+        which is why the gate name already exists and the instrument does not.
+  any.adaptive-password-hashing:
+    asserts: Passwords use bcrypt, Argon2 or scrypt
+    bucket: 2
+    sources:
+    - security 104
+    - asvs
+    unenforced: 'Per-stack, and asymmetric: `python.no-insecure-hash` catches the
+      negative and nothing asserts the positive.'
+  any.explicit-cors:
+    asserts: CORS origins are explicit, never `*` with credentials
+    bucket: 2
+    sources:
+    - security 105
+    - asvs
+    gated_on: terraform
+    unenforced: Checkable in infrastructure code or in configuration.
+    candidate:
+      tool: an infrastructure analyser
+      why_not: No infrastructure analyser is registered as a source and none has
+        been benched. IAC-001 gates the same artefact for a different property,
+        which is why the gate name already exists and the instrument does not.
+  any.secret-rotation:
+    asserts: Secrets rotate on a schedule and on compromise
+    bucket: 3
+    sources:
+    - security 106
+    - asvs
+    unenforced: Bucket 3. A process, not a code property.
+  any.security-audit-logging:
+    asserts: Security-relevant events are logged
+    bucket: 3
+    sources:
+    - security 201
+    - asvs
+    unenforced: Bucket 3.
+  any.threat-modelling:
+    asserts: New features handling sensitive data are threat modelled
+    bucket: 3
+    sources:
+    - security 203
+    - asvs
+    unenforced: Bucket 3, and arguably not a code rule at all. S2 flagged it as
+      a candidate for removal at S4; **it is kept**, because removing a row is a
+      claim that the property does not matter and the register's own answer is that
+      it matters and cannot be checked here.
