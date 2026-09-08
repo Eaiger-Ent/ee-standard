@@ -471,6 +471,16 @@ python.docstring-form:
     codes: [D205, D401]             # a CLOSED set: these, and nothing else
 ```
 
+**`coextensive:` says how the instrument stands to the property**, and that is
+why it is worth a field of its own. On a `linter:` it is **required**, because
+an open set needs a reason before anything trusts it. On a closed set it is
+optional and is used for the opposite case: where the two are known *not* to
+line up and somebody has measured the gap. `python.no-any` carries one for
+exactly that — `ANN401` fires on a private argument where the property says
+public — so the divergence sits beside the binding rather than in a document
+nobody opens. **Added 2026-09-08**, when the migration met the first row that
+needed it.
+
 **The test for `linter:` is coextensiveness, and it is a real test rather than a
 preference:** *would every rule this linter could contain be an assertion of
 this property?* Read against the pinned taxonomy, the two answers are not close:

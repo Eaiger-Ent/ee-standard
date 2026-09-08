@@ -1,0 +1,117 @@
+# The Craft register — what this file is for.
+#
+# `controls.yaml` is the control register: what a conformant Equal Experts
+# repository must do, gated in CI. This is the *craft* register: the coding
+# standards for Python and React that the control register is deliberately
+# silent about. A craft rule is not a control, and ADR 0051 is what one has to
+# cross to become one.
+#
+# `docs/craft/design.profiles.md` § The Craft register's schema is the spec, and
+# § Where the register lives, and what checks it is why the register is four
+# files rather than one. `tests/test_craft_register.py` is what checks it —
+# `register-check` deliberately does not, per ADR 0053.
+#
+# This file carries what is not a property: the contract, the levels, the
+# sources every property cites, and the profiles' own version history.
+
+# The **schema** version. It moves when a field is added or an instrument shape
+# changes — never when a rule does. ADR 0053 and `design.profiles.md`
+# § `craft_contract` is needed, and it is not the profile version: an installer
+# pinned by a consumer can be older than this register, and conflating the two
+# would make every rule change look like a format change.
+craft_contract: 1
+
+# Ordered, and each a superset of the one below. ADR 0052.
+levels: [standard, strict]
+
+# ADR 0054: cite every source, copy none. A citation key that resolves only into
+# prose is not a citation anything can emit, so the sources are data too — the
+# installer has to be able to hand a team the source behind a rule.
+#
+# `docs/craft/survey.sources.md` is the stage record with the maintenance
+# signals and how to re-derive them; what is here is what a property cites.
+sources:
+  ruff:
+    title: ruff's rule taxonomy
+    url: https://docs.astral.sh/ruff/rules/
+    licence: MIT
+  pep8:
+    title: PEP 8 — Style Guide for Python Code
+    url: https://peps.python.org/pep-0008/
+    licence: public-domain
+  pep20:
+    title: PEP 20 — The Zen of Python
+    url: https://peps.python.org/pep-0020/
+    licence: public-domain
+  pep257:
+    title: PEP 257 — Docstring Conventions
+    url: https://peps.python.org/pep-0257/
+    licence: public-domain
+  google:
+    title: Google Python Style Guide
+    url: https://google.github.io/styleguide/pyguide.html
+    licence: CC-BY-3.0
+  pytest:
+    title: pytest good practices
+    url: https://docs.pytest.org/en/stable/explanation/goodpractices.html
+    licence: MIT
+  asvs:
+    title: OWASP Application Security Verification Standard
+    url: https://owasp.org/www-project-application-security-verification-standard/
+    licence: CC-BY-SA-4.0
+  typescript:
+    title: llm-toolkit — rules/platform/typescript.rules.md
+    url: https://github.com/EqualExperts/llm-toolkit/blob/a46825d/rules/platform/typescript.rules.md
+    licence: none-stated
+  clean-code:
+    title: llm-toolkit — rules/clean-code.md
+    url: https://github.com/EqualExperts/llm-toolkit/blob/a46825d/rules/clean-code.md
+    licence: none-stated
+  solid:
+    title: llm-toolkit — rules/solid-principles.md
+    url: https://github.com/EqualExperts/llm-toolkit/blob/a46825d/rules/solid-principles.md
+    licence: none-stated
+  testing:
+    title: llm-toolkit — rules/testing-principles.md
+    url: https://github.com/EqualExperts/llm-toolkit/blob/a46825d/rules/testing-principles.md
+    licence: none-stated
+  code-quality:
+    title: llm-toolkit — rules/code-quality.md
+    url: https://github.com/EqualExperts/llm-toolkit/blob/a46825d/rules/code-quality.md
+    licence: none-stated
+  git:
+    title: llm-toolkit — rules/git-rules.md
+    url: https://github.com/EqualExperts/llm-toolkit/blob/a46825d/rules/git-rules.md
+    licence: none-stated
+  security:
+    title: llm-toolkit — rules/platform/security.md
+    url: https://github.com/EqualExperts/llm-toolkit/blob/a46825d/rules/platform/security.md
+    licence: none-stated
+
+# A profile is `<stack>/<level>` and nothing more (ADR 0052), and its version is
+# a **counter rather than semver** — `design.profiles.md` § The version is a
+# counter, because semver would point the wrong way. Direction is recorded per
+# entry in `register-variance`'s own three words, and its rule comes with them:
+# a mixed delta is a loosening.
+#
+# The entries live here rather than in the per-scope files because a profile
+# spans them: `python/standard` binds every `python.` row at that level and
+# every `any.` row whose evidence gate is open, so its version moves when either
+# file does. Entries kept per-file would split one profile's history across two.
+profiles:
+  python/standard:
+    version: 1
+    changes:
+      - version: 1
+        moved: neither
+        what: >
+          First publication. The selection S3 benched, migrated from
+          `docs/craft/assess.rules.md` without change.
+  python/strict:
+    version: 1
+    changes:
+      - version: 1
+        moved: neither
+        what: >
+          First publication. `standard` plus the eleven properties
+          `docs/craft/review.strict.md` measured.

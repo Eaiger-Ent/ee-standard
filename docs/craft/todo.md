@@ -460,9 +460,20 @@ owes is the list of what has not been written — not restated here.
       installer; and the five platform properties are **recorded out of scope
       and nothing is minted**, with ADR 0051's route left open. Two rows remain
       and both are work: the migration, and one source to register
-- [ ] Migrate `assess.rules.md`'s 182 rows into `craft/`, with the superset test
-      that stops it losing one. The schema is designed and the file layout is
-      settled; this is the work of applying them
+- [x] Migrate the **Python** rows into `craft/python.yaml`, with `craft/meta.yaml`
+      and the check beside them. Done 2026-09-08: **73 properties** — the
+      register's 72 plus `python.no-any-anywhere`, which S4's strictness slice
+      minted and `assess.rules.md` therefore has no row for — 40 bound at
+      `standard`, 11 at `strict` and 22 with no binding and a stated reason.
+      Every range the register cited is now a closed set or a `linter:` with a
+      coextensive reason, which is the S3 finding applied rather than recorded.
+      `tests/test_craft_register.py` is the check ADR 0053 said `register-check`
+      must not be, and **both its sharpest assertions are shown able to fire** —
+      a range in a `codes:` list and a lost row each fail it
+- [ ] Migrate the **React** rows into `craft/react.yaml` — 68
+- [ ] Migrate the **stack-neutral** rows into `craft/any.yaml` — 42, including
+      the five platform rows, which carry `out_of_scope: profile` and a reason
+      in place of an instrument
 - [ ] Register a Python-ecosystem instrument for the commit group, so it is not
       Node-only. Survey work under the schema slice's `sources:` — `commitlint`
       is the registered instrument and it needs Node

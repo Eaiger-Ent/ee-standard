@@ -54,8 +54,9 @@ One file cannot hold both policies.
 
 | Path | What is in it |
 | --- | --- |
+| `craft/` | **The Craft register**, one file per scope: `craft/meta.yaml` holds the contract, levels, sources and profile versions, and `craft/python.yaml` the Python properties. The React and stack-neutral scopes are outstanding — `docs/craft/todo.md` is the list. Coding standards, *not* controls: a craft rule crosses into `controls.yaml` only by [ADR 0051](adr/0051-a-craft-rule-becomes-a-control-by-being-installed.md)'s route. Checked by `tests/test_craft_register.py`, deliberately **not** by `register-check` ([ADR 0053](adr/0053-the-craft-mapping-is-register-data.md)) |
 | `docs/` | Every explanation. `docs/00-concepts.md` first, then the numbered files; `docs/adr/` holds the decisions |
-| `docs/craft/` | The Craft workstream — coding standards for Python and React, which the register deliberately says nothing about. Its own naming standard and stage files, set out in `docs/craft/plan.md`; deliberately not numbered into the files above, and not a phase of the build plan |
+| `docs/craft/` | The Craft workstream's **records** — its plan, naming standard and one file per stage, set out in `docs/craft/plan.md`; deliberately not numbered into the files above, and not a phase of the build plan. `docs/craft/assess.rules.md` is a stage record and **not a source**: the register above replaced it ([ADR 0053](adr/0053-the-craft-mapping-is-register-data.md)), and a test holds the two together |
 | `src/` | `src/register_check/` — the checker. One assert implementation, read by every locus |
 | `tests/` | The suite. Several tests hold rules that govern *this* repository rather than a conformant one |
 | `plugins/` | `plugins/control-register/` — what an adopter installs: nine skills, the templates they write from, and the shared prose |
