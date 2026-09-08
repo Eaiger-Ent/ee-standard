@@ -539,7 +539,22 @@ are two documents.
       property, so two of the six were written against a version of the rule
       that no longer exists. `S104`, `PLC0415` and `EM101` are kept with the
       reason each; `PLC0415` is this level's `ERA001`, the one to put to S6
-- [ ] C7 — cost per finding for the 27, from `fix_availability`
+- [x] C7 — cost per finding for the 27, from `fix_availability`. Done
+      2026-09-08, and it went past the criterion: **the metadata was read and
+      then checked against a run**, which C7 was defined as not needing and
+      which is exactly why nobody had checked it. The declared answer is that
+      the additions are the expensive end — **70% carry no fix** against the
+      level's 54% and `standard`'s 51%, concentrated in writing English
+      (`D1xx`, `D401`) and supplying information (`TD002`, `TD003`). The run
+      disagrees with the declaration: across both levels **30 rules fired
+      declaring a fix and five applied one**. Ruff's `fix_availability` is a
+      property of the rule while applicability is a property of the diagnostic,
+      so six of the additions' eight fixes need `--unsafe-fixes` — including
+      `RET504`, which the taxonomy calls `always`. **Fourteen React rules
+      declare `meta.fixable` and fix nothing**, nine of them `react-hooks`,
+      which corrects the first bench's *cheapest group in either stack* row in
+      `review.bench.md` § What each rule costs. `--fix-applies` is the mode, and
+      it is shown able to fire before its silence is read
 - [ ] Run the mypy half at all. `disallow_any_explicit` is written and has met
       no code, so the strict level's one type-checker key is as unmeasured as
       C6 left it — which is the row ADR 0051's precondition is really about
