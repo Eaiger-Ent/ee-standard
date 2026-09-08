@@ -16,9 +16,11 @@ of its three uncomfortable findings.
 a second bench that redefined them would be marking its own homework against a
 fresh mark. This document cites them by number and reports what happened.
 
-Started **2026-09-07**. It is not finished, and § What has not run says what is
-missing rather than leaving a reader to infer it. Since 2026-09-08 one row is
-left in it: the mypy half, which nothing has run.
+Started **2026-09-07** and finished **2026-09-08**. § What has not run keeps
+its name and its job: every criterion is answered there, including the ones that
+were not applicable, so the document cannot be read as more finished — or less —
+than it is. Two verdicts are open in it and both are S4's rather than a
+measurement's.
 
 ## The configuration extends rather than restates
 
@@ -806,9 +808,157 @@ rules are hand-work, the true figure is higher, and the gap is not distributed
 evenly: it is concentrated in `react-hooks`, which is the group the first bench
 called the cheapest.
 
+## The mypy half, which nothing had run
+
+Run **2026-09-08**, at **mypy 2.3.1**. This is the row ADR 0051's third
+precondition is really about: `strict`'s one type-checker key is the whole of
+Craft's type-checking contribution across both stacks, and until this section
+existed `disallow_any_explicit` had never met a line of code.
+
+The cases are `python/cases/mypy/` in
+[`craft_cases.py`](../../scripts/craft_cases.py) — `margin.py`, `probes.py` and
+`control.py` — and every command below names its configuration, for a reason
+that turned out to matter:
+
+```bash
+cd temp/craft-bench/python
+mypy --config-file mypy-strict.ini src tests                  # C2, clean
+MYPYPATH=src mypy --config-file mypy-strict.ini cases/src/wit cases/tests
+mypy --config-file mypy-strict.ini cases/mypy/margin.py       # C2, ten findings
+mypy --config-file mypy-strict.ini cases/mypy/probes.py       # C5, clean
+mypy --config-file mypy-strict.ini cases/mypy/control.py      # `strict` is live
+printf '[mypy]\nstrict = True\n' > /tmp/strict-only.ini
+mypy --config-file /tmp/strict-only.ini cases/mypy/margin.py  # the margin: none
+```
+
+### The hazard that came first — mypy reads a config from outside the bench
+
+**mypy walks up the directory tree**, and from
+`temp/craft-bench/python/` it finds `/workspaces/ee-standard/pyproject.toml`.
+A run without `--config-file` measures **this repository's** `[tool.mypy]` and
+not the profile's, three levels above a directory that is gitignored precisely
+so the bench cannot touch the repository carrying it.
+
+It was caught the way it deserved to be. A flag comparison run from the wrong
+directory reported that nine of `--strict`'s thirteen flags were already on by
+default at mypy 2.3.1 — a striking claim about the tool, and entirely an
+artefact of `strict = true` being read from this repository. Repeated in a
+directory with no configuration above it, bare mypy reports **nothing** on any
+of the nine defects and `--strict` reports **all nine**. `--strict` is exactly
+as live as the design's table assumed.
+
+This is CLAUDE.md's *a host run once reported green about a uv version it was
+not using*, reproduced inside the container by a different mechanism. The
+scaffold's own `pyproject.toml` cannot prevent it, because the absence of a
+`[tool.mypy]` section is what sends mypy looking further up. `control.py`
+carries the warning where somebody running the bench will see it.
+
+### C1 and C2 — it assembles, and the scaffold was clean first time
+
+`mypy-strict.ini` resolves, `strict = True` and `disallow_any_explicit = True`
+coexist, and the scaffold's four files pass. **Unlike both ruff runs, the
+subject needed no correction** — the two scaffold defects the ruff passes found
+were docstring prose, and there is no analogous class of defect for a type
+checker to find in code that was written with annotations from the first line.
+
+`control.py` is the guard on that clean result: a function with no annotations
+at all, which the ini reports and a configuration missing `strict = True` would
+not. A clean run over the scaffold means something only because that one fires.
+
+**C3's witnesses were type-checked for the first time**, and they pass. C3 asks
+for *otherwise-correct code*, and until now the only judge of "correct" was the
+linter that the witness was written to satisfy. Four files, clean, with
+`MYPYPATH=src` so the scaffold's package resolves.
+
+### The margin — none, against ten
+
+`margin.py` writes an explicit `Any` in every place one can be written. With
+`strict = True` alone it reports **nothing**. With the key it reports **ten
+findings over nine sites**.
+
+| Where the `Any` is | The key | ruff `ANN401` |
+| --- | --- | --- |
+| A public argument annotation | yes | yes |
+| A **private** argument annotation | yes | **yes** |
+| A return annotation | yes | yes |
+| A local variable annotation | yes | no |
+| A PEP 695 `type` alias | yes | no |
+| Inside a generic — `list[Any]` | yes | no |
+| A `cast(Any, …)` | yes | no |
+| `**kwargs` | yes | yes |
+| A dataclass field | **yes, twice** | no |
+
+**So Craft's one key is not redundant with TYP-001**, which is the question
+`design.profiles.md` § The type checker answered from `--strict`'s flag list and
+this answers from a run. Nine sites, none of them reachable by the conformance
+the repository already owes.
+
+### C4 — one defect, two diagnostics, twice over
+
+**Within the key.** An `Any` on a dataclass field is reported at the field *and*
+at the `class` line, because the dataclass plugin synthesises an `__init__`
+carrying the same annotation. A plain class with the same attribute annotation
+draws exactly one, which is what makes the plugin the cause rather than the
+annotation. It is the C4 shape from a single tool with a single setting.
+
+**Across the tools**, and this is the one that matters. `ANN401` catches four of
+the ten and mypy catches all four, so **`ANN401`'s findings are a strict subset
+of the key's**. At `strict` both instruments run, and every `ANN401` finding is
+reported twice under two different property names.
+
+It cannot be resolved by dropping `ANN401` at `strict`. S4's § Naming,
+versioning, and what a re-run does settles that the levels are nested and **the
+installer never writes a loosening**, because removing selectors is a loosening
+of LNT-001, which is `narrowing-only`. So the duplicate is not an oversight in
+the selection — **the profile model guarantees it** wherever a strict property
+subsumes a standard one carried by a different tool, and no configuration in
+either tool can see across the pair. It goes in the Craft register's
+`alternatives:` field with its reason, which is the same verdict C4 reached for
+React and for the same structural reason.
+
+### The register says `ANN401` is exactly the public scope, and it is not
+
+`python.no-any` asserts *`Any` does not appear in a **public** signature*, and
+`assess.rules.md` records `ANN401` as "exactly this scope". The run says
+otherwise: `_private_argument` draws `ANN401`. Ruff's `flake8-annotations`
+settings do not offer a public/private axis, so the instrument over-reaches its
+property by construction and no configuration closes the gap.
+
+**S4 owes a choice**, and both options are ordinary: reword the property to what
+its instrument does, or keep the wording and record the over-reach as the
+divergence it is. It is exactly the case ADR 0053's `coextensive:` reason exists
+to force somebody to state, found by running the instrument against the
+property's own words.
+
+### C5 — four probes, and the reputation is about an older Python
+
+The complaint against banning explicit `Any` is that some shapes cannot be
+written without it. Each probe is one of those shapes, written the way the
+current type system says to write it, and **all four are clean**:
+
+| Probe | What it would have needed `Any` for | What removes it |
+| --- | --- | --- |
+| A pass-through decorator | `Callable[..., Any]` and `*args: Any` | PEP 612's `ParamSpec` |
+| Decoded JSON | `Any` from `json.loads` | a `TypedDict` for the row |
+| A parameter that genuinely accepts anything | `value: Any` | `object` |
+| `**kwargs` forwarded onward | `**kwargs: Any` | `**kwargs: object` |
+
+**No demotion**, and this is C5's third instance of the same shape: two of the
+six probes at `strict` fired against a version of the rule that no longer
+exists, and all four here are written against a version of *Python* that no
+longer needs the escape. A false-positive reputation is a claim with a date on
+it.
+
+### C7 — nothing to read, and hand-work by construction
+
+C7's method is the tools' own metadata. mypy publishes none, and has no `--fix`
+at all, so every finding this key reports is hand-work — by construction rather
+than by measurement, which is what § What each rule costs already says of it.
+
 ## What has not run
 
-Named so that this document cannot be read as more finished than it is.
+Named so that this document cannot be read as more finished than it is. Every
+row is now answered; two of them answer *this is somebody else's decision*.
 
 | Criterion | State |
 | --- | --- |
@@ -820,14 +970,20 @@ Named so that this document cannot be read as more finished than it is.
 | `D103` on tests | **Open, and it is a selection question rather than a probe.** The case is the scaffold's four tests; the remedy the ecosystem uses is `per-file-ignores`, which the design refused. The mechanism that fits is the one `S101` already uses — select `D100`–`D107` in `src/strict.toml` rather than the root — and taking it is S4's, not this document's |
 | C7 | **Done**, and it went further than the criterion asks. The metadata is read for the 27 and for the level, and then **checked against a run** — 30 rules across both levels declare a fix and five apply one. The declared number is a floor on cheapness, not an estimate of it |
 | C6, C8, C9 | **Not applicable, and stated rather than skipped.** C6's four numbers are `standard`'s and unchanged; C8 is answered above; C9 was S2's deferral and is closed |
-| The mypy half | **Nothing has run it.** `mypy-strict.ini` is written and `disallow_any_explicit` has not met a line of code |
+| The mypy half | **Done**, at mypy 2.3.1, and it is the row ADR 0051's precondition is really about. The margin is **none against ten**: `strict` alone reports nothing where the key reports ten findings over nine sites, so Craft's one key is not redundant with TYP-001. C4 fires twice more — a dataclass field reports at the field and at the class, and `ANN401`'s findings are a strict subset of the key's, which the profile model guarantees rather than overlooks. C5's four probes are clean |
+| `ANN401`'s scope | **Open, and it is a register correction rather than a measurement.** `python.no-any` asserts *a **public** signature* and `assess.rules.md` calls `ANN401` "exactly this scope"; the run says it fires on a private argument too, and ruff offers no public/private axis. Reword the property or record the over-reach — S4's, and the case ADR 0053's `coextensive:` reason exists for |
 
-The last row is now the only one open, and it is the one that matters most,
-because it is the row ADR 0051's precondition is really about: the strict
-level's one type-checker key is still exactly as unmeasured as C6 left it. C7's
-method does not reach it either — mypy publishes no fix metadata and has no
-`--fix`, so every finding it reports is hand-work by construction rather than by
-measurement.
+**ADR 0051's third precondition is met.** Every rule `strict` adds has been
+measured: 27 ruff codes and one React rule against C1 to C5 and C7, and the one
+mypy key against the same criteria. That does not make any of them a control —
+the precondition is one of three — but it is the one that was blocking, and no
+strict-only property is barred by it any longer.
+
+The two open rows are both selections rather than measurements, and both are
+S4's: whether `D100`–`D107` move into `src/strict.toml` the way `S101` already
+has, and whether `python.no-any` is reworded to what `ANN401` actually does.
+Neither is a question a bench can answer, which is why each stayed open rather
+than being taken quietly.
 
 **And C2 changed what the earlier rows are worth.** C1 counted React's added
 rule and C3's first pass found nothing to report about it, both correctly, while

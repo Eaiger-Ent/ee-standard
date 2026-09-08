@@ -454,7 +454,9 @@ defined a level above it, and ADR 0051's third precondition means no strict-only
 rule is eligible to become a control until somebody measures it.
 [`review.strict.md`](review.strict.md) is that measurement, and its § What has
 not run is the list — not restated here, for the reason `plan.md` and this file
-are two documents.
+are two documents. **Finished 2026-09-08**, and that section records the
+verdict: every rule the level adds has been measured, so ADR 0051's third
+precondition no longer bars any of them.
 
 - [x] Parameterise `craft_profile.py` on the level, and materialise `strict`.
       Done 2026-09-07, `--level strict`. Every file **extends** its `standard`
@@ -555,9 +557,32 @@ are two documents.
       which corrects the first bench's *cheapest group in either stack* row in
       `review.bench.md` § What each rule costs. `--fix-applies` is the mode, and
       it is shown able to fire before its silence is read
-- [ ] Run the mypy half at all. `disallow_any_explicit` is written and has met
-      no code, so the strict level's one type-checker key is as unmeasured as
-      C6 left it — which is the row ADR 0051's precondition is really about
+- [x] Run the mypy half at all. Done 2026-09-08 at **mypy 2.3.1**, and it is
+      the row ADR 0051's precondition is really about. **The margin is none
+      against ten**: `strict = True` alone reports nothing on a file writing an
+      explicit `Any` in every place one can be written, and the key reports ten
+      findings over nine sites — so Craft's one type-checker contribution across
+      both stacks is not redundant with TYP-001, which the design had answered
+      from `--strict`'s flag list rather than from a run. **A hazard came
+      first**: mypy walks up from the bench and finds this repository's own
+      `[tool.mypy]` three levels above a gitignored directory, and a comparison
+      run without `--config-file` reported that nine of `--strict`'s flags were
+      already default — entirely an artefact of reading `strict = true` from
+      here. **C4 fires twice more.** An `Any` on a dataclass field reports at
+      the field *and* at the class, because the plugin synthesises an `__init__`
+      carrying it; and `ANN401`'s findings are a **strict subset** of the key's,
+      so every one is reported twice under two property names — which the
+      profile model *guarantees* rather than overlooks, because the levels nest
+      and the installer never writes a loosening. **C5's four probes are
+      clean**: `ParamSpec`, a `TypedDict` and `object` remove every shape the
+      rule's reputation is built on, which is a reputation about an older Python
+- [ ] Reword `python.no-any`, or record that its instrument over-reaches it.
+      **Found by the mypy half, and it is S4's.** The property asserts *`Any`
+      does not appear in a **public** signature* and `assess.rules.md` calls
+      `ANN401` "exactly this scope"; `ANN401` fires on a private argument too,
+      and ruff's `flake8-annotations` offers no public/private axis, so no
+      configuration closes the gap. It is the case ADR 0053's `coextensive:`
+      reason exists to force somebody to state
 
 ## S5 — Build the chooser and the installer
 
