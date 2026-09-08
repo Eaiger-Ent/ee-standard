@@ -2,8 +2,11 @@
 """What the Craft candidate configuration costs, and what it turns on — S3.
 
 C7 asks what a finding costs to satisfy, per rule, **from the tools' own
-metadata rather than from a run**. Ruff records `fix_availability` per rule;
-ESLint plugins record `meta.fixable` and `meta.hasSuggestions`. This reads both
+metadata rather than from a run**. Ruff records `fix_availability` per rule and this passes its
+three words through — `always`, `sometimes`, `none` — because a fix that only
+sometimes applies is not a cost a repository can plan around; ESLint plugins
+record `meta.fixable` and `meta.hasSuggestions`, reported as `fix` and
+`suggestion`. This reads both
 and prints the totals, so `docs/craft/review.bench.md` can carry a number that
 somebody can re-derive instead of a number somebody typed.
 
@@ -21,6 +24,20 @@ that has quietly stopped firing shows up as a missing rule rather than as a run
 that still looks busy. It exits non-zero when one is missing. The mode needs a
 level with one below it, which `standard` has not.
 
+`--level` chooses the strictness level to read, and `--added` narrows the
+report to the rules that level adds against the level below — C7 at `strict`,
+where the interesting number is not what 168 rules cost but what the 27 the
+level *adds* cost, since a repository at `standard` has already paid for the
+rest. The additions are derived the same way `--fires` derives them, so the two
+modes cannot disagree about what the level added.
+
+`--fix-applies` checks all of that against a run, which C7 was defined as not
+needing and which is exactly why nobody had checked it: it lints the violation
+cases, applies `--fix`, lints again and restores the files, so a rule whose
+finding survives its own fix is reported. Ruff gets two passes because
+`fix_availability` and a diagnostic's *applicability* are different axes, and
+`--fix` alone declines an unsafe fix however strong the taxonomy's word for it.
+
 It reports the versions it read. It deliberately **pins nothing**: the profile
 does not yet pin its own tools in anything it materialises — that gap is S4's,
 recorded in the bench — and a pin here would be a second copy of a version this
@@ -34,6 +51,9 @@ Run it against a materialised bench:
     uv run python scripts/craft_cost.py --per-rule # every rule, one per line
     uv run python scripts/craft_cost.py --against-default  # C2's checklist
     uv run python scripts/craft_cost.py --fires            # C2 per rule, at strict
+    uv run python scripts/craft_cost.py --level strict     # the whole level
+    uv run python scripts/craft_cost.py --level strict --added   # C7's delta
+    uv run python scripts/craft_cost.py --level strict --fix-applies  # C7, run
 """
 
 from __future__ import annotations
@@ -175,9 +195,23 @@ PYTHON_LEVELS = {
     ),
 }
 
+#: Which level each level extends. `standard` is the first and has no below,
+#: so the delta modes reject it rather than reporting every rule as added.
+LEVEL_BELOW = {"strict": "standard"}
+
 #: Where C2's per-rule cases live at `strict`. `cases/preview/control.py` is in
 #: the list because the two preview rules keep the cases C8 wrote for them.
 STRICT_CASES = ("cases/strict", "cases/preview/control.py")
+
+#: The violation cases per level, and the configuration that reads them. These
+#: are what `--fix-applies` runs `--fix` over: a rule with no case cannot be
+#: measured, which is the mode's stated limit rather than a silent gap.
+PYTHON_CASES = {"standard": ("cases/violations",), "strict": STRICT_CASES}
+PYTHON_CONFIG = {"standard": "ruff.toml", "strict": "strict.toml"}
+REACT_VIOLATION_CONFIG = {
+    "standard": "violations.config.js",
+    "strict": "strict-violations.config.js",
+}
 
 
 def _parts(code: str) -> tuple[str, str]:
@@ -203,10 +237,17 @@ def _resolve(root: Path, level: str) -> dict[str, tuple[str, str, str]]:
         for rule in rules:
             code_alpha, code_digits = _parts(rule["code"])
             if code_alpha == alpha and code_digits.startswith(digits):
-                available = rule["fix_availability"]
-                cost = "none" if available == "None" else "fix"
+                # ruff's own three words, lowercased, rather than a collapse to
+                # fix/none: `Sometimes` means the fix does not always apply, and
+                # a cost question cannot count it as a fix.
+                cost = rule["fix_availability"].lower()
                 selected[rule["code"]] = (rule["code"], rule["linter"], cost)
     return selected
+
+
+def _react_config(level: str) -> list[str]:
+    """The `--config` flag a level needs, if any. `standard` is `eslint.config.js`."""
+    return [] if level == "standard" else ["--config", f"{level}.config.js"]
 
 
 def python_costs(target: Path, level: str = "standard") -> tuple[str, list[tuple[str, str, str]]]:
@@ -216,13 +257,16 @@ def python_costs(target: Path, level: str = "standard") -> tuple[str, list[tuple
     return version, sorted(_resolve(root, level).values())
 
 
-def react_costs(target: Path) -> tuple[dict[str, str], list[tuple[str, str, str]]]:
+def react_costs(
+    target: Path, level: str = "standard"
+) -> tuple[dict[str, str], list[tuple[str, str, str]]]:
     """Every enabled ESLint rule as (id, plugin, cost), with plugin versions."""
     root = target / "react"
+    flag = _react_config(level)
     printed = []
     for index, source in enumerate(REACT_FILES):
         path = root / f".craft-cost-{index}.json"
-        config = _run(["npx", "eslint", "--print-config", source], cwd=root)
+        config = _run(["npx", "eslint", *flag, "--print-config", source], cwd=root)
         path.write_text(config, encoding="utf-8")
         printed.append(path.name)
     try:
@@ -276,7 +320,7 @@ def react_fires(target: Path) -> tuple[list[str], list[str]]:
     root = target / "react"
     standard = _run(["npx", "eslint", "--print-config", REACT_FILES[0]], cwd=root)
     strict = _run(
-        ["npx", "eslint", "--config", "strict.config.js", "--print-config", REACT_FILES[0]],
+        ["npx", "eslint", *_react_config("strict"), "--print-config", REACT_FILES[0]],
         cwd=root,
     )
 
@@ -302,11 +346,145 @@ def react_fires(target: Path) -> tuple[list[str], list[str]]:
     return [name for name in added if name in fired], [name for name in added if name not in fired]
 
 
+def added_costs(
+    target: Path, level: str
+) -> tuple[list[tuple[str, str, str]], list[tuple[str, str, str]]]:
+    """What the rules `level` adds cost, per stack, against the level below."""
+    below = LEVEL_BELOW[level]
+    root = target / "python"
+    above = _resolve(root, level)
+    added = sorted(set(above) - set(_resolve(root, below)))
+    python_rows = [above[code] for code in added]
+
+    _, after = react_costs(target, level)
+    _, before = react_costs(target, below)
+    known = {row[0] for row in before}
+    react_rows = [row for row in after if row[0] not in known]
+    return python_rows, react_rows
+
+
+def _snapshot(root: Path, paths: tuple[str, ...]) -> dict[Path, str]:
+    """Every file under `paths`, so an in-place `--fix` can be undone."""
+    saved: dict[Path, str] = {}
+    for name in paths:
+        where = root / name
+        files = [where] if where.is_file() else sorted(p for p in where.rglob("*") if p.is_file())
+        for path in files:
+            saved[path] = path.read_text(encoding="utf-8")
+    return saved
+
+
+def _restore(saved: dict[Path, str]) -> None:
+    for path, text in saved.items():
+        path.write_text(text, encoding="utf-8")
+
+
+def python_fix_applies(target: Path, level: str) -> list[tuple[str, str, int, int, int]]:
+    """Per fired rule: (code, declared cost, removed by `--fix`, removed allowing unsafe, before).
+
+    Two passes rather than one, because ruff's `fix_availability` and its fix
+    *applicability* are different axes: a rule can say `always` and still mark
+    the fix unsafe, which `--fix` alone declines to apply.
+    """
+    root = target / "python"
+    paths = PYTHON_CASES[level]
+    config = PYTHON_CONFIG[level]
+    declared = _resolve(root, level)
+    fix = ["ruff", "check", "--config", config, "--fix", *paths]
+
+    def fired() -> Counter[str]:
+        command = ["ruff", "check", "--config", config, "--output-format", "json", *paths]
+        raw = _run(command, cwd=root, expect_findings=True)
+        return Counter(finding["code"] for finding in json.loads(raw))
+
+    before = fired()
+    saved = _snapshot(root, paths)
+    try:
+        _run(fix, cwd=root, expect_findings=True)
+        safe = fired()
+        _restore(saved)
+        _run([*fix, "--unsafe-fixes"], cwd=root, expect_findings=True)
+        unsafe = fired()
+    finally:
+        _restore(saved)
+    return [
+        (
+            code,
+            declared[code][2] if code in declared else "?",
+            count - safe.get(code, 0),
+            count - unsafe.get(code, 0),
+            count,
+        )
+        for code, count in sorted(before.items())
+    ]
+
+
+def react_fix_applies(target: Path, level: str) -> list[tuple[str, str, int, int, int]]:
+    """The same question for ESLint, whose plugins declare `fixable` far more freely."""
+    root = target / "react"
+    config = REACT_VIOLATION_CONFIG[level]
+    _, costs = react_costs(target, level)
+    declared = {row[0]: row[2] for row in costs}
+
+    def fired() -> Counter[str]:
+        command = ["npx", "eslint", "--config", config, "--format", "json", "violations"]
+        raw = _run(command, cwd=root, expect_findings=True)
+        return Counter(
+            message["ruleId"]
+            for report_ in json.loads(raw)
+            for message in report_["messages"]
+            if message["ruleId"]
+        )
+
+    before = fired()
+    saved = _snapshot(root, ("violations",))
+    try:
+        command = ["npx", "eslint", "--config", config, "--fix", "violations"]
+        _run(command, cwd=root, expect_findings=True)
+        after = fired()
+    finally:
+        _restore(saved)
+    # ESLint has no safe/unsafe axis, so the two removal columns are the same
+    # number by construction rather than by measurement.
+    rows = []
+    for name, count in sorted(before.items()):
+        removed = count - after.get(name, 0)
+        rows.append((name, declared.get(name, "?"), removed, removed, count))
+    return rows
+
+
+def report_applies(title: str, rows: list[tuple[str, str, int, int, int]]) -> int:
+    """Print the run, and return how many rules declared a fix and applied none."""
+    print(f"\n{title}: {len(rows)} rules fired on the cases")
+    claimed = [row for row in rows if row[1] not in ("none", "?")]
+    applied = [row for row in claimed if row[2] > 0]
+    unsafe_only = [row for row in claimed if row[2] == 0 and row[3] > 0]
+    empty = [row for row in claimed if row[3] == 0]
+    print(f"  declared a fix or suggestion  {len(claimed):>4}")
+    print(f"    a default run removed it    {len(applied):>4}")
+    print(f"    only with --unsafe-fixes    {len(unsafe_only):>4}")
+    for name, cost, _, _, _ in unsafe_only:
+        print(f"      {name:<44} {cost}")
+    print(f"    removed nothing             {len(empty):>4}")
+    for name, cost, _, _, count in empty:
+        print(f"      {name:<44} {cost:<11} {count} finding(s) survived")
+    surprises = [row for row in rows if row[1] == "none" and row[3] > 0]
+    for name, _, _, removed, _ in surprises:
+        print(f"  declared no fix and removed {removed}: {name}")
+    return len(empty)
+
+
 def report(title: str, rows: list[tuple[str, str, str]]) -> None:
+    if not rows:
+        print(f"\n{title}: none")
+        return
     counts = Counter(cost for _, _, cost in rows)
     total = len(rows)
     print(f"\n{title}: {total} rules")
     print(f"  a fix or suggestion   {total - counts['none']:>4}")
+    for value, count in sorted(counts.items()):
+        if value != "none":
+            print(f"    {value:<20}{count:>4}")
     print(f"  neither, hand-work    {counts['none']:>4}  ({round(100 * counts['none'] / total)}%)")
     per: defaultdict[str, list[int]] = defaultdict(lambda: [0, 0])
     for _, group, cost in rows:
@@ -321,6 +499,22 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target", type=Path, default=DEFAULT_TARGET)
     parser.add_argument("--per-rule", action="store_true", help="print every rule and its cost")
+    parser.add_argument(
+        "--level",
+        default="standard",
+        choices=sorted(PYTHON_LEVELS),
+        help="which strictness level to read",
+    )
+    parser.add_argument(
+        "--fix-applies",
+        action="store_true",
+        help="check the declared cost against a run: does --fix remove what the metadata claims?",
+    )
+    parser.add_argument(
+        "--added",
+        action="store_true",
+        help="C7 above the first level: cost of the rules this level adds, not of all of them",
+    )
     parser.add_argument(
         "--against-default",
         action="store_true",
@@ -350,6 +544,30 @@ def main() -> int:
             return 1
         return 0
 
+    if args.fix_applies:
+        empty = 0
+        for stack, measured in (
+            ("Python", python_fix_applies(args.target, args.level)),
+            ("React", react_fix_applies(args.target, args.level)),
+        ):
+            empty += report_applies(f"{stack}, at {args.level}", measured)
+        print(f"\n{empty} rules declare a fix and applied none.")
+        return 0
+
+    if args.added:
+        if args.level not in LEVEL_BELOW:
+            message = f"--added needs a level with one below it; {args.level} has none"
+            print(message, file=sys.stderr)
+            return 2
+        python_rows, react_rows = added_costs(args.target, args.level)
+        report(f"Python, added at {args.level}", python_rows)
+        report(f"React, added at {args.level}", react_rows)
+        if args.per_rule:
+            print("\nrule\tfamily\tcost")
+            for name, group, cost in python_rows + react_rows:
+                print(f"{name}\t{group}\t{cost}")
+        return 0
+
     if args.against_default:
         rows = against_default(args.target)
         print(f"enabled against a plugin default: {len(rows)}")
@@ -357,8 +575,8 @@ def main() -> int:
             print(f"  {name}\t{why}")
         return 0
 
-    ruff_version, python_rows = python_costs(args.target)
-    plugin_versions, react_rows = react_costs(args.target)
+    ruff_version, python_rows = python_costs(args.target, args.level)
+    plugin_versions, react_rows = react_costs(args.target, args.level)
 
     print(f"ruff: {ruff_version}")
     for name, version in sorted(plugin_versions.items()):

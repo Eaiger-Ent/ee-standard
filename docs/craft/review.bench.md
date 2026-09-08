@@ -952,6 +952,18 @@ The script also reads plugin versions from each package's `package.json` rather
 than from `meta.version`, because C1 found `eslint-plugin-react-hooks` 7.1.1
 reporting itself as 7.0.0.
 
+### Corrected 2026-09-08 — the metadata overstates, and the `react-hooks` row is wrong
+
+**"C7 needs no run" is why nobody checked it.** The second bench ran
+`--fix` over the violation cases and compared the result against the declarations
+above: the `react-hooks` row's *cheapest group in either stack* is the group with
+the most declared fixes and the fewest applied. The numbers in this section are
+what the tools declare and are still what S5 must present; they are a **floor on
+cheapness** rather than an estimate of it. The run, the scope of what it proves,
+and what it means for an adopter are
+[`review.strict.md`](review.strict.md) § What each rule costs — C7, and are not
+repeated here.
+
 ## The preview question — C8, answered by enumeration
 
 C8 requires the preview decision to be **an enumeration rather than a

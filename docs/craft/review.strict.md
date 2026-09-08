@@ -17,7 +17,8 @@ a second bench that redefined them would be marking its own homework against a
 fresh mark. This document cites them by number and reports what happened.
 
 Started **2026-09-07**. It is not finished, and § What has not run says what is
-missing rather than leaving a reader to infer it.
+missing rather than leaving a reader to infer it. Since 2026-09-08 one row is
+left in it: the mypy half, which nothing has run.
 
 ## The configuration extends rather than restates
 
@@ -678,6 +679,133 @@ the 173 and 172 C1 recorded.
   5,008 the additions opened* holds over the smaller set a fortiori. Its
   arithmetic stands as the record of what was searched, which was more.
 
+## What each rule costs — C7, and the metadata that answers it overstates
+
+Read **2026-09-08** the way [`review.bench.md`](review.bench.md) § What each
+rule costs reads it — from the tools' own metadata, which is why that section
+says C7 needs no run. It is read here **and then checked against a run**. The
+two disagree, and the run is the one to believe.
+
+```bash
+uv run python scripts/craft_cost.py --level strict --added        # the 27 and the 1
+uv run python scripts/craft_cost.py --level strict                # the whole level
+uv run python scripts/craft_cost.py --level strict --fix-applies  # the check
+```
+
+`--level` and `--added` are new. The additions are derived by resolving the
+strict selection against the standard one, which is how `--fires` already
+derives them, so the two modes cannot disagree about what the level added.
+
+### What the metadata says
+
+| | Rules | A fix or a suggestion | Neither — hand-work |
+| --- | --- | --- | --- |
+| Python, added at `strict` | 27 | 8 | **19 (70%)** |
+| React, added at `strict` | 1 | 1 | **0** |
+| Python, the whole level | 168 | 77 | **91 (54%)** |
+| React, the whole level | 133 | 37 | **96 (72%)** |
+| **Both, the whole level** | **301** | **114** | **187 (62%)** |
+
+**The additions are the expensive end of the level.** 70% of the 27 carry no fix
+against the level's own 54% and `standard`'s 51%, so a repository moving up does
+not buy more of the same — it buys the part the tool cannot do for it. Where
+that sits is not a surprise once it is listed:
+
+| Family | Hand-work of the additions | What a finding asks of a person |
+| --- | --- | --- |
+| `pydocstyle` | 9 of 10 | **Write English.** `D100`–`D107` want a docstring that does not exist and `D401` wants it in the imperative mood. Only `D205`'s blank line is mechanical |
+| `flake8-todos` | 6 of 7 | **Supply information.** `TD002` wants an author and `TD003` an issue link, neither of which is in the file. Only `TD006`'s `todo` → `TODO` is mechanical |
+| `Pylint` | 3 of 3 | **Restructure.** `PLC0415`, `PLR0904` and `PLR1702` are the additions' three shape rules, and nothing can decide for you that a class has too many methods |
+| `flake8-bandit` | 1 of 1 | **Decide.** `S104` is a binding address, which is a deployment question rather than a code one |
+| `flake8-type-checking`, `flake8-errmsg`, `flake8-return` | 0 of 6 | Nothing. These six are the whole of the cheap half |
+
+The first bench read `fix_availability` as two values, present or absent. It has
+**three** — `always`, `sometimes` and `none` — and `craft_cost.py` now passes
+all three through, because a fix that only sometimes applies is not a cost a
+team can plan around. Nothing published moves: `none` is `none`, and the
+command still prints `standard`'s 273 rules and 168 hand-work exactly. What the
+third value adds is the shape of the fixable half. Of ruff's 812 stable rules,
+202 are `sometimes` and 189 are `always` — near enough even. Of `strict`'s 168,
+**58 are `sometimes` against 19 `always`**, and of the 27 additions, 6 against
+2. So the selection is representative on the axis the first bench measured and
+three-to-one skewed on the one it did not.
+
+### The check: does `--fix` remove what the metadata claims?
+
+C7 was defined as needing no run, and that is exactly why nobody had ever
+checked it. `--fix-applies` lints the violation cases, applies `--fix`, lints
+again, and restores the files. A rule whose finding survives its own fix
+declared something it did not deliver **on that case** — which is the honest
+scope of the claim, since a fix can be conditional and each rule has one case.
+
+The flag is **shown able to fire** before its results are read: a file with a
+stray `;;` under `no-extra-semi` is rewritten by the same invocation, so a file
+that does not change is evidence rather than an unexercised flag.
+
+At `strict`, of the 27 additions, 8 declare a fix. **One is applied.**
+
+| | Rules | Applied by `--fix` | Only under `--unsafe-fixes` | Removed nothing |
+| --- | --- | --- | --- | --- |
+| Python additions declaring a fix | 8 | 1 | 6 | 1 |
+| React rules that fired, declaring a fix or suggestion | 17 | 1 | 0 | 16 |
+
+**Ruff's `fix_availability` is a property of the rule; applicability is a
+property of the diagnostic**, and `ruff check --fix` applies only the safe ones.
+`EM101`, `EM102`, `TC001`, `TC002` and `TC003` are all `sometimes` and all
+unsafe here; `RET504` is `always` and is unsafe too, which is the sharpest case
+— the taxonomy's strongest word and a default run that leaves the finding
+standing. Only `TD006` fixes without being asked twice. `D205` fixes neither
+way. The same pass at `standard` reports 14 declaring a fix, 4 applied, 7
+unsafe-only and 3 removing nothing, so this is the level's shape rather than the
+additions'.
+
+An `--unsafe-fixes` fix is not free. It is a fix somebody has to read, which
+puts those six between the two columns the metadata offers rather than in the
+cheap one.
+
+### The React half, where the metadata is not qualified at all
+
+**Sixteen React rules fired, declared a fix or a suggestion, and removed
+nothing.** Two of them declared only `hasSuggestions` and are honest — a
+suggestion is by definition something an editor offers and `--fix` does not
+apply. The other **fourteen declare `meta.fixable: 'code'`**, and `--fix` left
+every finding in place. `@eslint-react/dom-no-unknown-property` is the one rule
+in the stack that actually rewrote its case.
+
+Nine of the fourteen are `react-hooks` rules, which makes this a **correction to
+the first bench** rather than a new measurement about a new rule:
+
+> `react-hooks` | **1 of 12** | The cheapest group in either stack. The
+> compiler-backed rules ship fixes, which is what a rule written against a
+> compiler can do
+
+That row is wrong, and it is wrong in the direction the metadata pushes. The
+group is the *most* declared-fixable in either stack and the least
+actually-fixed: `exhaustive-deps`, `exhaustive-effect-dependencies`,
+`immutability`, `no-deriving-state-in-effects`, `purity`, `refs`,
+`set-state-in-effect`, `set-state-in-render` and `static-components` all declare
+a fix and applied none. The rule this level adds is among them, and it is the
+clearest of the nine: it prints `Inferred dependencies: [id]` in the diagnostic,
+so it computed the answer, and then did not write it.
+
+This is C1 and C2's finding a third time, from a third direction. A count could
+not see a rule that was on and inert; a `--print-config` reading could not see
+it either; and `meta.fixable` cannot see a fix that is never emitted. **Each
+time, the metadata was the optimistic side and only a run disagreed.**
+
+### What this means for the numbers above
+
+The metadata table stands as what the tools declare, and `plan.md` § S5 still
+needs it — the installer has to present a cost before anything is installed,
+and it cannot run a bench to do that. But it is a **floor on cheapness rather
+than an estimate of it**. Across both levels and both stacks, 30 rules fired
+declaring a fix and **five** removed their own finding under a default run.
+
+The honest sentence for an adopter is that at `strict` **at least** 187 of 301
+rules are hand-work, the true figure is higher, and the gap is not distributed
+evenly: it is concentrated in `react-hooks`, which is the group the first bench
+called the cheapest.
+
 ## What has not run
 
 Named so that this document cannot be read as more finished than it is.
@@ -690,13 +818,16 @@ Named so that this document cannot be read as more finished than it is.
 | C4 | **Done**, and it was recorded as not applicable until the React rule started reporting. One duplicated defect per stack |
 | C5 | **Done.** Six probes, three fired, two did not with a control each, and two rules demoted with the case that demoted them. `D103` on tests is the one verdict it did **not** take: § What has not run's last row but one |
 | `D103` on tests | **Open, and it is a selection question rather than a probe.** The case is the scaffold's four tests; the remedy the ecosystem uses is `per-file-ignores`, which the design refused. The mechanism that fits is the one `S101` already uses — select `D100`–`D107` in `src/strict.toml` rather than the root — and taking it is S4's, not this document's |
-| C7 | **Not started.** Cost per finding for the 27, from `fix_availability` |
+| C7 | **Done**, and it went further than the criterion asks. The metadata is read for the 27 and for the level, and then **checked against a run** — 30 rules across both levels declare a fix and five apply one. The declared number is a floor on cheapness, not an estimate of it |
 | C6, C8, C9 | **Not applicable, and stated rather than skipped.** C6's four numbers are `standard`'s and unchanged; C8 is answered above; C9 was S2's deferral and is closed |
 | The mypy half | **Nothing has run it.** `mypy-strict.ini` is written and `disallow_any_explicit` has not met a line of code |
 
-The last row is the one that matters most, because it is the row ADR 0051's
-precondition is really about: the strict level's one type-checker key is still
-exactly as unmeasured as C6 left it.
+The last row is now the only one open, and it is the one that matters most,
+because it is the row ADR 0051's precondition is really about: the strict
+level's one type-checker key is still exactly as unmeasured as C6 left it. C7's
+method does not reach it either — mypy publishes no fix metadata and has no
+`--fix`, so every finding it reports is hand-work by construction rather than by
+measurement.
 
 **And C2 changed what the earlier rows are worth.** C1 counted React's added
 rule and C3's first pass found nothing to report about it, both correctly, while
