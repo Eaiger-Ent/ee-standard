@@ -88,7 +88,7 @@ Then, from `temp/craft-bench/`:
 And at `strict`, where the check that every addition fired is a command rather
 than a reading:
 
-    cd python && ruff check --config strict.toml cases/strict cases/preview/control.py
+    cd python && ruff check --config src/strict.toml cases/strict cases/preview/control.py
     cd react  && npx eslint --config strict-violations.config.js violations
     uv run python scripts/craft_cost.py --fires  # C2 at strict, both stacks
 

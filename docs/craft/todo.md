@@ -576,13 +576,25 @@ precondition no longer bars any of them.
       and the installer never writes a loosening. **C5's four probes are
       clean**: `ParamSpec`, a `TypedDict` and `object` remove every shape the
       rule's reputation is built on, which is a reputation about an older Python
-- [ ] Reword `python.no-any`, or record that its instrument over-reaches it.
-      **Found by the mypy half, and it is S4's.** The property asserts *`Any`
-      does not appear in a **public** signature* and `assess.rules.md` calls
-      `ANN401` "exactly this scope"; `ANN401` fires on a private argument too,
-      and ruff's `flake8-annotations` offers no public/private axis, so no
-      configuration closes the gap. It is the case ADR 0053's `coextensive:`
-      reason exists to force somebody to state
+- [x] Reword `python.no-any`, or record that its instrument over-reaches it.
+      Done 2026-09-08, **and the wording stands**. Rewording a property to match
+      whatever its instrument happens to do would make the register a
+      description of ruff rather than a statement of what Equal Experts asks of
+      code, and the next time the tool changed the property would change with
+      it. `assess.rules.md` § Corrected by measurement is the record — a new
+      section, because a finding made *while assessing* and a finding made
+      afterwards by a stage that ran the tool are different things
+- [x] Take the `D103`-on-tests verdict the second bench handed S4. Done
+      2026-09-08: `D100`-`D107` are selected in **`src/strict.toml`**, the
+      mechanism `S101` already uses, rather than `per-file-ignores`, which the
+      register's own resolution rejected. The property is scoped, not weakened —
+      a test's name is its documentation and `python.docstring-form` stays at
+      the root, because a docstring that exists should be well formed wherever
+      it is. **159 rules now resolve under `tests` against 168 under `src`**,
+      the scaffold's four `D103`s are gone and nothing else on it moved. It also
+      moved a check that would have gone quiet: `craft_cost.py --fires` read the
+      root config, where eight of the level's own rules would have reported as
+      never having fired
 
 ## S5 — Build the chooser and the installer
 
