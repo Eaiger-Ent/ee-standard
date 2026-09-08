@@ -79,6 +79,46 @@ sources:
     title: llm-toolkit — rules/code-quality.md
     url: https://github.com/EqualExperts/llm-toolkit/blob/a46825d/rules/code-quality.md
     licence: none-stated
+  ror:
+    title: Rules of React
+    url: https://react.dev/reference/rules
+    licence: CC-BY-4.0
+  ymnnae:
+    title: You Might Not Need an Effect
+    url: https://react.dev/learn/you-might-not-need-an-effect
+    licence: CC-BY-4.0
+  hooks:
+    title: eslint-plugin-react-hooks
+    url: https://github.com/facebook/react/tree/main/packages/eslint-plugin-react-hooks
+    licence: MIT
+  tse:
+    title: typescript-eslint
+    url: https://typescript-eslint.io/users/configs
+    licence: MIT
+  a11y:
+    title: eslint-plugin-jsx-a11y
+    url: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y
+    licence: MIT
+  wcag:
+    title: WCAG 2.2
+    url: https://www.w3.org/TR/WCAG22/
+    licence: W3C-Document
+  tl:
+    title: Testing Library guiding principles
+    url: https://testing-library.com/docs/guiding-principles/
+    licence: MIT
+  tl+:
+    title: eslint-plugin-testing-library
+    url: https://github.com/testing-library/eslint-plugin-testing-library
+    licence: MIT
+  rp:
+    title: eslint-plugin-react
+    url: https://github.com/jsx-eslint/eslint-plugin-react
+    licence: MIT
+  xr:
+    title: "@eslint-react/eslint-plugin"
+    url: https://eslint-react.xyz/docs/rules/overview
+    licence: MIT
   git:
     title: llm-toolkit — rules/git-rules.md
     url: https://github.com/EqualExperts/llm-toolkit/blob/a46825d/rules/git-rules.md
@@ -115,3 +155,21 @@ profiles:
         what: >
           First publication. `standard` plus the eleven properties
           `docs/craft/review.strict.md` measured.
+  react/standard:
+    version: 1
+    changes:
+      - version: 1
+        moved: neither
+        what: >
+          First publication. The selection S3 benched, migrated from
+          `docs/craft/assess.rules.md` without change.
+  react/strict:
+    version: 1
+    changes:
+      - version: 1
+        moved: neither
+        what: >
+          First publication. `standard` plus `react.effect-dependencies-exhaustive`,
+          which is the whole of the level on this stack — an asymmetry
+          `design.profiles.md` § What `strict` adds records rather than explains
+          away.

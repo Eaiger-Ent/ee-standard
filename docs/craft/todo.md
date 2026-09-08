@@ -470,7 +470,18 @@ owes is the list of what has not been written — not restated here.
       `tests/test_craft_register.py` is the check ADR 0053 said `register-check`
       must not be, and **both its sharpest assertions are shown able to fire** —
       a range in a `codes:` list and a lost row each fail it
-- [ ] Migrate the **React** rows into `craft/react.yaml` — 68
+- [x] Migrate the **React** rows into `craft/react.yaml` — 68. Done 2026-09-08:
+      **48 at `standard`, one at `strict`** and 19 with no instrument. The
+      schema gained the distinction the React rows forced: three ways of having
+      no instrument rather than one, because *nothing can assert this*,
+      *this holds because of a choice made elsewhere* and *somebody else's
+      surface owns this* are different claims. `react.no-legacy-proptypes` and
+      `react.jsx-runtime-assumed` are the second — satisfied by taking
+      `@eslint-react`'s `recommended` as the base — and
+      `react.strict-type-checking` is the third, because TYP-001 already gates
+      `tsc` in strict mode. `alternatives:` earns its keep here: every
+      two-plugin overlap C1 resolved by hand is recorded with the reason that
+      stops somebody re-enabling the losing rule
 - [ ] Migrate the **stack-neutral** rows into `craft/any.yaml` — 42, including
       the five platform rows, which carry `out_of_scope: profile` and a reason
       in place of an instrument
