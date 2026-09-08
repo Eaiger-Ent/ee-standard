@@ -433,19 +433,39 @@ owes is the list of what has not been written — not restated here.
       which is true of every ruff selector and not only of the mypy key that
       made it visible. Craft may write a gated section, may never write a key
       that control asserts, and records what it wrote
-- [ ] Get every ADR this stage names to Accepted — the five above are, and the
-      box stays open because the slices still owed may name one they did not
-      anticipate
+- [x] Get every ADR this stage names to Accepted — the five above are, and the
+      box stayed open because the slices still owed might name one they did not
+      anticipate. **None did.** Closed 2026-09-08: the last design slice took
+      four decisions and the two verdicts the second bench handed S4, all within
+      the frame ADRs 0051 to 0055 already set. `plan.md`'s exit criterion for S4
+      is met
 - [x] Settle whether `craft_contract` gates anything — **it does**, and it is
       not the profile version. The installer is versioned and pinned by a
       consumer, so a repository can hold an old installer reading a new
       register; `craft_contract` moves when the **schema** changes and a
       profile's version when the **rules** do, and conflating them would make
       every rule change look like a format change
-- [ ] Write `design.profiles.md` — five sections written and **no design
-      question outstanding**; what the document still owes is work, one
-      decision and one source to register, listed in its own § What this
-      document still owes
+- [x] Write `design.profiles.md` — **six sections, and no design question
+      outstanding.** The last was written 2026-09-08, § Where the register lives,
+      and what checks it, and it closed four of the six rows in the document's
+      own § What this document still owes: the register is **`craft/` with one
+      file per scope** — `meta.yaml`, `python.yaml`, `react.yaml`, `any.yaml` —
+      because a property's identity already carries its scope, so the file it
+      belongs in is derivable and a row in the wrong file is a schema error
+      rather than a matter of taste; a profile's `changes` entries go in
+      **`meta.yaml`**, because a profile spans the per-scope files and per-file
+      entries would split one profile's history across two; validation is
+      **`tests/test_craft_register.py`** rather than a second checker, because
+      an adopter never reads `craft/` and the thing they do run is the
+      installer; and the five platform properties are **recorded out of scope
+      and nothing is minted**, with ADR 0051's route left open. Two rows remain
+      and both are work: the migration, and one source to register
+- [ ] Migrate `assess.rules.md`'s 182 rows into `craft/`, with the superset test
+      that stops it losing one. The schema is designed and the file layout is
+      settled; this is the work of applying them
+- [ ] Register a Python-ecosystem instrument for the commit group, so it is not
+      Node-only. Survey work under the schema slice's `sources:` — `commitlint`
+      is the registered instrument and it needs Node
 
 ## The second bench — `strict`
 
