@@ -119,6 +119,18 @@ sources:
     title: "@eslint-react/eslint-plugin"
     url: https://eslint-react.xyz/docs/rules/overview
     licence: MIT
+  commitizen:
+    title: commitizen — `cz check`
+    url: https://commitizen-tools.github.io/commitizen/commands/check/
+    licence: MIT
+    registered: 2026-09-08
+    why: >
+      The commit group's Python-ecosystem instrument, which
+      `design.profiles.md` § The commit group has no artefact, and its gate is a
+      cost recorded as owed. 4.18.0, released 2026-08-19; repository pushed
+      2026-09-04. `gitlint` was read first and **rejected on maintenance** —
+      0.19.1 released 2023-03-10 and the repository last pushed 2024-07-11 —
+      which is the test that rejected Airbnb at S1, applied again.
   api:
     title: llm-toolkit — rules/api-design.md
     url: https://github.com/EqualExperts/llm-toolkit/blob/a46825d/rules/api-design.md
