@@ -40,6 +40,15 @@ plugins ship, and the count per defect is the answer. It found the pair that a
 `disable-conflict` config cannot reach, because that pair is one property under
 *two different* names rather than one name in two plugins.
 
+**The mypy half.** The second bench's last row. `python/cases/mypy/` is
+`margin.py` — every place an explicit `Any` can be written, which measures what
+`disallow_any_explicit` buys over `strict` alone — `probes.py`, which is C5 for
+the same key, and `control.py`, which is a defect only `strict` reports so that
+a clean run cannot be clean because the config file has a typo in it. **Run
+them with `--config-file` and nothing else**: mypy walks up from the current
+directory and finds this repository's own `[tool.mypy]` from inside the
+gitignored bench, so a run without one measures the wrong settings.
+
 **C8's control.** C8 asks what ruff's `preview = true` costs. The answer turned
 out to depend on how the selection is spelled, so the case carries its own
 `ruff.toml` — the profile plus preview and the two rules preview reaches — and a
@@ -82,6 +91,18 @@ than a reading:
     cd python && ruff check --config strict.toml cases/strict cases/preview/control.py
     cd react  && npx eslint --config strict-violations.config.js violations
     uv run python scripts/craft_cost.py --fires  # C2 at strict, both stacks
+
+And the mypy half, which is the same criteria over the one key `strict` adds.
+Every command names its config, and `MYPYPATH=src` is what lets the witnesses
+resolve the scaffold's package:
+
+    cd python && mypy --config-file mypy-strict.ini src tests    # C2, clean
+    cd python && MYPYPATH=src mypy --config-file mypy-strict.ini cases/src/wit cases/tests
+    cd python && mypy --config-file mypy-strict.ini cases/mypy/margin.py   # C2, fires
+    cd python && mypy --config-file mypy-strict.ini cases/mypy/probes.py   # C5, clean
+    cd python && mypy --config-file mypy-strict.ini cases/mypy/control.py  # strict is live
+    printf '[mypy]\\nstrict = True\\n' > /tmp/strict-only.ini            # the margin:
+    cd python && mypy --config-file /tmp/strict-only.ini cases/mypy/margin.py  # 0 against 10
 """
 
 from __future__ import annotations
@@ -1045,6 +1066,140 @@ def annotated(entry: Entry, *, when: datetime, path: Path, item: pytest.Item) ->
     case written for something else.
     \"\"\"
     return f"{entry} {when} {path} {item}"
+""",
+    "python/cases/mypy/margin.py": """\
+\"\"\"Every place an explicit `Any` can be written, one site per definition.
+
+C2's violation direction for `disallow_any_explicit`, and the measurement of
+its **margin**: run this file with `strict = True` alone and with the key as
+well, and the difference is what Craft's one type-checker contribution buys.
+Four of the sites are also `ANN401`, which is `standard`'s instrument for the
+narrower property, and the other five are not — that difference is C4's.
+\"\"\"
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, cast
+
+
+def public_argument(value: Any) -> str:
+    \"\"\"An `Any` in a public argument annotation. ANN401 as well.\"\"\"
+    return str(value)
+
+
+def _private_argument(value: Any) -> str:
+    \"\"\"The same on a private function. ANN401 as well, which is a finding.\"\"\"
+    return str(value)
+
+
+def public_return(value: str) -> Any:
+    \"\"\"An `Any` in a return annotation. ANN401 as well.\"\"\"
+    return value
+
+
+def variable_annotation() -> str:
+    \"\"\"An `Any` in a local variable annotation. Not a signature, so not ANN401.\"\"\"
+    holder: Any = "x"
+    return str(holder)
+
+
+type Alias = dict[str, Any]
+\"\"\"An `Any` inside a PEP 695 alias, which is what a 3.14 repository writes.\"\"\"
+
+
+def generic_parameter(rows: list[Any]) -> int:
+    \"\"\"An `Any` inside a generic rather than as the whole annotation.\"\"\"
+    return len(rows)
+
+
+def through_cast(value: str) -> str:
+    \"\"\"An `Any` in a `cast`, which is the documented escape hatch.\"\"\"
+    return str(cast(Any, value))
+
+
+def kwargs_passthrough(**kwargs: Any) -> int:
+    \"\"\"An `Any` on `**kwargs`. ANN401 as well.\"\"\"
+    return len(kwargs)
+
+
+@dataclass(frozen=True)
+class Holder:
+    \"\"\"An `Any` on a dataclass field, which is the one that reports twice.\"\"\"
+
+    payload: Any
+""",
+    "python/cases/mypy/probes.py": """\
+\"\"\"C5 for `disallow_any_explicit`: correct code, and the rule's reputation.
+
+The complaint against banning explicit `Any` is that some shapes cannot be
+written without it. Each probe is one of those shapes, written the way the
+current type system says to write it. All four are clean, which is the finding:
+the reputation is about a version of Python that no longer needs the escape.
+\"\"\"
+
+from __future__ import annotations
+
+import functools
+import json
+from collections.abc import Callable
+from pathlib import Path
+from typing import ParamSpec, TypedDict, TypeVar
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def timed(func: Callable[P, R]) -> Callable[P, R]:
+    \"\"\"P1: a pass-through decorator. PEP 612's `ParamSpec` removed the `Any`.\"\"\"
+
+    @functools.wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+class Row(TypedDict):
+    \"\"\"P2's shape for decoded JSON, which is the documented remedy.\"\"\"
+
+    description: str
+    amount: str
+
+
+def read_rows(path: Path) -> list[Row]:
+    \"\"\"P2: decoded JSON given a shape rather than left as `Any`.\"\"\"
+    decoded: list[Row] = json.loads(path.read_text(encoding="utf-8"))
+    return decoded
+
+
+def describe(value: object) -> str:
+    \"\"\"P3: `object` where a signature genuinely accepts anything.\"\"\"
+    return str(value)
+
+
+def forward(**kwargs: object) -> int:
+    \"\"\"P4: `**kwargs` as `object` rather than `Any`.\"\"\"
+    return len(kwargs)
+""",
+    "python/cases/mypy/control.py": """\
+\"\"\"A control for the `strict = True` half of the bench config.
+
+`disallow_any_explicit` is Craft's whole contribution, but `mypy-strict.ini`
+also reproduces TYP-001's `strict`, and a typo there would make every clean run
+above clean for the wrong reason. This is a defect **only** `strict` reports:
+mypy with no configuration says nothing about it.
+
+**Run it from `temp/craft-bench/python/`.** mypy discovers a configuration from
+the current directory, so a run started at the repository root reads this
+repository's `[tool.mypy]` and measures the wrong settings entirely. That is how
+the flag comparison below was first got wrong.
+\"\"\"
+
+
+def untyped(value):  # noqa: ANN001, ANN201 - the missing annotation is the defect
+    \"\"\"A function with no annotations at all.\"\"\"
+    return value
 """,
     "react/violations/Violations.tsx": """\
 /* Every defect in this file is deliberate. */
