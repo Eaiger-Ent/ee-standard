@@ -196,7 +196,7 @@ tool's organising idea and not the code's.
 | Identity | Asserts | Sources | Agree | B | Instrument | Default |
 | --- | --- | --- | --- | --- | --- | --- |
 | `python.annotate-public-api` | Public functions annotate parameters and returns | `google`, `typescript 003` (by analogy) | agree | 1 | ruff `ANN001`, `ANN201`, `ANN2xx`; mypy `disallow_untyped_defs` | on |
-| `python.no-any` | `Any` does not appear in a public signature | `typescript 002` (by analogy) | agree | 1 | ruff `ANN401`, which is exactly this scope. mypy `disallow_any_explicit` asserts the wider property and is kept as a **strict-profile variant** for S3 to measure, not discarded | on |
+| `python.no-any` | `Any` does not appear in a public signature | `typescript 002` (by analogy) | agree | 1 | ruff `ANN401` — **not exactly this scope**, corrected 2026-09-08 below. mypy `disallow_any_explicit` asserts the wider property and is bound to `python.no-any-anywhere` at `strict`, which the second bench measured | on |
 | `python.typing-only-imports` | Imports needed only for types are in a type-checking block | `ruff` | — | 1 | ruff `TC001`–`TC003` | off |
 
 ### Testing
@@ -688,7 +688,7 @@ rather than quietly adjusted:
 | `python.function-parameter-count` | contested; 3 against 5 | `PLR0917` at 3, `PLR0913` at 5. The sources were counting different things |
 | `python.return-count` | contested | **`incompatible`**, off permanently. `PLR0911` and `clean-code 102`'s early returns cannot both hold — the only such pair in the register |
 | `python.line-length` | contested; four sources, four numbers | A profile parameter defaulting to 88, constrained to equal `ruff format`'s. The agreement is the property; the number is not |
-| `python.no-any` | contested; off | Narrowed to public signatures, where `ANN401` is exact. On. `disallow_any_explicit` kept as a strict-profile variant for S3 |
+| `python.no-any` | contested; off | Narrowed to public signatures. On. ~~where `ANN401` is exact~~ — it is not, and § Corrected by measurement says so. `disallow_any_explicit` became `python.no-any-anywhere` at `strict` |
 | `python.no-assert-for-enforcement` | contested; on, excluding `tests/` | Scoped to the source path. **No exemption exists**, so the profile no longer ships a weakening |
 | `react.no-class-components` | contested; off | On, by ADR 0052 rather than by the recommendation |
 | `react.no-legacy-proptypes` | contested; off | On. `@eslint-react`'s `recommended` is the JSX-correctness base and has no `prop-types` |
@@ -712,6 +712,39 @@ claims wearing one identity.
 `python.no-any`'s strict variant and `react.explicit-return-types`' scope are
 resolved as *classifications* and unmeasured as *settings*. A resolved row is not
 a measured one.
+
+## Corrected by measurement
+
+A row here is a claim about what an instrument does, and a claim survives only
+until somebody runs it. This section is what running one found. It is separate
+from § Findings because those were found while assessing; these were found
+afterwards, by a stage that had a reason to run the tool.
+
+### `ANN401` is not exactly `python.no-any`'s scope — 2026-09-08
+
+The property asserts *`Any` does not appear in a **public** signature*, and the
+Instrument column said `ANN401` "is exactly this scope". The second bench's mypy
+half ran both instruments over a file writing an explicit `Any` in every place
+one can be written, and **`ANN401` fires on a private argument too**:
+
+```python
+def _private_argument(value: Any) -> str:   # ANN401, on a name starting with _
+    return str(value)
+```
+
+Ruff's `flake8-annotations` settings offer `suppress-dummy-args`,
+`allow-star-arg-any`, `ignore-fully-untyped` and `mypy-init-return` — **no
+public/private axis** — so no configuration closes the gap. The instrument
+over-reaches its property by construction.
+
+**The property keeps its wording and the divergence is recorded**, which is the
+way round that matters. Rewording a property to match whatever its instrument
+happens to do would make the register a description of ruff rather than a
+statement of what Equal Experts asks of code, and the next time the tool changed
+the property would change with it. The Craft register carries the reason in the
+`coextensive:` field ADR 0053 requires for exactly this — see
+[`review.strict.md`](review.strict.md) § The register says `ANN401` is exactly
+the public scope, and it is not.
 
 ## Exit criterion
 

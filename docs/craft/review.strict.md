@@ -19,8 +19,9 @@ fresh mark. This document cites them by number and reports what happened.
 Started **2026-09-07** and finished **2026-09-08**. § What has not run keeps
 its name and its job: every criterion is answered there, including the ones that
 were not applicable, so the document cannot be read as more finished — or less —
-than it is. Two verdicts are open in it and both are S4's rather than a
-measurement's.
+than it is. Nothing in it is open. The two rows that were not a bench's to
+settle were handed to S4 and taken the same day; § The verdicts the bench handed
+S4 records both, and one of them changed what a criterion's own command reads.
 
 ## The configuration extends rather than restates
 
@@ -60,9 +61,13 @@ ruff check --config src/strict.toml --show-settings src/ledger/entries.py
 | No selector matches nothing | None. Ruff rejects an unknown selector outright |
 | The level is a superset | **Nothing is removed.** Diffing the two enabled sets: 32 added, 0 dropped |
 
-**These are the numbers of the run C1 records, and C5 has since changed them.**
-Two demotions remove five selectors, so the level now resolves to 168 rules
-under `src` and 167 under `tests`, with 27 added. § What the demotions changed.
+**These are the numbers of the run C1 records, and two later sections have
+changed them.** C5's two demotions remove five selectors — 168 rules under `src`
+and 167 under `tests`, with 27 added; § What the demotions changed. S4's `D103`
+verdict then moved eight of those into `src/strict.toml`, taking `tests` to
+**159** while `src` stays at 168; § The verdicts the bench handed S4. The
+`tests` figure has moved twice and the `src` figure once, which is what a count
+in a document does when the thing counted is still being decided.
 
 **32 is the design's own number**, and it is the narrow reading of
 `python.docstring-form` rather than the wide one — `D205` and `D401` as exact
@@ -672,7 +677,10 @@ not write.
 
 Five selectors leave the level, so `strict` is **27 additions rather than 32**,
 and it resolves to **168 rules** under `src` and **167** under `tests` against
-the 173 and 172 C1 recorded.
+the 173 and 172 C1 recorded. The `tests` figure moves once more when S4 takes
+the `D103` verdict — to **159** — and § The verdicts the bench handed S4 is
+that change; the additions stay 27 either way, because scoping a rule to a path
+does not remove it from the level.
 
 - **C1 and C2** are restated by that. `--fires` now reports 27 of 27 and 1 of 1,
   and the case files for the demoted rules are gone with them.
@@ -955,6 +963,70 @@ C7's method is the tools' own metadata. mypy publishes none, and has no `--fix`
 at all, so every finding this key reports is hand-work — by construction rather
 than by measurement, which is what § What each rule costs already says of it.
 
+## The verdicts the bench handed S4
+
+Both taken **2026-09-08**, by S4 rather than by this document, and recorded here
+because this is where the case for each was measured.
+
+### `D103` on tests — `D100`–`D107` move to `src/strict.toml`
+
+C2's clean run reported `D103` four times on `tests/test_entries.py`, and C5
+declined it as *a selection question rather than a probe*. The selection is now
+made: `python.docstring-presence` is selected in `src/strict.toml`, not at the
+root.
+
+**The mechanism is `S101`'s, deliberately.** `assess.rules.md`'s resolution for
+`python.no-assert-for-enforcement` rejected `per-file-ignores` — the exemption —
+and expressed the scope the only way ruff allows, as a nested configuration the
+source tree resolves against and the test tree does not. The same shape carries
+the same kind of statement here, so the profile has one way of saying *this
+property is about the package's own source* rather than two.
+
+**Why the property is scoped and not weakened.** A test function's name is its
+documentation; requiring a docstring as well is the kind of rule a team turns
+off, and `plan.md` says this workstream will not ship one. The property is
+unchanged — it asserts what it always did, about the code it was always about.
+
+**`python.docstring-form` stays at the root**, and the asymmetry is the point:
+`D205` and `D401` say that a docstring which exists is well formed, which is as
+true of a test's docstring as of anything else. The level requires none from a
+test and reads the ones it is given. The bench's own test witnesses have
+docstrings and pass either way.
+
+What moved, measured rather than predicted:
+
+| | Before | After |
+| --- | --- | --- |
+| Rules resolving under `src` | 168 | **168** |
+| Rules resolving under `tests` | 167 | **159** |
+| `D103` on the scaffold's tests | 4 | **0** |
+| Everything else on the scaffold | `TC003` ×2 | **`TC003` ×2**, unchanged |
+
+**And it moved a check that could have gone quiet.** `craft_cost.py --fires`
+ran `ruff check --config strict.toml` over the strict cases. With eight rules
+now selected a level down, that command would have reported them as never having
+fired — a criterion failing because the criterion was reading the wrong file.
+The mode reads `src/strict.toml` instead, which resolves the whole selection,
+and it still reports 27 of 27 and 1 of 1.
+
+### `python.no-any` — the wording stands, the over-reach is recorded
+
+The mypy half found `ANN401` firing on a private argument where the property
+says *public*, with no setting in `flake8-annotations` to scope it. Two answers
+were available and the register takes the second.
+
+**Rewording the property to match the instrument was rejected.** It would make
+the register a description of what ruff currently does rather than a statement
+of what Equal Experts asks of code, and the next time the tool changed the
+property would change with it — which is the direction of dependency this whole
+workstream exists to keep pointing the other way. The property keeps its words;
+`assess.rules.md` § Corrected by measurement carries the correction, and the
+Craft register carries the reason in the `coextensive:` field ADR 0053 requires.
+
+The cost of that answer is honest and small: at `strict` a private argument
+annotated `Any` is reported, and the register says so rather than pretending the
+instrument is exact.
+
 ## What has not run
 
 Named so that this document cannot be read as more finished than it is. Every
@@ -967,11 +1039,11 @@ row is now answered; two of them answer *this is somebody else's decision*.
 | C3 | **Done**, all three passes. 5,008 new pairs to 125 candidates, six witnesses clean at both levels, no contradicting pair — and the marker-comment group's missing witness, which is a shadowing rather than a fight |
 | C4 | **Done**, and it was recorded as not applicable until the React rule started reporting. One duplicated defect per stack |
 | C5 | **Done.** Six probes, three fired, two did not with a control each, and two rules demoted with the case that demoted them. `D103` on tests is the one verdict it did **not** take: § What has not run's last row but one |
-| `D103` on tests | **Open, and it is a selection question rather than a probe.** The case is the scaffold's four tests; the remedy the ecosystem uses is `per-file-ignores`, which the design refused. The mechanism that fits is the one `S101` already uses — select `D100`–`D107` in `src/strict.toml` rather than the root — and taking it is S4's, not this document's |
+| `D103` on tests | **Taken by S4, 2026-09-08.** `D100`–`D107` are selected in `src/strict.toml`, the mechanism `S101` already uses. 159 rules resolve under `tests` against 168 under `src`, and `--fires` moved with it — see § The verdicts the bench handed S4 |
 | C7 | **Done**, and it went further than the criterion asks. The metadata is read for the 27 and for the level, and then **checked against a run** — 30 rules across both levels declare a fix and five apply one. The declared number is a floor on cheapness, not an estimate of it |
 | C6, C8, C9 | **Not applicable, and stated rather than skipped.** C6's four numbers are `standard`'s and unchanged; C8 is answered above; C9 was S2's deferral and is closed |
 | The mypy half | **Done**, at mypy 2.3.1, and it is the row ADR 0051's precondition is really about. The margin is **none against ten**: `strict` alone reports nothing where the key reports ten findings over nine sites, so Craft's one key is not redundant with TYP-001. C4 fires twice more — a dataclass field reports at the field and at the class, and `ANN401`'s findings are a strict subset of the key's, which the profile model guarantees rather than overlooks. C5's four probes are clean |
-| `ANN401`'s scope | **Open, and it is a register correction rather than a measurement.** `python.no-any` asserts *a **public** signature* and `assess.rules.md` calls `ANN401` "exactly this scope"; the run says it fires on a private argument too, and ruff offers no public/private axis. Reword the property or record the over-reach — S4's, and the case ADR 0053's `coextensive:` reason exists for |
+| `ANN401`'s scope | **Taken by S4, 2026-09-08: the wording stands and the over-reach is recorded.** Rewording a property to match its instrument would make the register a description of ruff. `assess.rules.md` § Corrected by measurement is the record |
 
 **ADR 0051's third precondition is met.** Every rule `strict` adds has been
 measured: 27 ruff codes and one React rule against C1 to C5 and C7, and the one
@@ -979,11 +1051,11 @@ mypy key against the same criteria. That does not make any of them a control —
 the precondition is one of three — but it is the one that was blocking, and no
 strict-only property is barred by it any longer.
 
-The two open rows are both selections rather than measurements, and both are
-S4's: whether `D100`–`D107` move into `src/strict.toml` the way `S101` already
-has, and whether `python.no-any` is reworded to what `ANN401` actually does.
-Neither is a question a bench can answer, which is why each stayed open rather
-than being taken quietly.
+The two rows that were selections rather than measurements were taken by S4 on
+2026-09-08 and are recorded in § The verdicts the bench handed S4. Neither was a
+question a bench could answer, which is why each stayed open rather than being
+taken quietly — and one of them moved a criterion's own command, which is the
+part that would not have been noticed by reading.
 
 **And C2 changed what the earlier rows are worth.** C1 counted React's added
 rule and C3's first pass found nothing to report about it, both correctly, while

@@ -537,8 +537,14 @@ extend-select = [
   "RET504",                                         # python.no-redundant-assign-before-return
   "TC001", "TC002", "TC003",                        # python.typing-only-imports
   "S104",                                           # python.no-bind-all-interfaces
-  "D100", "D101", "D102", "D103",                   # python.docstring-presence
-  "D104", "D105", "D106", "D107",                   # (the same property, D1xx entire)
+
+  # `python.docstring-presence` is **not** here. `D100`-`D107` are selected in
+  # `src/strict.toml` instead, because the property is about a package's own
+  # API and a test function's name is its documentation. The mechanism is the
+  # one `S101` already uses at `standard` — a nested configuration the source
+  # tree resolves against and the test tree does not — rather than
+  # `per-file-ignores`, which is the exemption `assess.rules.md`'s resolution
+  # rejected. `docs/craft/review.strict.md` § C2 is the case that asked.
 
   # python.docstring-form, and **exact codes rather than `D2xx`, `D4xx`**.
   # S4's schema slice made this the rule rather than a preference: the wide
@@ -571,15 +577,35 @@ runtime-evaluated-decorators = ["dataclasses.dataclass"]
 max-public-methods = 20
 """,
     "python/src/strict.toml": """\
-# The `strict` counterpart of `src/ruff.toml`: the same S101 scoping, over the
-# strict selection instead of the standard one. `python.no-assert-for-enforcement`
-# is a `standard` property and does not change at this level — what changes is
-# the file it has to extend.
+# The `strict` counterpart of `src/ruff.toml`, and it carries **two** properties
+# rather than one.
+#
+# `python.no-assert-for-enforcement` (`S101`) is a `standard` property and does
+# not change at this level — what changes is the file it has to extend.
+#
+# `python.docstring-presence` (`D100`-`D107`) is `strict`'s, and it is scoped
+# here rather than at the root. The property is about a package's own API; a
+# test function's name is its documentation, and requiring a docstring as well
+# is the kind of rule a team turns off, which `docs/craft/plan.md` says this
+# workstream will not ship. The mechanism is `S101`'s, deliberately: a nested
+# configuration the source tree resolves against and the test tree does not,
+# rather than `per-file-ignores`, which is the exemption the register's own
+# resolution rejected. `docs/craft/review.strict.md` § C2 is the run that asked
+# for this and § The verdicts the bench handed S4 is where it was taken.
+#
+# **`python.docstring-form` stays at the root**, and the asymmetry is the
+# point: `D205` and `D401` say a docstring that exists is well formed, which is
+# true of a test's docstring too. This level requires none, and reads the ones
+# it is given.
 
 extend = "../strict.toml"
 
 [lint]
-extend-select = ["S101"]
+extend-select = [
+  "S101",                                           # python.no-assert-for-enforcement
+  "D100", "D101", "D102", "D103",                   # python.docstring-presence
+  "D104", "D105", "D106", "D107",                   # (the same property, D1xx entire)
+]
 """,
     "python/mypy-strict.ini": """\
 ; Craft `python/strict`'s one type-checker key, and the whole of Craft's

@@ -207,7 +207,11 @@ STRICT_CASES = ("cases/strict", "cases/preview/control.py")
 #: are what `--fix-applies` runs `--fix` over: a rule with no case cannot be
 #: measured, which is the mode's stated limit rather than a silent gap.
 PYTHON_CASES = {"standard": ("cases/violations",), "strict": STRICT_CASES}
-PYTHON_CONFIG = {"standard": "ruff.toml", "strict": "strict.toml"}
+# `strict` reads the **src-scoped** file, because that is the one that resolves
+# the whole selection: `python.docstring-presence` moved into `src/strict.toml`
+# when S4 took the `D103`-on-tests verdict, so a run against the root config
+# would report eight of the level's own rules as never having fired.
+PYTHON_CONFIG = {"standard": "ruff.toml", "strict": "src/strict.toml"}
 REACT_VIOLATION_CONFIG = {
     "standard": "violations.config.js",
     "strict": "strict-violations.config.js",
@@ -305,7 +309,7 @@ def python_fires(target: Path) -> tuple[list[str], list[str]]:
         "ruff",
         "check",
         "--config",
-        "strict.toml",
+        PYTHON_CONFIG["strict"],
         "--output-format",
         "json",
         *STRICT_CASES,
