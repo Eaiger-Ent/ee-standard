@@ -119,6 +119,10 @@ sources:
     title: "@eslint-react/eslint-plugin"
     url: https://eslint-react.xyz/docs/rules/overview
     licence: MIT
+  api:
+    title: llm-toolkit — rules/api-design.md
+    url: https://github.com/EqualExperts/llm-toolkit/blob/a46825d/rules/api-design.md
+    licence: none-stated
   git:
     title: llm-toolkit — rules/git-rules.md
     url: https://github.com/EqualExperts/llm-toolkit/blob/a46825d/rules/git-rules.md
@@ -127,6 +131,32 @@ sources:
     title: llm-toolkit — rules/platform/security.md
     url: https://github.com/EqualExperts/llm-toolkit/blob/a46825d/rules/platform/security.md
     licence: none-stated
+
+# ADR 0052's evidence gates. A group **names** a predicate rather than
+# describing one: `controls.yaml` already carries a named set of *does this
+# artefact exist* tests, read by `_applicable_gates`, and IAC-001's
+# `applies_to: [terraform]` is the infrastructure group's gate already written
+# and already read.
+#
+# Predicates resolve from `controls.yaml` first and from here second, and **a
+# name defined in both is a schema error** — two definitions of *is there
+# Terraform here* would eventually disagree about a repository and nobody would
+# know which one the profile used. `tests/test_craft_register.py` is what makes
+# that illegal rather than discouraged.
+#
+# Only one predicate belongs here, because no control gates on it and adding one
+# to the control register purely for Craft's benefit is the direction ADR 0053
+# sent Craft data away from.
+predicates:
+  openapi-document:
+    asks: any file with a top-level `openapi` key exists
+    why: >
+      Keyed on the document's own declaration, not on its name. `openapi.yaml`,
+      `api/spec.yaml` and `docs/openapi/v1.json` are all real conventions, and a
+      glob over them would both miss and over-match — `spectral` finds nothing
+      in a file that does not declare itself and plenty in one that does,
+      whatever it is called. ADR 0052's requirement applied literally: the gate
+      reads the same fact the rule needs in order to run at all.
 
 # A profile is `<stack>/<level>` and nothing more (ADR 0052), and its version is
 # a **counter rather than semver** — `design.profiles.md` § The version is a

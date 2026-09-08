@@ -33,6 +33,7 @@ from conftest import REPO_ROOT
 
 CRAFT = REPO_ROOT / "craft"
 ASSESS = REPO_ROOT / "docs/craft/assess.rules.md"
+CONTROLS = REPO_ROOT / "controls.yaml"
 
 #: A property identity: a scope, a dot, and a lowercase-hyphenated name.
 #: `docs/craft/plan.md`'s naming standard, which mints property-first and never
@@ -193,6 +194,39 @@ def test_every_profile_names_a_stack_and_a_level_that_exist() -> None:
         assert profile["version"] == max(entry["version"] for entry in profile["changes"])
         for entry in profile["changes"]:
             assert entry["moved"] in {"narrowing", "loosening", "neither"}, name
+
+
+def test_a_gate_names_a_predicate_defined_in_exactly_one_register() -> None:
+    """ADR 0052's evidence gate, and the duplication the design made illegal.
+
+    Two definitions of *is there Terraform here* would eventually disagree about
+    a repository and nobody would know which one the profile used.
+    """
+    control_predicates = set(yaml.safe_load(CONTROLS.read_text(encoding="utf-8"))["predicates"])
+    craft_predicates = set(_meta().get("predicates", {}))
+    both = control_predicates & craft_predicates
+    assert not both, f"predicates defined in both registers: {sorted(both)}"
+    known = control_predicates | craft_predicates
+    for identity, prop in _properties().items():
+        if "gated_on" in prop:
+            assert prop["gated_on"] in known, f"{identity} gates on an undefined predicate"
+
+
+def test_a_candidate_names_a_tool_and_why_it_is_not_bound() -> None:
+    """A property with a candidate instrument is unbound *for a stated reason*.
+
+    ADR 0051's third precondition is that S3 has measured it. Nothing
+    stack-neutral has been measured, so `candidate:` is how the register says
+    what would assert a property without claiming that anything does.
+    """
+    for identity, prop in _properties().items():
+        candidate = prop.get("candidate")
+        if candidate is None:
+            continue
+        assert "instrument" not in prop, f"{identity} has both a candidate and an instrument"
+        assert prop.get("unenforced"), f"{identity} has a candidate and no reason it is unbound"
+        assert candidate.get("tool"), identity
+        assert candidate.get("why_not"), f"{identity}'s candidate does not say why not"
 
 
 def test_every_row_in_assess_rules_has_a_property_here() -> None:

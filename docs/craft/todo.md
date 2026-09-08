@@ -482,9 +482,19 @@ owes is the list of what has not been written — not restated here.
       `tsc` in strict mode. `alternatives:` earns its keep here: every
       two-plugin overlap C1 resolved by hand is recorded with the reason that
       stops somebody re-enabling the losing rule
-- [ ] Migrate the **stack-neutral** rows into `craft/any.yaml` — 42, including
-      the five platform rows, which carry `out_of_scope: profile` and a reason
-      in place of an instrument
+- [x] Migrate the **stack-neutral** rows into `craft/any.yaml` — 42. Done
+      2026-09-08, and **nothing in it is bound to a level**, which is the honest
+      state rather than an omission: S3 benched Python and React, no
+      stack-neutral instrument has ever been run, and ADR 0051's third
+      precondition is unmet for every candidate. The schema gained `candidate:`
+      for exactly that — the instrument that *would* assert a property and why
+      it is not bound — so an unmeasured row says so instead of being inferred
+      from a silence. Eighteen rows carry one: eleven `spectral`, four
+      infrastructure and three `commitlint`. Nine are `out_of_scope:`, four
+      owned by a control and five by `gate-repo`'s platform surface. The
+      `openapi-document` predicate is defined, keyed on the document's own
+      top-level `openapi` key rather than on a filename, and **the check that a
+      predicate is not defined in both registers is shown able to fire**
 - [ ] Register a Python-ecosystem instrument for the commit group, so it is not
       Node-only. Survey work under the schema slice's `sources:` — `commitlint`
       is the registered instrument and it needs Node
