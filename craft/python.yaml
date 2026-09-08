@@ -1,0 +1,871 @@
+# The Craft register — Python.
+#
+# One file per scope, because a property's identity already carries its scope:
+# `docs/craft/design.profiles.md` § `craft/`, one file per scope. Every key here
+# begins `python.`, and a row that does not is a schema error rather than a
+# matter of taste. `craft/meta.yaml` holds the contract, the levels, the sources
+# these rows cite and the profiles' version history.
+#
+# **Migrated from `docs/craft/assess.rules.md` on 2026-09-08**, which becomes a
+# stage record and stops being a source (ADR 0053). Nothing was dropped:
+# `tests/test_craft_register.py` fails if a row in that document has no property
+# here, which is a test rather than a promise holding the two together.
+#
+# What is *not* here, and deliberately:
+#
+# - **No file location.** ADR 0055: the surface comes from `controls.yaml`'s
+#   `stacks:` block, so a `file:` key would be the second copy that ADR exists
+#   to prevent. This register names the tool and the keys; the control register
+#   names where they go. `scope:` is a different thing — it says which part of a
+#   tree the property is *about*, not which file the setting is written to.
+# - **No tool version.** The lockfile is the pin, per § What pins the tool
+#   version.
+# - **No `off` list.** A property with no `level` has no binding at any level,
+#   and `unenforced:` says why. Listing negatives would be a second copy of the
+#   register's own silence.
+#
+# `coextensive:` states how an instrument stands to its property. It is
+# **required** on a `linter:` — an open set needs a reason to be trusted — and
+# it is used on a closed set where the two are known not to line up, which is
+# the honest place for a measured divergence.
+
+properties:
+  python.no-mutable-default-argument:
+    asserts: A default argument is never a mutable literal
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - B006
+      - RUF012
+    level: standard
+  python.no-call-in-default-argument:
+    asserts: A default argument is not the result of a call evaluated once at definition
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - B008
+    level: standard
+  python.no-loop-variable-capture:
+    asserts: A closure defined in a loop does not silently bind the loop variable
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - B023
+    level: standard
+  python.no-unused-import:
+    asserts: Every import is used
+    bucket: 1
+    sources:
+    - ruff
+    - pep8
+    instrument:
+      tool: ruff
+      codes:
+      - F401
+    level: standard
+  python.no-unused-variable:
+    asserts: Every local binding is read
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - F841
+    level: standard
+  python.no-unused-argument:
+    asserts: A parameter that is never read is removed or marked
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - ARG001
+      - ARG002
+      - ARG003
+      - ARG004
+      - ARG005
+    level: standard
+  python.no-global-mutable-state:
+    asserts: Module state is not rebound through `global`
+    bucket: 1
+    sources:
+    - ruff
+    - solid 102
+    instrument:
+      tool: ruff
+      codes:
+      - PLW0603
+    level: standard
+  python.no-private-member-access:
+    asserts: A module does not reach into another object's private members
+    bucket: 1
+    sources:
+    - ruff
+    - solid 004
+    instrument:
+      tool: ruff
+      codes:
+      - SLF001
+    level: standard
+  python.no-import-inside-function:
+    asserts: Imports are at module top level
+    bucket: 1
+    sources:
+    - ruff
+    - pep8
+    instrument:
+      tool: ruff
+      codes:
+      - PLC0415
+    level: strict
+  python.timezone-aware-datetimes:
+    asserts: Every datetime carries a timezone
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      linter: flake8-datetimez
+      coextensive: Every rule in it is a naive-datetime call, and any rule it adds
+        would be too — it exists for exactly this property. The register cited DTZ001-DTZ012,
+        which had already missed DTZ901. Verified preview-free at ruff 0.16.5.
+    level: standard
+  python.no-shadowed-loop-variable:
+    asserts: An inner binding does not overwrite the loop variable
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - PLW2901
+    level: standard
+  python.no-blind-except:
+    asserts: '`except` names the exceptions it handles, except in a deliberate catch-all'
+    bucket: 1
+    sources:
+    - ruff
+    - code-quality
+    instrument:
+      tool: ruff
+      codes:
+      - BLE001
+      - E722
+    level: standard
+  python.exception-chaining:
+    asserts: An exception raised inside `except` chains from the original
+    bucket: 1
+    sources:
+    - ruff
+    - code-quality
+    instrument:
+      tool: ruff
+      codes:
+      - B904
+    level: standard
+  python.no-silent-exception-swallow:
+    asserts: A swallowed exception is swallowed **explicitly** — never by `pass`
+      or `continue`
+    bucket: 1
+    sources:
+    - ruff
+    - code-quality
+    instrument:
+      tool: ruff
+      codes:
+      - S110
+      - S112
+      - SIM105
+    level: standard
+  python.no-log-and-reraise:
+    asserts: An error is logged **or** re-raised, not both
+    bucket: 2
+    sources:
+    - code-quality
+    unenforced: Nothing in the register asserts it. TRY400 and TRY401 are adjacent
+      and cover a different mistake.
+  python.exception-carries-context:
+    asserts: An error type or message adds information the caller did not have
+    bucket: 3
+    sources:
+    - code-quality
+    - clean-code 202
+    unenforced: 'Bucket 3 by its own classification: whether a message carries context
+      is a judgement.'
+  python.exception-message-not-a-literal:
+    asserts: An exception message is not a bare string literal at the raise site
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - EM101
+      - EM102
+    level: strict
+  python.exception-type-carries-its-message:
+    asserts: A long message belongs to an exception type, not to the raise site
+    bucket: 1
+    sources:
+    - ruff
+    - clean-code 202
+    alternatives:
+    - tool: ruff
+      codes:
+      - TRY003
+      why: Demoted 2026-09-07 by review.strict.md C5, with the case. Re-enabling
+        it re-enables a rule that claims enforcement it does not have.
+    unenforced: C5 demoted the only candidate. TRY003 fires only where EM101 or
+      EM102 already fires, and EM101's own remedy silences it while the message
+      stays outside the exception class — a rule satisfied without the property
+      being satisfied.
+  python.function-length:
+    asserts: A function has few statements and low branching
+    bucket: 1
+    sources:
+    - clean-code 002
+    - google
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - PLR0915
+      - C901
+    settings:
+      max-statements: 25
+      max-complexity: 10
+    level: standard
+  python.function-parameter-count:
+    asserts: A function takes few parameters, and very few positionally
+    bucket: 1
+    sources:
+    - clean-code 101
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - PLR0913
+      - PLR0917
+    level: standard
+  python.nesting-depth:
+    asserts: Control flow does not nest deeply
+    bucket: 1
+    sources:
+    - clean-code 102
+    instrument:
+      tool: ruff
+      codes:
+      - PLR1702
+      preview: true
+    level: strict
+  python.class-size:
+    asserts: A class stays small and focused
+    bucket: 1
+    sources:
+    - clean-code 105
+    - solid 001
+    instrument:
+      tool: ruff
+      codes:
+      - PLR0904
+      preview: true
+    settings:
+      max-public-methods: 20
+    level: strict
+  python.class-dependency-count:
+    asserts: A class depends on few collaborators
+    bucket: 2
+    sources:
+    - solid 101
+    unenforced: Nothing asserts it. Countable from __init__ parameters, which is
+      PLR0913 at a different site.
+  python.shallow-inheritance:
+    asserts: Inheritance hierarchies stay shallow
+    bucket: 2
+    sources:
+    - solid 105
+    unenforced: Nothing asserts it. Depth is mechanically countable and nothing
+      counts it.
+  python.return-count:
+    asserts: A function has few exit points
+    bucket: 1
+    sources:
+    - ruff
+    alternatives:
+    - tool: ruff
+      codes:
+      - PLR0911
+      why: Never selected. Enabling it puts the register in contradiction with python.nesting-depth.
+    unenforced: '**Incompatible, permanently.** An early return is the recommended
+      fix for clean-code 102''s nesting and increments PLR0911''s count, so the
+      two cannot both hold. The only such pair in this register.'
+  python.no-redundant-assign-before-return:
+    asserts: A value is returned rather than parked in a name first
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - RET504
+    level: strict
+  python.abstraction-ordering:
+    asserts: Functions read high-level first, details after
+    bucket: 3
+    sources:
+    - clean-code 203
+    unenforced: 'Bucket 3: an ordering judgement.'
+  python.single-responsibility:
+    asserts: A unit has one reason to change
+    bucket: 3
+    sources:
+    - solid 001
+    - clean-code 105
+    - pep20
+    unenforced: 'Bucket 3: the principle, not a countable property.'
+  python.depend-on-abstractions:
+    asserts: Cross-module dependencies are on abstractions
+    bucket: 3
+    sources:
+    - solid 002
+    unenforced: Bucket 3.
+  python.dependency-injection:
+    asserts: Dependencies are provided, not constructed in place
+    bucket: 3
+    sources:
+    - solid 102
+    unenforced: Bucket 3.
+  python.composition-over-inheritance:
+    asserts: Behaviour is extended by composition unless the relation is genuinely
+      *is-a*
+    bucket: 3
+    sources:
+    - solid 104
+    - solid 201
+    - clean-code 201
+    unenforced: Bucket 3.
+  python.no-duplication:
+    asserts: The same logic is not written twice
+    bucket: 2
+    sources:
+    - clean-code 003
+    - pep20
+    unenforced: Nothing in ruff. A clone detector could hold it, at the cost of
+      a second tool and a threshold no source agrees on.
+  python.naming-form:
+    asserts: Names follow the language's casing conventions
+    bucket: 1
+    sources:
+    - pep8
+    - google
+    - ruff
+    instrument:
+      tool: ruff
+      linter: pep8-naming
+      coextensive: Every rule in it asserts a naming form and any rule it adds would
+        too. The register cited N801-N818, which had already missed N999. Verified
+        preview-free at ruff 0.16.5.
+    level: standard
+  python.naming-intent:
+    asserts: A name says what the thing is for
+    bucket: 3
+    sources:
+    - clean-code 001
+    - clean-code 104
+    - clean-code 205
+    - pep20
+    unenforced: Bucket 3. E741 catches three ambiguous single letters and nothing
+      else, which is not the property.
+  python.line-length:
+    asserts: A line limit exists and the formatter agrees with it
+    bucket: 1
+    sources:
+    - pep8
+    - google
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - E501
+    settings:
+      line-length: 88
+    level: standard
+  python.import-order:
+    asserts: Imports are grouped and ordered
+    bucket: 1
+    sources:
+    - pep8
+    - google
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - I001
+    level: standard
+  python.no-relative-parent-imports:
+    asserts: A module does not import from its parent by relative path
+    bucket: 1
+    sources:
+    - google
+    instrument:
+      tool: ruff
+      codes:
+      - TID252
+    level: standard
+  python.consistent-formatting:
+    asserts: Formatting is not a per-author choice
+    bucket: 1
+    sources:
+    - clean-code 005
+    - pep8
+    instrument:
+      tool: ruff-format
+    level: standard
+    note: A formatter rather than a rule set, which is why the instrument names
+      no codes. The property is met by running it, and its line length is python.line-length's
+      number by construction.
+  python.no-trailing-whitespace:
+    asserts: No trailing or stray whitespace
+    bucket: 1
+    sources:
+    - pep8
+    instrument:
+      tool: ruff
+      codes:
+      - W291
+      - W293
+    level: standard
+  python.pep604-unions:
+    asserts: Unions and optionals use PEP 604 syntax rather than `typing.Union`
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - UP007
+      - UP045
+    level: standard
+  python.pathlib-over-os-path:
+    asserts: Filesystem paths go through `pathlib`
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      linter: flake8-use-pathlib
+      coextensive: Every rule in it replaces an os.path call with a pathlib one.
+        The register cited PTH100-PTH210, which had already missed PTH211. Verified
+        preview-free at ruff 0.16.5.
+    level: standard
+  python.comprehension-over-manual-loop:
+    asserts: A transformation is a comprehension, not an append loop
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      linter: flake8-comprehensions
+      coextensive: Every rule in it rewrites a manual construction as a comprehension
+        or a direct call. PERF401 asserts the same property from Perflint and is
+        named beside it, because a linter selector cannot reach into another linter.
+      codes:
+      - PERF401
+    level: standard
+  python.no-boolean-trap:
+    asserts: A boolean is not passed positionally into a call whose meaning it flips
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - FBT001
+      - FBT002
+    level: standard
+  python.docstring-presence:
+    asserts: Public modules, classes and functions carry a docstring
+    bucket: 1
+    sources:
+    - pep257
+    - google
+    instrument:
+      tool: ruff
+      codes:
+      - D100
+      - D101
+      - D102
+      - D103
+      - D104
+      - D105
+      - D106
+      - D107
+    level: strict
+    scope: source
+    note: Scoped to the package source. A test function's name is its documentation;
+      requiring a docstring as well is the kind of rule a team turns off. review.strict.md
+      § The verdicts the bench handed S4.
+  python.docstring-form:
+    asserts: A docstring has a one-line summary in the imperative
+    bucket: 1
+    sources:
+    - pep257
+    instrument:
+      tool: ruff
+      codes:
+      - D205
+      - D401
+    level: strict
+    note: 'Exact codes rather than D2xx and D4xx, and not scoped: a docstring that
+      exists should be well formed wherever it is. The wide reading brings D203
+      against D211 and D212 against D213, which ruff warns about and then silently
+      resolves by dropping one.'
+  python.no-commented-out-code:
+    asserts: Dead code is deleted, not commented
+    bucket: 1
+    sources:
+    - clean-code 004
+    instrument:
+      tool: ruff
+      codes:
+      - ERA001
+    level: standard
+    note: 'C5 kept it and named it the one to watch at S6: it flagged a comment
+      documenting a data format.'
+  python.self-documenting-code:
+    asserts: Code needs few comments because it reads clearly
+    bucket: 3
+    sources:
+    - clean-code 103
+    - code-quality
+    unenforced: Bucket 3.
+  python.no-untracked-todo:
+    asserts: A `TODO` names an owner or an issue
+    bucket: 1
+    sources:
+    - git 004
+    instrument:
+      tool: ruff
+      codes:
+      - TD001
+      - TD002
+      - TD003
+      - TD004
+      - TD005
+      - TD006
+      - TD007
+    level: strict
+    alternatives:
+    - tool: ruff
+      codes:
+      - FIX001
+      - FIX002
+      - FIX003
+      - FIX004
+      why: Demoted 2026-09-07 by review.strict.md C5. FIX002 asserts *no TODO at
+        all*, which is a stronger claim than any source here proposes, and it made
+        seven of this property's codes unreachable — no file containing a TODO could
+        pass.
+  python.no-unused-suppression:
+    asserts: A `noqa` that suppresses nothing is removed
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - RUF100
+    level: standard
+  python.annotate-public-api:
+    asserts: Public functions annotate parameters and returns
+    bucket: 1
+    sources:
+    - google
+    - typescript 003
+    instrument:
+      tool: ruff
+      codes:
+      - ANN001
+      - ANN201
+      - ANN204
+      - ANN205
+      - ANN206
+    level: standard
+    alternatives:
+    - tool: mypy
+      setting: disallow_untyped_defs
+      why: TYP-001 already requires mypy --strict, which enables it. Craft writing
+        it would be claiming credit for a gate the register already runs.
+  python.no-any:
+    asserts: '`Any` does not appear in a public signature'
+    bucket: 1
+    sources:
+    - typescript 002
+    instrument:
+      tool: ruff
+      codes:
+      - ANN401
+      coextensive: '**Not coextensive, and the divergence is the record.** The property
+        says *public*; ANN401 fires on a private argument too, and flake8-annotations
+        offers no public/private axis, so no configuration closes the gap. The property
+        keeps its wording — rewording it to match the instrument would make this
+        register a description of ruff. assess.rules.md § Corrected by measurement.'
+    level: standard
+  python.typing-only-imports:
+    asserts: Imports needed only for types are in a type-checking block
+    bucket: 1
+    sources:
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - TC001
+      - TC002
+      - TC003
+    settings:
+      runtime-evaluated-decorators:
+      - dataclasses.dataclass
+    level: strict
+    note: The setting is not decoration. C5's probe showed the remedy raising NameError
+      where get_type_hints resolves the annotation the type-checking block deferred;
+      this is the shape ruff has a setting for.
+  python.test-layout:
+    asserts: Tests live where the runner and the packaging both expect
+    bucket: 1
+    sources:
+    - pytest
+    instrument:
+      tool: ruff
+      codes:
+      - INP001
+    level: standard
+    note: C3 found INP001 fighting the layout pytest recommends. `touch tests/__init__.py`
+      satisfies both with the tests still passing, and the scaffold carries that
+      file.
+  python.test-naming:
+    asserts: A test name states the scenario and the expected outcome
+    bucket: 3
+    sources:
+    - testing 003
+    unenforced: Bucket 3. pytest's test_ prefix is collection, not naming quality.
+  python.test-single-behaviour:
+    asserts: A test asserts one behaviour
+    bucket: 2
+    sources:
+    - testing 001
+    instrument:
+      tool: ruff
+      codes:
+      - PT018
+      coextensive: A proxy, and named as one. PT018 splits composite assertions,
+        which is evidence of more than one behaviour rather than the property itself.
+    level: standard
+  python.test-independence:
+    asserts: Tests do not depend on order or shared mutable state
+    bucket: 2
+    sources:
+    - testing 002
+    unenforced: Nothing asserts it. A randomised-order run detects violations empirically;
+      nothing prevents them.
+  python.test-arrange-act-assert:
+    asserts: A test's setup, action and assertion are visually distinct
+    bucket: 3
+    sources:
+    - testing 004
+    unenforced: Bucket 3.
+  python.no-flaky-tests:
+    asserts: A test that does not pass consistently is fixed or deleted
+    bucket: 2
+    sources:
+    - testing 005
+    unenforced: Nothing asserts it. Repeated runs detect it; nothing prevents it.
+  python.narrow-raises:
+    asserts: '`pytest.raises` names the exception and matches the message'
+    bucket: 1
+    sources:
+    - pytest
+    - testing 001
+    instrument:
+      tool: ruff
+      codes:
+      - PT011
+      - PT012
+    level: standard
+  python.parametrize-form:
+    asserts: Parametrised cases are declared in the conventional shape
+    bucket: 1
+    sources:
+    - pytest
+    instrument:
+      tool: ruff
+      codes:
+      - PT006
+      - PT007
+    level: standard
+  python.minimal-test-setup:
+    asserts: Fixtures and setup stay small
+    bucket: 3
+    sources:
+    - testing 103
+    - pytest
+    unenforced: Bucket 3.
+  python.no-mocking-domain-logic:
+    asserts: Test doubles stand in for external dependencies, not for the code under
+      test
+    bucket: 3
+    sources:
+    - testing 102
+    unenforced: Bucket 3.
+  python.test-code-quality:
+    asserts: Test code is held to the same standard as production code
+    bucket: 2
+    sources:
+    - testing 105
+    - clean-code
+    unenforced: 'Configuration rather than a rule: whether the lint profile applies
+      to tests/ at all. It does — there is no per-file-ignores section anywhere
+      in this profile, and the two scoped properties are scoped rather than excused.'
+  python.parameterised-sql:
+    asserts: User input never reaches SQL by concatenation
+    bucket: 1
+    sources:
+    - security 103
+    - asvs
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - S608
+    level: standard
+    note: 'C5 probed it. It fired on a parameterised query built with a validated
+      table name, and is kept: the rule reads string formatting into SQL and cannot
+      see the validation.'
+  python.no-hardcoded-credentials:
+    asserts: No password, token or key is a literal in source
+    bucket: 1
+    sources:
+    - security 001
+    - asvs
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - S105
+      - S106
+      - S107
+    level: standard
+    note: Overlaps SEC-001, which scans the repository for the same class at a different
+      locus. Two loci for one class of defect is coverage, not duplication.
+  python.no-insecure-hash:
+    asserts: Passwords are not hashed with MD5 or SHA-1
+    bucket: 1
+    sources:
+    - security 104
+    - asvs
+    instrument:
+      tool: ruff
+      codes:
+      - S324
+    level: standard
+  python.tls-verification-on:
+    asserts: Certificate verification is never disabled
+    bucket: 1
+    sources:
+    - security 002
+    - asvs
+    instrument:
+      tool: ruff
+      codes:
+      - S501
+    level: standard
+  python.crypto-grade-randomness:
+    asserts: Secrets are not drawn from the standard PRNG
+    bucket: 1
+    sources:
+    - asvs
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - S311
+    level: standard
+    note: 'C5 probed it and it fired on a jitter calculation, which is the reputable
+      false positive. Kept: the remedy is one import and the rule cannot know what
+      the number is for.'
+  python.no-bind-all-interfaces:
+    asserts: A service does not bind `0.0.0.0` by default
+    bucket: 1
+    sources:
+    - asvs
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - S104
+    level: strict
+    note: C5 kept it. A binding address is a deployment decision, and the finding
+      is the place to record that decision rather than a defect on its own.
+  python.no-assert-for-enforcement:
+    asserts: Runtime enforcement does not rely on `assert`
+    bucket: 1
+    sources:
+    - asvs
+    - ruff
+    instrument:
+      tool: ruff
+      codes:
+      - S101
+    level: standard
+    scope: source
+    note: Scoped to the package source rather than excused from tests/. No exemption
+      exists, so none can drift.
+  python.structured-logging:
+    asserts: Logs are key-value, not prose
+    bucket: 1
+    sources:
+    - code-quality
+    instrument:
+      tool: ruff
+      codes:
+      - G001
+      - G002
+      - G003
+      - G004
+      - LOG015
+    level: standard
+    note: These constrain the call, not the format. The format is bucket 2 and is
+      python.no-sensitive-data-in-logs' neighbour rather than this property.
+  python.no-sensitive-data-in-logs:
+    asserts: Secrets and PII never reach a log
+    bucket: 2
+    sources:
+    - security 006
+    - asvs
+    unenforced: Nothing asserts it. A denylist over log call arguments could, at
+      the cost of a list nobody here can validate.
+  python.no-any-anywhere:
+    asserts: '`Any` does not appear at all'
+    bucket: '1'
+    sources:
+    - typescript
+    instrument:
+      tool: mypy
+      setting: disallow_any_explicit
+      value: true
+    level: strict
+    note: 'Minted by S4''s strictness slice, not by S2 — which is why it has no
+      row in assess.rules.md. It is the whole of Craft''s type-checking contribution
+      across both stacks, TYP-001 already covering the other two type-checker rows.
+      review.strict.md § The mypy half measured it: strict alone reports nothing
+      where this key reports ten findings over nine sites.'
