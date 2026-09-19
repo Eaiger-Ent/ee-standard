@@ -778,8 +778,23 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       **The gates are designed** — [`design.profiles.md`](design.profiles.md)
       § The evidence gates, 2026-09-07 — and the stamp line is specified there;
       writing it is this box
-- [ ] Emit the judgment-only residue as prose an assistant loads, labelled
-      unenforced
+- [x] Emit the judgment-only residue as prose an assistant loads, labelled
+      unenforced. Done 2026-09-19,
+      [`build.installer.md`](build.installer.md) § The residue is a document of
+      its own, rendered by `craft_render.py --file residue`. **Seventy-one
+      properties in four states, and only three are handed over**: 32 judgment
+      only, 33 a check could hold, 6 with an instrument demoted or unmeasured —
+      and the 12 that are `satisfied_by` or `out_of_scope` are counted by name
+      and nothing more, because handing a reader something TYP-001 already gates
+      would be Craft taking credit for a gate that runs without it. The label is
+      the document rather than a heading in it: an entry written in the
+      imperative would be the rule claiming enforcement it does not have that
+      `plan.md` says this workstream will not ship. And it **passes the gate the
+      register requires** — the first render failed markdownlint three ways, so
+      the test now runs this repository's pinned `markdownlint-cli2` over the
+      rendered document, and one line of the register's own prose was corrected
+      because its text has a second audience. What stays owed is the installer's
+      half: which file it lands in, and what points at it
 - [ ] Make a second run over its own output change nothing
 - [ ] Version and publish it so a consumer repository can pin it
 - [ ] Write `build.installer.md`

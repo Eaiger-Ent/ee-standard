@@ -39,12 +39,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
+import textwrap
+from collections.abc import Callable
 from functools import cache
 from pathlib import Path
 from typing import Any
 
-from craft_select import REPO_ROOT, load, resolve, ruff_catalogue
+from craft_select import REPO_ROOT, load, properties, resolve, ruff_catalogue
 
 #: What opens and closes a region Craft owns. An installer rewrites between
 #: them and touches nothing outside, which is the whole of the merge discipline
@@ -506,19 +509,181 @@ def render_react(profile: str, meta: dict[str, Any]) -> str:
     return "\n".join(body) + "\n"
 
 
+#: The residue, in the four shapes a property with no instrument can take, and
+#: the order the document prints them. `docs/craft/build.installer.md` § The
+#: residue is a document of its own is why three of them are handed to a reader
+#: and the fourth is a count.
+RESIDUE_SECTIONS: tuple[tuple[str, str, Callable[[dict[str, Any]], bool]], ...] = (
+    (
+        "Judgment only",
+        "Nothing can decide these but a person. They are the half of *well-made* "
+        "a linter has no access to, and a rule claiming otherwise would be worse "
+        "than the silence.",
+        lambda prop: bool(prop.get("unenforced")) and prop.get("bucket") in (3, "3"),
+    ),
+    (
+        "A check could hold these, and none is written",
+        "Enforceable in principle, at a cost nobody has paid. They are the list a "
+        "later profile version is drawn from, and until then they are yours.",
+        lambda prop: bool(prop.get("unenforced")) and prop.get("bucket") in (2, "2"),
+    ),
+    (
+        "An instrument exists, and this profile does not install it",
+        "Either it was measured and demoted — the reason is with it, and it is the "
+        "reason not to re-enable it — or nothing has measured it and ADR 0051's "
+        "third precondition is unmet.",
+        lambda prop: bool(
+            (prop.get("unenforced") and prop.get("bucket") in (1, "1")) or prop.get("candidate")
+        ),
+    ),
+)
+
+
+def _wrap(text: str) -> list[str]:
+    """Prose at a width a diff can show.
+
+    The residue is Markdown in somebody else's repository, and DOC-001 lints
+    Markdown — so a document Craft writes has to pass the gate the register
+    already requires, which the first render did not.
+    """
+    return textwrap.wrap(" ".join(text.split()), width=88) or [""]
+
+
+def _tool(name: str) -> str:
+    """A candidate's tool, which is sometimes two tools and a conjunction.
+
+    `commitlint with @commitlint/config-conventional, or commitizen` is one
+    value in the register, and wrapping it in backticks whole produces a code
+    span with spaces in it — which DOC-001 rejects, and which reads as a package
+    nobody can install.
+    """
+    name = name.strip()
+    return f"`{name}`" if " " not in name else name
+
+
+def _bucket_only(reason: str) -> bool:
+    """Whether a reason says only what its section heading already said."""
+    return bool(re.fullmatch(r"Bucket [0-9]\.?", reason.strip()))
+
+
+def _residue_rows(profiles: list[str]) -> dict[str, dict[str, Any]]:
+    """Every property in scope for these profiles that binds no instrument."""
+    stacks = {profile.partition("/")[0] for profile in profiles} | {"any"}
+    return {
+        identity: prop
+        for identity, prop in sorted(properties().items())
+        if identity.split(".", 1)[0] in stacks and "instrument" not in prop
+    }
+
+
+def render_residue(profiles: list[str], meta: dict[str, Any]) -> str:
+    """The judgment-only half, as prose an assistant loads — labelled unenforced.
+
+    `plan.md` § S5 requires the installer to hand this back and **the label is
+    the whole of what makes it honest**: everything here is a property the
+    profile could not install, so nothing in this document fails a build and
+    nothing in it is a rule. A file that read like the configuration would be
+    claiming enforcement the workstream says it will not ship.
+
+    Two states are deliberately counted rather than listed. `satisfied_by` holds
+    because of a choice the profile already made, so asking a reader to check it
+    would be asking them to re-derive a decision; `out_of_scope` is somebody
+    else's surface — a control, or `gate-repo`'s platform state — and repeating
+    it here would be Craft taking credit for a gate that already runs.
+    """
+    rows = _residue_rows(profiles)
+    stamps = [f"{profile}@{meta['profiles'][profile]['version']}" for profile in profiles]
+    listed: set[str] = set()
+
+    # The markers are HTML comments here, and not the `#` form the two
+    # configurations use: `# >>> ee-craft` in a Markdown file is a level-one
+    # heading, which is what the first render produced.
+    out = [
+        "# What Craft does not enforce here",
+        "",
+        f"<!-- >>> ee-craft {' '.join(stamps)} -->",
+        f"<!-- ee-craft: {', '.join(stamps)}  gates: none "
+        f"(no any. property binds an instrument)  craft-contract: "
+        f"{meta['craft_contract']} -->",
+        "<!-- <<< ee-craft -->",
+        "",
+        "**Every property below is unenforced.** Nothing here fails a build, no",
+        "tool reports on it, and none of it is a rule — it is what the Craft",
+        "register holds that this profile could not install, written out so that",
+        "an assistant reading this repository knows what is expected of the code",
+        "and knows that nothing is checking.",
+        "",
+        "Generated by `craft-install` from the Craft register. Re-run it rather",
+        "than editing here — a hand edit is what the next run reports.",
+    ]
+
+    for title, blurb, matches in RESIDUE_SECTIONS:
+        chosen = {
+            identity: prop
+            for identity, prop in rows.items()
+            if identity not in listed and matches(prop)
+        }
+        listed |= set(chosen)
+        out += ["", f"## {title} ({len(chosen)})", "", *_wrap(blurb), ""]
+        for identity, prop in chosen.items():
+            reason = prop.get("unenforced") or (prop.get("candidate") or {}).get("why_not", "")
+            out.append(f"### `{identity}`")
+            out += ["", *_wrap(f"{prop['asserts']}."), ""]
+            if candidate := prop.get("candidate"):
+                out += _wrap(f"**An instrument exists:** {_tool(candidate['tool'])}. {reason}")
+                out.append("")
+            elif not _bucket_only(reason):
+                # `Bucket 3.` and nothing else is the register saying what the
+                # section heading has already said. Printing it would pad a
+                # document whose whole value is that a reader gets through it.
+                out += [*_wrap(f"**Why nothing checks it:** {reason}"), ""]
+
+    elsewhere = {identity: prop for identity, prop in rows.items() if identity not in listed}
+    out += [
+        "",
+        f"## Recorded elsewhere, and not yours to check ({len(elsewhere)})",
+        "",
+        "Listed by name only. Each is either satisfied by a choice this profile",
+        "already made, or owned by a control or a gate that runs without you.",
+        "",
+    ]
+    for identity, prop in elsewhere.items():
+        owner = prop.get("out_of_scope") or "the profile's own base choice"
+        out += textwrap.wrap(
+            f"- `{identity}` — {prop['asserts']}. Owned by {owner}.",
+            width=88,
+            subsequent_indent="  ",
+        )
+    squeezed: list[str] = []
+    for line in out:
+        if line or (squeezed and squeezed[-1]):
+            squeezed.append(line)
+    return "\n".join(squeezed).rstrip("\n") + "\n"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", default="python/standard")
     parser.add_argument(
         "--file",
-        choices=("root", "src"),
+        choices=("root", "src", "residue"),
         default="root",
         help="the root region, or the source-scoped nested configuration",
     )
     args = parser.parse_args()
     meta = load("meta")
-    if args.profile not in meta["profiles"]:
-        parser.error(f"{args.profile} is not a profile the register defines")
+    chosen = args.profile.split(",")
+    for name in chosen:
+        if name not in meta["profiles"]:
+            parser.error(f"{name} is not a profile the register defines")
+    if args.file == "residue":
+        # `end=""` because the document already ends in a newline, and DOC-001
+        # rejects the blank line `print` would add — which is the residue's
+        # whole lesson in miniature: Craft writes Markdown into a repository
+        # whose Markdown is gated.
+        print(render_residue(chosen, meta), end="")
+        return 0
+    args.profile = chosen[0]
     if args.profile.startswith("react/"):
         print(render_react(args.profile, meta))
         return 0

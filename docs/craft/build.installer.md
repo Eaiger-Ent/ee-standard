@@ -768,6 +768,75 @@ eight arrived twice.
   requires. What an installer does when `include` does not cover the files the
   profile lints is unexamined.
 
+## The residue is a document of its own, and it is lint-clean
+
+`plan.md` § S5's last write: *hand back the judgment-only residue as prose an
+assistant loads, labelled unenforced*. `craft_render.py --file residue` is that,
+and three decisions shaped it.
+
+```bash
+uv run python scripts/craft_render.py --profile python/standard,react/standard --file residue
+```
+
+### Seventy-one properties, in four states, and only three are handed over
+
+A property with no instrument is not one kind of thing, and the schema already
+knows it — § The Craft register's schema records **three ways of having no
+instrument**, and `candidate:` is a fourth state beside them. The document
+treats them differently because a reader can act on some and not others:
+
+| State | In the document | Why |
+| --- | --- | --- |
+| `unenforced`, bucket 3 — **32** | Listed, with what it asserts | Judgment only. Nothing can decide them but a person, which is what the profile is silent about |
+| `unenforced`, bucket 2 — **33** | Listed | A check could hold them and none is written. The list a later profile version is drawn from |
+| `unenforced` bucket 1, and `candidate:` — **6** | Listed, with the instrument named | Either measured and demoted — the reason is the reason not to re-enable it — or unmeasured, with ADR 0051's third precondition unmet |
+| `satisfied_by` and `out_of_scope` — **12** | **Counted, by name, nothing more** | They hold already. One is a choice the profile made; the rest are a control's or `gate-repo`'s |
+
+The fourth row is the one worth arguing about, and the argument is the same one
+ADR 0055 makes about credit. Handing a reader *`react.strict-type-checking`:
+`tsconfig` enables the strict family* as something to watch would be asking them
+to re-check what TYP-001 gates on every run — and a residue that padded itself
+with other people's work would be less honest, not more thorough.
+
+### The label is the document, not a heading in it
+
+Everything here is unenforced, so the file says so in its first sentence and
+never again pretends otherwise: *nothing here fails a build, no tool reports on
+it, and none of it is a rule*. `plan.md` § What this workstream will not do ends
+on *ship a rule that claims enforcement it does not have*, and a residue written
+in the imperative — **always** validate at boundaries — is exactly that rule,
+one file away from the configuration that does block a merge.
+
+So each entry is what the property asserts and why nothing checks it, and where
+the register's reason says only `Bucket 3.` the document omits it rather than
+padding: the section heading has already said it.
+
+### It has to pass the gate the register requires
+
+**Craft writes Markdown into a repository whose Markdown DOC-001 lints.** The
+first render failed `markdownlint` three ways — a code span with spaces in it,
+because one candidate's `tool:` is *commitlint with
+@commitlint/config-conventional, or commitizen*; `__init__` read as emphasis,
+because the register's prose was written for YAML and not for Markdown; and a
+trailing blank line, because `print` adds one to a document that already ends in
+a newline.
+
+An installer of this standard that wrote a file failing this standard would be
+the plainest defect available to it, so `tests/test_craft_render.py` runs the
+repository's own pinned `markdownlint-cli2` over the rendered residue. The
+register's own prose was corrected where it caused one of the three, which is
+the register learning that its text has a second audience.
+
+### What this section does not settle
+
+- **Where the file goes, and what points at it.** `residue:` in
+  `.claude/skill-config.yaml` names the file an assistant loads; whether Craft
+  writes the list into that file or writes it beside and leaves a marked span
+  pointing at it is the installer's, not the renderer's. The span discipline
+  from § What the installer writes is what makes the second possible.
+- **Whether an assistant reads it at all.** Craft can write a file; it cannot
+  make a harness load one, and saying so is part of the label.
+
 ## What this document still owes
 
 Named so that a reader can tell a gap from an omission. Every row is work rather
@@ -780,6 +849,6 @@ than an open question — S4 closed the design questions, and
 | ~~What the chooser shows: each level's rules, and what S3 measured each costs to satisfy~~ — **done**, § What the chooser shows. It owes the writing slice one question: who installs the six ESLint plugins | Present each applicable profile with what it enables |
 | The shape of the explicit yes, and what is shown before it | Require an explicit confirmation |
 | ~~What is written, and the stamp at each span~~ — **done**, § What the installer writes and § The React config is one file. Both stacks render from the register | Write the pinned configuration; record what was written |
-| The residue: its file, its default, its wording, and the unenforced label | Emit the judgment-only residue |
+| ~~The residue: its wording, and the unenforced label~~ — **done**, § The residue is a document of its own. Its file and the pointer to it are the installer's, and stay owed | Emit the judgment-only residue |
 | A second run over the installer's own output changing nothing, and what "nothing" covers when a gate has opened since | Make a second run change nothing |
 | Packaging, versioning and publication, and where the register sits in it | Version and publish it |

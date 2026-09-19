@@ -15,8 +15,11 @@ tool the repository will run, not constants Craft may keep.
 
 from __future__ import annotations
 
+import re
+import subprocess
 import sys
 import tomllib
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -25,8 +28,9 @@ from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-from craft_render import contributions, render, render_react, scoped
+from craft_render import contributions, render, render_react, render_residue, scoped
 from craft_select import load, resolve
+from craft_select import properties as _register_properties
 
 PROFILES = ("python/standard", "python/strict")
 
@@ -243,3 +247,52 @@ def test_the_flat_config_is_stamped_and_deterministic(profile: str, meta: dict[s
     assert f"// ee-craft: {profile}@{version}" in text
     assert text.count("// >>> ee-craft") == text.count("// <<< ee-craft") == 1
     assert text == render_react(profile, meta)
+
+
+def test_the_residue_lists_every_unenforced_property_and_claims_none(
+    meta: dict[str, Any],
+) -> None:
+    """The residue is the half the profile could not install, and says so.
+
+    Two states are counted rather than listed, and the distinction is the point:
+    a `satisfied_by` property holds because of a choice the profile made, and an
+    `out_of_scope` one is a control's or a gate's. Handing either to a reader as
+    *yours to watch* would be asking them to re-check something that is already
+    checked.
+    """
+    profiles = ["python/standard", "react/standard"]
+    text = render_residue(profiles, meta)
+    assert "**Every property below is unenforced.**" in text
+
+    listed = set(re.findall(r"^### `([a-z]+\.[a-z0-9-]+)`$", text, re.M))
+    counted = set(re.findall(r"^- `([a-z]+\.[a-z0-9-]+)`", text, re.M))
+    rows = {
+        identity: prop
+        for identity, prop in _register_properties().items()
+        if identity.split(".", 1)[0] in {"python", "react", "any"} and "instrument" not in prop
+    }
+    assert listed | counted == set(rows), sorted(set(rows) ^ (listed | counted))
+    for identity in listed:
+        prop = rows[identity]
+        assert not prop.get("satisfied_by") and not prop.get("out_of_scope"), identity
+
+
+def test_the_residue_passes_the_markdown_gate_it_will_be_linted_by(
+    meta: dict[str, Any], tmp_path: Path
+) -> None:
+    """Craft writes Markdown into a repository whose Markdown DOC-001 lints.
+
+    A residue that failed that gate would install a violation of the control
+    register alongside the profile, which is the one thing an installer of this
+    standard must not do. The first render failed three rules — a code span with
+    spaces in it, `__init__` read as emphasis, and a trailing blank line.
+    """
+    document = tmp_path / "unenforced.md"
+    document.write_text(render_residue(["python/strict", "react/strict"], meta))
+    result = subprocess.run(
+        [str(REPO_ROOT / "node_modules/.bin/markdownlint-cli2"), str(document)],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout

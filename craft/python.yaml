@@ -288,7 +288,7 @@ properties:
     bucket: 2
     sources:
     - solid 101
-    unenforced: Nothing asserts it. Countable from __init__ parameters, which is
+    unenforced: Nothing asserts it. Countable from `__init__` parameters, which is
       PLR0913 at a different site.
   python.shallow-inheritance:
     asserts: Inheritance hierarchies stay shallow
