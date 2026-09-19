@@ -711,8 +711,27 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       mapping of one profile per stack, because a Python service with a React
       frontend is the ordinary shape here and a single `profile`/`version` pair
       cannot express it
-- [ ] Present each applicable profile with what it enables **and** what S3 found
-      each rule costs to satisfy
+- [x] Present each applicable profile with what it enables **and** what S3 found
+      each rule costs to satisfy. Done 2026-09-19,
+      [`build.installer.md`](build.installer.md) § What the chooser shows, with
+      [`scripts/craft_select.py`](../../scripts/craft_select.py) as the thing
+      that produces the numbers — resolved from `craft/*.yaml` and expanded
+      against the installed tool, never typed into a document. It re-derives
+      C7's Python figures from the other end: 141 rules and 72 hand-work, which
+      is what `review.bench.md` read from the benched configuration.
+      **`--against-bench` reports 0 disagreements** across both stacks and both
+      levels — the check ADR 0053 left nobody performing, since the superset
+      test holds the register to `assess.rules.md` and nothing held it to the
+      configuration S3 actually ran. Two findings came out of building it: a
+      ruff selector is not a textual prefix (`N` is pep8-naming, and `NPY001`
+      starts with `N`), and one rule in 0.16.5 reports a null code. The section
+      also settles that **named is not enabled** — the register names 88 React
+      rules where the resolved configuration enables 132, because two presets
+      are part of the profile by the register's own resolution, so the chooser
+      shows both numbers and says which is which. It hands the writing slice one
+      question: who adds the six ESLint plugins to the manifest, given a flat
+      config that imports what a repository does not depend on errors on its
+      first run
 - [ ] Require an explicit confirmation before anything is written
 - [ ] Write the pinned configuration at every locus the profile declares
 - [ ] Record what was written, **including which stack-neutral groups the

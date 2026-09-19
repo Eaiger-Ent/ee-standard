@@ -342,6 +342,134 @@ intent, and intent is one number per profile.
   transfer; `plan.md`'s naming standard asks a scope to be earned, and eleven is
   not a stack. Nothing mints one here.
 
+## What the chooser shows, and where the numbers come from
+
+**Before anybody says yes, they are told what the profile turns on and what it
+will cost them.** `plan.md` § S5 requires both, and the second half is why S3
+measured cost at all. This section is where the numbers come from, and the
+answer is that they are **resolved from the register** rather than typed into a
+document: [`scripts/craft_select.py`](../../scripts/craft_select.py) reads
+`craft/*.yaml`, expands every instrument against the installed tool, and prints
+what a profile binds and what each rule declares about fixing itself.
+
+```bash
+uv run python scripts/craft_select.py                      # every profile
+uv run python scripts/craft_select.py --profile python/strict --per-rule
+uv run python scripts/craft_select.py --against-bench      # the register against S3
+```
+
+### The register resolves to exactly what S3 benched
+
+`--against-bench` reports **0 disagreements**, across both stacks and both
+levels: every selector the bench's hand-written configuration carries, the
+register resolves to, and nothing the register binds is missing from it.
+
+That check was owed and nothing was performing it. ADR 0053 made the register
+the source and `assess.rules.md` a stage record, and
+`tests/test_craft_register.py`'s superset test holds the register to that
+**document** — it says no row was lost in the migration. Nothing held the
+register to the **configuration somebody actually ran**, which is the thing S3's
+exit criterion was about. Two descriptions of one decision, written by two
+passes from the same rows, are worth exactly as much as their agreement.
+
+Two things surfaced on the way there, and both are the kind of detail that only
+a run finds:
+
+- **A ruff selector is not a textual prefix.** `N` is pep8-naming, and
+  `"NPY001".startswith("N")` is true — the first version of the comparison
+  reported four NumPy rules as benched-but-missing. The selector resolves
+  against the linter prefixes the catalogue itself declares, which is the same
+  correction the register already made when it replaced ranges with `linter:`.
+- **One rule in ruff 0.16.5 has no code.** `pytest-fixture-autouse`, in preview
+  since that release, reports `"code": null`. A catalogue keyed on it carries a
+  `None` that every comparison then trips over. A rule with no code cannot be
+  selected, so it is not in the catalogue.
+
+### What a person is shown is not the rule list
+
+A 141-line dump is a receipt, not a decision aid. What the chooser shows per
+applicable profile is what somebody can hold in their head while saying yes:
+
+| Shown | `python/standard` today |
+| --- | --- |
+| Properties bound, by tool | 40 — 39 ruff, 1 `ruff format` |
+| Rules, and the tool version they were read from | 141, ruff 0.16.5 |
+| What declares a fix, in the tool's own three words | always 17, sometimes 52, none 72 |
+| The hand-work share | **72 of 141 (51%) declare no fix** |
+| Thresholds and tool settings that come with it | 2 |
+| Preview rules, which a release may move | none at `standard`; `PLR0904` and `PLR1702` at `strict` |
+| The residue this profile does not enforce | 22 `python.` properties with no instrument, and 42 `any.` rows |
+
+**These are C7's numbers, re-derived from the other end.**
+`review.bench.md` § What each rule costs read 141 rules and 72 hand-work from
+the benched configuration; this reads the register and gets 141 and 72. The
+agreement is the check rather than a coincidence.
+
+`--per-rule` exists for the person who wants the receipt, and the chooser does
+not show it unasked.
+
+### Named is not enabled, and the chooser says which it is showing
+
+`craft/react.yaml` names **88** rules at `standard`. The configuration S3
+benched resolved to **132**, and the gap is not a discrepancy: two presets are
+part of the profile *by the register's own resolution* —
+`react.no-legacy-proptypes` and `react.jsx-runtime-assumed` are `satisfied_by`
+taking `@eslint-react`'s `recommended` as the base, and `jsx-a11y`'s
+`recommended` carries five rules the register counts as inherited rather than
+keyed.
+
+So there are two true answers to *what does this turn on*, and a chooser that
+shows one of them without saying which has misled somebody either way: a team
+that consents to 88 rules and meets 132 was told the wrong number, and a team
+told 132 cannot find 44 of them in the register. **It shows both**, labelled —
+the rules the register names, and the rules the resolved configuration will
+enable.
+
+### Cost is read from the tool that will run, and it is a floor
+
+C7 read cost from ruff's `fix_availability` and each ESLint plugin's
+`meta.fixable`, and `review.strict.md` then ran `--fix` over the violation
+cases and found the declarations overstated — the `react-hooks` family declares
+the most fixes in either stack and applies the fewest. **What a tool declares is
+a floor on cheapness rather than an estimate of it**, so the chooser says
+*declares a fix*, never *is cheap*, and the wording is not a nicety: a team that
+reads "auto-fixable" and meets a finding that survives its own fix has been told
+something untrue by the tool that installed it.
+
+The reading is per version, for the same reason C7 is a command rather than a
+table: a number read from ruff 0.16.5 is a number about ruff 0.16.5, and
+`design.profiles.md` § What pins the tool version puts the version in the
+adopter's lockfile rather than in anything Craft writes.
+
+### What cannot be read is reported unread, and the React half cannot be read yet
+
+Python's cost is readable before anything is written: ruff is one binary and
+its taxonomy answers without a run. React's is not — it needs the six plugins
+resolved from a `node_modules`, and a repository at its first install has not
+got one. The script reports that as `UNREAD` with the reason rather than as
+zero, which is the posture `register-check deployments` already takes: *a run
+that cannot look says so*.
+
+For the chooser this is not enough, because the yes has to be informed. It shows
+the figures **`review.bench.md` measured, labelled with the versions they were
+read at**, and re-reads from the installed tree once the dependencies are there
+— reporting any difference rather than leaving the presented numbers standing.
+A labelled approximation somebody can check beats both alternatives: silence,
+and a number presented as current that was read on another machine in September.
+
+### What this section does not settle
+
+- **Who installs the six ESLint plugins.** The Python profile has no such
+  question — ruff ships every rule it selects — but a flat config importing
+  `@eslint-react` from a repository that does not depend on it is a
+  configuration that errors on the first run, and LNT-001 requires the linter to
+  be reached through the lockfile (ADR 0020). Whether the installer adds them to
+  the manifest, or refuses until somebody else has, is the writing slice's, and
+  it is the first thing that slice should answer.
+- **What the chooser does when the tool is not installed at all.** The fallback
+  above presents the bench's figures; it does not say whether the installer may
+  proceed to write against a tool it has never been able to read.
+
 ## What this document still owes
 
 Named so that a reader can tell a gap from an omission. Every row is work rather
@@ -351,7 +479,7 @@ than an open question — S4 closed the design questions, and
 | Owed | Which box in [`todo.md`](todo.md) |
 | --- | --- |
 | ~~How the stack is inferred, and what a repository with two of them gets~~ — **done**, § How the stack is inferred. It corrected the contract's pin shape on the way | Infer the stack from the repository |
-| What the chooser shows: each level's rules, and what S3 measured each costs to satisfy | Present each applicable profile with what it enables |
+| ~~What the chooser shows: each level's rules, and what S3 measured each costs to satisfy~~ — **done**, § What the chooser shows. It owes the writing slice one question: who installs the six ESLint plugins | Present each applicable profile with what it enables |
 | The shape of the explicit yes, and what is shown before it | Require an explicit confirmation |
 | What is written, per locus, and the stamp line at each | Write the pinned configuration; record what was written |
 | The residue: its file, its default, its wording, and the unenforced label | Emit the judgment-only residue |
