@@ -241,6 +241,15 @@ pins `lint-md` here.
 pinned, locus-wired configuration in one run, and a second run over the result
 changes nothing.
 
+**Met on a scaffold, 2026-09-19**, and the qualification is the honest part.
+[`build.installer.md`](build.installer.md) § The first run of the installer is
+the run — `python/strict` and `react/strict`, both completing, a second run
+changing nothing, and two defects found by running what nine tests and a design
+document had already read. *Locus-wired* is the control register's word and not
+Craft's: `gate-quality` wires the linter, and a profile writes the configuration
+those loci read. And the run was the author's on a scaffold built for it, which
+is exactly the gap S6 exists to close.
+
 ### S6 — Trial and review
 
 Install on a **new** repository at its start, which is the case the profile is

@@ -1038,6 +1038,84 @@ is what makes anything run.
   behind-is-staleness, ahead-is-a-defect question this repository answers for
   controls, and Craft has not been asked it yet.
 
+## The first run of the installer, and the two things it found
+
+`craft-install` has now been run, at `python/strict` and `react/strict`, against
+the gitignored scaffolds `scripts/craft_scaffold.py` builds. Both installs
+completed — configuration written and stamped, the pin recorded, the residue
+handed back — and **the run found two defects in the skill that no amount of
+reading it would have.**
+
+### What the run did
+
+| Step | Python scaffold | React scaffold |
+| --- | --- | --- |
+| Inferred | `python` from `pyproject.toml`; react correctly did not apply, no `package.json` | `react` from `package.json`, `tsconfig.json` present |
+| Dependencies | None — ruff ships every rule it selects | All six plugins already declared; nothing to add |
+| Wrote | The region into `pyproject.toml`, and `src/ruff.toml` | `eslint.config.mjs`, whole |
+| Verified | `ruff check` resolves; `PLC0415` fires in both trees, `S101` and `D1xx` only in `src/` | `eslint src` is clean on the scaffold, and reports eleven findings on a deliberately wrong component |
+| Re-ran | The span is byte-identical to the shipped artefact | The file is byte-identical |
+| Pin, residue | `.claude/skill-config.yaml`, `craft/unenforced.md` | The same |
+
+### Finding 1 — the profile applied to half the repository, and the run looked fine
+
+The scaffold had a `ruff.toml` beside its `pyproject.toml`. The skill said write
+into **the first location `stacks:` names**, which is `pyproject.toml`, so that
+is what the run did — and `stacks:` lists locations in the order **the checker**
+reads them, while ruff reads the **nearest** file.
+
+What followed is the trap in the direction the design had not looked at.
+`design.profiles.md` § The config surface recorded the danger of writing a
+`ruff.toml` into a repository whose `pyproject.toml` already has `[tool.ruff]`:
+the checker audits a section ruff no longer applies. This is the mirror image —
+writing `pyproject.toml` where a `ruff.toml` exists — and the consequence is
+worse, because it is **Craft's** configuration that stops applying.
+
+It was almost invisible. The nested `src/ruff.toml` extends `../pyproject.toml`,
+so everything under `src/` resolved to the installed profile and only the rest of
+the repository did not:
+
+```text
+src/ledger/probe.py:3:5   PLC0415  `import` should be at the top-level of a file
+tests/test_probe.py:      (nothing — governed by the sibling ruff.toml)
+```
+
+Two files with the same defect, one reported. Nothing warned, `ruff check`
+exited the way a working install exits, and the profile was half-applied.
+
+**The rule the skill now carries**: if any configuration location *after* the
+first exists, stop and report. Writing the first leaves the audited
+configuration and the running configuration in different files.
+
+### Finding 2 — a table header is a string that appears in comments
+
+Checking the span after the write meant finding `[tool.ruff]` in the file. The
+scaffold's `pyproject.toml` opens with a comment saying *No `[tool.ruff]`
+section, and there will not be one* — and a plain search finds **that**, at line
+5, twenty-eight lines above the table.
+
+The comparison reported a difference that did not exist, which was harmless. The
+same search deciding *where does my span go* is not: it writes the profile into
+the middle of somebody's comment block. **The skill now says to match a header
+anchored to the start of a line and nowhere else.**
+
+It is a small rule, and it is in the skill rather than in this document because
+the skill is what a model reads at the moment it matters. The failure took two
+minutes to hit while following the prose that had just been written.
+
+### What the trial does not close
+
+**It was run by the author of the skill, on a scaffold built for it.** That is
+worth stating plainly: the inference had one right answer, the presentation was
+read by somebody who already knew what it said, and no part of it tested whether
+a team finds the profile bearable. S6 is that, and this changes nothing about
+why S6 is the stage this plan can least afford to skip.
+
+What it does close is narrower and real: the installer runs, the artefacts it
+installs work, a second run changes nothing, and two defects that survived a
+design document, a renderer and nine tests were found by the first person to
+use it.
+
 ## What this document still owes
 
 Named so that a reader can tell a gap from an omission. Every row is work rather
@@ -1054,26 +1132,21 @@ than an open question — S4 closed the design questions, and
 | ~~A second run over the installer's own output changing nothing~~ — **done for the artefacts**, § A second run changes nothing. What a re-run does when a gate has opened since is the skill's Idempotency section and S6's to observe | Make a second run change nothing |
 | ~~Packaging, versioning and publication, and where the register sits in it~~ — **done**, § The plugin ships what it writes and § Published, and the three numbers. The release itself is not cut | Version and publish it |
 
-**Every row is struck, and the stage is not finished.** `plan.md`'s exit
-criterion for S5 is not a list of boxes: it is *a clean repository of each stack
-goes from nothing to a working, pinned, locus-wired configuration in **one
-run**, and a second run over the result changes nothing.* What is demonstrated
-so far is that the **artefacts** do that —
-`tests/test_craft_install_dry_run.py` places them and re-places them, and the
-ESLint half resolves where the plugins exist. What has not happened is a run of
-`craft-install` itself.
+**Every row is struck, and the exit criterion is now met on a scaffold.** `plan.md`'s exit criterion for S5 is
+not a list of boxes: it is *a clean repository of each stack goes from nothing
+to a working, pinned, locus-wired configuration in **one run**, and a second run
+over the result changes nothing.* § The first run of the installer is that run,
+at `python/strict` and `react/strict`, and it found two defects on the way
+through.
 
-That distinction is the one this repository keeps making about ticked boxes, and
-it applies to its own workstream: a harness that places files the way the skill
-says to is evidence about the files, not about the skill. **Nobody has invoked
-the installer end to end**, so nothing yet shows that its inference reaches the
-right stack on a repository it has not seen, that its presentation is one a
-person can answer, or that its refusals fire where they should.
+**One word of it is still unmet, and it is not Craft's to meet.**
+*Locus-wired* is the control register's — `gate-quality` wires the linter at the
+editor, at pre-commit and in CI, and a Craft profile writes the configuration
+those loci read. A repository that installs a profile without ever deploying
+LNT-001 has a configuration nothing runs, which is the same sentence this
+document uses about a React profile with no `tsconfig.json`.
 
-The command that would close it, against a throwaway scaffold of each stack:
-
-```bash
-uv run python scripts/craft_scaffold.py   # a new repository of each stack
-/craft-install --repo temp/craft-bench/python
-/craft-install --repo temp/craft-bench/react
-```
+**And the run was the author's, on a scaffold built for it.** What that cannot
+show is whether the presentation reads to somebody who has not seen it and
+whether the profile is bearable in use. That is S6, and the rewrite of S3 put
+the weight there deliberately.

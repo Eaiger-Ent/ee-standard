@@ -841,7 +841,21 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       repository with no profile at all passes every control, which is the gap
       the workstream opens on. **No release is cut** — a tag is a step, not a
       decision, and the box is about the mechanism being in place
-- [ ] Write `build.installer.md`
+- [x] Write `build.installer.md` — **ten sections, and every row of its own
+      owed table is struck.** Done 2026-09-19, ending with § The first run of
+      the installer: `craft-install` has been run at `python/strict` and
+      `react/strict` against the scaffolds, both installs completed, and the run
+      found **two defects nothing else had**. The profile applied to half the
+      repository — the scaffold had a `ruff.toml` beside its `pyproject.toml`,
+      `stacks:` lists locations in the order the *checker* reads them, and ruff
+      reads the *nearest* file, so everything outside `src/` was governed by the
+      sibling and nothing warned. And a table header is a string that appears in
+      comments: the scaffold's `pyproject.toml` says *no `[tool.ruff]` section*
+      twenty-eight lines above the table, and a plain search finds that. Both
+      rules are in the skill now, with a test that reads them back. **S5's exit
+      criterion is met on a scaffold**, with one word of it — *locus-wired* —
+      belonging to the control register rather than to Craft, and with the run
+      having been the author's rather than a team's, which is S6
 
 ## S6 — Trial and review
 

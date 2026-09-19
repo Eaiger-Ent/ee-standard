@@ -155,6 +155,21 @@ def test_the_skill_reads_the_manifest_rather_than_counting_rules() -> None:
     assert "never fill in a stamp by hand" in skill.lower()
 
 
+def test_the_skill_carries_the_two_rules_its_first_trial_found() -> None:
+    """Both were found by running it, and neither is derivable from the design.
+
+    A later configuration location wins at run time where the register's search
+    order reads the first, so a profile written into `pyproject.toml` beside a
+    `ruff.toml` applies to nothing the nested configuration does not rescue. And
+    a `pyproject.toml` can say *no `[tool.ruff]` section* in a comment, which a
+    search for the header finds. `docs/craft/build.installer.md` § The first run
+    of the installer is the record of both.
+    """
+    skill = (PLUGIN / "skills/craft-install/SKILL.md").read_text(encoding="utf-8")
+    assert "wins at run time" in skill
+    assert "anchored to a line" in skill
+
+
 def test_the_stamp_names_the_installer_that_wrote_it() -> None:
     """ADR 0038's shape, reused by ADR 0055 rule 2, on Craft's own artefacts.
 

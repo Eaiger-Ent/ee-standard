@@ -180,6 +180,22 @@ Copy the rendered artefacts. Do not retype them.
 | `python` | `profiles/<slug>/src-ruff.toml` | `src/ruff.toml` — the nested configuration two source-scoped properties need |
 | `react` | `profiles/<slug>/eslint.config.mjs` | The repository root, written whole |
 
+**Before you write anything: a configuration file later in the register's
+search order wins at run time.** `stacks:` lists locations in the order the
+*checker* reads them, and ruff reads the **nearest** file — a `ruff.toml` beside
+a `pyproject.toml` replaces its `[tool.ruff]` entirely rather than merging with
+it. So if any location after the first exists, **stop and report it**. Writing
+the first leaves a repository where the audited configuration and the running
+configuration are different files, and nothing warns: the first trial of this
+skill installed a profile that applied to `src/` and not to `tests/`, and the
+run looked like a success.
+
+**Match a table header anchored to a line, never anywhere in the file.**
+`[tool.ruff]` appears in comments — a `pyproject.toml` saying *no `[tool.ruff]`
+section, and there will not be one* contains the string you are looking for, and
+a search that finds it writes your span into a comment block. Look for the
+header at the start of a line and nowhere else.
+
 **A contribution is a span of lines, not a table.** The Python artefact is a
 sequence of regions, each headed by the table it belongs in and delimited by
 `# >>> ee-craft` and `# <<< ee-craft`:
