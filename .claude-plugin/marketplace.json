@@ -18,6 +18,17 @@
       },
       "homepage": "https://github.com/Eaiger-Ent/ee-standard/tree/main/plugins/control-register",
       "source": "./plugins/control-register"
+    },
+    {
+      "name": "craft",
+      "description": "Choose a coding-standards profile for Python or React, see what each rule turns on and what it costs to satisfy before you say yes, and have it written into the configuration your linter already runs \u2014 with the half no linter can check handed back, labelled unenforced.",
+      "category": "quality",
+      "author": {
+        "name": "Equal Experts",
+        "email": "nathan.carney@equalexperts.com"
+      },
+      "homepage": "https://github.com/Eaiger-Ent/ee-standard/tree/main/plugins/craft",
+      "source": "./plugins/craft"
     }
   ]
 }

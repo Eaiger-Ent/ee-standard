@@ -1,0 +1,80 @@
+[tool.ruff]
+# >>> ee-craft python/strict@1
+# ee-craft: python/strict@1  gates: none (no any. property binds an instrument)  craft-contract: 2
+line-length = 88                                    # python.line-length
+preview = true                                      # PLR0904, PLR1702
+# <<< ee-craft
+
+[tool.ruff.lint]
+# >>> ee-craft python/strict@1
+select = [
+  "ANN001", "ANN201", "ANN204", "ANN205", "ANN206", # python.annotate-public-api
+  "PLR0904",                                        # python.class-size
+  "C4", "PERF401",                                  # python.comprehension-over-manual-loop
+  "S311",                                           # python.crypto-grade-randomness
+  "D205", "D401",                                   # python.docstring-form
+  "B904",                                           # python.exception-chaining
+  "EM101", "EM102",                                 # python.exception-message-not-a-literal
+  "C901", "PLR0915",                                # python.function-length
+  "PLR0913", "PLR0917",                             # python.function-parameter-count
+  "I001",                                           # python.import-order
+  "E501",                                           # python.line-length
+  "N",                                              # python.naming-form
+  "PT011", "PT012",                                 # python.narrow-raises
+  "PLR1702",                                        # python.nesting-depth
+  "ANN401",                                         # python.no-any
+  "S104",                                           # python.no-bind-all-interfaces
+  "BLE001", "E722",                                 # python.no-blind-except
+  "FBT001", "FBT002",                               # python.no-boolean-trap
+  "B008",                                           # python.no-call-in-default-argument
+  "ERA001",                                         # python.no-commented-out-code
+  "PLW0603",                                        # python.no-global-mutable-state
+  "S105", "S106", "S107",                           # python.no-hardcoded-credentials
+  "PLC0415",                                        # python.no-import-inside-function
+  "S324",                                           # python.no-insecure-hash
+  "B023",                                           # python.no-loop-variable-capture
+  "B006", "RUF012",                                 # python.no-mutable-default-argument
+  "SLF001",                                         # python.no-private-member-access
+  "RET504",                                         # python.no-redundant-assign-before-return
+  "TID252",                                         # python.no-relative-parent-imports
+  "PLW2901",                                        # python.no-shadowed-loop-variable
+  "S110", "S112", "SIM105",                         # python.no-silent-exception-swallow
+  "W291", "W293",                                   # python.no-trailing-whitespace
+  "TD001", "TD002", "TD003", "TD004", "TD005", "TD006", "TD007",# python.no-untracked-todo
+  "ARG001", "ARG002", "ARG003", "ARG004", "ARG005", # python.no-unused-argument
+  "F401",                                           # python.no-unused-import
+  "RUF100",                                         # python.no-unused-suppression
+  "F841",                                           # python.no-unused-variable
+  "S608",                                           # python.parameterised-sql
+  "PT006", "PT007",                                 # python.parametrize-form
+  "PTH",                                            # python.pathlib-over-os-path
+  "UP007", "UP045",                                 # python.pep604-unions
+  "G001", "G002", "G003", "G004", "LOG015",         # python.structured-logging
+  "INP001",                                         # python.test-layout
+  "PT018",                                          # python.test-single-behaviour
+  "DTZ",                                            # python.timezone-aware-datetimes
+  "S501",                                           # python.tls-verification-on
+  "TC001", "TC002", "TC003",                        # python.typing-only-imports
+]
+# <<< ee-craft
+
+[tool.ruff.lint.flake8-type-checking]
+# >>> ee-craft python/strict@1
+runtime-evaluated-decorators = ["dataclasses.dataclass"] # python.typing-only-imports
+# <<< ee-craft
+
+[tool.ruff.lint.mccabe]
+# >>> ee-craft python/strict@1
+max-complexity = 10                                 # python.function-length
+# <<< ee-craft
+
+[tool.ruff.lint.pylint]
+# >>> ee-craft python/strict@1
+max-public-methods = 20                             # python.class-size
+max-statements = 25                                 # python.function-length
+# <<< ee-craft
+
+[tool.mypy]
+# >>> ee-craft python/strict@1
+disallow_any_explicit = true                        # python.no-any-anywhere
+# <<< ee-craft

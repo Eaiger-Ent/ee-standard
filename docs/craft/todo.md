@@ -732,7 +732,16 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       question: who adds the six ESLint plugins to the manifest, given a flat
       config that imports what a repository does not depend on errors on its
       first run
-- [ ] Require an explicit confirmation before anything is written
+- [x] Require an explicit confirmation before anything is written. Done
+      2026-09-19: `plugins/craft/skills/craft-install/SKILL.md` Steps 1 and 2 —
+      present both levels with what each turns on and what the manifest says
+      each costs, name the six ESLint plugins and the test globs **before** the
+      question, then take one `AskUserQuestion` per applicable stack with no
+      default level. **There is no `--yes`**, and
+      `tests/test_unattended_flag.py` now holds the Craft installer to the rule
+      it holds the gates to: a flag that answered this question would install a
+      rule selection nobody looked at, into the configuration a merge gate
+      reads. `--profile` chooses and does not consent
 - [x] Write the pinned configuration at every locus the profile declares.
       **Both stacks render from the register, 2026-09-19.** The React half is
       [`build.installer.md`](build.installer.md) § The React config is one file,
@@ -772,12 +781,19 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       `[tool.ruff]`, so the other writer is a person. Two facts were asked of
       ruff rather than remembered: where a setting lives, and whether the four
       linters `standard` selects wholesale carry a preview rule
-- [ ] Record what was written, **including which stack-neutral groups the
+- [x] Record what was written, **including which stack-neutral groups the
       evidence gates switched on and what switched them** — ADR 0052 requires it,
       because a gate nobody can see is the invisible suppression it rejected.
       **The gates are designed** — [`design.profiles.md`](design.profiles.md)
       § The evidence gates, 2026-09-07 — and the stamp line is specified there;
-      writing it is this box
+      writing it is this box. Done 2026-09-19: the stamp is rendered **into**
+      every artefact the plugin ships rather than typed by the skill, which is
+      `CLAUDE.md`'s own gotcha applied — a stamp nobody types is a stamp nobody
+      can get wrong. `tests/test_craft_plugin.py` reads it back out of each
+      published configuration. The gate line says `none` with the reason: no
+      stack-neutral property binds an instrument at any level, so there is no
+      group for a predicate to switch on, and printing predicates nothing would
+      have consulted would be decoration rather than a record
 - [x] Emit the judgment-only residue as prose an assistant loads, labelled
       unenforced. Done 2026-09-19,
       [`build.installer.md`](build.installer.md) § The residue is a document of

@@ -24,7 +24,8 @@ import pytest
 
 from conftest import REPO_ROOT
 
-SKILLS = REPO_ROOT / "plugins" / "control-register" / "skills"
+PLUGINS = REPO_ROOT / "plugins"
+SKILLS = PLUGINS / "control-register" / "skills"
 REFERENCE = REPO_ROOT / "plugins" / "control-register" / "reference" / "unattended.md"
 
 #: The skills a person re-runs, and the only ones that may take the flag.
@@ -40,11 +41,20 @@ _REFUSES = (
     "gate-secrets",
     "gate-supply-chain",
     "register-variance",
+    # Not a gate, and held to the same rule for a sharper reason: the only
+    # question `craft-install` asks is the consent. A flag that answered it
+    # would be a flag that installs a rule selection nobody looked at, into the
+    # configuration a merge gate reads.
+    "craft-install",
 )
 
 
 def _skill(name: str) -> str:
-    return (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+    for plugin in sorted(PLUGINS.iterdir()):
+        candidate = plugin / "skills" / name / "SKILL.md"
+        if candidate.is_file():
+            return candidate.read_text(encoding="utf-8")
+    raise AssertionError(f"{name} is in no plugin")
 
 
 def test_the_shared_rule_has_one_home() -> None:

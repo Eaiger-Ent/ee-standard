@@ -837,6 +837,85 @@ the register learning that its text has a second audience.
 - **Whether an assistant reads it at all.** Craft can write a file; it cannot
   make a harness load one, and saying so is part of the label.
 
+## The plugin ships what it writes, not what decides it
+
+`plugins/craft/` exists, with `craft-install` in it, and the shape of it is one
+decision: **the register stays here and the rendered output travels.**
+`scripts/craft_publish.py` writes `plugins/craft/profiles/` — fifteen artefacts,
+the configuration for each of the four profiles, the residue for each
+combination, and a manifest of what each turns on — and
+`tests/test_craft_plugin.py` re-renders and fails on any difference.
+
+### Why a committed copy, when this repository exists to prevent second copies
+
+Three reasons, and the first is the one that decides it:
+
+1. **The installer runs where no toolchain is guaranteed.** A React-only
+   repository has Node and may have no Python at all. A skill that resolved the
+   register at install time would need one; a skill that copies a file needs
+   nothing.
+2. **An adopter installs a plugin, not a repository.** Shipping the register
+   would put 2,600 lines of YAML in a second place, to be read by a skill that
+   would then have to resolve levels, expand linter selectors and place settings
+   in the right tables — in context, where nobody can diff the result.
+3. **Enforcement is never Claude, and neither is rule selection.** The rendered
+   file is the reviewable artefact. A 141-rule selection assembled in a
+   conversation is a selection that was never reviewed by anyone.
+
+The copy is safe for the reason this repository always gives for a copy it
+keeps: **something checks it.** `test_craft_plugin.py` fails on a register edit
+nobody published, on a hand edit to a published artefact, and on a renderer
+change that moved a byte — and the fix is one command.
+
+### What it retires: the `craft_contract` refusal
+
+§ `craft_contract` is the register's number designed an installer that refuses a
+register whose schema it does not understand. **That case no longer arises for
+this installer**, because it never reads the register: the manifest and the
+artefacts are published together from one contract, and a mismatch between them
+is impossible by construction rather than caught at install time. The number
+stays in the manifest so a reader can see which contract produced what they
+have, and the refusal moves to publish time, where the test performs it.
+
+This is what a design document is for. The refusal was right for the design as
+it stood — an installer reading a register from a pinned ref — and the packaging
+decision made it unreachable rather than wrong.
+
+### The skill takes a yes, and has no flag that answers it
+
+`craft-install` asks one question: which level, per applicable stack. There is no
+`--yes`, and `tests/test_unattended_flag.py` now holds the Craft installer to the
+rule it holds the gates to. The reasoning there is a gate's — *no question a gate
+asks is a proceed question* — and here it is sharper: a flag that answered this
+one would install a rule selection nobody looked at, into the configuration a
+merge gate reads.
+
+`--profile` exists and does not consent. It chooses, the presentation still
+happens, and the yes is still taken.
+
+### What the skill is told never to do
+
+Three rules at the head of `SKILL.md`, and each is a failure this workstream has
+already reasoned about somewhere else:
+
+| Rule | Where it comes from |
+| --- | --- |
+| **The profiles decide, this skill copies** — do not assemble, reformat, add or drop a rule | The same sentence `gate-quality` opens with about the control register, and the reason rendering moved out of context at all |
+| **Never write a loosening** | LNT-001 is `narrowing-only`; § The installer never writes a loosening in `design.profiles.md` |
+| **Never fill in a stamp by hand** | `CLAUDE.md`'s own gotcha. The stamp is part of the rendered artefact, so copying it is the only way it can be right |
+
+A test reads those three sentences back out of the skill, which is a blunt
+instrument and the right one: the skill is prose, prose is what a model follows,
+and a rule deleted from it would otherwise be a silent change of behaviour.
+
+### What this section does not settle
+
+- **Publishing the plugin.** The marketplace entry exists; releasing it, and how
+  a consumer pins a version of it, is the box that stays open.
+- **Whether a repository with two stacks gets one residue file or two.** The
+  eight combinations are rendered, so one file is available for every case; the
+  skill writes one, and where it writes it is still `residue:`'s to say.
+
 ## What this document still owes
 
 Named so that a reader can tell a gap from an omission. Every row is work rather
@@ -847,7 +926,7 @@ than an open question — S4 closed the design questions, and
 | --- | --- |
 | ~~How the stack is inferred, and what a repository with two of them gets~~ — **done**, § How the stack is inferred. It corrected the contract's pin shape on the way | Infer the stack from the repository |
 | ~~What the chooser shows: each level's rules, and what S3 measured each costs to satisfy~~ — **done**, § What the chooser shows. It owes the writing slice one question: who installs the six ESLint plugins | Present each applicable profile with what it enables |
-| The shape of the explicit yes, and what is shown before it | Require an explicit confirmation |
+| ~~The shape of the explicit yes, and what is shown before it~~ — **done**, § The plugin ships what it writes and the skill's Step 1 and Step 2. No flag answers it | Require an explicit confirmation |
 | ~~What is written, and the stamp at each span~~ — **done**, § What the installer writes and § The React config is one file. Both stacks render from the register | Write the pinned configuration; record what was written |
 | ~~The residue: its wording, and the unenforced label~~ — **done**, § The residue is a document of its own. Its file and the pointer to it are the installer's, and stay owed | Emit the judgment-only residue |
 | A second run over the installer's own output changing nothing, and what "nothing" covers when a gate has opened since | Make a second run change nothing |

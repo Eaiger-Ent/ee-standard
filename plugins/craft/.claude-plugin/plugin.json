@@ -1,0 +1,10 @@
+{
+  "name": "craft",
+  "description": "Installs the Craft coding standards for Python and React: a rule profile chosen with you, written into the configuration your linter already runs, and the judgment-only half handed back labelled unenforced.",
+  "dependencies": [],
+  "author": {
+    "name": "Equal Experts",
+    "email": "nathan.carney@equalexperts.com"
+  },
+  "version": "0.1.0"
+}
