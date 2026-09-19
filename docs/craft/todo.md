@@ -9,11 +9,12 @@ copies of the same statement are free to drift, and a ticked box is not an exit
 criterion: a stage is finished when `plan.md`'s criterion is met, however many
 boxes are ticked.
 
-Written 2026-09-05. S1, S2 and S3 are complete. S3 was rewritten 2026-09-06
+Written 2026-09-05. S1, S2, S3 and S4 are complete. S3 was rewritten 2026-09-06
 after ADR 0052 named new codebases as the target and left its original premise
 measuring a risk this workstream does not carry; it met its exit criterion on
 2026-09-07, and `review.bench.md` § Does the exit criterion hold is the record.
-S4 onwards is untouched apart from the boxes that premise reached.
+S4 met its own on 2026-09-08 — every ADR it names is Accepted, and the Craft
+register exists under `craft/`. **S5 began 2026-09-19.**
 
 ## S1 — Survey
 
@@ -667,8 +668,26 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
 
 ## S5 — Build the chooser and the installer
 
-- [ ] Specify the skill's configuration contract, in the shape
-      `.claude/skill-config.yaml` already uses
+- [x] Specify the skill's configuration contract, in the shape
+      `.claude/skill-config.yaml` already uses. Done 2026-09-19,
+      [`build.installer.md`](build.installer.md) § The configuration contract.
+      The skill is **`craft-install`**, and `plan.md`'s naming standard gains the
+      row that says why it is not `register-*`. Two keys and one option —
+      `profile`, `version`, and `residue` for the file an assistant actually
+      loads, which is a property of the repository rather than of the profile.
+      **Three keys were refused with their reasons**: a per-rule `ignore:`, whose
+      only use is to ask for the loosening of LNT-001 the installer already
+      declines; a `config_path:`, because `controls.yaml`'s `stacks:` block
+      already names where each stack's configuration lives; and a tool version,
+      which the lockfile pins. The slice's own finding is that **absent, partial
+      and malformed are three different things** and S4 had only settled the
+      first: a `profile` with no `version` is a first install rather than an
+      error, while an unknown profile name, a version ahead of the register and
+      unparseable YAML each fail and write nothing — a half-installed profile is
+      a state no part of the design can describe. It also names the **three
+      records** a re-run compares — the pin is intent, the stamp is what
+      happened, the register is the present — and takes this repository's own
+      doctrine for the pairs: behind is staleness, ahead is a defect
 - [ ] Infer the stack from the repository. **Not an archetype** — ADR 0052
       ruled it out as an axis, and the stack-neutral groups gate on the artefact
       they read being present instead
