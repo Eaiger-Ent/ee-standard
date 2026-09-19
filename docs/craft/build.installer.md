@@ -470,6 +470,185 @@ and a number presented as current that was read on another machine in September.
   above presents the bench's figures; it does not say whether the installer may
   proceed to write against a tool it has never been able to read.
 
+## What the installer writes, and how it shares a file
+
+**The Python half is built** — [`scripts/craft_render.py`](../../scripts/craft_render.py)
+turns a profile into the exact lines an installer places, and
+`tests/test_craft_render.py` holds that rendering to the register. The React
+flat config is owed, and the box in [`todo.md`](todo.md) stays open until it
+exists. What this section settles is the part both stacks share: **how a writer
+puts its lines into a file it does not own.**
+
+```bash
+uv run python scripts/craft_render.py --profile python/strict
+uv run python scripts/craft_render.py --profile python/strict --file src
+```
+
+### The installer writes at no loci at all
+
+`plan.md` § S5 says *writes the pinned configuration at every locus the profile
+declares*, and a profile declares none. LNT-001 declares three — editor,
+pre-commit and CI — and `gate-quality` is what wires them; ADR 0009 is why all
+three read **one** configuration. So Craft writes one file's worth of lines and
+reaches every locus by construction, which is a stronger guarantee than writing
+three times and is not the installer's doing at all.
+
+### The second writer is not `gate-quality`
+
+ADR 0055 records, as a trade-off, that *`pyproject.toml` acquires a second
+writer* and that `gate-quality` writes the same file. **It does not.**
+`gate-quality`'s templates are the loci artefacts — `.pre-commit-config.yaml`,
+the CI steps, the editor settings — and LNT-001's provenance stamp lives in
+`.pre-commit-config.yaml` beside the hook. Nothing automated writes
+`[tool.ruff]` today; in this repository that section is hand-written, comments
+and all.
+
+That changes what the discipline is for. It is not two skills coordinating a
+file, which could be solved by either of them knowing about the other. It is
+**Craft writing into a file a person wrote**, and the person is not going to
+read Craft's documentation first.
+
+### A contribution is a span of lines, not a table
+
+Two writers to one TOML document cannot each own a table header. A second
+`[tool.mypy]` is not a merge, it is an invalid file — and TYP-001 requires that
+table to exist already, since `typecheck-strict-and-blocking` reads `strict` and
+the coverage key inside it. So the renderer emits `(table, lines)` pairs and
+never a header, and the installer places each span:
+
+```toml
+[tool.ruff.lint]
+# >>> ee-craft python/strict@1
+# ee-craft: python/strict@1  gates: none (no any. property binds an instrument)  craft-contract: 1
+select = [
+  "ANN001", "ANN201", "ANN204", "ANN205", "ANN206", # python.annotate-public-api
+  ...
+]
+# <<< ee-craft
+```
+
+Three things follow, and each is a rule rather than a style:
+
+- **Every line Craft writes is inside a marked span**, so *what did the profile
+  turn on here* is answerable by reading the file, which is the question ADR
+  0055 rule 2 exists for.
+- **The header is written only where the table is absent.** In a new repository
+  Craft writes `[tool.ruff.lint]` itself; in one that has it, Craft writes
+  between the existing header and whatever follows.
+- **The stamp goes once per file**, at the first span, and every other span
+  names the profile in its own marker. Six copies of one stamp would make the
+  file harder to read without making it more true.
+
+### A write is a union, and a key somebody else owns is a refusal
+
+Craft rewrites what is inside its markers, wholly, on every run. It never edits
+a line outside them, and the reason is the register's rather than politeness:
+removing a selector is a **loosening** of a `narrowing-only` control, which
+`design.profiles.md` § The installer never writes a loosening already refuses.
+
+That leaves one case with no comfortable answer. A repository whose
+`[tool.ruff.lint]` already carries `select = ["E501"]` cannot receive Craft's
+span as written — two `select` keys in one table is the same invalid document as
+two headers. Two ways out, and the second is worse:
+
+| | |
+| --- | --- |
+| **Refuse, and report the union it would have written** | The team pastes once, or deletes their line and re-runs. Authorship stays legible: every value inside the markers is the profile's, and nothing inside them was somebody else's decision |
+| Absorb — move their values inside the markers, commented as kept | It deletes a line the team wrote and re-publishes their decision under Craft's name, and the next re-run rewrites the span carrying a stranger's selectors inside it. A merge nobody asked for, remembered forever |
+
+**Refuse, and report.** The cost is real and it is paid by exactly the
+repositories ADR 0052 says are not the target: a new repository has no
+`[tool.ruff.lint]` to collide with, and the installer writes the whole span.
+
+### The nested configuration passes all four of LNT-001's asserts
+
+`design.profiles.md` § The config surface left this to the implementing work:
+two properties are scoped to the package source, ruff has no per-path `select`,
+and the only expression the tool allows is a nested configuration — so an
+installed profile writes a second file, and `register_check`'s `_configured`
+reads the first location only. Whether that breaks LNT-001 was recorded rather
+than assumed.
+
+**It breaks none of them**, and the four are worth naming one at a time:
+
+| Assert | Why the nested file does not reach it |
+| --- | --- |
+| `linter-wired-at-all-loci` | Reads the loci, which run `uv run ruff check` and resolve both files the same way |
+| `stack_tool_pinned_in_lockfile` | Reads the lockfile |
+| `no-failure-suppression` | Reads the CI invocation |
+| `provenance_stamp_present` | Reads `gate-quality`'s stamp, which is in `.pre-commit-config.yaml` |
+
+**What it does cost is the audit's view.** `_configured` returns the root
+location and stops, so a later edit to `src/ruff.toml` — removing `S101`, or the
+docstring rules — is invisible to `register-variance` and to every LNT-001 run.
+The thing that would notice is Craft's own re-run, comparing the stamp against
+the file as it stands. That is the second of the three comparisons
+§ What a re-run does names, and this is the case that makes it load-bearing
+rather than tidy.
+
+Verified rather than reasoned: the rendered configuration plus the nested file,
+run over a five-line module and a two-line test, reports `S101` and the `D1xx`
+rules in `src/` and neither in `tests/`.
+
+### The six ESLint plugins, which the register already knows how to add
+
+§ What the chooser shows handed this here as the first thing to answer. A flat
+config importing `@eslint-react` from a repository that does not depend on it
+errors on its first run, and ADR 0020 requires the locus to reach the lockfile's
+binary rather than something on `PATH`.
+
+**The answer needed no new data.** `controls.yaml`'s `ecosystems:` block already
+carries `add_dev_dependency`, keyed by lockfile — `npm install --save-dev
+{package}`, `pnpm add --save-dev {package}`, and the other two — and
+`lock_entry` is the pattern that confirms a package landed there. So the
+installer detects the lockfile, uses the command the register names, and
+**chooses no version and names no package manager**: the resolver picks the
+version and the lockfile records it, which is where
+`design.profiles.md` § What pins the tool version already put that decision.
+
+Two rules come with it:
+
+- **The chooser names the six before the yes**, so the consent covers adding
+  them. Six dependencies is a supply-chain change, and a team that agreed to a
+  lint profile did not thereby agree to whatever the installer felt was needed.
+- **If they cannot be added, nothing is written.** A configuration referring to
+  plugins the repository does not have is a gate that fails for the wrong
+  reason, which is worse than no profile at all.
+
+The asymmetry is worth stating plainly: **Craft's React profile brings six
+dependencies no control mandates, and its Python profile brings none**, because
+ruff ships every rule it selects inside the binary LNT-001 already requires.
+
+### Two things the tool had to be asked, rather than remembered
+
+- **Where a setting lives is ruff's to say.** `max-complexity` is `mccabe`'s and
+  `max-statements` is `pylint`'s; written into the wrong table both parse and
+  **neither applies**, so the failure mode is a threshold that silently does
+  nothing. The renderer reads `ruff config --output-format json`, which
+  enumerates every option by the path a file spells, and fails loudly on a name
+  it finds in two places. A table of those paths inside Craft would be the
+  checker-side dictionary ADR 0018 was written about, stale the first release
+  that moves an option.
+- **`preview = true` against a linter selector is wholesale.** C8 measured the
+  cost of the switch as nothing *for a selection spelled in exact codes*, and
+  `standard` is not spelled only in codes — four of its instruments are
+  `linter:` selectors, which is the correction the register made when it
+  replaced ranges. `strict` needs `preview = true` for `PLR0904` and `PLR1702`,
+  so the same switch would enable whatever preview rules those four linters
+  hold. They hold none at ruff 0.16.5. That is a fact about a version rather
+  than a property of the design, so the renderer checks it at render time and
+  refuses to write the switch if it ever stops being true.
+
+### What this section does not settle
+
+- **The React flat config.** The renderer is Python-only, and the box stays
+  open. The shape is the same — spans inside a file — but the file is
+  JavaScript rather than data, which makes *what is inside the markers* a
+  different problem.
+- **Whether the installer may refuse to run at all** on a repository whose stamp
+  shows hand edits inside a span. Still open from § What a re-run does, and now
+  with a second case attached to it: the nested file nothing else audits.
+
 ## What this document still owes
 
 Named so that a reader can tell a gap from an omission. Every row is work rather
@@ -481,7 +660,7 @@ than an open question — S4 closed the design questions, and
 | ~~How the stack is inferred, and what a repository with two of them gets~~ — **done**, § How the stack is inferred. It corrected the contract's pin shape on the way | Infer the stack from the repository |
 | ~~What the chooser shows: each level's rules, and what S3 measured each costs to satisfy~~ — **done**, § What the chooser shows. It owes the writing slice one question: who installs the six ESLint plugins | Present each applicable profile with what it enables |
 | The shape of the explicit yes, and what is shown before it | Require an explicit confirmation |
-| What is written, per locus, and the stamp line at each | Write the pinned configuration; record what was written |
+| What is written, and the stamp at each span — **the Python half is done**, § What the installer writes. The React flat config is owed, and the box stays open | Write the pinned configuration; record what was written |
 | The residue: its file, its default, its wording, and the unenforced label | Emit the judgment-only residue |
 | A second run over the installer's own output changing nothing, and what "nothing" covers when a gate has opened since | Make a second run change nothing |
 | Packaging, versioning and publication, and where the register sits in it | Version and publish it |

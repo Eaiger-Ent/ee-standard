@@ -733,7 +733,27 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       config that imports what a repository does not depend on errors on its
       first run
 - [ ] Require an explicit confirmation before anything is written
-- [ ] Write the pinned configuration at every locus the profile declares
+- [ ] Write the pinned configuration at every locus the profile declares.
+      **The Python half landed 2026-09-19** —
+      [`scripts/craft_render.py`](../../scripts/craft_render.py) with
+      `tests/test_craft_render.py` holding it to the register, and
+      [`build.installer.md`](build.installer.md) § What the installer writes for
+      the decisions. The box stays open because the React flat config is not
+      written. What the half settled: the installer writes at **no loci** — a
+      profile declares none, LNT-001 declares three and ADR 0009 makes them read
+      one configuration — and **a contribution is a span of lines rather than a
+      table**, because two writers cannot each own a header and a second
+      `[tool.mypy]` is an invalid document rather than a merge. A key somebody
+      else owns is a **refusal with the union reported**, not an absorption. The
+      nested source-scoped configuration passes all four of LNT-001's asserts,
+      which `design.profiles.md` left to the implementing work, and costs the
+      audit its view of a file only Craft's own re-run will notice an edit to.
+      Verified end to end: `S101` and `D1xx` fire in `src/` and neither in
+      `tests/`. ADR 0055's *`pyproject.toml` acquires a second writer* names the
+      wrong pair — `gate-quality` writes the loci artefacts and the stamp, not
+      `[tool.ruff]`, so the other writer is a person. Two facts were asked of
+      ruff rather than remembered: where a setting lives, and whether the four
+      linters `standard` selects wholesale carry a preview rule
 - [ ] Record what was written, **including which stack-neutral groups the
       evidence gates switched on and what switched them** — ADR 0052 requires it,
       because a gate nobody can see is the invisible suppression it rejected.
