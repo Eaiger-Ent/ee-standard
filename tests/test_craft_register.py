@@ -260,6 +260,48 @@ def test_a_candidate_names_a_tool_and_why_it_is_not_bound() -> None:
         assert candidate.get("why_not"), f"{identity}'s candidate does not say why not"
 
 
+def test_every_rule_namespace_resolves_to_a_package() -> None:
+    """An installer has to write the import, so the package has to be data.
+
+    A rule is `react-hooks/rules-of-hooks`; the import is
+    `eslint-plugin-react-hooks`. Nothing derives one from the other —
+    `@typescript-eslint/*` rules come from `typescript-eslint`, and
+    `@eslint-react/*` from `@eslint-react/eslint-plugin` — so a namespace with
+    no package is a rule no renderer can reach, and a table of them in Craft's
+    code would be the dictionary ADR 0018 refuses.
+    """
+    namespaces = {
+        source["namespace"]: key
+        for key, source in _meta()["sources"].items()
+        if source.get("namespace")
+    }
+    for key, source in _meta()["sources"].items():
+        assert bool(source.get("namespace")) == bool(source.get("package")), key
+    for identity, prop in _properties().items():
+        rules = list((prop.get("instrument") or {}).get("rules", []))
+        rules += [rule for alt in prop.get("alternatives", []) for rule in alt.get("rules", [])]
+        for rule in rules:
+            assert rule.rsplit("/", 1)[0] in namespaces, f"{identity} names {rule}"
+
+
+def test_every_base_names_a_registered_plugin_and_says_why() -> None:
+    """A preset taken whole is a decision, and two properties rest on this one.
+
+    `react.no-legacy-proptypes` and `react.jsx-runtime-assumed` are
+    `satisfied_by` the base choice: remove it and they are unbound with nothing
+    reporting it. A base that lived only in prose could not be rendered into a
+    configuration, which is how the register came to be missing it.
+    """
+    namespaces = {
+        source["namespace"] for source in _meta()["sources"].values() if source.get("namespace")
+    }
+    for scope in _present_scopes():
+        for base in _load(scope).get("bases", []):
+            assert base["namespace"] in namespaces, base
+            assert base.get("config"), base
+            assert base.get("why"), base
+
+
 def test_every_row_in_assess_rules_has_a_property_here() -> None:
     """The superset test ADR 0053's open question was closed on.
 

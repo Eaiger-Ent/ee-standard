@@ -2,10 +2,11 @@
 """A Craft profile's configuration, rendered from the register — S5's writer.
 
 `scripts/craft_select.py` answers *what does this profile turn on*. This answers
-*what goes in the file*, for the Python stack: the `[tool.ruff]` region an
-installer writes into `pyproject.toml`, the nested `src/ruff.toml` that two
-source-scoped properties need, and at `strict` the one `[tool.mypy]` key ADR
-0055 permits.
+*what goes in the file*: for Python the `[tool.ruff]` region an installer writes
+into `pyproject.toml`, the nested `src/ruff.toml` that two source-scoped
+properties need, and at `strict` the one `[tool.mypy]` key ADR 0055 permits; for
+React the whole `eslint.config.mjs`, because a flat config is a module and no
+span of one means anything on its own.
 
 **Nothing here chooses where the configuration lives.** `controls.yaml`'s
 `stacks:` block names the ordered locations per stack and
@@ -31,6 +32,7 @@ Run it:
 
     uv run python scripts/craft_render.py --profile python/standard
     uv run python scripts/craft_render.py --profile python/strict --file src
+    uv run python scripts/craft_render.py --profile react/standard
 """
 
 from __future__ import annotations
@@ -311,6 +313,199 @@ def scoped(profile: str, meta: dict[str, Any]) -> str:
     )
 
 
+#: Where a React profile's rules apply, and the only globs Craft chooses for
+#: itself. They are a **fixed default the installer reports** rather than a
+#: configuration key: a new repository has no tests to infer a convention from,
+#: which is the repository ADR 0052 says the profile is for, and a team using
+#: another convention can see from the report why their tests are unlinted.
+#: `docs/craft/build.installer.md` § The React config is one file, written whole.
+SCOPES = {
+    None: ["src/**/*.ts", "src/**/*.tsx"],
+    "modules": ["src/**/*.ts"],
+    "tests": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/__tests__/**",
+    ],
+}
+
+#: ESLint and `typescript-eslint` wiring: the ignores, the parser, the project
+#: service and the browser globals. It is not a Craft decision and carries no
+#: property identity — the same reason `register_check` keeps VS Code's own
+#: settings layout in the checker rather than in the register (ADR 0018).
+PREAMBLE = """  {{ ignores: ['node_modules/**', 'dist/**', 'coverage/**'] }},
+
+  // The parser, and the project service the type-checked rules need. No preset
+  // rules are attached here: what is enabled is enabled by name below, or by a
+  // base the register names in `bases:`.
+  {{
+    ...{tse}.configs.base,
+    files: SOURCE,
+    languageOptions: {{
+      ...{tse}.configs.base.languageOptions,
+      parserOptions: {{ projectService: true, tsconfigRootDir: import.meta.dirname }},
+      globals: {{ ...globals.browser }},
+    }},
+  }},
+"""
+
+#: The namespace the preamble registers by spreading `configs.base`. A second
+#: registration of it would be Craft declaring a plugin the wiring above already
+#: declared — and `typescript-eslint`'s default export is not the plugin object,
+#: so the second one would be wrong as well as redundant.
+PREAMBLE_REGISTERS = ("@typescript-eslint",)
+
+
+def _namespace(rule: str) -> str:
+    return rule.rsplit("/", 1)[0]
+
+
+def _packages(meta: dict[str, Any]) -> dict[str, str]:
+    return {
+        source["namespace"]: source["package"]
+        for source in meta["sources"].values()
+        if source.get("namespace")
+    }
+
+
+def _identifier(package: str) -> str:
+    """The name an import binds. `@eslint-react/eslint-plugin` is `eslintReact`."""
+    stem = package.replace("@", "").replace("/eslint-plugin", "").replace("eslint-plugin-", "")
+    head, *rest = stem.replace("/", "-").split("-")
+    return head + "".join(word.capitalize() for word in rest)
+
+
+def _js(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, str):
+        return f"'{value}'"
+    if isinstance(value, dict):
+        inside = ", ".join(f"{key}: {_js(item)}" for key, item in value.items())
+        return "{ " + inside + " }"
+    if isinstance(value, list):
+        return "[" + ", ".join(_js(item) for item in value) + "]"
+    return str(value)
+
+
+def _rule_lines(profile: str, meta: dict[str, Any], scope: str | None) -> list[str]:
+    """Every rule at this scope, once, under the properties it serves.
+
+    **Once** is the part that needed care: `react-hooks/rules-of-hooks` is the
+    instrument of two properties and `react-hooks/purity` of two more, so a
+    naive pass per property writes four duplicate keys into one object literal.
+    JavaScript takes the last of them silently, which is a configuration nobody
+    can read back — so a rule is written where it first appears and its comment
+    names every property it carries.
+
+    `alternatives:` become `'off'` **only where the losing rule's namespace is a
+    base**: a preset that is not applied has nothing to stand down, and writing
+    `off` for a rule nothing enabled would be a line no reader could account
+    for. `craft/react.yaml`'s `bases:` is what makes that derivable rather than
+    a judgement the renderer makes.
+    """
+    resolved = resolve(profile, meta)
+    bases = {base["namespace"] for base in load("react").get("bases", [])}
+    owners: dict[str, list[str]] = {}
+    spelling: dict[str, str] = {}
+    for identity, prop in sorted(resolved["properties"].items()):
+        if prop.get("scope") != scope or prop["instrument"]["tool"] != "eslint":
+            continue
+        instrument = prop["instrument"]
+        settings = prop.get("settings") or {}
+        stood_down = [
+            rule
+            for alternative in prop.get("alternatives", [])
+            for rule in alternative.get("rules", [])
+            if _namespace(rule) in bases
+        ]
+        for rule in stood_down:
+            owners.setdefault(rule, []).append(identity)
+            spelling.setdefault(rule, f"      '{rule}': 'off',")
+        for position, rule in enumerate(instrument["rules"]):
+            owners.setdefault(rule, []).append(identity)
+            value = f"['error', {_js(settings)}]" if settings and position == 0 else "'error'"
+            spelling.setdefault(rule, f"      '{rule}': {value},")
+
+    lines: list[str] = []
+    previous: list[str] = []
+    for rule, carried in owners.items():
+        if carried != previous:
+            lines.append(f"      // {', '.join(carried)}")
+            previous = carried
+        lines.append(spelling[rule])
+    return lines
+
+
+def render_react(profile: str, meta: dict[str, Any]) -> str:
+    """The whole `eslint.config.mjs`, because a flat config is code.
+
+    The Python surface takes spans inside a file somebody else may own; this one
+    cannot. A flat config is a module with imports and an exported array, and
+    there is no span of it that means anything on its own — so Craft writes the
+    file whole or writes nothing, and `build.installer.md` § The React config is
+    one file, written whole is why the refusal is the same shape as the Python
+    one rather than a weaker version of it.
+    """
+    resolved = resolve(profile, meta)
+    packages = _packages(meta)
+    used = sorted({_namespace(rule) for rule in resolved["rules"]})
+    imports = [(packages[namespace], _identifier(packages[namespace])) for namespace in used]
+    imports.append(("globals", "globals"))
+
+    body = [
+        f"// >>> ee-craft {profile}@{meta['profiles'][profile]['version']}",
+        f"//{stamp(profile, meta)[1:]}",
+        "// Written by craft-install from the Craft register. Re-run it rather",
+        "// than editing here: a hand edit is what the next run reports.",
+        "",
+        *[
+            f"import {name} from '{package}'"
+            for package, name in sorted(imports, key=lambda pair: pair[1])
+        ],
+        "",
+        f"const SOURCE = {_js(SCOPES[None])}",
+        f"const MODULES = {_js(SCOPES['modules'])}",
+        f"const TESTS = {_js(SCOPES['tests'])}",
+        "",
+        "export default [",
+        PREAMBLE.format(tse=_identifier(packages['@typescript-eslint'])),
+    ]
+    for base in load("react").get("bases", []):
+        name = _identifier(packages[base["namespace"]])
+        body.append(f"  {{ ...{name}.{base['config']}, files: SOURCE }},")
+    body.append("")
+
+    for scope, files in (("SOURCE", None), ("MODULES", "modules"), ("TESTS", "tests")):
+        lines = _rule_lines(profile, meta, files)
+        if not lines:
+            continue
+        bases = {base["namespace"] for base in load("react").get("bases", [])}
+        provided = bases.union(PREAMBLE_REGISTERS)
+        plugins = sorted(
+            {_namespace(rule.split("'")[1]) for rule in lines if "'" in rule} - provided
+        )
+        registered = ", ".join(
+            namespace
+            if _identifier(packages[namespace]) == namespace
+            else f"'{namespace}': {_identifier(packages[namespace])}"
+            for namespace in plugins
+        )
+        body += [
+            "  {",
+            f"    files: {scope},",
+            *([f"    plugins: {{ {registered} }},"] if registered else []),
+            "    rules: {",
+            *lines,
+            "    },",
+            "  },",
+        ]
+    body += ["]", "// <<< ee-craft"]
+    return "\n".join(body) + "\n"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", default="python/standard")
@@ -324,8 +519,9 @@ def main() -> int:
     meta = load("meta")
     if args.profile not in meta["profiles"]:
         parser.error(f"{args.profile} is not a profile the register defines")
-    if not args.profile.startswith("python/"):
-        parser.error("only the Python stack renders today — the flat config is owed")
+    if args.profile.startswith("react/"):
+        print(render_react(args.profile, meta))
+        return 0
     text = render(args.profile, meta) if args.file == "root" else scoped(args.profile, meta)
     print(text or f"{args.profile} scopes nothing to the package source")
     return 0

@@ -733,8 +733,26 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       config that imports what a repository does not depend on errors on its
       first run
 - [ ] Require an explicit confirmation before anything is written
-- [ ] Write the pinned configuration at every locus the profile declares.
-      **The Python half landed 2026-09-19** —
+- [x] Write the pinned configuration at every locus the profile declares.
+      **Both stacks render from the register, 2026-09-19.** The React half is
+      [`build.installer.md`](build.installer.md) § The React config is one file,
+      and it closed the box: `craft_render.py --profile react/standard` emits
+      the whole `eslint.config.mjs`, and both levels resolve to **exactly** the
+      configuration S3 benched — checked with ESLint's own `--print-config` over
+      the three file kinds C1 resolved, 120/121/131 enabled rules with no
+      difference in either direction, plus a deliberately wrong component
+      reporting eight findings each exactly once. **Rendering found three things
+      the migration had lost and no reading could have**: the `testing-library`
+      rules were scoped to tests in the bench and to nothing in the register,
+      the two preset bases existed as prose in two `satisfied_by` rows and as
+      data nowhere, and six of the seven `@eslint-react` stand-downs C1 resolved
+      were not recorded. Each would have shipped a defect — test rules on
+      production code, two properties silently unbound, six defects reported
+      twice. All three are register data now, `craft_contract` moves to **2**
+      because an installer that did not understand `bases:` would write a
+      configuration missing two presets, and the React profiles move to
+      version 2 with `moved: neither`: the profile did not change, the register
+      stopped being wrong. The Python half, earlier the same day —
       [`scripts/craft_render.py`](../../scripts/craft_render.py) with
       `tests/test_craft_render.py` holding it to the register, and
       [`build.installer.md`](build.installer.md) § What the installer writes for

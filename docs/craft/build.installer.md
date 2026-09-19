@@ -459,13 +459,10 @@ and a number presented as current that was read on another machine in September.
 
 ### What this section does not settle
 
-- **Who installs the six ESLint plugins.** The Python profile has no such
-  question — ruff ships every rule it selects — but a flat config importing
-  `@eslint-react` from a repository that does not depend on it is a
-  configuration that errors on the first run, and LNT-001 requires the linter to
-  be reached through the lockfile (ADR 0020). Whether the installer adds them to
-  the manifest, or refuses until somebody else has, is the writing slice's, and
-  it is the first thing that slice should answer.
+- ~~**Who installs the six ESLint plugins.**~~ Answered by § What the installer
+  writes: through the command `ecosystems.<name>.add_dev_dependency` already
+  names, chosen by lockfile, with no version picked by Craft — and nothing is
+  written if they cannot be added.
 - **What the chooser does when the tool is not installed at all.** The fallback
   above presents the bench's figures; it does not say whether the installer may
   proceed to write against a tool it has never been able to read.
@@ -649,6 +646,128 @@ ruff ships every rule it selects inside the binary LNT-001 already requires.
   shows hand edits inside a span. Still open from § What a re-run does, and now
   with a second case attached to it: the nested file nothing else audits.
 
+## The React config is one file, and rendering it found what reading could not
+
+The writing box is closed. `craft_render.py --profile react/standard` emits the
+whole `eslint.config.mjs`, and the two levels it renders resolve to **exactly
+the configuration S3 benched** — checked by resolution rather than by reading,
+which is the section's last subsection.
+
+### Written whole, because a flat config is a module
+
+The Python surface takes spans inside a file somebody else may own. This one
+cannot: a flat config is imports, constants and an exported array, and no span
+of it means anything on its own. So Craft writes the file or writes nothing,
+and the refusal is the same shape as the Python one rather than a weaker
+version of it — **if a config exists that Craft did not write, the installer
+reports what it would have written and stops.**
+
+The file is `eslint.config.mjs`, and the extension is a decision. A new
+repository's `package.json` may not say `"type": "module"`, and the config this
+profile needs is ESM — `.mjs` is the spelling that does not depend on a field
+Craft would otherwise have to write into somebody's manifest. It also walks
+into ESLint's lookup order, which is the ruff trap in another ecosystem: a
+`.mjs` written beside an existing `eslint.config.js` **loses**, silently, the
+way a `ruff.toml` beside `[tool.ruff]` wins silently. The refusal above is what
+keeps that from being discovered by a team whose rules never fired.
+
+### Three things the migration had lost, and a renderer found all three
+
+`craft/react.yaml` was migrated from `assess.rules.md` and checked by a superset
+test that reads identities out of a table. Every row was there. **Rendering it
+into a configuration is what showed that the rows were not enough**, and the
+three gaps are worth naming because each would have shipped a defect:
+
+| What was missing | What would have shipped |
+| --- | --- |
+| The `testing-library` rules were scoped to tests in the bench and to nothing in the register | Eleven test-hygiene rules applied to production code — `prefer-screen-queries` on a component is the kind of finding that teaches a team to switch the profile off |
+| The two presets the profile takes as a base were prose in two `satisfied_by` rows and data nowhere | `react.no-legacy-proptypes` and `react.jsx-runtime-assumed` silently unbound, and 34 accessibility rules reduced to the 29 the register names |
+| Six of the seven `@eslint-react` rules C1 stood down were not recorded; one was | Six defects reported twice each, by two plugins, in the state C1 and C4 spent a bench resolving |
+
+**Reading a register tells you it is consistent. Rendering it tells you it is
+complete.** The superset test could not have found any of these, because each is
+a fact about what the configuration *does* rather than about which properties
+exist — and `assess.rules.md`, the document it holds the register to, does not
+carry them either.
+
+All three are now register data: `bases:` in `craft/react.yaml`, `scope: tests`
+on five properties, and six new `alternatives:` entries beside the one that was
+already there. The `react/*` alternatives stay without an `off` line, and the
+rule that decides is derivable rather than a judgement in the renderer: **a
+losing rule is stood down only where its namespace is a base**, because a preset
+that is not applied has nothing to stand down.
+
+### `craft_contract` moves to 2, and the profile version to 2 with it
+
+Three fields no earlier reader knew: `bases:`, the `namespace:`/`package:` pair
+on the six plugin sources, and `scope: tests`. The first is why the number had
+to move at all — **an installer that did not understand `bases:` would write a
+configuration missing two presets** and unbind two properties without reporting
+anything, which is precisely the case § `craft_contract` is the register's
+number says the field exists to refuse.
+
+The React profile versions move to **2, `moved: neither`**. Nothing about the
+profile changed: the scoping, the bases and the stand-downs are what S3 ran and
+what `review.bench.md` records. This is the register catching up with the bench,
+and calling it a narrowing would claim the profile got stricter when what
+happened is that it stopped being wrong.
+
+### The three scopes are fixed globs, and the installer reports them
+
+```js
+const SOURCE = ['src/**/*.ts', 'src/**/*.tsx']
+const MODULES = ['src/**/*.ts']
+const TESTS = ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.tsx', '**/__tests__/**']
+```
+
+`MODULES` is `craft/react.yaml`'s `scope: modules` — C6 set it to *not a `.tsx`
+file*, which is the closest a file pattern gets to *not a component*. `TESTS` is
+the new one, and it is **a default the installer reports rather than a
+configuration key**: a new repository has no tests to infer a convention from,
+which is the repository ADR 0052 says the profile is for, and a team that keeps
+its tests somewhere else can see from the report why theirs are unlinted. If
+that turns out to be wrong in use, S6 is where it will show.
+
+### Verified against the bench by resolution, not by reading
+
+The text of a generated config proves nothing — two files can differ in every
+line and resolve to the same rules, or agree line for line and resolve
+differently once a preset moves. So the check is ESLint's own
+`--print-config`, over the three file kinds C1 resolved, against the
+configuration `scripts/craft_profile.py` benched:
+
+```bash
+uv run python scripts/craft_scaffold.py && (cd temp/craft-bench/react && npm install)
+uv run python scripts/craft_profile.py && uv run python scripts/craft_profile.py --level strict
+uv run python scripts/craft_render.py --profile react/standard > temp/craft-bench/react/eslint.config.mjs
+# then, per file: npx eslint --config <each> --print-config <file>
+```
+
+| File kind | Enabled rules, rendered | Enabled rules, benched | Difference |
+| --- | --- | --- | --- |
+| `src/components/Basket.tsx` | 120 | 120 | none, either direction |
+| `src/lib/money.ts` | 121 | 121 | none |
+| `src/components/Basket.test.tsx` | 131 | 131 | none |
+| `Basket.tsx` at `strict` | 121 | 121 | none, and the one option identical |
+
+And a run rather than a resolution: a deliberately wrong component — an effect
+setting state, a missing dependency, an `any`, an unlabelled image, a
+click handler on a `div`, an index key — reports **eight findings, each once**.
+That last word is the check on the stand-downs: before them, three of those
+eight arrived twice.
+
+### What this section does not settle
+
+- **Who runs `npm install`.** § What the installer writes settles that the
+  installer adds the six plugins through the command `ecosystems:` names; it
+  does not settle whether the installer may then run the ecosystem's install to
+  make the config loadable, or leave a repository whose config references
+  plugins the lockfile has and the tree does not.
+- **The scaffold's `tsconfig.json`.** The type-checked rules need a project
+  service, and the profile assumes a `tsconfig.json` that TYP-001 already
+  requires. What an installer does when `include` does not cover the files the
+  profile lints is unexamined.
+
 ## What this document still owes
 
 Named so that a reader can tell a gap from an omission. Every row is work rather
@@ -660,7 +779,7 @@ than an open question — S4 closed the design questions, and
 | ~~How the stack is inferred, and what a repository with two of them gets~~ — **done**, § How the stack is inferred. It corrected the contract's pin shape on the way | Infer the stack from the repository |
 | ~~What the chooser shows: each level's rules, and what S3 measured each costs to satisfy~~ — **done**, § What the chooser shows. It owes the writing slice one question: who installs the six ESLint plugins | Present each applicable profile with what it enables |
 | The shape of the explicit yes, and what is shown before it | Require an explicit confirmation |
-| What is written, and the stamp at each span — **the Python half is done**, § What the installer writes. The React flat config is owed, and the box stays open | Write the pinned configuration; record what was written |
+| ~~What is written, and the stamp at each span~~ — **done**, § What the installer writes and § The React config is one file. Both stacks render from the register | Write the pinned configuration; record what was written |
 | The residue: its file, its default, its wording, and the unenforced label | Emit the judgment-only residue |
 | A second run over the installer's own output changing nothing, and what "nothing" covers when a gate has opened since | Make a second run change nothing |
 | Packaging, versioning and publication, and where the register sits in it | Version and publish it |

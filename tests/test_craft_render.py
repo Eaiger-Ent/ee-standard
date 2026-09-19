@@ -25,7 +25,7 @@ from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-from craft_render import contributions, render, scoped
+from craft_render import contributions, render, render_react, scoped
 from craft_select import load, resolve
 
 PROFILES = ("python/standard", "python/strict")
@@ -155,3 +155,91 @@ def test_the_source_scope_carries_exactly_the_rows_the_register_scopes(
     }
     assert identities == expected
     assert nested["extend"] == "../pyproject.toml"
+
+
+REACT = ("react/standard", "react/strict")
+
+
+def _react_rules(text: str) -> list[str]:
+    """Every rule entry in a rendered flat config, in the order it is written."""
+    return [
+        line.split("'")[1]
+        for line in text.splitlines()
+        if line.strip().startswith("'") and "':" in line
+    ]
+
+
+@pytest.mark.parametrize("profile", REACT)
+def test_every_rule_the_register_binds_is_written_once(profile: str, meta: dict[str, Any]) -> None:
+    """A flat config is written whole, so completeness is the whole of its safety.
+
+    The Python region can be read back out of a TOML document; this cannot be
+    parsed without a JavaScript engine, so the test reads the rule entries it
+    writes and holds them to the register.
+    """
+    written = _react_rules(render_react(profile, meta))
+    assert len(written) == len(set(written)), "a rule is written twice"
+    bound = {
+        rule
+        for prop in resolve(profile, meta)["properties"].values()
+        for rule in prop["instrument"].get("rules", [])
+    }
+    assert bound <= set(written), sorted(bound - set(written))
+
+
+@pytest.mark.parametrize("profile", REACT)
+def test_only_a_base_namespace_is_stood_down(profile: str, meta: dict[str, Any]) -> None:
+    """An `off` for a rule nothing enabled is a line no reader can account for.
+
+    C1 resolved seven `@eslint-react` overlaps in `react-hooks`' favour, and the
+    base config is what enables the losing copies — so the `off` lines follow
+    from `bases:` rather than from a judgement in the renderer.
+    `eslint-plugin-react` ships no preset here, which is why its two recorded
+    alternatives get no line at all.
+    """
+    text = render_react(profile, meta)
+    off = [
+        line.split("'")[1]
+        for line in text.splitlines()
+        if line.strip().endswith("'off',")
+    ]
+    bases = {base["namespace"] for base in load("react")["bases"]}
+    assert off, "the overlaps C1 resolved are not being stood down"
+    assert all(rule.rsplit("/", 1)[0] in bases for rule in off), off
+
+
+@pytest.mark.parametrize("profile", REACT)
+def test_every_namespace_written_is_imported(profile: str, meta: dict[str, Any]) -> None:
+    """A rule whose plugin is not imported is a configuration that will not load."""
+    text = render_react(profile, meta)
+    packages = {
+        source["namespace"]: source["package"]
+        for source in meta["sources"].values()
+        if source.get("namespace")
+    }
+    imported = {line.split("'")[1] for line in text.splitlines() if line.startswith("import ")}
+    for rule in _react_rules(text):
+        assert packages[rule.rsplit("/", 1)[0]] in imported, rule
+
+
+def test_the_test_scope_carries_the_testing_library_rules(meta: dict[str, Any]) -> None:
+    """The scope the migration lost, asserted where it is now recorded.
+
+    The bench scoped `testing-library` to tests; `craft/react.yaml` did not
+    carry it until the renderer needed it, and a profile that lints production
+    code for `prefer-screen-queries` is a profile a team switches off.
+    """
+    text = render_react("react/standard", meta)
+    tests_block = text.split("files: TESTS,", 1)[1]
+    assert all(rule.startswith("testing-library/") for rule in _react_rules(tests_block))
+    before = _react_rules(text.split("files: TESTS,", 1)[0])
+    assert not any(rule.startswith("testing-library/") for rule in before)
+
+
+@pytest.mark.parametrize("profile", REACT)
+def test_the_flat_config_is_stamped_and_deterministic(profile: str, meta: dict[str, Any]) -> None:
+    text = render_react(profile, meta)
+    version = meta["profiles"][profile]["version"]
+    assert f"// ee-craft: {profile}@{version}" in text
+    assert text.count("// >>> ee-craft") == text.count("// <<< ee-craft") == 1
+    assert text == render_react(profile, meta)
