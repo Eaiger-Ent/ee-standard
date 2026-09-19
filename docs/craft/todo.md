@@ -811,7 +811,22 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       rendered document, and one line of the register's own prose was corrected
       because its text has a second audience. What stays owed is the installer's
       half: which file it lands in, and what points at it
-- [ ] Make a second run over its own output change nothing
+- [x] Make a second run over its own output change nothing. Done 2026-09-19,
+      `tests/test_craft_install_dry_run.py` and
+      [`build.installer.md`](build.installer.md) § A second run changes nothing.
+      Nine tests place the published artefacts into a repository that has
+      nothing and run the repository's own ruff over the result: the
+      configuration resolves, the source scope reaches `src/` and not `tests/`,
+      `[project]` is untouched, the stamp reads back, and **placing twice leaves
+      the file byte-identical**. The React pair runs where the six plugins are
+      resolved and **skips with the reason and the commands** where they are
+      not, which is `register-check deployments`' posture applied. Two things
+      the runs taught: a flat config's bare imports resolve from the config
+      file's **own directory**, so a config anywhere but beside `node_modules`
+      cannot find its plugins; and the first version of the React test asserted
+      every named rule on a component file, which was the test-file scope
+      working and being reported as a defect. The conversational half is
+      deliberately not faked here — S6 is where it meets a team
 - [ ] Version and publish it so a consumer repository can pin it
 - [ ] Write `build.installer.md`
 

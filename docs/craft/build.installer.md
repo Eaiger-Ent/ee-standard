@@ -916,6 +916,58 @@ and a rule deleted from it would otherwise be a silent change of behaviour.
   eight combinations are rendered, so one file is available for every case; the
   skill writes one, and where it writes it is still `residue:`'s to say.
 
+## A second run changes nothing, and the first one works
+
+The published artefacts, placed the way `SKILL.md` says to place them, in a
+repository that has nothing —
+[`tests/test_craft_install_dry_run.py`](../../tests/test_craft_install_dry_run.py).
+Nine tests, and they are the mechanical half of S5's exit criterion.
+
+### What a test can hold, and what it cannot
+
+The installer is prose a model follows. **The conversational half — inference,
+presentation, the yes — is not testable here and should not be faked**: the
+three rules that govern it are read back out of `SKILL.md` by
+`tests/test_craft_plugin.py`, and S6 is where the rest of it meets a team.
+
+What *is* testable is whether the bytes compose. The harness writes the region
+into a `pyproject.toml` that has only `[project]`, writes the nested
+configuration beside the source, and runs the repository's own ruff:
+
+| What the run shows | Why it is the thing to check |
+| --- | --- |
+| Ruff resolves the configuration and reports on the module | A region that does not parse fails here rather than at an adopter. Findings are the profile working; an exit of `2` would be the profile broken |
+| `S101` and the `D1xx` rules fire in `src/` and not in `tests/` | The nested configuration doing what the register's scope resolution asked for, which no reading of a YAML file can demonstrate |
+| `[project]` is untouched, and the file still starts with it | The narrow version of *never clobber what the repository already had* |
+| The stamp is readable off the installed file | ADR 0055 rule 2 at the moment it is needed: a developer with a rule code and no idea what turned it on |
+| **Placing twice leaves the file byte-identical** | S5's exit criterion. The skill compares inside the markers; this compares the whole file, which is the stronger claim |
+
+**The harness is not a second installer**, and the docstring says so where
+somebody might otherwise grow one. If it and the skill ever disagree, the skill
+is right and the harness is wrong — and the alternative to having it is that
+nobody finds out a published region fails to parse until somebody installs it.
+
+### The React half runs where the plugins exist, and says so where they do not
+
+ESLint cannot resolve `@eslint-react/eslint-plugin` from a tree that does not
+have it, so those two tests **skip in CI with the reason and the commands**
+rather than reporting a pass nobody ran — the posture `register-check
+deployments` already takes: *a run that cannot look says so*.
+
+Where the tree does exist they check three things, and the third is the one that
+was worth writing: every rule the config names is enabled **on the file kind it
+is scoped to**, the preset bases contribute rules beyond the ones named, and the
+`testing-library` rules are enabled on a test file and **not** on a component.
+The first version of that test asserted every named rule on a component and
+failed — which was the scope working, reported as a defect by a test that had
+forgotten about it.
+
+One thing the run taught that no document had: **a flat config's bare imports
+resolve from the config file's own directory.** A config written anywhere but
+beside the `node_modules` cannot find its plugins however it is invoked, which is
+why the install writes it at the repository root and why this test writes into
+the bench tree rather than into a temporary directory.
+
 ## What this document still owes
 
 Named so that a reader can tell a gap from an omission. Every row is work rather
@@ -929,5 +981,5 @@ than an open question — S4 closed the design questions, and
 | ~~The shape of the explicit yes, and what is shown before it~~ — **done**, § The plugin ships what it writes and the skill's Step 1 and Step 2. No flag answers it | Require an explicit confirmation |
 | ~~What is written, and the stamp at each span~~ — **done**, § What the installer writes and § The React config is one file. Both stacks render from the register | Write the pinned configuration; record what was written |
 | ~~The residue: its wording, and the unenforced label~~ — **done**, § The residue is a document of its own. Its file and the pointer to it are the installer's, and stay owed | Emit the judgment-only residue |
-| A second run over the installer's own output changing nothing, and what "nothing" covers when a gate has opened since | Make a second run change nothing |
+| ~~A second run over the installer's own output changing nothing~~ — **done for the artefacts**, § A second run changes nothing. What a re-run does when a gate has opened since is the skill's Idempotency section and S6's to observe | Make a second run change nothing |
 | Packaging, versioning and publication, and where the register sits in it | Version and publish it |
