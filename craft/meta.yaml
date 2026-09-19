@@ -156,9 +156,17 @@ sources:
 # know which one the profile used. `tests/test_craft_register.py` is what makes
 # that illegal rather than discouraged.
 #
-# Only one predicate belongs here, because no control gates on it and adding one
-# to the control register purely for Craft's benefit is the direction ADR 0053
-# sent Craft data away from.
+# Two predicates belong here, and each for the same reason: no control gates on
+# it, and adding one to the control register purely for Craft's benefit is the
+# direction ADR 0053 sent Craft data away from.
+#
+# **These two are also the whole of what the installer evaluates itself.** The
+# control register's predicates are a closed grammar its checker compiles; these
+# are a sentence, because neither fact they read — a top-level key in a
+# document, a dependency in a manifest — is a path, and the grammar there is
+# deliberately closed to everything that is not. `docs/craft/build.installer.md`
+# § The predicate grammar cannot say *react is a dependency* is the reasoning,
+# including why extending that grammar was the wrong way out.
 predicates:
   openapi-document:
     asks: any file with a top-level `openapi` key exists
@@ -169,6 +177,31 @@ predicates:
       in a file that does not declare itself and plenty in one that does,
       whatever it is called. ADR 0052's requirement applied literally: the gate
       reads the same fact the rule needs in order to run at all.
+
+  # Stack inference rather than an evidence gate, and the first predicate here
+  # that is not ADR 0052's. `docs/craft/build.installer.md` § How the stack is
+  # inferred is the whole reasoning; the short of it is that the control
+  # register's `typescript` predicate answers a different question — it asks
+  # whether a linter is *gated* here, which Angular and a Node service satisfy
+  # too, and 71 of `craft/react.yaml`'s 93 rule bindings would be wrong for
+  # them: every `jsx-a11y`, `@eslint-react`, `react-hooks` and `react` rule.
+  #
+  # A React profile needs both to be true: `react` for the rules to apply, and
+  # `typescript` for there to be a locus to write them at.
+  react:
+    asks: >-
+      package.json declares react in dependencies, devDependencies or
+      peerDependencies
+    why: >
+      Keyed on what the manifest declares, like `openapi-document` above, and
+      for a sharper reason than tidiness. ADR 0052 targets **new** repositories,
+      where the dependency is declared before the first component is written: a
+      path proxy such as `any *.tsx file exists` reads false on a repository one
+      commit old, which is precisely the repository the profile is for. It
+      over-matches as well — Preact and Solid use the same extension.
+      `peerDependencies` is in the list because a component library declares
+      react there and nowhere else, and its code is React code by every rule in
+      `craft/react.yaml`.
 
 # A profile is `<stack>/<level>` and nothing more (ADR 0052), and its version is
 # a **counter rather than semver** — `design.profiles.md` § The version is a

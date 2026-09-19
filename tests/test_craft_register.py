@@ -212,6 +212,37 @@ def test_a_gate_names_a_predicate_defined_in_exactly_one_register() -> None:
             assert prop["gated_on"] in known, f"{identity} gates on an undefined predicate"
 
 
+def test_every_craft_predicate_asks_a_question_and_says_why() -> None:
+    """Craft's predicates are prose, so the prose is the whole implementation.
+
+    The control register's are compiled by a closed grammar and an expression
+    outside it is a schema error. These two are read by the installer itself —
+    a top-level key in a document, a dependency in a manifest — and neither is a
+    path, which is what the grammar there is closed to. A predicate here with no
+    `asks:` is a name the installer cannot implement, and one with no `why:` is
+    a detection rule nobody can argue with.
+    """
+    for name, predicate in _meta().get("predicates", {}).items():
+        assert predicate.get("asks"), f"{name} asks nothing"
+        assert predicate.get("why"), f"{name} does not say why it is keyed as it is"
+
+
+def test_every_stack_a_profile_names_has_a_predicate() -> None:
+    """A stack the installer cannot detect is a profile nobody can be offered.
+
+    `python` resolves in `controls.yaml` and `react` here, and the split is the
+    point: a profile writes into a control's gated configuration, so Craft has
+    to agree with the control register wherever that register has an answer.
+    `docs/craft/build.installer.md` § Craft must agree with the control register
+    about the stack is why re-spelling `python` would be worse than duplication.
+    """
+    control_predicates = set(yaml.safe_load(CONTROLS.read_text(encoding="utf-8"))["predicates"])
+    known = control_predicates | set(_meta().get("predicates", {}))
+    for name in _meta()["profiles"]:
+        stack = name.partition("/")[0]
+        assert stack in known, f"{name} names a stack no register can detect"
+
+
 def test_a_candidate_names_a_tool_and_why_it_is_not_bound() -> None:
     """A property with a candidate instrument is unbound *for a stated reason*.
 

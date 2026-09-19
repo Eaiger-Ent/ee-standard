@@ -52,6 +52,13 @@ craft-install:
   residue: CLAUDE.md          # optional; where the unenforced prose is written
 ```
 
+**The shape above is superseded by [§ One pin per stack](#one-pin-per-stack-and--two-values-was-too-narrow),
+and is kept because the correction only reads against it.** A single `profile`
+and `version` cannot express a repository with both stacks in it, which is the
+ordinary shape here. What that section does not change is anything below: the
+keys are the same keys, and the reasons they exist or do not are the reasons
+they exist or do not.
+
 `profile` and `version` are ADR 0052's, and `design.profiles.md` § What a
 consumer pins and § The version is a counter are why each has the shape it has.
 `residue` is this slice's addition, and the reason is that **the file an
@@ -82,7 +89,8 @@ document can miss: a pin that exists and is incomplete.
 | --- | --- | --- |
 | No file, or no `craft-install:` key | Infers the stack, presents the levels with what each rule costs, takes an explicit yes | `design.profiles.md` § What a consumer pins. An absent pin is a decision not yet taken, and the skill's job is to take it with somebody |
 | `profile`, no `version` | Treats it as a **first install of that profile** — installs the current version and writes the number | The version's only job is to answer *what moved since*. With no number there is nothing to compare, and inferring the version the team meant would fabricate exactly the fact a re-run reports |
-| `version`, no `profile` | Fails | A version is a position in one profile's history. Without the profile it names nothing, and the nearest guess — the stack inferred from the repository — would silently pick a level |
+| ~~`version`, no `profile`~~ | ~~Fails~~ | **Unspellable** under the corrected shape: the version is the value of the profile that names it. Struck rather than deleted, because the reason it was a failure is the reason the mapping is keyed the way it is — a version is a position in one profile's history, and without the profile it names nothing |
+| Two levels of one stack — `python/standard` beside `python/strict` | Fails, writes nothing | Two answers to how much this team wants to be told about its Python. Choosing between them is the installer guessing at a level, which is the one thing it never does |
 | A `profile` the register does not define | Fails, writes nothing | A typo must not quietly become an interactive prompt: the run would install a profile other than the one written down, and the file would still say the wrong thing afterwards |
 | A `version` ahead of the register's current one | Fails, writes nothing | The same shape as a provenance stamp ahead of the register, which this repository treats as a defect rather than as staleness. It means the installer is older than the pin, and installing would move the repository **down** a profile — the loosening the installer never writes |
 | A `version` behind the current one | Proceeds, and reports the `changes` entries between the two with their directions | The ordinary case, and ADR 0052's requirement |
@@ -180,6 +188,160 @@ them apart.
   pinned ref.** `craft_contract`'s refusal can only fire in the second case, and
   which case it is, is the packaging slice's.
 
+## How the stack is inferred
+
+**What makes a repository Python, what makes one React, and what the installer
+does when the answer is both, neither or half.** ADR 0052 ruled archetype out as
+an axis and left the stack as the only thing to infer. [`plan.md`](plan.md) § S5
+says *infer the stack from the repository*, singular, and the first thing this
+slice found is that the singular is wrong — a Python service with a React
+frontend is the ordinary Equal Experts shape rather than an edge case.
+
+### Craft must agree with the control register about the stack
+
+`controls.yaml` already answers half the question, and not as a convenience:
+
+```yaml
+predicates:
+  python: "pyproject.toml exists"
+  typescript: "tsconfig.json exists"
+```
+
+Craft reuses `python` as it stands and does not re-spell it. A second definition
+of *is this a Python repository* is already illegal — the Craft register's
+predicates share a namespace with the control register's, and
+`tests/test_craft_register.py` fails a name defined in both — but the reason it
+would be wrong here is stronger than the schema rule.
+
+**A profile writes into a control's gated configuration** (ADR 0055). The ruff
+selection goes into the file `stacks.python.gates.lint.config` names, which is
+the file LNT-001 reads, at the loci LNT-001 wires. So a Craft that answered
+*python* where the control register answers *not python* would write a
+configuration **no control reads and no locus runs**: a file that looks like an
+installed profile, enforces nothing, and reports success. Agreement with the
+register is not tidiness; it is the difference between a profile and a document.
+
+### `react` is not `typescript`, and a React profile needs both to be true
+
+| Craft stack | Applies when | Has a locus when | What the profile writes into |
+| --- | --- | --- | --- |
+| `python` | `python` — `pyproject.toml exists` | The same predicate | `[tool.ruff.lint]` and `[tool.mypy]`, in the first location `stacks.python` names |
+| `react` | `react` — `package.json` declares react | `typescript` — `tsconfig.json exists` | The flat config `stacks.typescript.gates.lint.config` names |
+
+For Python the two questions have one answer and the distinction is invisible.
+For React they come apart, and both halves fail in a way somebody would
+otherwise have to discover:
+
+- **React with no `tsconfig.json`** — a JavaScript-only React repository. The
+  control register's `typescript` predicate is false, so LNT-001 does not apply,
+  no locus is wired, and a flat config written here would be a file nothing runs.
+  The rules are right and there is nowhere to put them.
+- **`tsconfig.json` with no react** — Angular, Vue, a Node service. There *is* a
+  gated linter, so the write would succeed, and `craft/react.yaml`'s bindings
+  would be wrong for the repository: 29 `jsx-a11y` rules, 24 `@eslint-react`
+  and 17 `react-hooks` against code with no JSX in it. `plan.md` § Scope put
+  Angular out, and this is what installing anyway would look like.
+
+The two predicates ask different questions — *which rules apply* and *where they
+can be enforced* — and a stack name that merged them would answer one of them by
+accident. Only 11 of `craft/react.yaml`'s 93 rule bindings are
+`@typescript-eslint`'s, which is also the measure of how little of that file
+would survive being installed on TypeScript alone.
+
+### The predicate grammar cannot say *react is a dependency*
+
+The control register's grammar is closed on purpose — `true`/`false`,
+`<path> exists`, `<dir>/ exists`, `any <glob> exists`, and an expression outside
+it is a schema error rather than a skipped check. None of those shapes can ask
+what a manifest **declares**. Three ways out, and two of them are worse:
+
+| Route | Why not |
+| --- | --- |
+| Extend the control register's grammar | A production added to the control checker for a consumer with no control behind it — nothing in `controls.yaml` gates on React — and ADR 0018 asks the opposite question before a rule enters that code |
+| Take a path proxy: `any *.tsx file exists` | It fails in exactly the case the profile is for. ADR 0052 targets **new** repositories, where the dependency is declared before the first component is written: a repository one commit old has react in `package.json` and no `.tsx` at all. It over-matches, too — Preact and Solid use the same extension |
+| **Define it in the Craft register, keyed on what the manifest declares** | `openapi-document`'s precedent exactly: keyed on the document's own declaration rather than on a filename, because a glob both misses and over-matches where the manifest does neither |
+
+So `craft/meta.yaml` gains its second predicate, and it is the second thing the
+installer must evaluate for itself:
+
+```yaml
+react:
+  asks: package.json declares react in dependencies, devDependencies or peerDependencies
+```
+
+`peerDependencies` is in the list because a component library declares react
+there and nowhere else, and its code is React code by every rule in the file.
+
+**The two registers share a predicate namespace and not an evaluator.** The
+control register's are compiled by a closed grammar; Craft's are a sentence the
+installer implements. That is a real cost of the second register ADR 0053 chose,
+and it is paid where it can be seen: the whole of it is the `asks:` lines under
+`predicates:` in `craft/meta.yaml`, two of them today.
+
+### What the installer does, per repository
+
+| What is there | Profiles offered |
+| --- | --- |
+| `pyproject.toml`; `package.json` declaring react; `tsconfig.json` | `python/*` and `react/*`, chosen separately, one pin per stack |
+| `pyproject.toml` only | `python/*` |
+| react and `tsconfig.json`, no `pyproject.toml` | `react/*` |
+| `tsconfig.json`, no react | **None.** Craft has no TypeScript profile and does not install the React one here |
+| react, no `tsconfig.json` | **None.** The rules apply and nothing gates them |
+| Neither stack | **None** |
+
+The rule behind the last three rows: **an empty answer names the predicate that
+produced it.** *No profile applies* is not reviewable; *no profile applies
+because `package.json` declares no react and there is no `pyproject.toml`* is,
+and it tells a reader exactly what would change the answer. It is the same
+property § What the installer records asks of the gate line in the stamp, applied
+to the case where nothing is written at all.
+
+### One pin per stack, and § Two values was too narrow
+
+That section's contract carried a single `profile` and a single `version`, which
+is `design.profiles.md` § What a consumer pins as it stands and cannot express
+the repository above. **This section corrects it.** The pin is a mapping, keyed
+by profile name and valued by the version installed:
+
+```yaml
+# .claude/skill-config.yaml
+craft-install:
+  profiles:
+    python/standard: 7
+    react/standard: 4
+  residue: CLAUDE.md
+```
+
+Three consequences, and each of them moves a row in § Absent, partial and
+malformed:
+
+- **A version with no profile becomes unspellable.** The version is the value of
+  the profile that names it, so the row describing that failure is struck rather
+  than answered.
+- **Two levels of one stack is spellable, and fails.** `python/standard: 7`
+  beside `python/strict: 2` are two answers to how much a team wants to be told
+  about its Python, and choosing between them would be the installer guessing at
+  a level — the one thing § What a consumer pins says it never does.
+- **A profile key with an empty value** is the first-install case that table
+  already describes, unchanged.
+
+The version stays a bare number rather than a mapping with room in it. Anything
+more about an install — when, by which skill version, against which gates — is
+the **stamp's**, and the stamp is in the file the install wrote. The pin is
+intent, and intent is one number per profile.
+
+### What this section does not settle
+
+- **Monorepos.** `pyproject.toml exists` is root-relative, so `api/pyproject.toml`
+  makes a repository Python to nobody. Craft inherits that answer rather than
+  correcting it, for the reason the first subsection gives: a Craft that was
+  cleverer than the control register about where a stack lives would install
+  profiles at loci the register does not wire. Whether either register learns
+  about subdirectories is the control register's question first.
+- **Whether a `typescript` scope is ever minted.** Eleven bindings would
+  transfer; `plan.md`'s naming standard asks a scope to be earned, and eleven is
+  not a stack. Nothing mints one here.
+
 ## What this document still owes
 
 Named so that a reader can tell a gap from an omission. Every row is work rather
@@ -188,7 +350,7 @@ than an open question — S4 closed the design questions, and
 
 | Owed | Which box in [`todo.md`](todo.md) |
 | --- | --- |
-| How the stack is inferred, and what a repository with two of them gets | Infer the stack from the repository |
+| ~~How the stack is inferred, and what a repository with two of them gets~~ — **done**, § How the stack is inferred. It corrected the contract's pin shape on the way | Infer the stack from the repository |
 | What the chooser shows: each level's rules, and what S3 measured each costs to satisfy | Present each applicable profile with what it enables |
 | The shape of the explicit yes, and what is shown before it | Require an explicit confirmation |
 | What is written, per locus, and the stamp line at each | Write the pinned configuration; record what was written |

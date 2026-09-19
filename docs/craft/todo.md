@@ -688,9 +688,29 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       records** a re-run compares — the pin is intent, the stamp is what
       happened, the register is the present — and takes this repository's own
       doctrine for the pairs: behind is staleness, ahead is a defect
-- [ ] Infer the stack from the repository. **Not an archetype** — ADR 0052
+- [x] Infer the stack from the repository. **Not an archetype** — ADR 0052
       ruled it out as an axis, and the stack-neutral groups gate on the artefact
-      they read being present instead
+      they read being present instead. Done 2026-09-19,
+      [`build.installer.md`](build.installer.md) § How the stack is inferred.
+      **Craft reuses `controls.yaml`'s `python` predicate and does not re-spell
+      it**, and the reason is sharper than the schema rule that already forbids
+      a second definition: a profile writes into a control's gated
+      configuration, so a Craft that answered *python* where the control
+      register answers *not python* would write a file no control reads and no
+      locus runs — an installed profile that enforces nothing and reports
+      success. **`react` is not `typescript`**, and a React profile needs both:
+      `react` for the rules to apply, `typescript` for LNT-001 to have wired a
+      linter to write them into. Both halves fail in a real repository — a
+      JavaScript-only React repo has nowhere to put the config, and an Angular
+      one would take 71 of `craft/react.yaml`'s 93 bindings against code with no
+      JSX in it. The predicate is **new register data**, keyed on what
+      `package.json` declares rather than on a path, because the closed grammar
+      cannot ask what a manifest declares and a `*.tsx` proxy reads false on the
+      one-commit-old repository ADR 0052 aims at. Two tests came with it, both
+      shown able to fire. **It also corrected § Two values**: the pin is a
+      mapping of one profile per stack, because a Python service with a React
+      frontend is the ordinary shape here and a single `profile`/`version` pair
+      cannot express it
 - [ ] Present each applicable profile with what it enables **and** what S3 found
       each rule costs to satisfy
 - [ ] Require an explicit confirmation before anything is written
