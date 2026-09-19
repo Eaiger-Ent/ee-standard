@@ -1,0 +1,79 @@
+{
+  "craft_contract": 2,
+  "levels": [
+    "standard",
+    "strict"
+  ],
+  "profiles": {
+    "python/standard": {
+      "version": 1,
+      "stack": "python",
+      "level": "standard",
+      "properties": 40,
+      "files": [
+        "pyproject-region.toml",
+        "src-ruff.toml",
+        "unenforced.md"
+      ],
+      "rules": 141,
+      "read_from": "ruff 0.16.5",
+      "declares_a_fix": 69,
+      "hand_work": 72
+    },
+    "python/strict": {
+      "version": 1,
+      "stack": "python",
+      "level": "strict",
+      "properties": 51,
+      "files": [
+        "pyproject-region.toml",
+        "src-ruff.toml",
+        "unenforced.md"
+      ],
+      "rules": 168,
+      "read_from": "ruff 0.16.5",
+      "declares_a_fix": 77,
+      "hand_work": 91
+    },
+    "react/standard": {
+      "version": 2,
+      "stack": "react",
+      "level": "standard",
+      "properties": 48,
+      "files": [
+        "eslint.config.mjs",
+        "unenforced.md"
+      ],
+      "rules": 88,
+      "plugins": [
+        "@eslint-react",
+        "@typescript-eslint",
+        "jsx-a11y",
+        "react",
+        "react-hooks",
+        "testing-library"
+      ],
+      "cost": "unread \u2014 needs the plugins resolved from a node_modules"
+    },
+    "react/strict": {
+      "version": 2,
+      "stack": "react",
+      "level": "strict",
+      "properties": 49,
+      "files": [
+        "eslint.config.mjs",
+        "unenforced.md"
+      ],
+      "rules": 89,
+      "plugins": [
+        "@eslint-react",
+        "@typescript-eslint",
+        "jsx-a11y",
+        "react",
+        "react-hooks",
+        "testing-library"
+      ],
+      "cost": "unread \u2014 needs the plugins resolved from a node_modules"
+    }
+  }
+}

@@ -159,6 +159,7 @@ for where anything lives. Both are more current than any list kept here.
 | `docs/09`–`docs/17` | Phase records and reviews, in order |
 | `docs/craft/plan.md` | **Craft** — the coding-standards workstream for Python and React, which the register is deliberately silent about. Its own naming standard and stages; not a phase of the build plan, and it mints no controls |
 | `craft/` | **The Craft register** — `meta.yaml` plus one file per scope. Coding standards, not controls. `tests/test_craft_register.py` checks it; `register-check` deliberately does not (ADR 0053), and `docs/craft/assess.rules.md` is now a stage record rather than a source |
+| `plugins/craft/` | **What an adopter installs** — `craft-install`, and `profiles/`, which is the register above *rendered* into the configuration that skill copies. Written by `uv run python scripts/craft_publish.py`, held to the register by `tests/test_craft_plugin.py`. Change `craft/` and the build fails until you re-publish |
 
 ## Decisions in force
 

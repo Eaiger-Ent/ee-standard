@@ -22,6 +22,34 @@
 # the losing rule is recorded with the reason that stops somebody re-enabling
 # it. C4 found the pair no configuration could ever have separated.
 
+# The presets this profile takes as a base, and the only two it takes at all.
+#
+# They were a decision of the register's before they were data: two properties
+# below are `satisfied_by` *the base choice*, and five `jsx-a11y` rules are
+# counted as inherited rather than keyed to a property. Neither statement can be
+# rendered into a configuration from prose, and a renderer that guessed would be
+# choosing a preset on the register's behalf.
+#
+# `eslint-plugin-react` is deliberately absent. C1 read its `recommended` and
+# found it asserting two things wrong for this stack, so the profile takes one
+# rule from it by name and no preset — which is also why the `react/*` rows in
+# `alternatives:` need no `off:` line, and the `@eslint-react` ones do.
+bases:
+- namespace: '@eslint-react'
+  config: configs.recommended
+  why: >
+    The JSX-correctness base. `react.no-legacy-proptypes` and
+    `react.jsx-runtime-assumed` are satisfied by taking it — it ships no
+    `prop-types` rule and no `react-in-jsx-scope` — so removing it would
+    silently unbind two properties.
+- namespace: jsx-a11y
+  config: flatConfigs.recommended
+  why: >
+    The accessibility base. Five of its rules — `autocomplete-valid`,
+    `heading-has-content`, `no-access-key`,
+    `no-noninteractive-element-interactions` and `scope` — are inherited rather
+    than keyed, so the profile enables 34 accessibility rules where it names 29.
+
 properties:
   react.hooks-at-top-level:
     asserts: Hooks are not called in loops, conditions or nested functions
@@ -72,6 +100,13 @@ properties:
       rules:
       - react-hooks/purity
     level: standard
+    alternatives:
+    - tool: eslint
+      rules:
+      - '@eslint-react/purity'
+      why: >-
+        `react-hooks/purity` owns the overlap per C1, and the base config
+        enables this copy. Enabling both double-reports one defect.
   react.no-side-effects-in-render:
     asserts: Side effects run outside render
     bucket: 1
@@ -145,6 +180,11 @@ properties:
       rules:
       - react-hooks/set-state-in-render
     level: standard
+    alternatives:
+    - tool: eslint
+      rules:
+      - '@eslint-react/set-state-in-render'
+      why: The same rule under the other plugin's name. `react-hooks` owns it per C1; the `@eslint-react` copy arrives with the base and is stood down.
   react.refs-not-read-in-render:
     asserts: A ref is not read or written during render
     bucket: 1
@@ -182,6 +222,11 @@ properties:
       rules:
       - react-hooks/set-state-in-effect
     level: standard
+    alternatives:
+    - tool: eslint
+      rules:
+      - '@eslint-react/set-state-in-effect'
+      why: As above. One property, two names, and no name-keyed conflict config resolves it in the direction this register chose.
   react.effect-dependencies-complete:
     asserts: An effect declares every reactive value it reads
     bucket: 1
@@ -195,6 +240,11 @@ properties:
     note: Recommended at `warn`, selected at `error`. In a merge gate a `warn` is
       a rule that looks enabled and blocks nothing — C2 found eleven more of that
       shape.
+    alternatives:
+    - tool: eslint
+      rules:
+      - '@eslint-react/exhaustive-deps'
+      why: The base's copy of the dependency check. `react-hooks/exhaustive-deps` is the compiler-backed one and owns the property per C1.
   react.effect-dependencies-exhaustive:
     asserts: The stricter, compiler-backed dependency analysis
     bucket: 1
@@ -274,6 +324,11 @@ properties:
       - react-hooks/preserve-manual-memoization
       - react-hooks/use-memo
     level: standard
+    alternatives:
+    - tool: eslint
+      rules:
+      - '@eslint-react/use-memo'
+      why: The base's copy. `react-hooks/use-memo` is taken with `preserve-manual-memoization`, which is the pair that asserts this.
   react.list-keys:
     asserts: Every element in a list carries a stable key
     bucket: 1
@@ -396,6 +451,10 @@ properties:
         under two *different* names, which no name-keyed conflict config can ever
         match — the nested component drew both. Re-enabling it restores the double
         report.'
+    - tool: eslint
+      rules:
+      - '@eslint-react/static-components'
+      why: A second `@eslint-react` copy beside the one C4 demoted, arriving with the base. `react-hooks/static-components` owns the property.
   react.context-value-stability:
     asserts: A context value is not a fresh object on every render
     bucket: 1
@@ -769,6 +828,7 @@ properties:
       - testing-library/prefer-presence-queries
       - testing-library/prefer-query-by-disappearance
     level: standard
+    scope: tests
   react.test-no-implementation-access:
     asserts: A test does not reach into the DOM tree or the container
     bucket: 1
@@ -781,6 +841,7 @@ properties:
       - testing-library/no-container
       - testing-library/no-node-access
     level: standard
+    scope: tests
   react.test-async-awaited:
     asserts: Async queries and events are awaited
     bucket: 1
@@ -794,6 +855,7 @@ properties:
       - testing-library/await-async-utils
       - testing-library/no-await-sync-queries
     level: standard
+    scope: tests
   react.test-find-over-wait:
     asserts: '`findBy` replaces a `waitFor` around a `getBy`'
     bucket: 1
@@ -804,6 +866,7 @@ properties:
       rules:
       - testing-library/prefer-find-by
     level: standard
+    scope: tests
   react.test-no-debug-residue:
     asserts: Debug helpers do not survive into a committed test
     bucket: 1
@@ -814,6 +877,7 @@ properties:
       rules:
       - testing-library/no-debugging-utils
     level: standard
+    scope: tests
   react.test-behaviour-not-implementation:
     asserts: A test asserts what the user experiences, not how it is built
     bucket: 3

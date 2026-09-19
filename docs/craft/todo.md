@@ -9,11 +9,12 @@ copies of the same statement are free to drift, and a ticked box is not an exit
 criterion: a stage is finished when `plan.md`'s criterion is met, however many
 boxes are ticked.
 
-Written 2026-09-05. S1, S2 and S3 are complete. S3 was rewritten 2026-09-06
+Written 2026-09-05. S1, S2, S3 and S4 are complete. S3 was rewritten 2026-09-06
 after ADR 0052 named new codebases as the target and left its original premise
 measuring a risk this workstream does not carry; it met its exit criterion on
 2026-09-07, and `review.bench.md` § Does the exit criterion hold is the record.
-S4 onwards is untouched apart from the boxes that premise reached.
+S4 met its own on 2026-09-08 — every ADR it names is Accepted, and the Craft
+register exists under `craft/`. **S5 began 2026-09-19.**
 
 ## S1 — Survey
 
@@ -667,26 +668,194 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
 
 ## S5 — Build the chooser and the installer
 
-- [ ] Specify the skill's configuration contract, in the shape
-      `.claude/skill-config.yaml` already uses
-- [ ] Infer the stack from the repository. **Not an archetype** — ADR 0052
+- [x] Specify the skill's configuration contract, in the shape
+      `.claude/skill-config.yaml` already uses. Done 2026-09-19,
+      [`build.installer.md`](build.installer.md) § The configuration contract.
+      The skill is **`craft-install`**, and `plan.md`'s naming standard gains the
+      row that says why it is not `register-*`. Two keys and one option —
+      `profile`, `version`, and `residue` for the file an assistant actually
+      loads, which is a property of the repository rather than of the profile.
+      **Three keys were refused with their reasons**: a per-rule `ignore:`, whose
+      only use is to ask for the loosening of LNT-001 the installer already
+      declines; a `config_path:`, because `controls.yaml`'s `stacks:` block
+      already names where each stack's configuration lives; and a tool version,
+      which the lockfile pins. The slice's own finding is that **absent, partial
+      and malformed are three different things** and S4 had only settled the
+      first: a `profile` with no `version` is a first install rather than an
+      error, while an unknown profile name, a version ahead of the register and
+      unparseable YAML each fail and write nothing — a half-installed profile is
+      a state no part of the design can describe. It also names the **three
+      records** a re-run compares — the pin is intent, the stamp is what
+      happened, the register is the present — and takes this repository's own
+      doctrine for the pairs: behind is staleness, ahead is a defect
+- [x] Infer the stack from the repository. **Not an archetype** — ADR 0052
       ruled it out as an axis, and the stack-neutral groups gate on the artefact
-      they read being present instead
-- [ ] Present each applicable profile with what it enables **and** what S3 found
-      each rule costs to satisfy
-- [ ] Require an explicit confirmation before anything is written
-- [ ] Write the pinned configuration at every locus the profile declares
-- [ ] Record what was written, **including which stack-neutral groups the
+      they read being present instead. Done 2026-09-19,
+      [`build.installer.md`](build.installer.md) § How the stack is inferred.
+      **Craft reuses `controls.yaml`'s `python` predicate and does not re-spell
+      it**, and the reason is sharper than the schema rule that already forbids
+      a second definition: a profile writes into a control's gated
+      configuration, so a Craft that answered *python* where the control
+      register answers *not python* would write a file no control reads and no
+      locus runs — an installed profile that enforces nothing and reports
+      success. **`react` is not `typescript`**, and a React profile needs both:
+      `react` for the rules to apply, `typescript` for LNT-001 to have wired a
+      linter to write them into. Both halves fail in a real repository — a
+      JavaScript-only React repo has nowhere to put the config, and an Angular
+      one would take 71 of `craft/react.yaml`'s 93 bindings against code with no
+      JSX in it. The predicate is **new register data**, keyed on what
+      `package.json` declares rather than on a path, because the closed grammar
+      cannot ask what a manifest declares and a `*.tsx` proxy reads false on the
+      one-commit-old repository ADR 0052 aims at. Two tests came with it, both
+      shown able to fire. **It also corrected § Two values**: the pin is a
+      mapping of one profile per stack, because a Python service with a React
+      frontend is the ordinary shape here and a single `profile`/`version` pair
+      cannot express it
+- [x] Present each applicable profile with what it enables **and** what S3 found
+      each rule costs to satisfy. Done 2026-09-19,
+      [`build.installer.md`](build.installer.md) § What the chooser shows, with
+      [`scripts/craft_select.py`](../../scripts/craft_select.py) as the thing
+      that produces the numbers — resolved from `craft/*.yaml` and expanded
+      against the installed tool, never typed into a document. It re-derives
+      C7's Python figures from the other end: 141 rules and 72 hand-work, which
+      is what `review.bench.md` read from the benched configuration.
+      **`--against-bench` reports 0 disagreements** across both stacks and both
+      levels — the check ADR 0053 left nobody performing, since the superset
+      test holds the register to `assess.rules.md` and nothing held it to the
+      configuration S3 actually ran. Two findings came out of building it: a
+      ruff selector is not a textual prefix (`N` is pep8-naming, and `NPY001`
+      starts with `N`), and one rule in 0.16.5 reports a null code. The section
+      also settles that **named is not enabled** — the register names 88 React
+      rules where the resolved configuration enables 132, because two presets
+      are part of the profile by the register's own resolution, so the chooser
+      shows both numbers and says which is which. It hands the writing slice one
+      question: who adds the six ESLint plugins to the manifest, given a flat
+      config that imports what a repository does not depend on errors on its
+      first run
+- [x] Require an explicit confirmation before anything is written. Done
+      2026-09-19: `plugins/craft/skills/craft-install/SKILL.md` Steps 1 and 2 —
+      present both levels with what each turns on and what the manifest says
+      each costs, name the six ESLint plugins and the test globs **before** the
+      question, then take one `AskUserQuestion` per applicable stack with no
+      default level. **There is no `--yes`**, and
+      `tests/test_unattended_flag.py` now holds the Craft installer to the rule
+      it holds the gates to: a flag that answered this question would install a
+      rule selection nobody looked at, into the configuration a merge gate
+      reads. `--profile` chooses and does not consent
+- [x] Write the pinned configuration at every locus the profile declares.
+      **Both stacks render from the register, 2026-09-19.** The React half is
+      [`build.installer.md`](build.installer.md) § The React config is one file,
+      and it closed the box: `craft_render.py --profile react/standard` emits
+      the whole `eslint.config.mjs`, and both levels resolve to **exactly** the
+      configuration S3 benched — checked with ESLint's own `--print-config` over
+      the three file kinds C1 resolved, 120/121/131 enabled rules with no
+      difference in either direction, plus a deliberately wrong component
+      reporting eight findings each exactly once. **Rendering found three things
+      the migration had lost and no reading could have**: the `testing-library`
+      rules were scoped to tests in the bench and to nothing in the register,
+      the two preset bases existed as prose in two `satisfied_by` rows and as
+      data nowhere, and six of the seven `@eslint-react` stand-downs C1 resolved
+      were not recorded. Each would have shipped a defect — test rules on
+      production code, two properties silently unbound, six defects reported
+      twice. All three are register data now, `craft_contract` moves to **2**
+      because an installer that did not understand `bases:` would write a
+      configuration missing two presets, and the React profiles move to
+      version 2 with `moved: neither`: the profile did not change, the register
+      stopped being wrong. The Python half, earlier the same day —
+      [`scripts/craft_render.py`](../../scripts/craft_render.py) with
+      `tests/test_craft_render.py` holding it to the register, and
+      [`build.installer.md`](build.installer.md) § What the installer writes for
+      the decisions. The box stays open because the React flat config is not
+      written. What the half settled: the installer writes at **no loci** — a
+      profile declares none, LNT-001 declares three and ADR 0009 makes them read
+      one configuration — and **a contribution is a span of lines rather than a
+      table**, because two writers cannot each own a header and a second
+      `[tool.mypy]` is an invalid document rather than a merge. A key somebody
+      else owns is a **refusal with the union reported**, not an absorption. The
+      nested source-scoped configuration passes all four of LNT-001's asserts,
+      which `design.profiles.md` left to the implementing work, and costs the
+      audit its view of a file only Craft's own re-run will notice an edit to.
+      Verified end to end: `S101` and `D1xx` fire in `src/` and neither in
+      `tests/`. ADR 0055's *`pyproject.toml` acquires a second writer* names the
+      wrong pair — `gate-quality` writes the loci artefacts and the stamp, not
+      `[tool.ruff]`, so the other writer is a person. Two facts were asked of
+      ruff rather than remembered: where a setting lives, and whether the four
+      linters `standard` selects wholesale carry a preview rule
+- [x] Record what was written, **including which stack-neutral groups the
       evidence gates switched on and what switched them** — ADR 0052 requires it,
       because a gate nobody can see is the invisible suppression it rejected.
       **The gates are designed** — [`design.profiles.md`](design.profiles.md)
       § The evidence gates, 2026-09-07 — and the stamp line is specified there;
-      writing it is this box
-- [ ] Emit the judgment-only residue as prose an assistant loads, labelled
-      unenforced
-- [ ] Make a second run over its own output change nothing
-- [ ] Version and publish it so a consumer repository can pin it
-- [ ] Write `build.installer.md`
+      writing it is this box. Done 2026-09-19: the stamp is rendered **into**
+      every artefact the plugin ships rather than typed by the skill, which is
+      `CLAUDE.md`'s own gotcha applied — a stamp nobody types is a stamp nobody
+      can get wrong. `tests/test_craft_plugin.py` reads it back out of each
+      published configuration. The gate line says `none` with the reason: no
+      stack-neutral property binds an instrument at any level, so there is no
+      group for a predicate to switch on, and printing predicates nothing would
+      have consulted would be decoration rather than a record
+- [x] Emit the judgment-only residue as prose an assistant loads, labelled
+      unenforced. Done 2026-09-19,
+      [`build.installer.md`](build.installer.md) § The residue is a document of
+      its own, rendered by `craft_render.py --file residue`. **Seventy-one
+      properties in four states, and only three are handed over**: 32 judgment
+      only, 33 a check could hold, 6 with an instrument demoted or unmeasured —
+      and the 12 that are `satisfied_by` or `out_of_scope` are counted by name
+      and nothing more, because handing a reader something TYP-001 already gates
+      would be Craft taking credit for a gate that runs without it. The label is
+      the document rather than a heading in it: an entry written in the
+      imperative would be the rule claiming enforcement it does not have that
+      `plan.md` says this workstream will not ship. And it **passes the gate the
+      register requires** — the first render failed markdownlint three ways, so
+      the test now runs this repository's pinned `markdownlint-cli2` over the
+      rendered document, and one line of the register's own prose was corrected
+      because its text has a second audience. What stays owed is the installer's
+      half: which file it lands in, and what points at it
+- [x] Make a second run over its own output change nothing. Done 2026-09-19,
+      `tests/test_craft_install_dry_run.py` and
+      [`build.installer.md`](build.installer.md) § A second run changes nothing.
+      Nine tests place the published artefacts into a repository that has
+      nothing and run the repository's own ruff over the result: the
+      configuration resolves, the source scope reaches `src/` and not `tests/`,
+      `[project]` is untouched, the stamp reads back, and **placing twice leaves
+      the file byte-identical**. The React pair runs where the six plugins are
+      resolved and **skips with the reason and the commands** where they are
+      not, which is `register-check deployments`' posture applied. Two things
+      the runs taught: a flat config's bare imports resolve from the config
+      file's **own directory**, so a config anywhere but beside `node_modules`
+      cannot find its plugins; and the first version of the React test asserted
+      every named rule on a component file, which was the test-file scope
+      working and being reported as a defect. The conversational half is
+      deliberately not faked here — S6 is where it meets a team
+- [x] Version and publish it so a consumer repository can pin it. Done
+      2026-09-19: the marketplace entry is `craft` beside `control-register`,
+      and [`build.installer.md`](build.installer.md) § Published, and the three
+      numbers is what a consumer is actually holding — **three numbers moving
+      for three reasons**. The plugin version moves when the installer changes
+      and is now in every stamp as `ee-skill: craft-install@0.1.0`, read from
+      `plugin.json` at render time so a bump nobody published fails the drift
+      test. The profile version moves when the rules change and is the only one
+      a team pins. `craft_contract` moves when the schema changes and is now a
+      **publish-time** check rather than an install-time one, which is where the
+      packaging decision left it. Craft owes `docs/08-adopting.md` nothing: a
+      repository with no profile at all passes every control, which is the gap
+      the workstream opens on. **No release is cut** — a tag is a step, not a
+      decision, and the box is about the mechanism being in place
+- [x] Write `build.installer.md` — **ten sections, and every row of its own
+      owed table is struck.** Done 2026-09-19, ending with § The first run of
+      the installer: `craft-install` has been run at `python/strict` and
+      `react/strict` against the scaffolds, both installs completed, and the run
+      found **two defects nothing else had**. The profile applied to half the
+      repository — the scaffold had a `ruff.toml` beside its `pyproject.toml`,
+      `stacks:` lists locations in the order the *checker* reads them, and ruff
+      reads the *nearest* file, so everything outside `src/` was governed by the
+      sibling and nothing warned. And a table header is a string that appears in
+      comments: the scaffold's `pyproject.toml` says *no `[tool.ruff]` section*
+      twenty-eight lines above the table, and a plain search finds that. Both
+      rules are in the skill now, with a test that reads them back. **S5's exit
+      criterion is met on a scaffold**, with one word of it — *locus-wired* —
+      belonging to the control register rather than to Craft, and with the run
+      having been the author's rather than a team's, which is S6
 
 ## S6 — Trial and review
 

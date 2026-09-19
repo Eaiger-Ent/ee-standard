@@ -29,11 +29,22 @@ import pytest
 
 from conftest import REPO_ROOT
 
-PLUGIN = REPO_ROOT / "plugins/control-register"
-SKILLS_DIR = PLUGIN / "skills"
+PLUGINS_DIR = REPO_ROOT / "plugins"
 LINKS_DIR = REPO_ROOT / ".claude/skills"
 
-SKILL_NAMES = sorted(p.name for p in SKILLS_DIR.iterdir() if p.is_dir())
+#: Every skill in every plugin, and the plugin that owns it. Derived across
+#: plugins rather than from one, because the second plugin arrived with the
+#: Craft installer and a test that knew about one plugin would have passed while
+#: the new skill was unreachable — which is the exact failure this file exists
+#: to catch, one directory up from where it was looking.
+SKILL_OWNER = {
+    skill.name: plugin.name
+    for plugin in sorted(PLUGINS_DIR.iterdir())
+    if (plugin / "skills").is_dir()
+    for skill in sorted((plugin / "skills").iterdir())
+    if skill.is_dir()
+}
+SKILL_NAMES = sorted(SKILL_OWNER)
 
 
 def test_the_plugin_has_skills_to_link() -> None:
@@ -50,14 +61,16 @@ def test_every_skill_is_reachable_where_the_submission_tool_looks(name: str) -> 
     and the natural response to that, at submission time, is to copy the file,
     which is the second copy ADR 0033 rejected.
     """
+    owner = SKILL_OWNER[name]
+    expected = f"../../plugins/{owner}/skills/{name}"
     link = LINKS_DIR / name
     assert link.is_symlink(), (
         f".claude/skills/{name} is not a symlink. Create it with "
-        f"`ln -s ../../plugins/control-register/skills/{name} .claude/skills/{name}` "
+        f"`ln -s {expected} .claude/skills/{name}` "
         "(ADR 0033) — a copy would be a second definition of the skill."
     )
     target = str(link.readlink())
-    assert target == f"../../plugins/control-register/skills/{name}", (
+    assert target == expected, (
         f".claude/skills/{name} points at {target!r}, which is not its own skill"
     )
     assert (link / "SKILL.md").is_file(), f".claude/skills/{name} dangles"
@@ -94,7 +107,8 @@ def test_the_links_are_symlinks_in_git_and_not_files() -> None:
         )
 
 
-def test_the_plugin_ships_a_licence_and_it_is_the_repository_s() -> None:
+@pytest.mark.parametrize("plugin_name", sorted(set(SKILL_OWNER.values())))
+def test_every_plugin_ships_a_licence_and_it_is_the_repository_s(plugin_name: str) -> None:
     """`check_plugin_license.py` fails a plugin without one, and there was none.
 
     Each plugin is copied independently into a Claude Code install cache, so a
@@ -104,12 +118,12 @@ def test_the_plugin_ships_a_licence_and_it_is_the_repository_s() -> None:
     problem than one that is missing.
     """
     root = REPO_ROOT / "LICENSE"
-    plugin = PLUGIN / "LICENSE"
+    plugin = PLUGINS_DIR / plugin_name / "LICENSE"
     assert root.is_file(), (
         "the repository declares Apache-2.0 in pyproject.toml and ships no LICENSE"
     )
     assert plugin.is_file(), (
-        "plugins/control-register/LICENSE is missing — check_plugin_license.py fails the "
+        f"plugins/{plugin_name}/LICENSE is missing — check_plugin_license.py fails the "
         "submission without it, and the plugin is copied without the repository root"
     )
     assert root.read_bytes() == plugin.read_bytes(), (

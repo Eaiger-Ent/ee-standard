@@ -80,6 +80,7 @@ control.
 | Documents | `docs/craft/<stage>.<slug>.md`, stage one of `survey`, `assess`, `review`, `design`, `build` | Named stages, no global number. This file is the plan rather than a stage, so it is `plan.md` |
 | Rule identity | Lowercase, scoped, dotted: `python.function-length`, `react.no-effect-for-derived-state`, `any.conventional-commits` | **Not** `CRA-001`. Three letters, dash, three digits means *control* in this repository, and these are not controls. More practically: we merge many sources, upstream IDs collide, and keying on the property rather than the citation means no upstream renumbering can break us. Sources are cited **against** an identity, never used as one |
 | The scopes | `python.`, `react.`, `any.` | Two of the three were the plan's from the start. **`any.` was added 2026-09-06 by S2**, which found forty-two properties belonging to neither stack — commit conventions, API shape, authorisation. The alternative was minting `python.conventional-commits` and `react.conventional-commits` for one property, which is the duplication this standard exists to prevent. A fourth scope needs the same kind of reason |
+| Skills | `craft-*`; the installer is **`craft-install`** | [ADR 0031](../adr/0031-the-plugin-is-named-for-the-register.md) names the control-register family — the checker, the `register-*` skills, the gates that keep their names — and does not reach a workstream that asks a different question. `craft-install` is the parallel to `register-install`: a verb naming what the run does to the repository it is pointed at. Which plugin ships it is a separate question, and the key a consumer writes in `.claude/skill-config.yaml` is the skill's name rather than its publisher |
 | Decisions | `docs/adr/`, continuing at 0051 | A deliberate exception to the separation. A second ADR sequence is two logs free to drift, which is the failure this repository exists to prevent |
 | Controls | None minted until a rule has a locus, a tool and a verdict | A craft rule is not a control. Anything reaching `controls.yaml` has crossed a boundary that needs an ADR to cross |
 
@@ -239,6 +240,15 @@ pins `lint-md` here.
 **Exit:** a clean repository of each stack goes from nothing to a working,
 pinned, locus-wired configuration in one run, and a second run over the result
 changes nothing.
+
+**Met on a scaffold, 2026-09-19**, and the qualification is the honest part.
+[`build.installer.md`](build.installer.md) § The first run of the installer is
+the run — `python/strict` and `react/strict`, both completing, a second run
+changing nothing, and two defects found by running what nine tests and a design
+document had already read. *Locus-wired* is the control register's word and not
+Craft's: `gate-quality` wires the linter, and a profile writes the configuration
+those loci read. And the run was the author's on a scaffold built for it, which
+is exactly the gap S6 exists to close.
 
 ### S6 — Trial and review
 
