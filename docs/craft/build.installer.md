@@ -968,6 +968,76 @@ beside the `node_modules` cannot find its plugins however it is invoked, which i
 why the install writes it at the repository root and why this test writes into
 the bench tree rather than into a temporary directory.
 
+## Published, and the three numbers a consumer is holding
+
+`plan.md` § S5's last requirement: *versioned and published, so a consumer
+repository can pin it*. The marketplace entry exists — `craft`, beside
+`control-register`, in `.claude-plugin/marketplace.json` — and this section is
+about what a consumer is actually pinning, because it is three things and they
+move for different reasons.
+
+| Number | Moves when | Where a consumer sees it | Who reads it |
+| --- | --- | --- | --- |
+| **The plugin version** — `craft@0.1.0` | The **installer** changes: a step, a refusal, a presentation | `plugin.json`, and `ee-skill: craft-install@…` in every stamp | The marketplace, and a reader asking *what do I re-run* |
+| **The profile version** — `python/standard@1` | The **rules** change: a binding added, a threshold moved | The pin in `.claude/skill-config.yaml`, and `ee-craft:` in every stamp | The installer, to report what moved |
+| **`craft_contract`** — 2 | The **schema** changes | `profiles/manifest.json` | Nobody, now — see below |
+
+**Two of those a consumer pins and one they receive.** The profile version is
+pinned deliberately, in `.claude/skill-config.yaml`, and is the only one a team
+has an opinion about. The plugin version is whatever the marketplace serves and
+the stamp records; a repository that wants an older installer pins the plugin the
+way it pins any other, which is the marketplace's mechanism rather than Craft's.
+
+### The stamp names the installer, and that is not decoration
+
+Every published artefact now carries `ee-skill: craft-install@0.1.0` beside the
+profile, which is ADR 0038's shape reused exactly as ADR 0055 rule 2 says to
+reuse it. A reader at a failing build has a rule code and nothing else, and
+*which profile turned this on* and *which installer wrote it* are different
+questions with different answers: the first says what the rule is, the second
+says what to re-run.
+
+The version is read from `plugin.json` **when the artefacts are rendered**, so a
+version bump nobody re-published fails the drift test rather than shipping a
+stamp naming an installer that never wrote anything.
+
+### What `craft_contract` is for now
+
+§ The plugin ships what it writes already recorded that the contract-refusal
+case cannot arise for an installer that never reads the register. This is where
+that lands in the numbering: **`craft_contract` is a publish-time check**, not an
+install-time one. It sits in the manifest so a reader can see which schema
+produced what they have, and `tests/test_craft_plugin.py` is what would fail if
+the register moved without the artefacts moving with it.
+
+Nothing about the number changed. What changed is who performs the refusal, and
+saying so is better than leaving a field in a manifest that no longer has a
+reader.
+
+### Craft is not part of the adoption route, and that is deliberate
+
+`docs/08-adopting.md` takes a repository to *conformant*, and every phase owes it
+the steps it introduces. **Craft owes it nothing**, because installing a coding
+standard is not a step towards conformance: a repository with no Craft profile at
+all passes every control in the register, which is the gap `plan.md` opens on.
+
+So the two plugins are listed side by side in the marketplace and are installed
+independently. A team can take the control register without Craft, or Craft
+without the control register — although the second is a thinner proposition than
+it sounds, since a Craft profile writes into a configuration the control register
+is what makes anything run.
+
+### What this section does not settle
+
+- **The release itself.** A tag, and whatever `plugins/craft/` needs to be
+  fetchable at that tag, is a release step rather than a design decision, and
+  nothing here has cut one.
+- **What a consumer does with a plugin version they did not choose.** The
+  marketplace serves latest; whether an installer should refuse to run when the
+  stamp names a *newer* installer than the one running is the same
+  behind-is-staleness, ahead-is-a-defect question this repository answers for
+  controls, and Craft has not been asked it yet.
+
 ## What this document still owes
 
 Named so that a reader can tell a gap from an omission. Every row is work rather
@@ -982,4 +1052,28 @@ than an open question — S4 closed the design questions, and
 | ~~What is written, and the stamp at each span~~ — **done**, § What the installer writes and § The React config is one file. Both stacks render from the register | Write the pinned configuration; record what was written |
 | ~~The residue: its wording, and the unenforced label~~ — **done**, § The residue is a document of its own. Its file and the pointer to it are the installer's, and stay owed | Emit the judgment-only residue |
 | ~~A second run over the installer's own output changing nothing~~ — **done for the artefacts**, § A second run changes nothing. What a re-run does when a gate has opened since is the skill's Idempotency section and S6's to observe | Make a second run change nothing |
-| Packaging, versioning and publication, and where the register sits in it | Version and publish it |
+| ~~Packaging, versioning and publication, and where the register sits in it~~ — **done**, § The plugin ships what it writes and § Published, and the three numbers. The release itself is not cut | Version and publish it |
+
+**Every row is struck, and the stage is not finished.** `plan.md`'s exit
+criterion for S5 is not a list of boxes: it is *a clean repository of each stack
+goes from nothing to a working, pinned, locus-wired configuration in **one
+run**, and a second run over the result changes nothing.* What is demonstrated
+so far is that the **artefacts** do that —
+`tests/test_craft_install_dry_run.py` places them and re-places them, and the
+ESLint half resolves where the plugins exist. What has not happened is a run of
+`craft-install` itself.
+
+That distinction is the one this repository keeps making about ticked boxes, and
+it applies to its own workstream: a harness that places files the way the skill
+says to is evidence about the files, not about the skill. **Nobody has invoked
+the installer end to end**, so nothing yet shows that its inference reaches the
+right stack on a repository it has not seen, that its presentation is one a
+person can answer, or that its refusals fire where they should.
+
+The command that would close it, against a throwaway scaffold of each stack:
+
+```bash
+uv run python scripts/craft_scaffold.py   # a new repository of each stack
+/craft-install --repo temp/craft-bench/python
+/craft-install --repo temp/craft-bench/react
+```

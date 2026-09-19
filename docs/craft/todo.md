@@ -827,7 +827,20 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       every named rule on a component file, which was the test-file scope
       working and being reported as a defect. The conversational half is
       deliberately not faked here — S6 is where it meets a team
-- [ ] Version and publish it so a consumer repository can pin it
+- [x] Version and publish it so a consumer repository can pin it. Done
+      2026-09-19: the marketplace entry is `craft` beside `control-register`,
+      and [`build.installer.md`](build.installer.md) § Published, and the three
+      numbers is what a consumer is actually holding — **three numbers moving
+      for three reasons**. The plugin version moves when the installer changes
+      and is now in every stamp as `ee-skill: craft-install@0.1.0`, read from
+      `plugin.json` at render time so a bump nobody published fails the drift
+      test. The profile version moves when the rules change and is the only one
+      a team pins. `craft_contract` moves when the schema changes and is now a
+      **publish-time** check rather than an install-time one, which is where the
+      packaging decision left it. Craft owes `docs/08-adopting.md` nothing: a
+      repository with no profile at all passes every control, which is the gap
+      the workstream opens on. **No release is cut** — a tag is a step, not a
+      decision, and the box is about the mechanism being in place
 - [ ] Write `build.installer.md`
 
 ## S6 — Trial and review

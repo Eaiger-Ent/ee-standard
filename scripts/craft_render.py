@@ -109,10 +109,24 @@ def stamp(profile: str, meta: dict[str, Any]) -> str:
     """
     version = meta["profiles"][profile]["version"]
     return (
-        f"# ee-craft: {profile}@{version}  gates: none "
-        "(no any. property binds an instrument)  "
+        f"# ee-craft: {profile}@{version}  ee-skill: craft-install@{installer_version()}  "
+        "gates: none (no any. property binds an instrument)  "
         f"craft-contract: {meta['craft_contract']}"
     )
+
+
+@cache
+def installer_version() -> str:
+    """The plugin's own version, read from the plugin rather than repeated here.
+
+    ADR 0038's stamp names the skill that wrote an artefact, and a Craft stamp
+    reuses that shape per ADR 0055 rule 2. It matters for the same reason it
+    does there: a reader at a failing build has a rule code, and *which profile*
+    and *which installer* are two different questions — the first says what the
+    rule is, the second says what to re-run.
+    """
+    manifest = REPO_ROOT / "plugins/craft/.claude-plugin/plugin.json"
+    return str(json.loads(manifest.read_text(encoding="utf-8"))["version"])
 
 
 def _select_lines(resolved: dict[str, Any], scope: str | None) -> list[str]:
@@ -602,7 +616,8 @@ def render_residue(profiles: list[str], meta: dict[str, Any]) -> str:
         "# What Craft does not enforce here",
         "",
         f"<!-- >>> ee-craft {' '.join(stamps)} -->",
-        f"<!-- ee-craft: {', '.join(stamps)}  gates: none "
+        f"<!-- ee-craft: {', '.join(stamps)}  "
+        f"ee-skill: craft-install@{installer_version()}  gates: none "
         f"(no any. property binds an instrument)  craft-contract: "
         f"{meta['craft_contract']} -->",
         "<!-- <<< ee-craft -->",

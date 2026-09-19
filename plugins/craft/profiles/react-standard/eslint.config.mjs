@@ -1,5 +1,5 @@
 // >>> ee-craft react/standard@2
-// ee-craft: react/standard@2  gates: none (no any. property binds an instrument)  craft-contract: 2
+// ee-craft: react/standard@2  ee-skill: craft-install@0.1.0  gates: none (no any. property binds an instrument)  craft-contract: 2
 // Written by craft-install from the Craft register. Re-run it rather
 // than editing here: a hand edit is what the next run reports.
 

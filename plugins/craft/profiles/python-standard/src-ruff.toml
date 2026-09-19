@@ -1,5 +1,5 @@
 # >>> ee-craft python/standard@1 (source-scoped)
-# ee-craft: python/standard@1  gates: none (no any. property binds an instrument)  craft-contract: 2
+# ee-craft: python/standard@1  ee-skill: craft-install@0.1.0  gates: none (no any. property binds an instrument)  craft-contract: 2
 
 extend = "../pyproject.toml"
 

@@ -1,7 +1,7 @@
 # What Craft does not enforce here
 
 <!-- >>> ee-craft python/strict@1 -->
-<!-- ee-craft: python/strict@1  gates: none (no any. property binds an instrument)  craft-contract: 2 -->
+<!-- ee-craft: python/strict@1  ee-skill: craft-install@0.1.0  gates: none (no any. property binds an instrument)  craft-contract: 2 -->
 <!-- <<< ee-craft -->
 
 **Every property below is unenforced.** Nothing here fails a build, no

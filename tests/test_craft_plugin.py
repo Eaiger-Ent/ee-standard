@@ -153,3 +153,26 @@ def test_the_skill_reads_the_manifest_rather_than_counting_rules() -> None:
     assert "you do not count rules yourself" in skill.lower()
     assert "never write a loosening" in skill.lower()
     assert "never fill in a stamp by hand" in skill.lower()
+
+
+def test_the_stamp_names_the_installer_that_wrote_it() -> None:
+    """ADR 0038's shape, reused by ADR 0055 rule 2, on Craft's own artefacts.
+
+    *Which profile* and *which installer* are two different questions: the first
+    says what the rule is and the second says what to re-run. The version is
+    read from the plugin's own manifest when the artefacts are rendered, so a
+    plugin version bump that nobody re-published fails
+    `test_the_published_profiles_are_what_the_register_renders` rather than
+    shipping a stamp that names a version which never wrote anything.
+    """
+    version = json.loads(
+        (PLUGIN / ".claude-plugin/plugin.json").read_text(encoding="utf-8")
+    )["version"]
+    stamped = [
+        path
+        for path in (PLUGIN / "profiles").rglob("*")
+        if path.is_file() and path.name != "manifest.json"
+    ]
+    assert len(stamped) == 14, stamped
+    for path in stamped:
+        assert f"ee-skill: craft-install@{version}" in path.read_text(encoding="utf-8"), path.name
