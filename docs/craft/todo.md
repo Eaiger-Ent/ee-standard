@@ -877,8 +877,15 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       repository, so every push is the owner's, `gate-repo`'s ruleset call
       cannot be made from here at all, and what the trial reports is
       second-hand
-- [ ] Install through the skill rather than by hand — an installer nobody used is
-      an installer nobody tested
+- [x] Install through the skill rather than by hand — an installer nobody used is
+      an installer nobody tested. Done 2026-09-20,
+      [`review.trial.md`](review.trial.md) § The install, 2026-09-20:
+      `python/strict@1`, inferred from `pyproject.toml` with the React row
+      refused on both its conditions, 38 findings on 1,219 lines, and the nested
+      `src/ruff.toml` scope correct on a repository Craft did not build. Craft
+      broke no control — the two that fail were failing before it, proved by
+      re-running them with the install stashed. Four things the run found are in
+      § What the install found, and the fortnight runs to **2026-10-04**
 - [ ] Collect what the team reports, not what the plan predicted
 - [ ] Compare against S3's criteria as they hold in use
 - [ ] Revise the profile, or record the gap

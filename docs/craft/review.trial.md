@@ -4,10 +4,12 @@ Stage **S6** of [`plan.md`](plan.md). Install on a new repository at its start,
 run for a stated period, and revise against what the team reports rather than
 against what the plan predicted.
 
-**Status: agreed on 2026-09-20, not yet installed.** This document begins with
-the agreement because `plan.md` § S6 asks for the period to be agreed *before*
-installing, and an agreement recorded afterwards is a description of what
-happened rather than a commitment anyone was held to.
+**Status: installed 2026-09-20; the fortnight runs to 2026-10-04.** This
+document begins with the agreement, which was recorded before anything was
+installed, because `plan.md` § S6 asks for the period to be agreed *before*
+installing and an agreement recorded afterwards is a description of what
+happened rather than a commitment anyone was held to. The install record follows
+it and nothing above it has been edited since.
 
 ## What was agreed
 
@@ -100,12 +102,149 @@ of those files in it, the installer should refuse and say why. Whether it does i
 a result, and it is written down here before the skeleton exists so that it
 cannot be rewritten afterwards.
 
+## The install, 2026-09-20
+
+Installed through `craft-install` rather than by hand, which is the only way the
+skill gets tested by this stage. The clock the agreement set starts here: the
+review is due **2026-10-04**.
+
+| | |
+| --- | --- |
+| Stack inferred | `python`, from `pyproject.toml` at the root |
+| Stack refused | `react` — `package.json` declares no react (it exists for `markdownlint-cli2` alone) and there is no `tsconfig.json`. Both conditions were false, and both were named |
+| Profile | `python/strict@1` |
+| Where the choice came from | An answer given at the install. `.claude/skill-config.yaml` did not exist, so nothing was pinned and nothing was inferred |
+| Config files later in the search order | None. No `ruff.toml` and no `.ruff.toml` beside the `pyproject.toml`, so the audited configuration and the running configuration are the same file |
+
+### The repository at the moment of install
+
+Seven commits, the last of them the same day. Fourteen tracked Python files,
+1,219 lines: 555 under `src/`, 600 under `tests/`, and the rest repository
+tooling. Small enough that every finding below is on code somebody wrote this
+month, which is the condition ADR 0052 says the profile is for.
+
+### What was written
+
+| File | What | Rules |
+| --- | --- | --- |
+| `pyproject.toml` | Marked spans in `[tool.ruff]`, `[tool.ruff.lint]`, `[tool.ruff.lint.flake8-type-checking]`, `[tool.ruff.lint.mccabe]`, `[tool.ruff.lint.pylint]` and the existing `[tool.mypy]` | 168 selected, plus the four below |
+| `src/ruff.toml` | New. `extend = "../pyproject.toml"` and the source-scoped selections | `S101`, `D100`–`D107` |
+| `craft/unenforced.md` | The residue for `python/strict`, copied whole | 51 properties with no instrument here |
+| `CLAUDE.md` | New, with a marked span pointing at the residue | — |
+| `.claude/skill-config.yaml` | New. `python/strict: 1`, `residue: craft/unenforced.md` | — |
+
+No dependencies were added: ruff ships every rule the profile selects, and the
+control register already requires ruff. Every span in `pyproject.toml` is
+byte-identical to the rendered artefact, checked rather than asserted.
+
+### The cost, read from the version that will run it
+
+`plan.md` § S5 and the skill both say to read fix availability from the
+repository's own tool where that is possible. It was, and the figures moved:
+
+| | Manifest, at ruff 0.16.5 | This repository, at ruff 0.16.8 |
+| --- | --- | --- |
+| `python/standard` | 141 rules, 69 declare a fix, 72 hand-work | 145 rules, 73 declare a fix, 72 hand-work |
+| `python/strict` | 168 rules, 77 declare a fix, 91 hand-work | 172 rules, 81 declare a fix, 91 hand-work |
+
+Four rules in each level, all of them fix-declaring, arrived under selectors the
+profile already names — three patch releases were enough. The hand-work column
+is unchanged, which is the column a team feels. **The manifest's numbers are
+version-stamped for exactly this reason, and on the first real install they were
+already stale.** The instruction to read fresh is what saved the presentation
+from being wrong, not the manifest.
+
+### Verification, by running the tools
+
+`uv run ruff check .` resolves the configuration and reports **38 findings** on
+1,219 lines. Findings are the install working; a configuration error would have
+been the install failing.
+
+| Where | Findings |
+| --- | --- |
+| `src/` | 24 |
+| `tests/` | 6, all `INP001` |
+| `.claude/hooks/` | 8 |
+
+The largest families are `INP001` (6), `D102` (5) and `EM102` (5); two are
+fixable with `--fix` and fifteen more only with `--unsafe-fixes`, which is the
+gap between *declares a fix* and *is cheap* showing up on the first run.
+
+**The nested scope works, and this is the first evidence from outside a
+scaffold.** Every one of the twelve docstring findings is in `src/` and none is
+in `tests/`; `S101` fired nowhere, because `src/` has no bare asserts and the
+tests where asserts belong are outside its scope. That is the defect S5 found on
+its own scaffold —
+[`build.installer.md`](build.installer.md) § The first run of the installer —
+behaving correctly on a repository it did not build.
+
+`uv run register-check` reports two failures, **CI-001 and TYP-001, and Craft
+caused neither.** That was established rather than assumed: the Craft changes
+were stashed, the two controls re-run, and both failed identically without them.
+
+- **CI-001** has no recorded ruleset and no `gate-repo` stamp, because the
+  agreement already recorded that this container cannot make that API call. The
+  remote block adds something the agreement did not anticipate: GitHub answers
+  `403 — Upgrade to GitHub Pro or make this repository public`. For a private
+  repository on this plan the control cannot pass at all, which ADR 0047 says is
+  recorded in `deployment-decisions.yaml` and never fixed with a bigger token.
+- **TYP-001** fails on `.claude/hooks/yaml-lint.py`, a tracked Python file
+  outside `[tool.mypy] files`. It is the owner's to close, and it is the same
+  file the section below is about.
+
+## What the install found
+
+Four things, none of them derivable from reading the skill.
+
+**A span written inside an existing table needs a stated position.** The skill
+says to write the span *inside* the table and says nothing about where. Writing
+it at the end of the table is the obvious reading and it is wrong: the comment
+block explaining `[tool.mypy]` sits above that header and therefore inside
+`[tool.ruff]`, so the span landed underneath somebody else's explanation of a
+different section. The file still parsed, which is the problem — nothing would
+have caught it. Immediately after the header line is the position that is always
+right, and the skill should say so.
+
+**The gate's own comment now describes a file it no longer matches.**
+`gate-quality` wrote `An empty section is a real configuration: ruff's defaults,
+stated in a place a reviewer can find and a later commit can tighten` above
+`[tool.ruff]`. That commit has now happened, by a different skill, and the
+comment above the section says the section is empty. Neither skill owns the
+other's prose and neither is wrong; the artefact is. It is the first case of two
+stamped writers sharing one table, and it will recur at every Craft install into
+a register-conformant repository.
+
+**The residue has nowhere to be pointed from in a repository with no assistant
+context file.** Step 5 says to add a marked span to *the* assistant context
+file. This repository had none. A `CLAUDE.md` was created carrying the span and
+nothing else, which is a defensible answer and is not the skill's answer,
+because the skill does not have one. Naming the file to create, or saying to
+report instead of creating, is a one-line fix to a step that currently depends
+on the installer's judgment.
+
+**The profile lints repository tooling as though it were product code.** Eight
+of the thirty-eight findings are in `.claude/hooks/yaml-lint.py`: a pre-commit
+hook that shells out to `os.path`, annotated loosely, written to be read once.
+Nothing is wrong with the findings. The question the trial raises is whether a
+profile whose source-scoped half is careful about `src/` versus `tests/` should
+be silent about a third category — scripts the repository runs on itself — and
+the answer is not this document's to give before the fortnight is up.
+
+## The prediction did not fire
+
+The document predicted that a skeleton arriving with a hand-written
+`[tool.ruff.lint] select` or a sibling `ruff.toml` would make the installer
+refuse. The skeleton arrived with neither, so the refusal was never reached.
+That is **untested, not confirmed**, and the prediction stands for the next
+install rather than being quietly counted as a pass.
+
 ## What this document owes
 
 | Owed | When |
 | --- | --- |
-| The install record: what was inferred, what was presented, what was chosen, what was written | At the install |
-| The repository's size and shape at install, so the finding counts mean something | At the install |
+| ~~The install record: what was inferred, what was presented, what was chosen, what was written~~ — § The install, 2026-09-20 | Done |
+| ~~The repository's size and shape at install, so the finding counts mean something~~ — § The repository at the moment of install | Done |
+| The four things § What the install found raises, answered or carried | At the review |
 | What the two weeks produced — findings met, rules fought, anything switched off | At the review |
 | S3's criteria as they hold in use, or the gap recorded | At the review |
 | A profile revision, or the reason there is none | At the review |
