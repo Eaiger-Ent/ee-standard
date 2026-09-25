@@ -200,8 +200,16 @@ header at the start of a line and nowhere else.
 sequence of regions, each headed by the table it belongs in and delimited by
 `# >>> ee-craft` and `# <<< ee-craft`:
 
-- If the table exists, write the span **inside** it and leave everything else
-  alone.
+- If the table exists, write the span **immediately after its header line** and
+  leave everything else alone. Not at the end of the table: a table ends where
+  the next header begins, so the comment block introducing the next section sits
+  inside it, and a span written last lands under somebody else's explanation of
+  a different table. The file still parses, so nothing catches it. The first
+  trial did exactly this.
+- If prose in or above the table describes its contents — *this section is
+  empty*, *ruff's defaults* — your span makes it false, and it is not yours to
+  edit. Name the line in the report and leave it. A stamped writer's comment
+  belongs to that writer, and the fix is the team's.
 - If it does not, write the header and the span together.
 - Never write a table header a second time. Two `[tool.mypy]` headers is not a
   merge, it is a file that no longer parses.
