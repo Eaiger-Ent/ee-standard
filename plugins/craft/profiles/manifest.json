@@ -16,9 +16,9 @@
         "unenforced.md"
       ],
       "rules": 141,
-      "read_from": "ruff 0.16.5",
-      "declares_a_fix": 69,
-      "hand_work": 72
+      "read_from": "ruff 0.16.8",
+      "declares_a_fix": 70,
+      "hand_work": 71
     },
     "python/strict": {
       "version": 1,
@@ -31,9 +31,9 @@
         "unenforced.md"
       ],
       "rules": 168,
-      "read_from": "ruff 0.16.5",
-      "declares_a_fix": 77,
-      "hand_work": 91
+      "read_from": "ruff 0.16.8",
+      "declares_a_fix": 78,
+      "hand_work": 90
     },
     "react/standard": {
       "version": 2,
