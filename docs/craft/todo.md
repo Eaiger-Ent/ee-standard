@@ -859,10 +859,33 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
 
 ## S6 — Trial and review
 
-- [ ] Choose the trial repository — a **new** one, at its start — and agree the
-      period before installing
-- [ ] Install through the skill rather than by hand — an installer nobody used is
-      an installer nobody tested
+- [x] Choose the trial repository — a **new** one, at its start — and agree the
+      period before installing. Done 2026-09-20,
+      [`review.trial.md`](review.trial.md) § What was agreed:
+      `anonymise-transcripts`, a private repository outside `Eaiger-Ent`, **one
+      commit and zero files** at the moment of agreement, which is as close to
+      *at its start* as a repository gets. **Two weeks from the Craft install
+      rather than from the agreement**, because the clock measures the profile
+      in use and there is nothing to use yet. The sequence is the owner's
+      skeleton, then the control register, then Craft — the register first
+      because a profile installed with no gate is read only when somebody runs
+      the linter by hand, which is not what the fortnight is for. Two things
+      were observed before anything was installed: the installer **refuses an
+      empty repository** and names the predicate that failed, which is a table
+      row that had never run; and the trial crosses an access boundary the
+      workstream has not crossed before — the ambient token cannot reach that
+      repository, so every push is the owner's, `gate-repo`'s ruleset call
+      cannot be made from here at all, and what the trial reports is
+      second-hand
+- [x] Install through the skill rather than by hand — an installer nobody used is
+      an installer nobody tested. Done 2026-09-20,
+      [`review.trial.md`](review.trial.md) § The install, 2026-09-20:
+      `python/strict@1`, inferred from `pyproject.toml` with the React row
+      refused on both its conditions, 38 findings on 1,219 lines, and the nested
+      `src/ruff.toml` scope correct on a repository Craft did not build. Craft
+      broke no control — the two that fail were failing before it, proved by
+      re-running them with the install stashed. Four things the run found are in
+      § What the install found, and the fortnight runs to **2026-10-04**
 - [ ] Collect what the team reports, not what the plan predicted
 - [ ] Compare against S3's criteria as they hold in use
 - [ ] Revise the profile, or record the gap
