@@ -244,7 +244,9 @@ install rather than being quietly counted as a pass.
 | --- | --- |
 | ~~The install record: what was inferred, what was presented, what was chosen, what was written~~ — § The install, 2026-09-20 | Done |
 | ~~The repository's size and shape at install, so the finding counts mean something~~ — § The repository at the moment of install | Done |
-| The four things § What the install found raises, answered or carried | At the review |
+| ~~The span's position~~ — `craft-install` Step 4 now names *immediately after the header line*, 2026-09-25 | Done |
+| ~~The comment that describes a table it no longer matches~~ — `gate-quality` Step 2 now writes no comment describing the section, and `craft-install` reports one it finds rather than editing it, 2026-09-25 | Done |
+| The other two things § What the install found raises — the missing assistant context file and repository tooling — answered or carried | At the review |
 | What the two weeks produced — findings met, rules fought, anything switched off | At the review |
 | S3's criteria as they hold in use, or the gap recorded | At the review |
 | A profile revision, or the reason there is none | At the review |
