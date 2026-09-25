@@ -264,6 +264,13 @@ configuration, create the first one listed with an empty section for the tool.
 An empty section is a real configuration: the tool's defaults, stated in a place
 a reviewer can find and a later commit can tighten.
 
+Write the section with its stamp and **no comment describing its contents**. Do
+not carry the sentence above into the file: *this section is empty* is true the
+day it is written and false the day a later commit tightens it — which is what
+it is for, and `craft-install` does exactly that into this table. No check reads
+a comment, so one that describes the configuration is a second copy of it that
+nothing keeps in step.
+
 **Strictness.** If `STRICT_STATE` is not true, set `STRICT_KEY` to true in
 whichever location configures the type checker. If the repository has existing
 type errors this will surface them; report the count and stop rather than
