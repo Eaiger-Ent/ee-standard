@@ -531,6 +531,7 @@ All of it went out on 2026-08-29, in the order this document sets.
 | 7. `lint-md` reachability | [ee-skills#551](https://github.com/EqualExperts/ee-skills/issues/551) — **answered and closed the same day**: *"This is a current feature of the repository and is planned to be fixed in the future. Closing as a known feature."* |
 | 1. `control-register` | [incubator#657](https://github.com/EqualExperts/ee-skills-incubator/pull/657) — **one PR, not nine. Merged and promoted 2026-08-29**, and `claude plugin install control-register@ee-skills` installs one plugin at 0.1.0 with all nine skills |
 | 2. `skill-update` widening | Not raised. It shipped upstream; see its row above |
+| 8. `gate-quality`: no comment describing the section (#203) | [incubator#1131](https://github.com/EqualExperts/ee-skills-incubator/issues/1131), 2026-09-26. **An issue, because neither submission tool can reach the skill.** `/skill-submit-amend` checks `skills/gate-quality`, gets 404, and `submit-branch.sh` rejects a name containing `/`. `/skill-submit-new` reads the same 404 as *new* and would have added a second, standalone `gate-quality` plugin beside the one inside `control-register`; the incubator's `promote-config.json` already lists it there. Until a maintainer applies it, the ee-skills copy (`control-register@0.1.7`) lacks the fix and this repository's public marketplace has it |
 
 **A submission is not the end of the conversation.** The incubator pushed four
 remediation commits onto submission 1's branch before merging it — descriptions
