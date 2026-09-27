@@ -16,7 +16,7 @@
         "unenforced.md"
       ],
       "rules": 141,
-      "read_from": "ruff 0.16.8",
+      "read_from": "ruff 0.16.9",
       "declares_a_fix": 70,
       "hand_work": 71
     },
@@ -31,7 +31,7 @@
         "unenforced.md"
       ],
       "rules": 168,
-      "read_from": "ruff 0.16.8",
+      "read_from": "ruff 0.16.9",
       "declares_a_fix": 78,
       "hand_work": 90
     },
