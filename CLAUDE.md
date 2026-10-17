@@ -8,7 +8,7 @@ deploys the gates, and `register-check` (`src/register_check/`) audits them.
 [`HOW-IT-WORKS.md`](HOW-IT-WORKS.md) is the mechanism in one screen;
 [`docs/14-file-map.md`](docs/14-file-map.md) answers *which file*.
 
-**Every phase is complete.** `uv run python scripts/plan_progress.py` is the
+**Where the work stands.** `uv run python scripts/plan_progress.py` is the
 derived view and `docs/04-build-plan.md` is the only list of outstanding work.
 Never keep a second copy of that status here.
 

@@ -1567,6 +1567,29 @@ not say.
       `cp -R` was copying two directories into one. All three now resolve with
       `sort -V | tail -1` and stop if the cache is empty.
 
+## Phase 8 — What four weeks of use found
+
+The Craft trial repository was adopted through the gate skills on 2026-09-19 and
+used for four weeks, 159 pull requests. Its gates held at every commit; the
+register's own verdict was read nowhere that could fail a build. The evidence is
+[`craft/review.trial.md`](craft/review.trial.md) § The control register, in the
+same four weeks.
+
+- [ ] LNT-001 finds an ESLint flat config that is not valid YAML. Today a
+      tracked `eslint.config.mjs` reports *no eslint configuration*, and
+      `export default [];` passes where a real config fails.
+- [ ] Some locus in an adopter's repository fails when the register's verdict
+      is FAIL, not only when a gate's tool fails. TYP-001 stood at FAIL for 27
+      days under a green build.
+- [ ] TYP-001 can be met by a repository that tracks a vendored file it may not
+      edit, or the register says why it cannot. Today `lint-yaml`'s hook fails
+      strict mypy and TYP-001 has no way to say *vendored*.
+- [ ] LNT-001's title and its verification agree about formatting: either a
+      format check is wired, or the title stops promising one.
+- [ ] `deployments` says when a stack a gate covers has arrived since the gate
+      ran. The adopter's TypeScript half was hand-wired and `gate-quality` reads
+      CURRENT.
+
 ## What is deliberately not in scope
 
 | Excluded | Why |

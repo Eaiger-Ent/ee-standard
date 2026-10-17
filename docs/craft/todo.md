@@ -886,9 +886,20 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       broke no control — the two that fail were failing before it, proved by
       re-running them with the install stashed. Four things the run found are in
       § What the install found, and the fortnight runs to **2026-10-04**
-- [ ] Collect what the team reports, not what the plan predicted
-- [ ] Compare against S3's criteria as they hold in use
-- [ ] Revise the profile, or record the gap
+- [ ] Collect what the team reports, not what the plan predicted. **The
+      written half is in** — [`review.trial.md`](review.trial.md) § The review,
+      2026-10-17 read four weeks of the repository's own record. The owner's
+      account is not, and no artefact stands in for it
+- [x] Compare against S3's criteria as they hold in use. Done 2026-10-17,
+      [`review.trial.md`](review.trial.md) § S3's criteria, as they held in use:
+      all four held over 150 commits. The gap is tests, which no criterion named
+- [ ] Revise the profile, or record the gap. The gap is recorded and the
+      candidates are listed in [`review.trial.md`](review.trial.md) § What this
+      document owes; which to take waits for the owner's account
+- [ ] A stack that arrives after the install is reported, by something that
+      runs without being asked. The
+      trial repository's React row has held since 2026-10-10, with no profile
+      and nothing saying so
 - [ ] Write `review.trial.md`
 
 ## Decisions owed an ADR

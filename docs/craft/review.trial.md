@@ -4,7 +4,9 @@ Stage **S6** of [`plan.md`](plan.md). Install on a new repository at its start,
 run for a stated period, and revise against what the team reports rather than
 against what the plan predicted.
 
-**Status: installed 2026-09-20; the fortnight runs to 2026-10-04.** This
+**Status: installed 2026-09-20; reviewed 2026-10-17, thirteen days after the
+fortnight ended** — § The review, 2026-10-17. One thing is still owed: the
+owner's own account, which no artefact substitutes for. This
 document begins with the agreement, which was recorded before anything was
 installed, because `plan.md` § S6 asks for the period to be agreed *before*
 installing and an agreement recorded afterwards is a description of what
@@ -238,6 +240,226 @@ refuse. The skeleton arrived with neither, so the refusal was never reached.
 That is **untested, not confirmed**, and the prediction stands for the next
 install rather than being quietly counted as a pass.
 
+## The review, 2026-10-17
+
+**Thirteen days late, and that cuts both ways.** Four weeks of use is more
+evidence than two, and none of it is lost: the history is the record. What is
+lost is the condition the agreement set the fortnight for — that what somebody
+felt is *still remembered rather than reconstructed*. Everything below was read
+from the repository. The owner's own account is the one input still owed, and
+nothing here stands in for it.
+
+### How it was assessed
+
+A clone at `084cb1e` (PR #159), under this repository's ignored `temp/`, so
+nothing was pushed anywhere and nothing in that repository was changed.
+
+| What was run | Against |
+| --- | --- |
+| `uv run register-check`, the adopter's own pin (`v0.8.4`) over its own fetched register (contract 35) | `HEAD` |
+| `register-check deployments --plugin plugins/control-register` | `HEAD` |
+| `ruff check` and `mypy`, at `HEAD`'s tool versions and with each commit's own configuration | Every one of the 150 first-parent commits on `main` |
+| `pytest`, `vitest`, `eslint`, `tsc`, `lint-imports`, `python -m tests.check`, `ruff format --check` | `HEAD` |
+| Suppressions counted (`noqa`, `type: ignore`, `test-check: allow`) | Five dates, a week apart |
+| The owner's own documents: `docs/test-review.md`, ADR 005, `CONTRIBUTING.md`, `CLAUDE.md` | `HEAD` |
+
+**Three things could not be seen from here.** CI's run history, because the
+ambient token cannot read `WhoMe192/anonymise-transcripts` (404, as the
+agreement predicted). Whether hooks were installed on the owner's machine,
+because `.git/hooks/` does not travel with a clone. And SEC-001's push
+protection setting, for the same token reason.
+
+### The repository it became
+
+| | At install, 2026-09-20 | At review, 2026-10-17 |
+| --- | --- | --- |
+| Commits | 7 | 334 — 181 non-merge, 159 pull requests |
+| Python | 1,290 lines | 51,191 lines, 190 files under mypy |
+| TypeScript and React | none | 9,018 lines under `frontend/`, from 2026-10-10 |
+| Tests | — | 2,051 pytest passing (18 skipped), 102 vitest |
+| Co-authored by Claude | — | 176 of 181 non-merge commits |
+
+**The team is one person and an assistant**, and every result below should be
+read that way. The profile was felt by an agent told in `CLAUDE.md` to run
+`/simplify` and `/code-review` before every commit and to merge on green
+without asking — not by several people meeting a commit that will not complete.
+
+### What held
+
+**The profile was never loosened.** Every marked span in `pyproject.toml` and
+`src/ruff.toml` is as `craft-install` wrote it. The configuration changed after
+install in exactly one direction: `tests/ruff.toml` (2026-10-17) adds PT008,
+PT017 and three banned APIs, outside the managed spans and labelled as not
+Craft's.
+
+**`main` was never red on lint or types.** All 150 first-parent commits pass
+`ruff check` with no findings and `mypy` with no errors. The replay uses
+`HEAD`'s tool versions, so it is an approximation of what each commit's CI saw
+and not a record of it — but it is the only evidence available that the gates
+held, because CI-001 never deployed and nothing on the platform stopped a red
+merge (§ The control register, in the same four weeks).
+
+**Suppressions grew with the code, not faster than it, and each says why.**
+
+| Date | Python lines | `noqa` | `type: ignore` | `test-check: allow` |
+| --- | --- | --- | --- | --- |
+| 2026-09-20 | 1,290 | 0 | 0 | — |
+| 2026-09-27 | 15,216 | 7 | 0 | — |
+| 2026-10-04 | 23,225 | 11 | 0 | — |
+| 2026-10-11 | 35,322 | 14 | 4 | — |
+| 2026-10-17 | 51,191 | 28 | 4 | 16 |
+
+About one per two thousand lines. Every `noqa` in `src/` carries a reason after
+the code; the five in `tests/` do not. `RUF100` keeps them honest, and none is
+blanket.
+
+**The residue was read, and used.** `docs/test-review.md` reviewed all 86 test
+files against a rubric whose standards it names as `craft/unenforced.md`. That
+is the residue doing what ADR 0053 says it is for, by the reader it was written
+for.
+
+### Rules fought
+
+The 28 suppressions, by what they argue with:
+
+| Rule | Times | What it was fighting |
+| --- | --- | --- |
+| `PLR0913` | 8 | Pipeline stages and driver entry points that take every place a run writes. Half the friction is the size family |
+| `C901` | 4 | Dispatchers over `match`, each suppression saying *a case a command* or *a case a notice*. McCabe counts each case as a branch, so a flat dispatcher reads as complex code |
+| `PLR0915` | 2 | The same two dispatchers |
+| `ARG002` | 5 | Test doubles implementing a protocol method whose argument they ignore |
+| `PLC0415` | 3 | An optional extra (`[web]`, imported only when asked for) and one import cycle. The rule cannot see either reason |
+| `TC001`, `TC003` | 3 | pydantic, which reads annotations at runtime |
+| `BLE001` | 2 | The boundary where a failure is shown on the page rather than raised |
+| `S105` | 1 | A false positive: an OAuth endpoint URL in a constant named `TOKEN` |
+| `PTH207` | 1 | Genuine: `Path.glob` cannot take a pattern with its own folders |
+| `TID251` | 1 | The one sanctioned sleep, in `tests/waiting.py` |
+
+**One is the profile's to fix.** `python/strict` sets
+`runtime-evaluated-decorators` for `dataclasses.dataclass` and says nothing about
+pydantic, so a repository using pydantic meets the typing-only-import rules on
+every model module. `runtime-evaluated-base-classes = ["pydantic.BaseModel"]`
+clears one of the three here, measured; the other two are a type used in a
+model defined elsewhere, which the setting cannot reach. The same omission
+appears on the mypy side: `disallow_any_explicit` refuses every pydantic model
+unless `pydantic.mypy` is loaded, and the owner had to work that out and add
+the plugin.
+
+### S3's criteria, as they held in use
+
+| S3 criterion | In use |
+| --- | --- |
+| The configuration assembles and runs | **Held.** 150 commits, no configuration error at any of them |
+| No two selected rules contradict | **Held.** No suppression is one selected rule giving way to another |
+| A false positive is the whole of the friction | **Held, with one class.** `S105` once; the pydantic `TC00x` cases are a false positive the profile can configure away and does not |
+| Cost per finding, not count | **The size rules are the cost.** `PLR0913`, `C901` and `PLR0915` are 14 of 28 suppressions. The `C901`-on-dispatchers case is the strongest argument in the set, and it is about McCabe rather than about the threshold |
+
+### What the owner built that the profile did not
+
+ADR 005 (2026-10-17) records a review that found *the same few mistakes again
+and again, none of which any gate here caught*: assertions that could never
+fail, refusals checked only by an exit, a test reaching Google, loops that could
+hang, doubles standing in for the code under test. *Most of the suite is now
+written with Claude, quickly, and a mistake a reviewer has to spot by eye will
+come back.* The owner's answer, against the residue's own words:
+
+| The owner added | Residue property | What the residue says |
+| --- | --- | --- |
+| `pytest-randomly` in every run | `python.test-independence` | *A check could hold this, and none is written* — *a randomised-order run detects violations empirically; nothing prevents them* |
+| `pytest-timeout`, `pytest-socket` | `python.no-flaky-tests` | The same bucket — *repeated runs detect it; nothing prevents it* |
+| `patched-under-test`, and `unittest.mock` banned in `tests/` | `python.no-mocking-domain-logic` | **Judgment only.** The owner found a heuristic instrument for a property the profile classes as having none |
+| `constant-assert`, `no-assertion`, `bare-refusal`, `loop-assert` | `python.test-code-quality` | Satisfied *by configuration* — the lint profile applies to `tests/`. It did, and these defects passed it |
+| `PT008`, `PT017` | — | Ruff rules the profile could have selected and did not |
+
+**This is the largest finding about the profile.** It is strict about
+production code and lets a fast, assistant-written suite carry tautologies that
+pass every gate. Two of the residue's classifications are contradicted by an
+instrument now running in a repository. The candidates for a profile revision
+are in § What this document owes; none is decided here.
+
+### React arrived, and Craft did not notice
+
+`tsconfig.json` and a `package.json` declaring `react` both landed on
+2026-10-10, in `c597c09`. From that commit `craft-install`'s React row holds on
+both its conditions, and 9,018 lines of TypeScript have been written since with
+no React profile. Nothing reported that: `.claude/skill-config.yaml` pins
+`python/strict` alone, and Craft has no equivalent of
+`register-check deployments` to say that a stack has arrived which no installed
+profile covers. The owner hand-wrote an `eslint.config.mjs` instead.
+
+### The two questions the install left open
+
+**A repository with no assistant context file** — answered in use. The
+`CLAUDE.md` that `craft-install` created to hold one span became the
+repository's whole assistant file: its decisions, its commit routine, its ADR
+pointers. Creating one was the right default, and the skill should say so
+rather than leave it to the installer's judgment.
+
+**Repository tooling** — answered by the owner, in two ways that both avoided
+the question. Vendored code (`.claude/hooks/yaml-lint.py`, compared against the
+`lint-yaml` skill's copy line by line) was excluded from ruff. The owner's own
+tooling — `tests/check.py`, `tests/hook.py` — was put under `tests/` *so mypy's
+`files` and ruff's test rules already cover it*. No third category was needed
+for first-party tooling. Vendored code is a different question, and it is the
+register's rather than Craft's: the next section's TYP-001.
+
+### The control register, in the same four weeks
+
+The trial put the register first so that the profile would be felt at a gate.
+It was. The register's own verdict is a different matter.
+
+```text
+Summary: 8 passed, 3 failed, 1 skipped (predicate), 3 unclassified
+```
+
+| Control | Verdict | What it is |
+| --- | --- | --- |
+| LNT-001 | FAIL | **The checker's defect, not the adopter's.** The TypeScript half reports *no eslint configuration* over a tracked `eslint.config.mjs`. `_load_config` reads any extension it does not know as YAML; JavaScript does not parse, so the file counts as absent. It depends on content: reproduced here, `export default [];` passes and a config with an object literal fails. No test in this repository runs LNT-001 against an ESLint config at all |
+| TYP-001 | FAIL | `.claude/hooks/yaml-lint.py` is outside `[tool.mypy] files`. **Recorded at install on 2026-09-20 and still failing 27 days later.** Adding it is not a fix: strict mypy finds two errors in it, and it is vendored, so editing it breaks the comparison against its upstream. TYP-001 carries `baseline: null` and has no way to say *vendored* |
+| CI-001 | FAIL | Never deployed. The agreement said this container could not make the ruleset call; that is true of the apply and not of the record, which `gate-repo` writes locally. Nor was ADR 0047's `platform_limits:` entry written, so the run cannot even say *unavailable (plan)* |
+| SEC-001, SEC-003, GOV-001 | UNCLASSIFIED | The token cannot see the repository. SEC-001's push protection is probably disabled on a Free private repository, which ADR 0047 says reads as FAIL |
+
+**The finding that matters most is why two FAILs could stand for weeks.** The
+adopter's CI runs the tools and runs `register-check` for named controls — the
+shape every gate skill writes. Nothing at any locus computes the register's
+verdict on LNT-001, TYP-001 or TST-001: their file asserts are read only in a
+full run, a full run exits `3` locally by design, and in CI it would fail on
+CI-001 regardless. So the build was green at every commit while the register
+said FAIL, and nobody was told. The gates are enforced; **conformance to the
+register is not, anywhere**, in a repository adopted exactly as the skills
+describe.
+
+Three smaller things, each confirmed:
+
+- **LNT-001's title promises formatting.** *Lint and format violations block the
+  merge* — and nothing in the register, the gate or the checker runs
+  `ruff format --check`. The adopter wrote it into `CONTRIBUTING.md` in its own
+  words: *`uv run ruff format` too, though no hook or CI checks formatting*.
+  `HEAD` happens to be formatted.
+- **The TypeScript half was deployed by hand**, and `deployments` reports
+  `gate-quality` as CURRENT. The stamp is truthful about what the gate wrote. It
+  says nothing about a stack that arrived afterwards and was wired around it.
+- **A skill fix did not reach the deployment.** `gate-quality` stopped writing
+  *an empty section is a real configuration* on 2026-09-25 without moving its
+  contract, correctly by its own rule. The adopter still carries the sentence
+  above a `[tool.ruff]` that is no longer empty, and no report will ever say so.
+
+**And one thing that went well, and is easy to miss.** The owner extended the
+register's conventions to tools no control names — yamllint, import-linter, the
+test checker — and each hook and step says so in the same words: *no register
+control names it, so no stamp*. Every one runs the lockfile's binary, as
+ADR 0020 asks. The conventions were learned, not just installed.
+
+### Verdict
+
+**Craft's Python profile worked, for production code.** It assembled, was never
+loosened, and cost about one suppression per two thousand lines, half of them
+the function-size rules. It **did not work for tests**,
+which the owner had to fix with a checker of their own, or for the stack that
+arrived three weeks in. The register's gates held at every commit. Its
+**verdict** was never read anywhere that could fail a build, which is how a
+checker defect and a known gap stood unseen for weeks.
+
 ## What this document owes
 
 | Owed | When |
@@ -246,7 +468,12 @@ install rather than being quietly counted as a pass.
 | ~~The repository's size and shape at install, so the finding counts mean something~~ — § The repository at the moment of install | Done |
 | ~~The span's position~~ — `craft-install` Step 4 now names *immediately after the header line*, 2026-09-25 | Done |
 | ~~The comment that describes a table it no longer matches~~ — `gate-quality` Step 2 now writes no comment describing the section, and `craft-install` reports one it finds rather than editing it, 2026-09-25 | Done |
-| The other two things § What the install found raises — the missing assistant context file and repository tooling — answered or carried | At the review |
-| What the two weeks produced — findings met, rules fought, anything switched off | At the review |
-| S3's criteria as they hold in use, or the gap recorded | At the review |
-| A profile revision, or the reason there is none | At the review |
+| ~~The other two things § What the install found raises — the missing assistant context file and repository tooling — answered or carried~~ — § The two questions the install left open. `craft-install` naming `CLAUDE.md` as the file to create is carried below | Done |
+| ~~What the two weeks produced — findings met, rules fought, anything switched off~~ — § What held and § Rules fought. Nothing was switched off | Done |
+| ~~S3's criteria as they hold in use, or the gap recorded~~ — § S3's criteria, as they held in use. They held; the gap is tests, recorded in § What the owner built that the profile did not | Done |
+| **The owner's own account** — what was felt, which rules were argued with before a `noqa` was written, whether the hand-work column matched | Before the profile revision is decided |
+| **A profile revision, or the reason there is none.** The candidates, none yet decided: `runtime-evaluated-base-classes` for pydantic, and `pydantic.mypy` named wherever `disallow_any_explicit` is; `PT008` and `PT017`; whether the profile installs `pytest-randomly`, `pytest-timeout` and `pytest-socket` rather than leaving `python.test-independence` and `python.no-flaky-tests` to the residue; re-classing `python.no-mocking-domain-logic` out of *judgment only*; whether `C901` should give way to a dispatcher over `match`; and a root `src =` written with any nested scope, because ruff resolves first-party imports from the nearest config and the owner had to add `src = [".", "src"]` by hand when `tests/ruff.toml` arrived | After the owner's account |
+| **`craft-install` names `CLAUDE.md`** as the assistant context file to create when none exists | With the profile revision |
+| **A stack arriving after install is reported.** The React row has held since 2026-10-10 with no profile installed and nothing saying so | `todo.md` |
+| **The register's findings** — LNT-001's ESLint config defect, TYP-001 and vendored code, no locus computing the register's verdict, LNT-001's title and formatting, a stack arriving after a gate ran | [`04-build-plan.md`](../04-build-plan.md) § Phase 8, which is the register's list and not this workstream's |
+| **The adopter's own two** — `gate-repo`'s record and stamp, and ADR 0047's `platform_limits:` entry for CI-001 and SEC-001 | The owner's, in that repository. Nothing here can push there |
