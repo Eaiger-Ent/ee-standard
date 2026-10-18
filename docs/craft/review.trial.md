@@ -264,10 +264,13 @@ nothing was pushed anywhere and nothing in that repository was changed.
 | The owner's own documents: `docs/test-review.md`, ADR 005, `CONTRIBUTING.md`, `CLAUDE.md` | `HEAD` |
 
 **Three things could not be seen from here.** CI's run history, because the
-ambient token cannot read `WhoMe192/anonymise-transcripts` (404, as the
+ambient token cannot read the repository (404, as the
 agreement predicted). Whether hooks were installed on the owner's machine,
 because `.git/hooks/` does not travel with a clone. And SEC-001's push
-protection setting, for the same token reason.
+protection setting, for the same token reason. All three were answered on
+2026-10-18 — the hooks by the owner's account, CI and the platform by a
+read-only script the owner ran with their own credentials — in § What CI
+recorded.
 
 ### The repository it became
 
@@ -295,9 +298,8 @@ Craft's.
 **`main` was never red on lint or types.** All 150 first-parent commits pass
 `ruff check` with no findings and `mypy` with no errors. The replay uses
 `HEAD`'s tool versions, so it is an approximation of what each commit's CI saw
-and not a record of it — but it is the only evidence available that the gates
-held, because CI-001 never deployed and nothing on the platform stopped a red
-merge (§ The control register, in the same four weeks).
+and not a record of it. CI's own record, read a day later, agrees: 148 runs on
+`main`, every one green (§ What CI recorded).
 
 **Suppressions grew with the code, not faster than it, and each says why.**
 
@@ -417,7 +419,7 @@ Summary: 8 passed, 3 failed, 1 skipped (predicate), 3 unclassified
 | LNT-001 | FAIL | **The checker's defect, not the adopter's.** The TypeScript half reports *no eslint configuration* over a tracked `eslint.config.mjs`. `_load_config` reads any extension it does not know as YAML; JavaScript does not parse, so the file counts as absent. It depends on content: reproduced here, `export default [];` passes and a config with an object literal fails. No test in this repository runs LNT-001 against an ESLint config at all |
 | TYP-001 | FAIL | `.claude/hooks/yaml-lint.py` is outside `[tool.mypy] files`. **Recorded at install on 2026-09-20 and still failing 27 days later.** Adding it is not a fix: strict mypy finds two errors in it, and it is vendored, so editing it breaks the comparison against its upstream. TYP-001 carries `baseline: null` and has no way to say *vendored* |
 | CI-001 | FAIL | Never deployed. The agreement said this container could not make the ruleset call; that is true of the apply and not of the record, which `gate-repo` writes locally. Nor was ADR 0047's `platform_limits:` entry written, so the run cannot even say *unavailable (plan)* |
-| SEC-001, SEC-003, GOV-001 | UNCLASSIFIED | The token cannot see the repository. SEC-001's push protection is probably disabled on a Free private repository, which ADR 0047 says reads as FAIL |
+| SEC-001, SEC-003, GOV-001 | UNCLASSIFIED | The token cannot see the repository. Read with the owner's credentials, `security_and_analysis` is absent rather than `disabled` — the plan does not offer push protection here, which ADR 0047 reads as unreadable and records under `platform_limits:` |
 
 **The finding that matters most is why two FAILs could stand for weeks.** The
 adopter's CI runs the tools and runs `register-check` for named controls — the
@@ -481,6 +483,26 @@ the owner's review and enforced nowhere.
 **So the profile revision is decided, and it is the tests.** The other
 candidates were not felt, and they are carried rather than taken (§ What this
 document owes).
+
+### What CI recorded, read 2026-10-18
+
+`temp/s6-evidence.sh`, GET requests only, run by the owner where their own `gh`
+could see the repository. The output was read here and is not committed: it is
+a fact about a private repository, and this one is public.
+
+| Question | Answer |
+| --- | --- |
+| Runs on `main` | **148, all green.** No commit on `main` ever failed CI, which matches the replay |
+| Runs on pull-request branches | 350 green, 12 red |
+| What the red ones were | 10 are Dependabot proposals the gates refused — a test failing on a React bump, a frozen install failing on TypeScript 7, generated pages going stale on three bumps. **That is the gates working**: none of those bumps merged as proposed. The other 2 are PR #40's |
+| Pull requests merged red | **1 of 150.** PR #40, `fix/adjacent-name-parts`, merged 2026-09-28 with its check failed. Both of its failed runs name no failing step, so the job failed outside a step, and the logs would say why. The merge commit's own run on `main` was green |
+| Rulesets, branch protection | **403** — *Upgrade to GitHub Pro or make this repository public.* Nothing on the platform can require a check. ADR 0047's case exactly |
+| Push protection | `security_and_analysis` is `null`: the plan does not offer it on a private repository |
+
+**One red merge in 150 is the cost of CI-001 being unavailable, measured.**
+Every other merge was green because somebody, or an assistant told to, looked
+before merging. PR #40 predates the `CLAUDE.md` instruction to merge only on
+green (2026-10-10), and no merge since then has been red.
 
 ## What this document owes
 
