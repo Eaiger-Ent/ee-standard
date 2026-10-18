@@ -67,6 +67,12 @@ by the most ordinary route available: someone writing down something true.
 `stacks:`, and none is chosen here. Where Craft has a choice it is a choice
 *within* what the register already permits, and the paragraph says so.
 
+**One exception, and it is [ADR
+0056](../adr/0056-craft-names-a-surface-only-where-the-register-names-none.md)'s.**
+For a tool `stacks:` does not name — pytest is the first — `craft/meta.yaml`
+`surfaces:` names the locations instead, and a tool named in both is a schema
+error. The rule above is unchanged for every tool a control gates.
+
 ### Python
 
 | | The register says | The profile writes |
