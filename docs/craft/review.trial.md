@@ -5,8 +5,8 @@ run for a stated period, and revise against what the team reports rather than
 against what the plan predicted.
 
 **Status: installed 2026-09-20; reviewed 2026-10-17, thirteen days after the
-fortnight ended** — § The review, 2026-10-17. One thing is still owed: the
-owner's own account, which no artefact substitutes for. This
+fortnight ended** — § The review, 2026-10-17, with the owner's account of
+2026-10-18. The profile revision it decided is still owed. This
 document begins with the agreement, which was recorded before anything was
 installed, because `plan.md` § S6 asks for the period to be agreed *before*
 installing and an agreement recorded afterwards is a description of what
@@ -246,8 +246,8 @@ install rather than being quietly counted as a pass.
 evidence than two, and none of it is lost: the history is the record. What is
 lost is the condition the agreement set the fortnight for — that what somebody
 felt is *still remembered rather than reconstructed*. Everything below was read
-from the repository. The owner's own account is the one input still owed, and
-nothing here stands in for it.
+from the repository. The owner's own account came a day later and is § The
+owner's account, 2026-10-18; no finding above it was edited to fit it.
 
 ### How it was assessed
 
@@ -460,6 +460,28 @@ arrived three weeks in. The register's gates held at every commit. Its
 **verdict** was never read anywhere that could fail a build, which is how a
 checker defect and a known gap stood unseen for weeks.
 
+### The owner's account, 2026-10-18
+
+Given after reading the above, and recorded as given:
+
+> There were no issues, the checks could be seen working, the only area which
+> you've caught was that the test coverage and test standards needed more
+> strict rules — adding these to the ee-standard seems sensible.
+
+**It agrees with the record, and it narrows it.** *The checks could be seen
+working* is the thing the history cannot show — that the hooks were installed
+and fired on the owner's machine, which `.git/hooks/` does not carry. *No
+issues* means the friction § Rules fought counted was not felt as friction: the
+size rules, the dispatchers and the pydantic cases were each met, suppressed
+with a reason, and moved past. What was felt is the gap § What the owner built
+that the profile did not describes, and the owner names **coverage** as part of
+it, which that section did not: the suite's 94% branch coverage was measured in
+the owner's review and enforced nowhere.
+
+**So the profile revision is decided, and it is the tests.** The other
+candidates were not felt, and they are carried rather than taken (§ What this
+document owes).
+
 ## What this document owes
 
 | Owed | When |
@@ -471,8 +493,9 @@ checker defect and a known gap stood unseen for weeks.
 | ~~The other two things § What the install found raises — the missing assistant context file and repository tooling — answered or carried~~ — § The two questions the install left open. `craft-install` naming `CLAUDE.md` as the file to create is carried below | Done |
 | ~~What the two weeks produced — findings met, rules fought, anything switched off~~ — § What held and § Rules fought. Nothing was switched off | Done |
 | ~~S3's criteria as they hold in use, or the gap recorded~~ — § S3's criteria, as they held in use. They held; the gap is tests, recorded in § What the owner built that the profile did not | Done |
-| **The owner's own account** — what was felt, which rules were argued with before a `noqa` was written, whether the hand-work column matched | Before the profile revision is decided |
-| **A profile revision, or the reason there is none.** The candidates, none yet decided: `runtime-evaluated-base-classes` for pydantic, and `pydantic.mypy` named wherever `disallow_any_explicit` is; `PT008` and `PT017`; whether the profile installs `pytest-randomly`, `pytest-timeout` and `pytest-socket` rather than leaving `python.test-independence` and `python.no-flaky-tests` to the residue; re-classing `python.no-mocking-domain-logic` out of *judgment only*; whether `C901` should give way to a dispatcher over `match`; and a root `src =` written with any nested scope, because ruff resolves first-party imports from the nearest config and the owner had to add `src = [".", "src"]` by hand when `tests/ruff.toml` arrived | After the owner's account |
+| ~~The owner's own account~~ — § The owner's account, 2026-10-18 | Done |
+| **The profile revision: stricter test rules and a coverage floor.** Decided by the owner's account. In scope: `PT008` and `PT017`; `pytest-randomly`, `pytest-timeout` and `pytest-socket` installed by the profile rather than left to `python.test-independence` and `python.no-flaky-tests` in the residue; a branch-coverage floor; re-classing `python.no-mocking-domain-logic` out of *judgment only*, with the owner's `patched-under-test` as the evidence an instrument exists | The next slice |
+| **Carried, not felt:** `runtime-evaluated-base-classes` for pydantic, and `pydantic.mypy` named wherever `disallow_any_explicit` is; whether `C901` should give way to a dispatcher over `match`; a root `src =` written with any nested scope, because ruff resolves first-party imports from the nearest config and the owner had to add `src = [".", "src"]` by hand when `tests/ruff.toml` arrived | Not scheduled |
 | **`craft-install` names `CLAUDE.md`** as the assistant context file to create when none exists | With the profile revision |
 | **A stack arriving after install is reported.** The React row has held since 2026-10-10 with no profile installed and nothing saying so | `todo.md` |
 | **The register's findings** — LNT-001's ESLint config defect, TYP-001 and vendored code, no locus computing the register's verdict, LNT-001's title and formatting, a stack arriving after a gate ran | [`04-build-plan.md`](../04-build-plan.md) § Phase 8, which is the register's list and not this workstream's |
