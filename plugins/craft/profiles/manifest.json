@@ -6,7 +6,7 @@
   ],
   "profiles": {
     "python/standard": {
-      "version": 1,
+      "version": 2,
       "stack": "python",
       "level": "standard",
       "properties": 40,
@@ -21,19 +21,19 @@
       "hand_work": 71
     },
     "python/strict": {
-      "version": 1,
+      "version": 2,
       "stack": "python",
       "level": "strict",
-      "properties": 51,
+      "properties": 52,
       "files": [
         "pyproject-region.toml",
         "src-ruff.toml",
         "unenforced.md"
       ],
-      "rules": 168,
+      "rules": 171,
       "read_from": "ruff 0.16.9",
       "declares_a_fix": 78,
-      "hand_work": 90
+      "hand_work": 93
     },
     "react/standard": {
       "version": 2,
