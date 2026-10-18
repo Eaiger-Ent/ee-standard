@@ -1,6 +1,6 @@
 # ADR 0056: Craft Names a Surface Only Where the Control Register Names None
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-18
 **Revision:** 1
 
