@@ -495,14 +495,23 @@ a fact about a private repository, and this one is public.
 | Runs on `main` | **148, all green.** No commit on `main` ever failed CI, which matches the replay |
 | Runs on pull-request branches | 350 green, 12 red |
 | What the red ones were | 10 are Dependabot proposals the gates refused — a test failing on a React bump, a frozen install failing on TypeScript 7, generated pages going stale on three bumps. **That is the gates working**: none of those bumps merged as proposed. The other 2 are PR #40's |
-| Pull requests merged red | **1 of 150.** PR #40, `fix/adjacent-name-parts`, merged 2026-09-28 with its check failed. Both of its failed runs name no failing step, so the job failed outside a step, and the logs would say why. The merge commit's own run on `main` was green |
+| Pull requests merged red | **1 of 150.** PR #40, `fix/adjacent-name-parts`, merged 2026-09-28 with its check failed. Both failed runs name no failing step and kept no log: **the account needed credit adding**, so the job was never started. No gate ran and none failed. The merge commit's own run on `main`, once credit was added, was green |
 | Rulesets, branch protection | **403** — *Upgrade to GitHub Pro or make this repository public.* Nothing on the platform can require a check. ADR 0047's case exactly |
 | Push protection | `security_and_analysis` is `null`: the plan does not offer it on a private repository |
 
-**One red merge in 150 is the cost of CI-001 being unavailable, measured.**
-Every other merge was green because somebody, or an assistant told to, looked
-before merging. PR #40 predates the `CLAUDE.md` instruction to merge only on
-green (2026-10-10), and no merge since then has been red.
+**One red merge in 150 is the cost of CI-001 being unavailable, measured** —
+and the red was not a gate. A private repository on this plan spends Actions
+minutes, and when they ran out CI did not run at all. A required check would
+have held the merge until it could; without one, a check that never started
+looked like any other red, and the merge went ahead. Every other merge was green
+because somebody, or an assistant told to, looked before merging. PR #40
+predates the `CLAUDE.md` instruction to merge only on green (2026-10-10), and no
+merge since then has been red.
+
+**This is a failure mode the register does not name.** ADR 0047 records what a
+plan *lacks*. A plan that meters CI can also stop the gates running in the
+middle of ordinary work, and the only defence is the required check the same
+plan withholds.
 
 ## What this document owes
 
