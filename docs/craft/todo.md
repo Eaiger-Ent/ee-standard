@@ -894,10 +894,15 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
 - [x] Compare against S3's criteria as they hold in use. Done 2026-10-17,
       [`review.trial.md`](review.trial.md) § S3's criteria, as they held in use:
       all four held over 150 commits. The gap is tests, which no criterion named
-- [ ] Revise the profile, or record the gap. The gap is recorded and the
-      revision is decided — stricter test rules and a coverage floor,
-      [`review.trial.md`](review.trial.md) § What this document owes. Ticked
-      when the revised profile is published
+- [x] Revise the profile, or record the gap. Done 2026-10-18,
+      [`review.trial.md`](review.trial.md) § The revision, 2026-10-18:
+      `python/strict@2` binds `python.tests-can-fail` (`PT017`, `B015`,
+      `PLW0129`), probed and in one case observed. The guards and the coverage
+      floor are named in the residue and wait for the item below
+- [ ] An instrument shape for a pytest plugin and for a coverage floor, at a
+      new `craft_contract`, with the installer asking for the floor's number.
+      Binds `python.test-independence`, `python.no-flaky-tests` and
+      `python.branch-coverage-floor`
 - [ ] A stack that arrives after the install is reported, by something that
       runs without being asked. The
       trial repository's React row has held since 2026-10-10, with no profile

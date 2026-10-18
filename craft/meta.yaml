@@ -60,6 +60,10 @@ sources:
     title: Google Python Style Guide
     url: https://google.github.io/styleguide/pyguide.html
     licence: CC-BY-3.0
+  coverage:
+    title: coverage.py — configuration reference
+    url: https://coverage.readthedocs.io/en/latest/config.html
+    licence: Apache-2.0
   pytest:
     title: pytest good practices
     url: https://docs.pytest.org/en/stable/explanation/goodpractices.html
@@ -236,16 +240,36 @@ predicates:
 # file does. Entries kept per-file would split one profile's history across two.
 profiles:
   python/standard:
-    version: 1
+    version: 2
     changes:
+      - version: 2
+        moved: neither
+        what: >
+          The residue only, from S6. Nothing this level selects changed.
+          `python.no-mocking-domain-logic` moves from judgment-only to a check
+          that could hold it; `python.test-independence` and
+          `python.no-flaky-tests` name the pytest plugins that would assert them;
+          and `python.branch-coverage-floor` joins as a property with a
+          candidate instrument and no binding. `docs/craft/review.trial.md`
+          § The revision.
       - version: 1
         moved: neither
         what: >
           First publication. The selection S3 benched, migrated from
           `docs/craft/assess.rules.md` without change.
   python/strict:
-    version: 1
+    version: 2
     changes:
+      - version: 2
+        moved: narrowing
+        what: >
+          S6's revision: `python.tests-can-fail` binds `B015`, `PLW0129` and
+          `PT017`, three shapes of assertion that cannot fail, which the trial
+          repository's fast, assistant-written suite carried past every gate.
+          All three declare no fix. The residue moves as `python/standard@2`
+          records. `docs/craft/review.trial.md` § The revision is the
+          measurement, and the pytest guards and the coverage floor it decided
+          on wait for an instrument shape this contract does not have.
       - version: 1
         moved: neither
         what: >

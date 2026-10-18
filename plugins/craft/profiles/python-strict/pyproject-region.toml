@@ -1,12 +1,12 @@
 [tool.ruff]
-# >>> ee-craft python/strict@1
-# ee-craft: python/strict@1  ee-skill: craft-install@0.1.0  gates: none (no any. property binds an instrument)  craft-contract: 2
+# >>> ee-craft python/strict@2
+# ee-craft: python/strict@2  ee-skill: craft-install@0.1.0  gates: none (no any. property binds an instrument)  craft-contract: 2
 line-length = 88                                    # python.line-length
 preview = true                                      # PLR0904, PLR1702
 # <<< ee-craft
 
 [tool.ruff.lint]
-# >>> ee-craft python/strict@1
+# >>> ee-craft python/strict@2
 select = [
   "ANN001", "ANN201", "ANN204", "ANN205", "ANN206", # python.annotate-public-api
   "PLR0904",                                        # python.class-size
@@ -52,6 +52,7 @@ select = [
   "G001", "G002", "G003", "G004", "LOG015",         # python.structured-logging
   "INP001",                                         # python.test-layout
   "PT018",                                          # python.test-single-behaviour
+  "B015", "PLW0129", "PT017",                       # python.tests-can-fail
   "DTZ",                                            # python.timezone-aware-datetimes
   "S501",                                           # python.tls-verification-on
   "TC001", "TC002", "TC003",                        # python.typing-only-imports
@@ -59,22 +60,22 @@ select = [
 # <<< ee-craft
 
 [tool.ruff.lint.flake8-type-checking]
-# >>> ee-craft python/strict@1
+# >>> ee-craft python/strict@2
 runtime-evaluated-decorators = ["dataclasses.dataclass"] # python.typing-only-imports
 # <<< ee-craft
 
 [tool.ruff.lint.mccabe]
-# >>> ee-craft python/strict@1
+# >>> ee-craft python/strict@2
 max-complexity = 10                                 # python.function-length
 # <<< ee-craft
 
 [tool.ruff.lint.pylint]
-# >>> ee-craft python/strict@1
+# >>> ee-craft python/strict@2
 max-public-methods = 20                             # python.class-size
 max-statements = 25                                 # python.function-length
 # <<< ee-craft
 
 [tool.mypy]
-# >>> ee-craft python/strict@1
+# >>> ee-craft python/strict@2
 disallow_any_explicit = true                        # python.no-any-anywhere
 # <<< ee-craft

@@ -513,6 +513,48 @@ plan *lacks*. A plan that meters CI can also stop the gates running in the
 middle of ordinary work, and the only defence is the required check the same
 plan withholds.
 
+## The revision, 2026-10-18
+
+**`python/strict@2` and `python/standard@2`**, published from the register by
+`scripts/craft_publish.py`. What the owner's account decided, against what the
+register can install today:
+
+| Decided | Taken | How |
+| --- | --- | --- |
+| Tests that cannot fail are refused | **Yes, at strict** | `python.tests-can-fail` binds `PT017`, `B015` and `PLW0129` |
+| `PT008` | **No** | It governs how a double is written — `return_value=` rather than a lambda — not whether the test can fail. The trial repository took it alongside banning `unittest.mock` outright, which is that repository's opinion and not one the register holds |
+| `python.no-mocking-domain-logic` out of *judgment only* | **Yes** | Bucket 3 to bucket 2, citing the owner's `patched-under-test` as the instrument that shows a heuristic can hold it |
+| `pytest-randomly`, `pytest-timeout`, `pytest-socket` | **Named, not installed** | `candidate:` on `python.test-independence` and `python.no-flaky-tests`, so the residue says what would assert them |
+| A branch-coverage floor | **Named, not installed** | A new property, `python.branch-coverage-floor`, with coverage.py's `fail_under` as its candidate |
+
+**The last two need what contract 2 does not have.** A profile can select ruff
+codes, set ruff options and set one mypy key. A pytest plugin is a dependency
+plus an `addopts` entry, and a coverage floor is a number that is the
+repository's rather than the profile's — 94% was right here and is not a
+default. Both are an instrument shape and an installer question, which is a
+`craft_contract` change. It is the next slice rather than this one, so that the
+part of the revision the current schema can carry is not held behind the part
+that needs a new one.
+
+### What was measured
+
+S3's four criteria, applied to the three codes added:
+
+| S3 criterion | Measured |
+| --- | --- |
+| Assembles and runs | The region renders and the publish check is clean. `HEAD` of the trial repository passes all three, so taking `@2` there costs nothing |
+| No contradiction | None of the three shares a property or a remedy with a selected rule |
+| False positives, probed | One test per code written broken and one written correctly. Each code fired on its broken case and nothing fired on the correct ones — including an `except` that calls `pytest.fail` rather than asserting, which is the case `PT017` could plausibly mistake |
+| Cost | All three declare no fix: `python/strict` goes from 168 rules and 90 hand-work to 171 and 93, read from ruff 0.16.9 |
+
+**Observed as well as probed, for one of the three.** Before the owner's own
+guard landed, `PT017` fired once in the trial repository, on
+`tests/test_progress.py`, a test that would have passed with nothing raised.
+`B015` and `PLW0129` fired nowhere in its history. They are taken on the probe
+and on what they are — a comparison with no `assert`, an `assert` on a string —
+because a suite written quickly by an assistant is where both appear, and
+neither has a correct use in a test.
+
 ## What this document owes
 
 | Owed | When |
@@ -525,7 +567,8 @@ plan withholds.
 | ~~What the two weeks produced — findings met, rules fought, anything switched off~~ — § What held and § Rules fought. Nothing was switched off | Done |
 | ~~S3's criteria as they hold in use, or the gap recorded~~ — § S3's criteria, as they held in use. They held; the gap is tests, recorded in § What the owner built that the profile did not | Done |
 | ~~The owner's own account~~ — § The owner's account, 2026-10-18 | Done |
-| **The profile revision: stricter test rules and a coverage floor.** Decided by the owner's account. In scope: `PT008` and `PT017`; `pytest-randomly`, `pytest-timeout` and `pytest-socket` installed by the profile rather than left to `python.test-independence` and `python.no-flaky-tests` in the residue; a branch-coverage floor; re-classing `python.no-mocking-domain-logic` out of *judgment only*, with the owner's `patched-under-test` as the evidence an instrument exists | The next slice |
+| ~~The profile revision: stricter test rules and a coverage floor~~ — § The revision, 2026-10-18. `python/strict@2` binds `python.tests-can-fail`; the guards and the floor are named in the residue | Done |
+| **An instrument shape for a pytest plugin and a coverage floor**, so `python.test-independence`, `python.no-flaky-tests` and `python.branch-coverage-floor` can bind. A `craft_contract` change, and the installer has to ask for the floor's number | The next slice |
 | **Carried, not felt:** `runtime-evaluated-base-classes` for pydantic, and `pydantic.mypy` named wherever `disallow_any_explicit` is; whether `C901` should give way to a dispatcher over `match`; a root `src =` written with any nested scope, because ruff resolves first-party imports from the nearest config and the owner had to add `src = [".", "src"]` by hand when `tests/ruff.toml` arrived | Not scheduled |
 | **`craft-install` names `CLAUDE.md`** as the assistant context file to create when none exists | With the profile revision |
 | **A stack arriving after install is reported.** The React row has held since 2026-10-10 with no profile installed and nothing saying so | `todo.md` |
