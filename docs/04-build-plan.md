@@ -1571,13 +1571,13 @@ not say.
 
 The Craft trial repository was adopted through the gate skills on 2026-09-19 and
 used for four weeks, 159 pull requests. Its gates held at every commit; the
-register's own verdict was read nowhere that could fail a build. The evidence is
-[`craft/review.trial.md`](craft/review.trial.md) § The control register, in the
-same four weeks.
+register's own verdict was read nowhere that could fail a build. The findings
+are [`craft/review.trial.md`](craft/review.trial.md) § The control register, in
+the same four weeks; the evidence for each tick is
+[`18-phase-8-review.md`](18-phase-8-review.md).
 
-- [ ] LNT-001 finds an ESLint flat config that is not valid YAML. Today a
-      tracked `eslint.config.mjs` reports *no eslint configuration*, and
-      `export default [];` passes where a real config fails.
+- [x] LNT-001 finds an ESLint flat config that is not valid YAML. Closed
+      2026-10-19, [`18-phase-8-review.md`](18-phase-8-review.md) § LNT-001.
 - [ ] Some locus in an adopter's repository fails when the register's verdict
       is FAIL, not only when a gate's tool fails. TYP-001 stood at FAIL for 27
       days under a green build.

@@ -720,13 +720,21 @@ def _read_section(repo: Repo, location: ConfigLocation) -> dict[str, Any] | None
     reader is detection implementation and stays here (ADR 0018). A file with no
     `section` counts as configured by existing — `ruff.toml` is ruff's config
     whatever is inside it.
+
+    **Existence decides before any parse is attempted**, and that ordering is
+    the fix for a defect the Craft trial found (Phase 8). An `eslint.config.mjs`
+    is JavaScript, which no reader here understands, so it fell through to the
+    YAML reader, failed, and was reported as absent — while `export default [];`
+    passed, being a valid YAML string. Whether a location with no section is
+    configured cannot depend on whether the checker can read the language the
+    tool's configuration is written in.
     """
     for path in _config_files(repo, location):
         doc = _load_config(repo, path)
-        if doc is None:
-            continue
         if location.section is None:
             return doc if isinstance(doc, dict) else {}
+        if doc is None:
+            continue
         for key in location.section.split("."):
             if not isinstance(doc, dict) or key not in doc:
                 doc = None
