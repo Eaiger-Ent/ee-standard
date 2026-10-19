@@ -15,10 +15,15 @@ You are running the **register-install** skill. It does one thing: it adds
 `register-check` to this repository's dependencies, pinned to the tagged ref the
 register names, and confirms the repository can run it.
 
-**It owns nothing else.** It writes no gate configuration, wires no locus and
-deploys no control. Every artefact belongs to the gate that owns its control;
-this skill exists because the gates, the pre-commit hooks and the CI job all
-*run* the checker, and none of them installs it.
+**It owns one other thing, and only one: the step that runs what it installs.**
+It writes no gate configuration and deploys no control. Every artefact a control
+owns belongs to the gate that deploys it. This skill exists because the gates,
+the pre-commit hooks and the CI job all *run* the checker and none of them
+installs it — and, from ADR 0057,
+because nothing else wrote the CI step that asks the checker for the **whole**
+register's verdict. The gates' steps run each control's tools; without that one
+step, a control whose tools pass and whose own checks fail is green in every
+build. Step 5 writes it.
 
 **It is not a gate, and the thing it installs is not a skill.** The checker is
 an ordinary executable that runs in CI with no Claude present. A skill may
@@ -29,7 +34,8 @@ update proposals and frozen installs; the checker being present is a
 precondition of all three being *checkable*, which is a different thing. So
 nothing here writes an `ee-control:` stamp — a stamp names a control, and there
 is no control to name. That is the reason, and it is not the same as forgetting
-(ADR 0032).
+(ADR 0032). It holds for the Conformance step too: GOV-001 requires the step,
+and the step deploys no control.
 
 **Do not use when:**
 
@@ -57,7 +63,10 @@ is no control to name. That is the reason, and it is not the same as forgetting
    resolves differently on the next machine.
 3. `register-check --version` runs in the repository afterwards, through the
    package manager rather than off `PATH`.
-4. Nothing was written before the plan was shown and confirmed.
+4. The job CI-001's `required_checks:` names carries a step that runs the whole
+   register — or, where no gating workflow exists yet, the report says the step
+   was deferred and why.
+5. Nothing was written before the plan was shown and confirmed.
 
 ---
 
@@ -188,6 +197,9 @@ register-install will add to <repo>:
   written by:  <ADD, with {package} substituted>
   recorded in: <the lockfile present>
   replacing:   <the ref currently pinned, or "nothing — this is a new install">
+
+  Conformance step → <workflow path>, job <the required check's job id>
+                     (or: deferred — no gating workflow yet; see Step 5)
 ```
 
 **Without `--yes`:** one **AskUserQuestion**. Options: **Install** / **Cancel**.
@@ -250,6 +262,36 @@ state, which is where that output means something.
 
 ---
 
+## Step 5 — Write the Conformance step
+
+Read `${CLAUDE_SKILL_DIR}/templates/conformance-step.yaml` and substitute
+`{{CHECKER_INVOCATION}}` with the register's `tools.register-check.invocation`.
+Nothing else in it is a value of yours to choose.
+
+**Where it goes is the register's.** The job is the one CI-001's verify block
+names in `required_checks:` — the check a merge waits for is the one that has to
+carry the verdict, or the verdict blocks nothing. Find that job in a workflow
+that runs on `push` or `pull_request`:
+
+| What you find | What to do |
+| --- | --- |
+| The job exists | Add the step as its **last** step, after every gate's own. Say so in the plan |
+| The job carries a step that already runs the checker with no `--control` | Write nothing. Say which step already does it — a second full run is the same verdict twice |
+| A gating workflow exists, without that job | Stop this step and report it: the register requires a check no job produces, which CI-001 already reports, and choosing a job for it is the team's decision |
+| No gating workflow exists | **Defer**, write nothing to CI, and say so: the workflow, its frozen install and its pinned uv are the gates' to write, and a workflow written here would be a second copy of their setup. `register-adopt` re-runs this skill after the gates for exactly this case |
+
+**Nothing written here may carry `continue-on-error`**, and the script is the
+template's: it lets exit `3` through and nothing else. Do not shorten it to
+`|| true` or `|| :` — those are in the register's `suppression:` list, and they
+let a verified violation through as well.
+
+**Say what the step will fail on, before the yes.** From the moment it lands,
+any control reading FAIL fails the required check — including controls that
+were failing unseen before. Run `register-check` locally first and name every
+FAIL in the plan, so a red build after the merge is the expected one.
+
+---
+
 ## Output
 
 **Installed:**
@@ -259,6 +301,8 @@ register-install added register-check @ git+<repository>@<ref> to <repo>.
   written to:  <manifest>
   locked in:   <lockfile>
   verified:    <runner> register-check --version → <version>
+  conformance: <workflow>, job <id> — the whole register, last step
+               (or: deferred — no gating workflow yet)
 Not committed.
 ```
 
@@ -295,7 +339,9 @@ register-install wrote nothing: <the reason, verbatim>.
 ## Idempotency
 
 Re-running is safe and is how the pin is moved: the plan names the ref being
-replaced, and installing the ref already present writes nothing. There is no
+replaced, and installing the ref already present writes nothing. It is also how a
+deferred Conformance step lands: a re-run after the gates finds the gating
+workflow, writes the step, and writes nothing on the run after that. There is no
 provenance stamp to refresh, because nothing here deploys a control.
 
 ## Standards

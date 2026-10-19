@@ -32,11 +32,60 @@ from register_check.runner import Verdict, applies
 # another word. This is the "match invocations, not substrings" criterion
 # applied to the full-run case; the per-control case is still a substring test
 # and is fixed with the `kind:` taxonomy.
-_FULL_RUN = re.compile(
-    r"(?:^\s*|[;&|(]\s*)(?:uv\s+run\s+)?register-check"
-    r"(?![-\w])(?!\s+(?:assert|meta|explain|schema)\b)",
+_CHECKER = re.compile(
+    r"(?:^\s*|[;&|(]\s*)(?:uv\s+run\s+)?register-check(?![-\w])(?P<rest>[^;&|\n]*)",
     re.MULTILINE,
 )
+
+#: The checker's global options that take a value, so the word after one is
+#: not mistaken for the subcommand. Read from the checker's own CLI shape — a
+#: property of the tool, not of any repository (ADR 0018).
+_VALUED_OPTIONS = frozenset({"--repo", "--register", "--github-repo"})
+
+#: `run` options that narrow the run to part of the register.
+_NARROWING = ("--control", "--tier")
+
+
+def _runs_whole_register(run: str) -> bool:
+    """Whether a step runs the checker over the whole register.
+
+    Phase 8 found the pattern this replaced crediting every named-control step
+    as a full run: it excluded `assert`, `meta`, `explain` and `schema`, and so
+    accepted `run --control SUP-001`, `run --tier 1` and `deployments` — which
+    is how a repository whose CI never asked the register for its verdict read
+    *every applicable blocking control is reached*. So the subcommand is read
+    rather than pattern-matched: the bare checker is a full run, and so is
+    `run` with no `--control` and no `--tier`; anything else asks a smaller
+    question. Global options before the subcommand are skipped, with their
+    values.
+    """
+    for match in _CHECKER.finditer(run):
+        words = match.group("rest").split()
+        index = 0
+        while index < len(words) and words[index].startswith("-"):
+            index += 2 if words[index] in _VALUED_OPTIONS else 1
+        if index >= len(words):
+            return True
+        if words[index] == "run" and not any(
+            word.startswith(_NARROWING) for word in words[index + 1 :]
+        ):
+            return True
+    return False
+
+
+def _named_controls(run: str) -> set[str]:
+    """The control IDs a step's `register-check run --control …` names."""
+    named: set[str] = set()
+    for match in _CHECKER.finditer(run):
+        words = match.group("rest").split()
+        if "run" not in words:
+            continue
+        for index, word in enumerate(words):
+            if word == "--control" and index + 1 < len(words):
+                named.add(words[index + 1])
+            elif word.startswith("--control="):
+                named.add(word.split("=", 1)[1])
+    return named
 
 
 def _invocation(word: str) -> re.Pattern[str]:
@@ -62,6 +111,11 @@ def _reaches(control: Control, run: str, register: Register) -> bool:
     """
     if _suppression_match(register, run):
         return False
+    # `register-check run --control <ID>` — the step every gate writes for its
+    # own controls. It was credited until Phase 8 only by accident, as a run of
+    # the whole register; it reaches the controls it names and no others.
+    if control.id in _named_controls(run):
+        return True
     for block in control.verify:
         if block.kind == "command" and block.run and _invocation(block.run.split()[0]).search(run):
             return True
@@ -103,7 +157,7 @@ def gov_001(
 
     def full_run(steps: list[WorkflowStep]) -> bool:
         return any(
-            _FULL_RUN.search(step.run) and not _suppression_match(register, step.run)
+            _runs_whole_register(step.run) and not _suppression_match(register, step.run)
             for step in steps
         )
 
@@ -127,7 +181,7 @@ def gov_001(
         reaching = [
             step
             for step in clean_steps
-            if (_FULL_RUN.search(step.run) and not _suppression_match(register, step.run))
+            if (_runs_whole_register(step.run) and not _suppression_match(register, step.run))
             or _reaches(control, step.run, register)
         ]
         if runs_everything or reaching:
@@ -149,6 +203,28 @@ def gov_001(
         else:
             unreachable.append(control.id)
     problems = []
+    # ADR 0057: reaching a control's tool is not computing its verdict. `uv run
+    # mypy` reaches TYP-001, and TYP-001's own question — does `files` cover
+    # every tracked module — is answered only when the checker runs it. In the
+    # Craft trial repository that difference was 27 days of FAIL under a green
+    # build, so a gating step that runs the whole register is required in its
+    # own right, in a job a merge waits for, and not credited per control.
+    full_runs = [
+        step
+        for step in clean_steps
+        if _runs_whole_register(step.run) and not _suppression_match(register, step.run)
+    ]
+    if not full_runs:
+        problems.append(
+            "no gating CI step runs the whole register, so a control whose tools pass and "
+            "whose own checks fail is green in every build (ADR 0057)"
+        )
+    elif required_jobs and not any(step.job in required_jobs for step in full_runs):
+        problems.append(
+            "the step that runs the whole register is in a job no recorded ruleset "
+            f"requires (required checks: {', '.join(sorted(required_jobs))}), so its "
+            "verdict blocks no merge (ADR 0057)"
+        )
     if unreachable:
         problems.append("blocking controls with no reachable CI step: " + ", ".join(unreachable))
     if ungated_only:

@@ -162,9 +162,9 @@ change to another repository and is recorded here as owed, not made.
 
 ## Some locus fails when the register's verdict is FAIL
 
-**Open, waiting on
-[ADR 0057](adr/0057-register-install-writes-the-conformance-step.md)**, Proposed
-2026-10-19.
+**Closed 2026-10-19**, implementing
+[ADR 0057](adr/0057-register-install-writes-the-conformance-step.md), accepted
+the same day. Register contract 36.
 
 **What the review got wrong about it, and what it found instead.** The finding
 read as *no locus computes the register's verdict*, as if the design had no
@@ -183,3 +183,47 @@ a change to a meta-control's verify, which moves the register contract. ADR 0057
 proposes `register-install` for the first — it runs on every adoption, where
 `gate-repo` is the gate most often left unfinished — and the GOV-001 change for
 the second.
+
+**What was built.**
+
+- **GOV-001** fails a repository with no gating step that runs the whole
+  register, and one whose full run sits in a job no recorded ruleset requires.
+- **`register-install`** writes that step from a template, as the last step of
+  the job CI-001's `required_checks:` names, in the tolerant form `08-adopting.md`
+  § 4.3 gives: a verified violation fails it, exit `3` passes and is printed.
+  With no gating workflow yet it defers and says so, and `register-adopt` runs it
+  again after the file-writing gates, before `gate-repo`, so the step is in the
+  adoption's own commit.
+
+**Two defects found by building it, both in GOV-001's reachability.** Fixing
+them is what made the new requirement mean anything:
+
+| What it did | What it does now |
+| --- | --- |
+| Credited `register-check run --control SUP-001` — and `run --tier 1`, and `deployments` — as a run of the whole register, because its pattern excluded only `assert`, `meta`, `explain` and `schema`. So every gate's named-control step made **every** blocking control reachable | Reads the subcommand: the bare checker, or `run` with no `--control` and no `--tier`, is a full run. Global options before the subcommand are skipped with their values |
+| Never credited `run --control X` with reaching X — the full-run accident had covered for it | `run --control X` reaches X and nothing else |
+
+Together they are why the trial repository read *every applicable blocking
+control is reached* while its CI never asked the register for a verdict. With
+both fixed and no step added, GOV-001 there reads FAIL and lists SEC-003,
+LNT-001, TYP-001 and TST-001 as unreached — exactly the four no step in that CI
+computes.
+
+**How it was shown to hold.**
+
+- Six tests in `tests/test_meta.py`, five new and one changed: a repository that never
+  runs the whole register fails; each of the three spellings § 4.3 gives counts
+  as a full run, including the exit-code capture; `run --control`, `meta`,
+  `explain` and `schema` do not; a `--control` step reaches what it names, both
+  through the helper and through the verdict. Mutation-tested on the
+  requirement, on the narrowing rule and on the `--control` credit — the last
+  survived the first pass, and the verdict-level test was written for it.
+- On a copy of the trial repository with the shipped template placed as Step 5
+  says: GOV-001's file half passes, and every other control's verdict is
+  unchanged — TYP-001 still FAIL, which is what the step would now fail the
+  required check on.
+- ee-standard's own GOV-001 still passes: its CI already runs the whole
+  register.
+
+**What it does not reach yet.** An adopter meets both the step and GOV-001's
+requirement at the next checker release and a re-run of `register-install`.

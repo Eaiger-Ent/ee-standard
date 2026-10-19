@@ -1945,6 +1945,17 @@ the platform rather than trying it.
 
 ### 4.3 — Giving CI a credential, and failing the run when it cannot verify
 
+**From register contract 36 you do not write the Conformance step by hand.**
+`register-install` writes it into the job your `required_checks:` names, as that
+job's last step, in the tolerant form below — a verified violation fails it, and
+exit `3` passes with the report saying what went unverified
+([ADR 0057](adr/0057-register-install-writes-the-conformance-step.md)). GOV-001
+fails a repository with no such step, because the gates' own steps run each
+control's tools and none of them asks the register for its verdict: in the first
+repository adopted outside this one, TYP-001 read FAIL for 27 days under a green
+build. What this section still asks of you is the upgrade — a credential, then
+`--require-complete`.
+
 Two things go together, and doing either alone makes the other worse.
 
 **`--require-complete` turns "could not verify" into a failed check.** Without

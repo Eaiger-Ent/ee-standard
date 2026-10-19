@@ -156,10 +156,20 @@ def test_the_templates_stamp_what_they_write(skill: Path) -> None:
         # control names *the checker is installed* — so there is no stamp to
         # write and nothing for a template to carry (ADR 0032). A *gate* with no
         # templates would be a gate whose deployment has no reviewable source.
+        # `register-install` has shipped one since ADR 0057, handled above.
         assert skill.name not in _sidecar()["gates"], (
             f"{skill.name} deploys controls and ships no template to write them from"
         )
         pytest.skip(f"{skill.name} writes no artefacts of its own")
+    if skill.name == "register-install":
+        # ADR 0057 rule 3: its one template, the Conformance step, deploys no
+        # control — it computes the verdict of every control the gates
+        # deployed — so a stamp would name a control nothing here deploys. The
+        # rule held in the other direction: it must carry none.
+        for template in templates:
+            text = template.read_text(encoding="utf-8")
+            assert not stamps_in(text), f"{template.name} stamps a control it does not deploy"
+        return
     known = {control.id for control in register.controls}
     for template in templates:
         text = template.read_text(encoding="utf-8")

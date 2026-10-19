@@ -12,6 +12,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from conftest import FakeGitHub, make_repo, minimal_register, write_register
 from register_check.meta import gov_001, gov_002, gov_003
 from register_check.register import Register, load_register
@@ -127,7 +129,66 @@ def test_gov_001_reaches_a_control_verified_only_by_file_asserts(tmp_path: Path)
     )
     make_repo(tmp_path, {".github/workflows/check.yml": workflow})
     verdict, message = gov_001(register, repo)
-    assert verdict is Verdict.PASS, message
+    # Reached on its own evidence: nothing is reported unreachable. What fails
+    # is ADR 0057's separate requirement, and it is the only thing that does —
+    # reaching a control and computing its verdict are different questions.
+    assert "no reachable CI step" not in message, message
+    assert verdict is Verdict.FAIL
+    assert message.startswith("no gating CI step runs the whole register"), message
+    assert ";" not in message, message
+
+
+def test_gov_001_fails_a_repository_that_never_runs_the_whole_register(tmp_path: Path) -> None:
+    """ADR 0057. Every tool reached, and the register's verdict computed nowhere.
+
+    The Craft trial repository's shape: steps that run each control's tool, so
+    every blocking control is reachable, and no step that asks the register.
+    TYP-001 read FAIL there for 27 days under a green build.
+    """
+    register, repo = _load(tmp_path, minimal_register())
+    workflow = (
+        _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        "      - run: uv run register-check run --control SEC-001\n"
+        "      - run: uv run register-check assert precommit_hook_present\n"
+    )
+    make_repo(tmp_path, {".github/workflows/check.yml": workflow})
+    verdict, message = gov_001(register, repo)
+    assert verdict is Verdict.FAIL
+    assert "no gating CI step runs the whole register" in message, message
+
+
+@pytest.mark.parametrize(
+    "run",
+    [
+        "uv run register-check",
+        "uv run register-check --require-complete",
+        "uv run register-check && status=0 || status=$?",
+    ],
+)
+def test_gov_001_credits_every_spelling_of_the_full_run(tmp_path: Path, run: str) -> None:
+    """The three shapes `08-adopting.md` § 4.3 gives the step, including the
+    exit-code capture a run without a credential uses — which is not a
+    suppression, and must not read as one."""
+    register, repo = _load(tmp_path, minimal_register())
+    steps = f"    steps:\n      - run: {run}\n"
+    workflow = _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n" + steps
+    make_repo(tmp_path, {".github/workflows/check.yml": workflow})
+    _, message = gov_001(register, repo)
+    assert "runs the whole register" not in message, message
+
+
+def test_gov_001_does_not_credit_a_narrowed_run_as_the_whole_register(tmp_path: Path) -> None:
+    """`run --control`, `meta`, `explain` and `schema` each ask a smaller question."""
+    register, repo = _load(tmp_path, minimal_register())
+    steps = "".join(
+        f"      - run: uv run register-check {narrowed}\n"
+        for narrowed in ("run --control SEC-001", "meta GOV-001", "explain SEC-001", "schema")
+    )
+    workflow = _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n" + steps
+    make_repo(tmp_path, {".github/workflows/check.yml": workflow})
+    verdict, message = gov_001(register, repo)
+    assert verdict is Verdict.FAIL
+    assert "no gating CI step runs the whole register" in message, message
 
 
 def test_gov_001_rejects_a_workflow_that_gates_no_merge(tmp_path: Path) -> None:
@@ -448,3 +509,45 @@ def test_gov_001_says_so_when_no_control_names_a_required_check(tmp_path: Path) 
     verdict, message = gov_001(register, repo)
     assert verdict is Verdict.PASS
     assert "is not answered here" in message
+
+
+def test_gov_001_a_named_control_step_reaches_the_controls_it_names_and_no_others(
+    tmp_path: Path,
+) -> None:
+    """Phase 8. `run --control X` was credited as a run of the whole register.
+
+    So every gate's named-control step made every blocking control reachable,
+    and a repository that never asked the register for its verdict passed.
+    Now it reaches what it names — measured on the trial repository, where the
+    controls left unreached were exactly the four nothing in its CI computed.
+    """
+    from register_check.meta import _named_controls, _runs_whole_register
+
+    run = "uv run register-check run --control SEC-001 --control=SUP-001"
+    assert not _runs_whole_register(run)
+    assert _named_controls(run) == {"SEC-001", "SUP-001"}
+    assert not _runs_whole_register("uv run register-check run --tier 1")
+    assert not _runs_whole_register("uv run register-check deployments")
+    assert _runs_whole_register("uv run register-check --repo . --register r.yaml run")
+    assert _named_controls("uv run register-check meta GOV-001") == set()
+
+
+def test_gov_001_credits_a_named_control_step_with_reaching_its_controls(
+    tmp_path: Path,
+) -> None:
+    """The same rule, through the verdict rather than the helper.
+
+    One `run --control` step per blocking control, and no full run: nothing is
+    unreachable, and the only problem left is ADR 0057's missing full run.
+    """
+    register, repo = _load(tmp_path, minimal_register())
+    blocking = [c.id for c in register.controls if c.rung == "blocking" and "ci" in c.locus]
+    assert blocking, "the minimal register has no blocking ci control — this test is vacuous"
+    named = " ".join(f"--control {cid}" for cid in blocking)
+    workflow = (
+        _ON + "jobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
+        f"      - run: uv run register-check run {named}\n"
+    )
+    make_repo(tmp_path, {".github/workflows/check.yml": workflow})
+    _, message = gov_001(register, repo)
+    assert "no reachable CI step" not in message, message

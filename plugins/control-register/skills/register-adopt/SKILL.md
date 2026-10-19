@@ -264,9 +264,10 @@ them here on the user's behalf.
 ## Step 4 — Dispatch
 
 Invoke each selected gate in this order, and the order is not alphabetical.
-`register-install` is not in this table: it ran at Step 0, it is not a gate, and
-it is not selectable — a plan that offered to skip it would offer to compute
-itself without the instrument it is computed with.
+`register-install` is not a gate and is not selectable — a plan that offered to
+skip it would offer to compute itself without the instrument it is computed with.
+It ran at Step 0, and it runs **once more**, at row 5a, because of what it could
+not write then.
 
 | # | Gate | Why here |
 | --- | --- | --- |
@@ -275,6 +276,7 @@ itself without the instrument it is computed with.
 | 3 | `gate-secrets` | Writes into `setup.sh` and the gating workflow, both of which now exist |
 | 4 | `gate-quality` | Same two files, plus the editor locus |
 | 5 | `gate-iac` | Independent; last of the file-writing gates |
+| 5a | `register-install`, again | Not a gate, and not optional. At Step 0 there was no gating workflow, so it deferred the step that runs the whole register (ADR 0057); the gates above have written one, so it writes the step now. Before `gate-repo`, so the step is in the commit that lands before the branch is protected |
 | 6 | `gate-repo` | Last, because it is the only one whose effect is not a file and cannot be reviewed before it takes effect |
 
 **`gate-repo` runs at Step 4 and the commit is at Step 6, and that order is a

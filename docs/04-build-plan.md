@@ -1578,11 +1578,11 @@ the same four weeks; the evidence for each tick is
 
 - [x] LNT-001 finds an ESLint flat config that is not valid YAML. Closed
       2026-10-19, [`18-phase-8-review.md`](18-phase-8-review.md) § LNT-001.
-- [ ] Some locus in an adopter's repository fails when the register's verdict
-      is FAIL, not only when a gate's tool fails. TYP-001 stood at FAIL for 27
-      days under a green build. **Waits on
-      [ADR 0057](adr/0057-register-install-writes-the-conformance-step.md)**,
-      Proposed 2026-10-19.
+- [x] Some locus in an adopter's repository fails when the register's verdict
+      is FAIL, not only when a gate's tool fails. Closed 2026-10-19 under
+      [ADR 0057](adr/0057-register-install-writes-the-conformance-step.md),
+      register contract 36, [`18-phase-8-review.md`](18-phase-8-review.md)
+      § Some locus fails.
 - [x] TYP-001 can be met by a repository that tracks a vendored file it may not
       edit, or the register says why it cannot. Closed 2026-10-19 — the register
       says why, [`18-phase-8-review.md`](18-phase-8-review.md) § TYP-001.
