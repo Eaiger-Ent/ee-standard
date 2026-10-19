@@ -357,7 +357,17 @@ meta:
   #     already names it, rather than restated here. It alters what gets
   #     deployed — a conformant repository's markdown hook must now reach the
   #     pinned artefact — which is what this number is for.
-  register_contract: 35
+  # 36: GOV-001 requires a gating step that runs the whole register, in a job
+  #     the register requires (ADR 0057). Reaching a control's *tool* is not
+  #     computing its verdict: `uv run mypy` reaches TYP-001, and TYP-001's own
+  #     question is answered only when the checker runs it — in the Craft trial
+  #     repository, 27 days of FAIL under a green build. Two reachability
+  #     defects were fixed with it. `run --control X` and `run --tier 1` were
+  #     credited as a run of the whole register, which made every named-control
+  #     step reach every control; now `run --control X` reaches X and nothing
+  #     else. It alters what a conformant repository's CI must contain, which
+  #     `register-install` now writes.
+  register_contract: 36
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -1829,7 +1839,10 @@ meta_controls:
     title: Every blocking control is reachable from a CI step that can fail
     enforces: >
       For each control with `rung: blocking` and `ci` in its locus, a CI step
-      exists that invokes its verification and is not marked continue-on-error.
+      exists that invokes its verification and is not marked continue-on-error;
+      and a gating step, in a job the register requires, runs the whole
+      register, so every control's own verdict fails a merge and not only its
+      tools' (ADR 0057).
     rationale: >
       A control declared blocking but unreachable is worse than no control —
       it reports safety that does not exist. This is theme T-3 from the

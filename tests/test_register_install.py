@@ -241,7 +241,11 @@ def test_the_skill_deploys_no_control_and_stamps_nothing() -> None:
     for path in _skill_files():
         stamps = stamps_in(path.read_text(encoding="utf-8", errors="ignore"))
         assert not stamps, f"{path.name} writes a stamp naming {stamps[0].control}"
-    assert not (SKILL / "templates").exists(), "there is no artefact for a template to carry"
+    # From ADR 0057 there is one template — the Conformance step — and it is
+    # unstamped for the same reason: it deploys no control, it computes the
+    # verdict of every control the gates deployed.
+    templates = sorted(path.name for path in (SKILL / "templates").glob("*"))
+    assert templates == ["conformance-step.yaml"], templates
     text = " ".join(SKILL_TEXT.split())
     assert "No control names this" in text
     sidecar = yaml.safe_load(
