@@ -48,3 +48,39 @@ every locus that runs it, which is where that failure belongs.
 **What it does not reach yet.** An adopter runs the checker at the ref their
 register pins — the trial repository pins `v0.8.4` — so the fix reaches them at
 the next release and not before.
+
+## LNT-001's title and its verification agree about formatting
+
+**Closed 2026-10-19, by correcting the title.**
+
+**The mismatch.** LNT-001 was titled *Lint and format violations block the
+merge*. Its `enforces:` text, its verify blocks and ADR 0009 are all about the
+linter, and none mentions formatting. What the register does govern is narrower
+than the title and real: from contract 21 the editor locus requires
+`[python].editor.defaultFormatter` to be the pinned tool's extension
+(`editor_binding`). Nothing at a locus that can block a merge — no hook, no CI
+step — runs a format check. The trial repository's `CONTRIBUTING.md` had
+already said so in its own words.
+
+**What was done.** The title now reads *Lint violations block the merge*, with
+a comment in `controls.yaml` saying what it read and why it changed.
+`controls.published.yaml` is re-derived. No `meta.register_contract` bump: the
+rule in `CLAUDE.md` names `rung`, `verify`, `variance` and `applies_to`, and a
+title is none of them — what any repository has to do is unchanged.
+
+**What was found on the way, and fixed with it.** Craft's
+`python.consistent-formatting` was counted as **bound** in both Python profiles,
+its instrument `ruff format` with no codes, on the reading that the property
+*is met by running it*. Nothing runs it at a locus that can fail, so both
+profiles reported a property as enforced that no build could fail on. It is now
+`unenforced` with `ruff format --check` as its candidate, and appears in the
+residue. `python/standard@4` and `python/strict@4` record the move as `neither`:
+nothing a repository runs changed, only what the record claims.
+
+**What was deliberately not done.** Wiring `ruff format --check` at pre-commit
+and in CI would make the old title true, and it changes what LNT-001 enforces
+for every adopter: a field in `stacks:`, an assert that reads it, a
+`gate-quality` step, a contract bump and a checker release. That is a decision
+about the standard, which an ADR records and a second reader accepts, not a
+correction. It is also not free here: `ruff format --check .` reports 47 files in
+this repository that it would reformat. Recorded, not scheduled.

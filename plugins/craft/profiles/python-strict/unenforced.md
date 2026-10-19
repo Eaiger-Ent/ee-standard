@@ -1,7 +1,7 @@
 # What Craft does not enforce here
 
-<!-- >>> ee-craft python/strict@3 -->
-<!-- ee-craft: python/strict@3  ee-skill: craft-install@0.2.0  gates: none (no any. property binds an instrument)  craft-contract: 3 -->
+<!-- >>> ee-craft python/strict@4 -->
+<!-- ee-craft: python/strict@4  ee-skill: craft-install@0.2.0  gates: none (no any. property binds an instrument)  craft-contract: 3 -->
 <!-- <<< ee-craft -->
 
 **Every property below is unenforced.** Nothing here fails a build, no
@@ -328,7 +328,7 @@ that is not enough.** Linted at strict, a fast assistant-written suite still car
 assertions that could never fail; `python.tests-can-fail` binds the shapes a linter can
 read.
 
-## An instrument exists, and this profile does not install it (5)
+## An instrument exists, and this profile does not install it (6)
 
 Either it was measured and demoted — the reason is with it, and it is the reason not to
 re-enable it — or nothing has measured it and ADR 0051's third precondition is unmet.
@@ -354,6 +354,17 @@ Commit subjects follow `type(scope): description`.
 **An instrument exists:** commitlint with @commitlint/config-conventional, or commitizen
 `cz check`. The instrument exists and the group is simply on — every repository has
 commit messages, so there is no artefact whose absence makes the property inapplicable.
+
+### `python.consistent-formatting`
+
+Formatting is not a per-author choice.
+
+**An instrument exists:** ruff format --check. Counted as bound until 2026-10-19, and
+nothing enforced it. The instrument was `ruff format` with no codes, on the reading that
+the property *is met by running it* — and nothing runs it at a locus that can fail. The
+editor binds ruff as the formatter (LNT-001's `editor_binding`); no hook and no CI step
+runs a format check, and LNT-001's title, which promised one, was corrected in Phase 8.
+A profile writes configuration, not loci, so Craft cannot close this alone.
 
 ### `python.exception-type-carries-its-message`
 

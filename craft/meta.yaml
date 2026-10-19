@@ -314,8 +314,16 @@ surfaces:
 # file does. Entries kept per-file would split one profile's history across two.
 profiles:
   python/standard:
-    version: 3
+    version: 4
     changes:
+      - version: 4
+        moved: neither
+        what: >
+          `python.consistent-formatting` moves from bound to the residue. It
+          was counted as enforced by `ruff format`, and nothing at any locus
+          runs a format check, so the count claimed a property no build could
+          fail on. Nothing a repository runs changes; the record stops
+          overstating it. `docs/18-phase-8-review.md` § LNT-001's title.
       - version: 3
         moved: neither
         what: >
@@ -340,8 +348,16 @@ profiles:
           First publication. The selection S3 benched, migrated from
           `docs/craft/assess.rules.md` without change.
   python/strict:
-    version: 3
+    version: 4
     changes:
+      - version: 4
+        moved: neither
+        what: >
+          `python.consistent-formatting` moves from bound to the residue. It
+          was counted as enforced by `ruff format`, and nothing at any locus
+          runs a format check, so the count claimed a property no build could
+          fail on. Nothing a repository runs changes; the record stops
+          overstating it. `docs/18-phase-8-review.md` § LNT-001's title.
       - version: 3
         moved: narrowing
         what: >

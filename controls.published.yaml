@@ -1588,7 +1588,13 @@ controls:
   # --- Code quality --------------------------------------------------------
 
   - id: LNT-001
-    title: Lint and format violations block the merge
+    # Retitled 2026-10-19 (Phase 8). It read *Lint and format violations block
+    # the merge*, and nothing at a merge-blocking locus checks formatting: the
+    # editor binds the formatter, and no hook or CI step runs a format check.
+    # The title now says what the verify blocks below assert. Whether a format
+    # check should block a merge is a decision this rename does not make —
+    # `docs/18-phase-8-review.md` § LNT-001's title.
+    title: Lint violations block the merge
     enforces: >
       The configured linter runs at editor, pre-commit and CI loci from one
       pinned configuration, and the CI invocation has no failure suppression.
