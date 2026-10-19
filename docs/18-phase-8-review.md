@@ -126,3 +126,36 @@ summary. The exit code is unchanged: staleness is reported, never enforced.
 **Only the pre-commit locus is read**, and that is deliberate rather than
 unfinished. It is the one locus where a stamp sits beside the thing it governs,
 and one locus is enough to tell a stack the gate wired from one it did not.
+
+## TYP-001 and a vendored file it may not edit
+
+**Closed 2026-10-19, by the register saying why it cannot be met another way.**
+The criterion offered two ways out — the control can be met, or the register
+says why it cannot — and the decisions already in force answer it.
+
+**The case.** The trial repository tracks `.claude/hooks/yaml-lint.py`, a hook
+the `lint-yaml` skill copies in and later compares line by line against its own.
+It sits outside `[tool.mypy] files`, so TYP-001 failed from the day of install.
+Adding it to `files` is not a fix: strict mypy reports two errors in it, and
+editing a vendored copy breaks the skill's comparison.
+
+**Why there is no exemption.** An exclusion that hides a tracked file is what
+[ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md) forbids, and
+TYP-001's own text allows *no per-file opt-out beyond the recorded baseline*,
+where the baseline is `null`. A `vendored:` list, or honouring
+`linguist-vendored` in `.gitattributes`, would be that opt-out under another
+name. Making one would mean superseding ADR 0019, for a case with two honest
+routes already open.
+
+**What was done.** TYP-001 carries a comment saying a vendored file has no
+exemption and why, and `08-adopting.md` § 3.2 point 2 gives the two routes: get
+the file fixed upstream so it passes strict mode, or stop tracking it and have
+its installer write it at setup. Until then TYP-001 fails, and the failure is
+accurate.
+
+**The upstream fix, measured.** `lint-yaml` 0.1.14, the newest release in the
+ee-skills marketplace on this machine, ships `yaml-lint-hook.py` with the same
+two errors. Both come from one function: `in_repo` has no annotations, and the
+second error is a typed call into it. One line in that skill would let every
+repository that vendors it put `.claude/hooks` under strict mypy. That is a
+change to another repository and is recorded here as owed, not made.
