@@ -1588,9 +1588,9 @@ the same four weeks; the evidence for each tick is
       format check is wired, or the title stops promising one. Closed
       2026-10-19 by the title, [`18-phase-8-review.md`](18-phase-8-review.md)
       § LNT-001's title.
-- [ ] `deployments` says when a stack a gate covers has arrived since the gate
-      ran. The adopter's TypeScript half was hand-wired and `gate-quality` reads
-      CURRENT.
+- [x] `deployments` says when a stack a gate covers has arrived since the gate
+      ran. Closed 2026-10-19, [`18-phase-8-review.md`](18-phase-8-review.md)
+      § `deployments` says when a stack has arrived.
 
 ## What is deliberately not in scope
 
