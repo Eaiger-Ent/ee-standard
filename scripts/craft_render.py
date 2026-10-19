@@ -330,6 +330,70 @@ def scoped(profile: str, meta: dict[str, Any]) -> str:
     )
 
 
+def plugins(resolved: dict[str, Any]) -> list[str]:
+    """The packages a profile adds to the repository, in the order they are cited.
+
+    Read from the instruments rather than from a list, so a property that stops
+    binding a plugin stops adding it — the same reason `rules` is counted from
+    what is rendered rather than written down.
+    """
+    found: list[str] = []
+    for prop in resolved["properties"].values():
+        for plugin in prop["instrument"].get("plugins", []):
+            if plugin["package"] not in found:
+                found.append(plugin["package"])
+    return sorted(found)
+
+
+def asks(resolved: dict[str, Any]) -> dict[str, str]:
+    """Every value the repository supplies at install, by placeholder name."""
+    return {
+        name: question
+        for prop in resolved["properties"].values()
+        for name, question in (prop["instrument"].get("asks") or {}).items()
+    }
+
+
+def render_pytest(profile: str, meta: dict[str, Any]) -> str:
+    """The span an installer places in the pytest table, or nothing.
+
+    **No table header**, unlike the ruff region, and that is ADR 0056 rule 2:
+    `[tool.pytest]` and `[tool.pytest.ini_options]` in one file is an error, so
+    which header the span goes under is the repository's, read at install. The
+    span is valid under both, which is measured rather than assumed — the native
+    table refuses an integer `timeout`, so every setting is written as a string.
+
+    `addopts` is one key and Craft owns all of it or none (rule 1), so every
+    option a profile binds is in one array, each commented with its property. A
+    placeholder is rendered as `{{NAME}}` in the option and in the stamp, and
+    the installer substitutes both from one answer — so the stamp records the
+    repository's number without anyone typing into a stamp.
+    """
+    resolved = resolve(profile, meta)
+    options: list[str] = []
+    settings: list[str] = []
+    for identity, prop in sorted(resolved["properties"].items()):
+        instrument = prop["instrument"]
+        if instrument["tool"] != "pytest":
+            continue
+        for plugin in instrument["plugins"]:
+            options += [
+                _commented(f"  {_value(option)},", identity) for option in plugin.get("options", [])
+            ]
+            settings += [
+                _commented(f"{key} = {_value(str(value))}", identity)
+                for key, value in (plugin.get("settings") or {}).items()
+            ]
+    if not options and not settings:
+        return ""
+    recorded = "".join(f"  {name}: {{{{{name}}}}}" for name in sorted(asks(resolved)))
+    body = (["addopts = [", *options, "]"] if options else []) + settings
+    version = meta["profiles"][profile]["version"]
+    return "\n".join(
+        [f"{OPEN} {profile}@{version}", stamp(profile, meta) + recorded, *body, CLOSE, ""]
+    )
+
+
 #: Where a React profile's rules apply, and the only globs Craft chooses for
 #: itself. They are a **fixed default the installer reports** rather than a
 #: configuration key: a new repository has no tests to infer a convention from,

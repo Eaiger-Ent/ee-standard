@@ -37,7 +37,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from craft_render import render, render_react, render_residue, scoped
+from craft_render import asks, plugins, render, render_pytest, render_react, render_residue, scoped
 from craft_select import REPO_ROOT, load, resolve
 
 PROFILES = ("python/standard", "python/strict", "react/standard", "react/strict")
@@ -62,6 +62,8 @@ def artefacts(meta: dict[str, Any]) -> dict[str, str]:
             out[f"{into}/pyproject-region.toml"] = render(profile, meta)
             if nested := scoped(profile, meta):
                 out[f"{into}/src-ruff.toml"] = nested
+            if region := render_pytest(profile, meta):
+                out[f"{into}/pytest-region.toml"] = region
         else:
             out[f"{into}/eslint.config.mjs"] = render_react(profile, meta)
 
@@ -118,6 +120,11 @@ def manifest(meta: dict[str, Any], rendered: dict[str, str]) -> dict[str, Any]:
                 "read_from": resolved["tool_version"],
                 "declares_a_fix": costs["Always"] + costs["Sometimes"],
                 "hand_work": costs["None"],
+                # What the yes has to cover beyond configuration: the packages
+                # added to the lockfile, and the values the repository is asked
+                # for. Read from the instruments, never listed here.
+                "dependencies": plugins(resolved),
+                "asks": asks(resolved),
             }
         else:
             entry |= {
@@ -131,6 +138,11 @@ def manifest(meta: dict[str, Any], rendered: dict[str, str]) -> dict[str, Any]:
     return {
         "craft_contract": meta["craft_contract"],
         "levels": list(meta["levels"]),
+        # ADR 0056's locations travel with the profiles, because the installer
+        # reads the plugin and never the register. A skill that carried
+        # pytest's search order in prose would be the second copy the rule
+        # exists to prevent.
+        "surfaces": meta.get("surfaces", {}),
         "profiles": profiles,
     }
 

@@ -21,6 +21,7 @@ govern it, and S6 is where it meets a team.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -239,3 +240,73 @@ def test_the_react_config_resolves_where_the_plugins_exist(profile: str) -> None
     # The scope, seen from the tool rather than from the file that asked for it.
     scoped = {rule for rule in named if rule.startswith("testing-library/")}
     assert scoped <= test and not scoped & component, sorted(scoped & component)
+
+
+PYTEST_REGION = PLUGIN / "profiles/python-strict/pytest-region.toml"
+
+
+@pytest.mark.parametrize("table", ["tool.pytest", "tool.pytest.ini_options"])
+def test_the_pytest_region_is_valid_under_either_table_the_repository_uses(
+    tmp_path: Path, table: str
+) -> None:
+    """ADR 0056 rule 2: the span carries no header, and parses under both.
+
+    `[tool.pytest]` refuses an integer where `[tool.pytest.ini_options]` takes
+    one, so a region that worked under one spelling could fail under the other.
+    Every setting is a string for that reason, and this holds it there. The
+    placeholder is substituted as the installer substitutes it, and none may
+    survive into the file.
+    """
+    import tomllib
+
+    region = PYTEST_REGION.read_text(encoding="utf-8")
+    assert not re.search(r"^\[", region, re.M), "the region names its own table"
+    placed = f"{PYPROJECT}\n[{table}]\n" + region.replace("{{COVERAGE_FLOOR}}", "80")
+    assert "{{" not in placed
+    section = tomllib.loads(placed)["tool"]["pytest"]
+    if table.endswith("ini_options"):
+        section = section["ini_options"]
+    assert "--cov-fail-under=80" in section["addopts"]
+    assert all(isinstance(value, (str, list)) for value in section.values()), section
+
+
+def test_the_pytest_region_switches_on_what_it_claims(tmp_path: Path) -> None:
+    """The four plugins, run: a random order, a timeout, no network, a floor.
+
+    Skipped where the plugins are not installed, which is this repository: the
+    profile adds them to an adopter's lockfile, not to the standard's own.
+    `docs/craft/review.trial.md` § The guards, installed records the run made
+    with them present.
+    """
+    import importlib.util
+
+    needed = ("pytest_randomly", "pytest_timeout", "pytest_socket", "pytest_cov")
+    missing = [name for name in needed if importlib.util.find_spec(name) is None]
+    if missing:
+        pytest.skip(f"not installed here: {', '.join(missing)}")
+    (tmp_path / "pyproject.toml").write_text(
+        f"{PYPROJECT}\n[tool.pytest]\n"
+        + PYTEST_REGION.read_text(encoding="utf-8").replace("{{COVERAGE_FLOOR}}", "100"),
+        encoding="utf-8",
+    )
+    # A branch the suite never takes, so a floor of 100 has something to fail.
+    (tmp_path / "ledger.py").write_text(
+        "def sign(n: int) -> str:\n    if n < 0:\n        return '-'\n    return '+'\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "test_guarded.py").write_text(
+        "import socket\n\nfrom ledger import sign\n\n\n"
+        "def test_sign() -> None:\n    assert sign(1) == '+'\n\n\n"
+        "def test_off_the_machine() -> None:\n"
+        "    socket.create_connection(('192.0.2.1', 80), timeout=1)\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-p", "no:cacheprovider"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert "randomly-seed" in result.stdout, result.stdout
+    assert "SocketConnectBlockedError" in result.stdout, result.stdout
+    assert "Required test coverage of 100% not reached" in result.stdout, result.stdout

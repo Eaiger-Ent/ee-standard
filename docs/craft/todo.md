@@ -899,13 +899,14 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       `python/strict@2` binds `python.tests-can-fail` (`PT017`, `B015`,
       `PLW0129`), probed and in one case observed. The guards and the coverage
       floor are named in the residue and wait for the item below
-- [ ] An instrument shape for a pytest plugin and for a coverage floor, at a
+- [x] An instrument shape for a pytest plugin and for a coverage floor, at a
       new `craft_contract`, with the installer asking for the floor's number.
-      Binds `python.test-independence`, `python.no-flaky-tests` and
-      `python.branch-coverage-floor`. **Waits on
-      [ADR 0056](../adr/0056-craft-names-a-surface-only-where-the-register-names-none.md)**,
-      Proposed 2026-10-18: no file a profile may write configures pytest, and
-      the ADR is where Craft gets one
+      Done 2026-10-19 under
+      [ADR 0056](../adr/0056-craft-names-a-surface-only-where-the-register-names-none.md):
+      `python/strict@3` at `craft_contract` 3 binds `python.test-independence`,
+      `python.no-flaky-tests` and `python.branch-coverage-floor`.
+      [`review.trial.md`](review.trial.md) § The guards, installed, 2026-10-19
+      is the measurement
 - [ ] A stack that arrives after the install is reported, by something that
       runs without being asked. The
       trial repository's React row has held since 2026-10-10, with no profile

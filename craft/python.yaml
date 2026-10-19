@@ -698,16 +698,17 @@ properties:
     bucket: 2
     sources:
     - testing 002
-    unenforced: Nothing asserts it. A randomised-order run detects violations empirically;
-      nothing prevents them.
-    candidate:
-      tool: pytest-randomly
-      why_not: >
-        Measured in use and not yet installable. The trial repository runs every
-        suite in a random order with it (review.trial.md § What the owner built
-        that the profile did not). A profile can select a ruff code or set a mypy
-        key; it has no instrument shape for a pytest plugin and its `addopts`,
-        which is a `craft_contract` change rather than a rule change.
+    - pytest-randomly
+    instrument:
+      tool: pytest
+      plugins:
+      - package: pytest-randomly
+    level: strict
+    note: 'A random order detects a dependency rather than preventing one, and the
+      seed it prints repeats the failing order. Installing the plugin is the whole
+      of the configuration. Measured in use for four weeks in the trial repository
+      (review.trial.md § What the owner built that the profile did not), bound by
+      ADR 0056.'
   python.test-arrange-act-assert:
     asserts: A test's setup, action and assertion are visually distinct
     bucket: 3
@@ -719,15 +720,28 @@ properties:
     bucket: 2
     sources:
     - testing 005
-    unenforced: Nothing asserts it. Repeated runs detect it; nothing prevents it.
-    candidate:
-      tool: pytest-timeout and pytest-socket
-      why_not: >
-        Measured in use and not yet installable, for the reason
-        `python.test-independence` gives. A hang becomes a failure and a call off
-        the machine becomes a refusal, which are the two flakes the trial
-        repository's review found; neither prevents a flaky test, they make the
-        commonest two fail every time.
+    - pytest-timeout
+    - pytest-socket
+    instrument:
+      tool: pytest
+      plugins:
+      - package: pytest-timeout
+        settings:
+          timeout: '30'
+      - package: pytest-socket
+        options:
+        - --disable-socket
+        - --allow-unix-socket
+        - --allow-hosts=127.0.0.1,localhost,::1
+    level: strict
+    note: 'A proxy, and named as one: a hang becomes a failure and a call off the
+      machine becomes a refusal, which are the two flakes the trial repository''s
+      review found. Neither prevents a flaky test; they make the commonest two fail
+      every time. The values are the trial''s. Loopback stays open because a test
+      that starts its own server is not a flake, and with `--allow-hosts` given
+      pytest-socket guards `connect()` alone, so a DNS lookup still gets out.
+      `timeout` is a string because the native `[tool.pytest]` table refuses an
+      integer for it.'
   python.narrow-raises:
     asserts: '`pytest.raises` names the exception and matches the message'
     bucket: 1
@@ -786,16 +800,26 @@ properties:
     bucket: 2
     sources:
     - coverage
-    unenforced: Nothing asserts it. Coverage is measured and nothing fails when it
-      falls.
-    candidate:
-      tool: coverage.py `fail_under` with `branch = true`
-      why_not: >
-        Asked for by the trial's owner and not yet installable. A floor is a
-        setting with a number in it, and the number is the repository's — 94% was
-        right for the trial repository and is not a default. Installing it needs
-        the instrument shape `python.test-independence` is waiting for, and a
-        way for the installer to ask for the number.
+    - pytest-cov
+    instrument:
+      tool: pytest
+      plugins:
+      - package: pytest-cov
+        options:
+        - --cov
+        - --cov-branch
+        - --cov-fail-under={{COVERAGE_FLOOR}}
+      asks:
+        COVERAGE_FLOOR: >-
+          The branch-coverage percentage below which the suite fails. The
+          repository's number, never a default — 94 was right for the trial
+          repository
+    level: strict
+    note: 'The first threshold that is the repository''s rather than the profile''s
+      (ADR 0056 rule 3). With no answer the installer leaves these lines out and
+      says the floor was not installed. `--cov` with no source measures what the
+      run imports outside the standard library and site-packages, tests included;
+      the floor a repository chooses is a floor on that number.'
   python.parameterised-sql:
     asserts: User input never reaches SQL by concatenation
     bucket: 1

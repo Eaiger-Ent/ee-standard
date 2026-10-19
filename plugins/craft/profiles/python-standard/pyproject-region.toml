@@ -1,11 +1,11 @@
 [tool.ruff]
-# >>> ee-craft python/standard@2
-# ee-craft: python/standard@2  ee-skill: craft-install@0.1.0  gates: none (no any. property binds an instrument)  craft-contract: 2
+# >>> ee-craft python/standard@3
+# ee-craft: python/standard@3  ee-skill: craft-install@0.2.0  gates: none (no any. property binds an instrument)  craft-contract: 3
 line-length = 88                                    # python.line-length
 # <<< ee-craft
 
 [tool.ruff.lint]
-# >>> ee-craft python/standard@2
+# >>> ee-craft python/standard@3
 select = [
   "ANN001", "ANN201", "ANN204", "ANN205", "ANN206", # python.annotate-public-api
   "C4", "PERF401",                                  # python.comprehension-over-manual-loop
@@ -49,11 +49,11 @@ select = [
 # <<< ee-craft
 
 [tool.ruff.lint.mccabe]
-# >>> ee-craft python/standard@2
+# >>> ee-craft python/standard@3
 max-complexity = 10                                 # python.function-length
 # <<< ee-craft
 
 [tool.ruff.lint.pylint]
-# >>> ee-craft python/standard@2
+# >>> ee-craft python/standard@3
 max-statements = 25                                 # python.function-length
 # <<< ee-craft

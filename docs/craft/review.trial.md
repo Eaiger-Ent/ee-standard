@@ -555,6 +555,44 @@ and on what they are — a comparison with no `assert`, an `assert` on a string 
 because a suite written quickly by an assistant is where both appear, and
 neither has a correct use in a test.
 
+## The guards, installed, 2026-10-19
+
+**`python/strict@3`**, at `craft_contract` 3, implementing
+[ADR 0056](../adr/0056-craft-names-a-surface-only-where-the-register-names-none.md).
+The three properties § The revision named and could not bind now bind:
+
+| Property | Plugin | What it writes |
+| --- | --- | --- |
+| `python.test-independence` | `pytest-randomly` | Nothing — installing it is the configuration |
+| `python.no-flaky-tests` | `pytest-timeout`, `pytest-socket` | `timeout = "30"`; `--disable-socket`, `--allow-unix-socket`, `--allow-hosts=127.0.0.1,localhost,::1` |
+| `python.branch-coverage-floor` | `pytest-cov` | `--cov`, `--cov-branch`, `--cov-fail-under={{COVERAGE_FLOOR}}`, the number asked for at install |
+
+The values are the trial repository's, which ran them for four weeks. One
+region, `pytest-region.toml`, carries all of it with no table header.
+
+### What was measured
+
+On pytest 9.1.1 with the four plugins at the versions `craft/meta.yaml`
+registers, in a scratch project:
+
+| Question | Answer |
+| --- | --- |
+| Does one region serve both pytest tables? | **Only with every setting a string.** `[tool.pytest]` refuses `timeout = 1` — *expects a string, got int* — where `[tool.pytest.ini_options]` takes it. `timeout = "30"` and an `addopts` list work under both, so the region is written that way and a test holds it there |
+| Does each guard fire? | A connection to a public address raised `SocketConnectBlockedError`; a test sleeping past a 1-second limit failed *Timeout (>1.0s)*; the run printed `--randomly-seed`; and the floor failed the run at 90 against 66.67% and passed it at 60, under both tables |
+| Is the search order `surfaces:` records the real one? | Measured pair by pair: `pytest.toml`, `.pytest.toml`, `pytest.ini` and `.pytest.ini` each replace `pyproject.toml` with a warning; `pyproject.toml` replaces `tox.ini` and `setup.cfg`; `tox.ini` replaces `setup.cfg` |
+| Does DNS get out? | Yes. With `--allow-hosts` given, pytest-socket guards `connect()` alone — recorded in the property's note, as the trial repository recorded it |
+
+`tests/test_craft_install_dry_run.py` places the shipped region under each
+table and parses it, and runs it for real where the plugins are installed. They
+are not installed here — the profile adds them to an adopter's lockfile, not to
+the standard's — so that half skips in this repository's CI. It was run once
+with them present and passed, and fails with the floor mutated to 1.
+
+**What the trial repository would meet taking `@3`:** a refusal. It already has
+`addopts` outside any Craft marker, which is ADR 0056 rule 1, and the report
+would name the options to merge. That is the cost the ADR recorded, met on the
+first repository it could be met on.
+
 ## What this document owes
 
 | Owed | When |
@@ -568,7 +606,7 @@ neither has a correct use in a test.
 | ~~S3's criteria as they hold in use, or the gap recorded~~ — § S3's criteria, as they held in use. They held; the gap is tests, recorded in § What the owner built that the profile did not | Done |
 | ~~The owner's own account~~ — § The owner's account, 2026-10-18 | Done |
 | ~~The profile revision: stricter test rules and a coverage floor~~ — § The revision, 2026-10-18. `python/strict@2` binds `python.tests-can-fail`; the guards and the floor are named in the residue | Done |
-| **An instrument shape for a pytest plugin and a coverage floor**, so `python.test-independence`, `python.no-flaky-tests` and `python.branch-coverage-floor` can bind. A `craft_contract` change, and the installer has to ask for the floor's number | The next slice |
+| ~~An instrument shape for a pytest plugin and a coverage floor~~ — § The guards, installed, 2026-10-19. `python/strict@3`, `craft_contract` 3, ADR 0056 | Done |
 | **Carried, not felt:** `runtime-evaluated-base-classes` for pydantic, and `pydantic.mypy` named wherever `disallow_any_explicit` is; whether `C901` should give way to a dispatcher over `match`; a root `src =` written with any nested scope, because ruff resolves first-party imports from the nearest config and the owner had to add `src = [".", "src"]` by hand when `tests/ruff.toml` arrived | Not scheduled |
 | **`craft-install` names `CLAUDE.md`** as the assistant context file to create when none exists | With the profile revision |
 | **A stack arriving after install is reported.** The React row has held since 2026-10-10 with no profile installed and nothing saying so | `todo.md` |

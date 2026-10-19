@@ -122,7 +122,7 @@ def test_exactly_one_instrument_per_property() -> None:
         # running the tool *is* the enforcement — there is no rule to select.
         named = [
             key
-            for key in ("codes", "rules", "linter", "setting", "formatter")
+            for key in ("codes", "rules", "linter", "setting", "formatter", "plugins")
             if key in instrument
         ]
         assert named, f"{identity}'s instrument names nothing to enforce"
@@ -258,6 +258,81 @@ def test_a_candidate_names_a_tool_and_why_it_is_not_bound() -> None:
         assert prop.get("unenforced"), f"{identity} has a candidate and no reason it is unbound"
         assert candidate.get("tool"), identity
         assert candidate.get("why_not"), f"{identity}'s candidate does not say why not"
+
+
+def test_a_surface_names_a_tool_the_control_register_does_not() -> None:
+    """ADR 0056: a location is named in one register, never both.
+
+    The same rule as the predicates', for the same reason. The day a control
+    comes to gate pytest's configuration, this fails and the entry moves to
+    `stacks:` — which is the drift the rule exists to make impossible.
+    """
+    stacks = yaml.safe_load(CONTROLS.read_text(encoding="utf-8"))["stacks"]
+    gated = {gate["tool"] for stack in stacks.values() for gate in stack["gates"].values()}
+    surfaces = _meta().get("surfaces", {})
+    both = gated & set(surfaces)
+    assert not both, f"surfaces named in both registers: {sorted(both)}"
+    for tool, surface in surfaces.items():
+        assert surface.get("locations"), f"{tool} names nowhere the tool looks"
+        writes = surface.get("writes")
+        assert writes, f"{tool} names nowhere to write"
+        for target in writes:
+            assert target in surface["locations"], f"{tool} writes {target}, which it never reads"
+
+
+def test_an_instrument_tool_without_a_gate_has_a_surface() -> None:
+    """A tool `stacks:` does not name is written only where `surfaces:` says.
+
+    Without this, a `tool: pytest` row with no surface would leave the
+    installer to choose a file, which is the choice ADR 0055 took off it.
+    """
+    stacks = yaml.safe_load(CONTROLS.read_text(encoding="utf-8"))["stacks"]
+    gated = {gate["tool"] for stack in stacks.values() for gate in stack["gates"].values()}
+    surfaces = set(_meta().get("surfaces", {}))
+    for identity, prop in _properties().items():
+        if "plugins" not in prop.get("instrument", {}):
+            continue
+        tool = prop["instrument"]["tool"]
+        assert tool not in gated, f"{identity}: {tool} has plugins, and a gate in stacks:"
+        assert tool in surfaces, f"{identity}: {tool} has no surface to be written to"
+
+
+def test_every_plugin_is_a_registered_source_the_property_cites() -> None:
+    """ADR 0054: every tool a profile installs is cited, with why it was taken.
+
+    A plugin is a dependency the installer adds to somebody's lockfile, so the
+    maintenance signals that justified it have to be on record beside it — the
+    test `commitizen` passed and `gitlint` failed.
+    """
+    sources = _meta()["sources"]
+    for identity, prop in _properties().items():
+        for plugin in prop.get("instrument", {}).get("plugins", []):
+            package = plugin["package"]
+            assert package in sources, f"{identity}: {package} is not a registered source"
+            assert sources[package].get("registered"), f"{package} has no registration date"
+            assert sources[package].get("why"), f"{package} does not say why it was taken"
+            assert package in prop["sources"], f"{identity} does not cite {package}"
+
+
+def test_every_placeholder_is_asked_for_and_every_ask_is_used() -> None:
+    """ADR 0056 rule 3: a value that is the repository's is asked for, never defaulted.
+
+    A `{{NAME}}` with no `asks:` entry would reach a repository as a literal
+    string, and an `asks:` entry nothing uses is a question with no effect.
+    """
+    for identity, prop in _properties().items():
+        instrument = prop.get("instrument", {})
+        written = " ".join(
+            str(value)
+            for plugin in instrument.get("plugins", [])
+            for value in [*plugin.get("options", []), *(plugin.get("settings") or {}).values()]
+        )
+        used = set(re.findall(r"\{\{([A-Z_]+)\}\}", written))
+        asked = set(instrument.get("asks", {}))
+        assert used == asked, f"{identity}: placeholders {sorted(used)}, asks {sorted(asked)}"
+        for name, question in instrument.get("asks", {}).items():
+            assert isinstance(question, str), f"{identity}: {name} is not a question"
+            assert question.strip(), f"{identity}: {name} asks nothing"
 
 
 def test_every_rule_namespace_resolves_to_a_package() -> None:

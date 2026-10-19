@@ -1,7 +1,7 @@
 # What Craft does not enforce here
 
-<!-- >>> ee-craft python/strict@2 -->
-<!-- ee-craft: python/strict@2  ee-skill: craft-install@0.1.0  gates: none (no any. property binds an instrument)  craft-contract: 2 -->
+<!-- >>> ee-craft python/strict@3 -->
+<!-- ee-craft: python/strict@3  ee-skill: craft-install@0.2.0  gates: none (no any. property binds an instrument)  craft-contract: 3 -->
 <!-- <<< ee-craft -->
 
 **Every property below is unenforced.** Nothing here fails a build, no
@@ -131,7 +131,7 @@ A test name states the scenario and the expected outcome.
 **Why nothing checks it:** Bucket 3. pytest's test_ prefix is collection, not naming
 quality.
 
-## A check could hold these, and none is written (30)
+## A check could hold these, and none is written (27)
 
 Enforceable in principle, at a cost nobody has paid. They are the list a later profile
 version is drawn from, and until then they are yours.
@@ -273,13 +273,6 @@ Errors carry a code, a message and a correlation id.
 
 **An instrument exists:** `spectral`. `spectral`, against a shared error schema.
 
-### `python.branch-coverage-floor`
-
-The suite's branch coverage does not fall below a stated floor.
-
-**An instrument exists:** coverage.py `fail_under` with `branch = true`. Nothing asserts
-it. Coverage is measured and nothing fails when it falls.
-
 ### `python.class-dependency-count`
 
 A class depends on few collaborators.
@@ -293,13 +286,6 @@ The same logic is not written twice.
 
 **Why nothing checks it:** Nothing in ruff. A clone detector could hold it, at the cost
 of a second tool and a threshold no source agrees on.
-
-### `python.no-flaky-tests`
-
-A test that does not pass consistently is fixed or deleted.
-
-**An instrument exists:** pytest-timeout and pytest-socket. Nothing asserts it. Repeated
-runs detect it; nothing prevents it.
 
 ### `python.no-log-and-reraise`
 
@@ -341,13 +327,6 @@ this profile, and the two scoped properties are scoped rather than excused. **S6
 that is not enough.** Linted at strict, a fast assistant-written suite still carried
 assertions that could never fail; `python.tests-can-fail` binds the shapes a linter can
 read.
-
-### `python.test-independence`
-
-Tests do not depend on order or shared mutable state.
-
-**An instrument exists:** `pytest-randomly`. Nothing asserts it. A randomised-order run
-detects violations empirically; nothing prevents them.
 
 ## An instrument exists, and this profile does not install it (5)
 
