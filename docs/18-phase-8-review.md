@@ -84,3 +84,45 @@ for every adopter: a field in `stacks:`, an assert that reads it, a
 about the standard, which an ADR records and a second reader accepts, not a
 correction. It is also not free here: `ruff format --check .` reports 47 files in
 this repository that it would reformat. Recorded, not scheduled.
+
+## `deployments` says when a stack has arrived since a gate ran
+
+**Closed 2026-10-19.**
+
+**The gap.** A stamp records what a gate wrote and at which contract. It does
+not record which stacks the gate found. So when React and TypeScript arrived in
+the trial repository three weeks after `gate-quality` ran, every stamp stayed
+current and the report read `gate-quality CURRENT`. The TypeScript half had been
+wired by hand, and nothing said the gate was owed a run.
+
+**What `deployments` now does.** For each gate that has deployed, it takes the
+roles the gate wires from the register — a control the gate deploys whose verify
+block names `role:` — and, for every stack whose predicate holds now, looks up
+that stack's hook for the role in `stacks:` (`pre_commit`). Then it asks whether
+that hook in `.pre-commit-config.yaml` is headed by the gate's stamp: the
+unbroken run of comment lines directly above `- id:`, where every gate writes
+it. A blank line ends the run, so a hand-written hook below a gate's is not
+credited to the gate by sitting near it.
+
+A stack whose hook is missing, or carries no stamp from the gate, is listed
+under the gate with the instruction to run it again. The gate keeps its state —
+no stamp is behind, so `STALE` would be false — and it counts as owed in the
+summary. The exit code is unchanged: staleness is reported, never enforced.
+
+**How it was shown to hold.**
+
+- Six tests in `tests/test_deployments.py`, from one fixture that differs only
+  in the pre-commit file and whether `tsconfig.json` exists: hand-wired hooks
+  reported and owed; stamped hooks not reported; absent hooks reported; no
+  TypeScript, nothing owed; a stamp separated by a blank line not credited; the
+  rendered report naming the stack and the instruction.
+- Mutation-tested on its three rules — the blank line, the predicate, the
+  owed count — and each mutation fails the test written for it.
+- The trial repository, read with the change: `gate-quality CURRENT`, then
+  *typescript: the eslint hook carries no gate-quality stamp* and the same for
+  `tsc`, and *2 owed a deployment* where it had said 1. This repository's own
+  report is unchanged: it is Python-only, and its hooks are stamped.
+
+**Only the pre-commit locus is read**, and that is deliberate rather than
+unfinished. It is the one locus where a stamp sits beside the thing it governs,
+and one locus is enough to tell a stack the gate wired from one it did not.

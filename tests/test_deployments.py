@@ -332,3 +332,113 @@ def test_no_plugin_is_a_usage_error(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     repo = make_repo(tmp_path / "repo", {"README.md": "#\n"})
     monkeypatch.delenv("CLAUDE_PLUGIN_ROOT", raising=False)
     assert main(["--repo", str(repo.root), "--register", "controls.yaml", "deployments"]) == 2
+
+
+# --- A stack that arrives after the gate ran (Phase 8) ------------------------
+
+#: gate-quality as the plugin declares it, at the contract the stamps below carry.
+_QUALITY = {
+    "schemaVersion": 2,
+    "gates": {
+        "gate-quality": {
+            "contractVersion": 6,
+            "controls": ["LNT-001", "TYP-001", "TST-001"],
+            "artifacts": [".pre-commit-config.yaml#lint"],
+        }
+    },
+}
+
+
+def _hook(hook: str, *, stamped: bool, gap: bool = False) -> str:
+    stamp = (
+        "      # ee-control: LNT-001  ee-skill: gate-quality@0.2.4  gate-contract: 6  "
+        "register: v0.29.0  register-contract: 35\n"
+        if stamped
+        else "      # hand-deployed, so no stamp\n"
+    )
+    return stamp + ("\n" if gap else "") + f"      - id: {hook}\n        entry: x\n"
+
+
+def _quality_report(tmp_path: Path, hooks: str, *, typescript: bool = True) -> Report:
+    from conftest import REPO_ROOT
+    from register_check.register import load_register
+
+    register, errors = load_register(REPO_ROOT / "controls.yaml")
+    assert register is not None and not errors, errors
+    files = {
+        "pyproject.toml": "[project]\nname = 'x'\n",
+        ".pre-commit-config.yaml": "repos:\n  - repo: local\n    hooks:\n" + hooks,
+    }
+    if typescript:
+        files["tsconfig.json"] = '{"compilerOptions": {"strict": true}}\n'
+    repo = make_repo(tmp_path / "repo", files)
+    return build(repo, _plugin(tmp_path, _QUALITY), register)
+
+
+_PYTHON_HOOKS = _hook("ruff", stamped=True) + _hook("mypy", stamped=True)
+
+
+def test_a_stack_wired_by_hand_is_reported_and_owed(tmp_path: Path) -> None:
+    """The trial repository's state: every stamp current, TypeScript wired by hand.
+
+    The gate keeps its state, because no stamp is behind. It is owed a run all
+    the same, which is what the report said nothing about before.
+    """
+    hooks = _PYTHON_HOOKS + _hook("eslint", stamped=False) + _hook("tsc", stamped=False)
+    report = _quality_report(tmp_path, hooks)
+    gate = report.gates[0]
+    assert gate.state is State.CURRENT
+    assert [line.split(":")[0] for line in gate.stacks_not_covered] == ["typescript"] * 2
+    assert all("no gate-quality stamp" in line for line in gate.stacks_not_covered)
+    assert [g.gate.name for g in report.owed] == ["gate-quality"]
+
+
+def test_a_stack_the_gate_wired_is_not_reported(tmp_path: Path) -> None:
+    hooks = _PYTHON_HOOKS + _hook("eslint", stamped=True) + _hook("tsc", stamped=True)
+    report = _quality_report(tmp_path, hooks)
+    assert report.gates[0].stacks_not_covered == ()
+    assert report.owed == []
+
+
+def test_a_stack_with_no_hook_at_all_is_reported(tmp_path: Path) -> None:
+    report = _quality_report(tmp_path, _PYTHON_HOOKS)
+    assert report.gates[0].stacks_not_covered == (
+        "typescript: no eslint hook — gate-quality has not wired it",
+        "typescript: no tsc hook — gate-quality has not wired it",
+    )
+
+
+def test_a_stack_that_does_not_apply_is_owed_nothing(tmp_path: Path) -> None:
+    """No `tsconfig.json`, so no TypeScript gate is owed — a predicate skip is not a gap."""
+    report = _quality_report(tmp_path, _PYTHON_HOOKS, typescript=False)
+    assert report.gates[0].stacks_not_covered == ()
+
+
+def test_a_stamp_is_credited_only_to_the_hook_directly_below_it(tmp_path: Path) -> None:
+    """A blank line ends a stamp's block, so a stamp near a hook is not its stamp.
+
+    Otherwise a hand-written hook added under a gate's would be credited to the
+    gate by sitting close to it, which is the false CURRENT this exists to end.
+    """
+    hooks = (
+        _PYTHON_HOOKS
+        + _hook("eslint", stamped=True, gap=True)
+        + _hook("tsc", stamped=True)
+    )
+    report = _quality_report(tmp_path, hooks)
+    assert report.gates[0].stacks_not_covered == (
+        "typescript: the eslint hook carries no gate-quality stamp — "
+        "wired by hand, or arrived after gate-quality last ran",
+    )
+
+
+def test_the_report_says_which_stack_and_what_to_do(tmp_path: Path) -> None:
+    from conftest import REPO_ROOT
+    from register_check.register import load_register
+
+    register, _ = load_register(REPO_ROOT / "controls.yaml")
+    assert register is not None
+    report = _quality_report(tmp_path, _PYTHON_HOOKS)
+    text = render(report, register)
+    assert "a stack applies that this gate has not wired — run it again" in text
+    assert "1 owed a deployment" in text
