@@ -1,6 +1,6 @@
 # ADR 0057: `register-install` Writes the Conformance Step, and GOV-001 Fails Without It
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-19
 **Revision:** 1
 

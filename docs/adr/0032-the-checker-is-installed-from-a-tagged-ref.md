@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-24
-**Revision:** 1
+**Revision:** 2
 
 ## Background
 
@@ -135,6 +135,15 @@ Three candidates were considered for the job and two were rejected:
 and stops; the binary is what runs at every locus, with no Claude present.
 Enforcement is never Claude, and a skill that installs a gate is still not one.
 
+## Changed by ADR 0057
+
+**Amended 2026-10-19 by [ADR
+0057](0057-register-install-writes-the-conformance-step.md).** `register-install`
+owns one artefact beyond the dependency: the Conformance step that runs the
+checker it installs. ADR 0057 is the decision and the reason; *owns nothing
+else* above reads as *owns nothing else but that step*. Nothing else here
+changes.
+
 ## Consequences
 
 ### A release-tagging discipline has to exist
@@ -193,3 +202,10 @@ the guide before the criterion below is judged* — is what that has to satisfy.
   — the `name @ url` spelling this decision writes, and its exclusion from
   published indexes, which is why option 1 remains a separate step rather than a
   consequence of this one.
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-24 | Original decision: the checker is installed from a tagged ref, by a skill that owns nothing else. | Nathan Carney |
+| 2 | 2026-10-19 | Changed by ADR 0057: register-install also writes the Conformance step that runs the checker it installs. | Nathan Carney |
