@@ -159,3 +159,27 @@ two errors. Both come from one function: `in_repo` has no annotations, and the
 second error is a typed call into it. One line in that skill would let every
 repository that vendors it put `.claude/hooks` under strict mypy. That is a
 change to another repository and is recorded here as owed, not made.
+
+## Some locus fails when the register's verdict is FAIL
+
+**Open, waiting on
+[ADR 0057](adr/0057-register-install-writes-the-conformance-step.md)**, Proposed
+2026-10-19.
+
+**What the review got wrong about it, and what it found instead.** The finding
+read as *no locus computes the register's verdict*, as if the design had no
+answer. It has one: `08-adopting.md` § 4.1 and § 4.3 tell the adopter to add a
+*Conformance* step running `uv run register-check`, the sweep template assumes
+it is there, and checklist rows 8 and 10 depend on it. The trial repository did
+not take that step, because no skill writes it, and nothing reported its
+absence: GOV-001 counts a control as reached when a step runs its **tool**, so
+`uv run mypy` reaching TYP-001 satisfied it while TYP-001's own verdict was
+computed nowhere CI runs.
+
+**Why it is a decision and not a fix.** Two things have to change, and each
+belongs to an Accepted ADR. Which skill writes the step widens a skill that
+ADR 0032 decided *owns nothing else*. And GOV-001 failing without the step is
+a change to a meta-control's verify, which moves the register contract. ADR 0057
+proposes `register-install` for the first — it runs on every adoption, where
+`gate-repo` is the gate most often left unfinished — and the GOV-001 change for
+the second.
