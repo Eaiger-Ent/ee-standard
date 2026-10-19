@@ -1644,6 +1644,12 @@ controls:
     rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0009-single-lint-definition.md
 
   - id: TYP-001
+    # A vendored file has no exemption, and that is a decision already taken
+    # rather than a gap (Phase 8). It is tracked first-party source as far as
+    # this control can tell, ADR 0019 forbids an exemption that hides a tracked
+    # file, and the line below allows no per-file opt-out. A repository that
+    # tracks one it may not edit gets it fixed upstream or stops tracking it —
+    # `docs/08-adopting.md` § 3.2, point 2.
     title: Static type checking runs in strict mode and blocks
     enforces: >
       mypy (Python) or `tsc --strict` (TypeScript) runs over all first-party

@@ -1440,6 +1440,19 @@ them.** Each is the check working, not a new rule:
    source. The gate lists every such file and extends the list
    ([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md), applied to an
    allow-list rather than an exemption list).
+
+   **A vendored file is not an exception.** A hook copied from a skill — the
+   `lint-yaml` skill's `yaml-lint.py` under `.claude/hooks/` is the case met
+   in practice — is a tracked Python file, so TYP-001 counts it, and you may
+   not be free to edit it: its skill compares your copy to its own. There is
+   no way to exclude it, by design: an exemption that hides a tracked file is
+   what ADR 0019 forbids, and TYP-001 allows no per-file opt-out. Two routes
+   remain, and both leave the control meaning what it says. **Get it fixed
+   upstream**, so the vendored copy passes strict mode and the allow-list can
+   name its directory — `lint-yaml`'s hook needs one function annotated. Or
+   **stop tracking it**, and have whatever installs it write it at setup. Until
+   one of those, TYP-001 fails, and that failure is accurate: the repository
+   runs a Python file nothing type-checks.
 3. **A suppressed step is not a gate.** Nothing the gate writes may carry
    `continue-on-error` or end in an idiom from the register's `suppression:`
    list. LNT-001 and TST-001 both verify through `no-failure-suppression`, and
