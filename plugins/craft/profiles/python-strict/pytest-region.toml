@@ -1,0 +1,12 @@
+# >>> ee-craft python/strict@3
+# ee-craft: python/strict@3  ee-skill: craft-install@0.2.0  gates: none (no any. property binds an instrument)  craft-contract: 3  COVERAGE_FLOOR: {{COVERAGE_FLOOR}}
+addopts = [
+  "--cov",                                          # python.branch-coverage-floor
+  "--cov-branch",                                   # python.branch-coverage-floor
+  "--cov-fail-under={{COVERAGE_FLOOR}}",            # python.branch-coverage-floor
+  "--disable-socket",                               # python.no-flaky-tests
+  "--allow-unix-socket",                            # python.no-flaky-tests
+  "--allow-hosts=127.0.0.1,localhost,::1",          # python.no-flaky-tests
+]
+timeout = "30"                                      # python.no-flaky-tests
+# <<< ee-craft

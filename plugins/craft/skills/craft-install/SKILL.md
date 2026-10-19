@@ -69,10 +69,16 @@ file; you do not count rules yourself.
 ```yaml
 craft-install:
   profiles:
-    python/standard: 7
+    python/strict: 3
     react/standard: 4
+  asks:
+    COVERAGE_FLOOR: 90
   residue: CLAUDE.md
 ```
+
+`asks:` holds the answers a profile asked for at install — see Step 2. A value
+recorded there is the repository's, and a later run uses it rather than asking
+again.
 
 | What you find | What you do |
 | --- | --- |
@@ -137,6 +143,11 @@ Also name, before the question:
 
 - **The six ESLint plugins** a React profile needs, because installing them
   changes the lockfile and the yes has to cover that.
+- **The pytest plugins** a Python profile lists under `dependencies` in the
+  manifest — four at `python/strict` — and what each does to a run: a random
+  order, a 30-second limit per test, no connection past loopback, and a
+  coverage floor. They change how the suite behaves, not only what it checks,
+  and the yes has to cover that too.
 - **The test globs** the React profile lints test files by —
   `*.test.ts(x)`, `*.spec.ts(x)` and `__tests__/`. They are fixed. A team that
   keeps tests elsewhere needs to know why theirs are unlinted.
@@ -148,6 +159,14 @@ Use `AskUserQuestion`, one question per applicable stack, options `standard` and
 one.** A profile is a decision about how much a team wants to be told, and
 guessing it is the failure the whole design avoids.
 
+**Then ask every question the chosen profile's `asks` names**, unless the pin
+already records an answer. Each is a value that is the repository's and not the
+profile's — today one, `COVERAGE_FLOOR`, the branch-coverage percentage below
+which the suite fails. **Never default one, and never suggest one as though it
+were the standard's.** If the team does not want to set it, that is an answer:
+the lines that need it are left out, its plugin is not added, and the report
+says the floor was not installed.
+
 If `--profile` was given, still show what Step 1 shows and confirm it. The flag
 chooses; it does not consent.
 
@@ -155,10 +174,14 @@ chooses; it does not consent.
 the sections you will write into, the dependencies you will add, and the pin you
 will record. Then take the yes.
 
-## Step 3 — Add the dependencies a React profile needs
+## Step 3 — Add the dependencies the profile needs
 
-Python needs none: ruff ships every rule the profile selects, and the control
-register already requires ruff.
+**Python** needs what the manifest lists under the profile's `dependencies`:
+none at `standard`, where ruff ships every rule and the control register already
+requires ruff, and four pytest plugins at `strict`. Add them with
+`ecosystems.python.add_dev_dependency` in `controls.yaml`, keyed by the lockfile
+this repository has. Leave out a plugin whose only lines Step 2's answer left
+out.
 
 React needs six plugins. Add them with the command the **control register**
 names for the lockfile this repository has — `ecosystems.node.add_dev_dependency`
@@ -178,6 +201,7 @@ Copy the rendered artefacts. Do not retype them.
 | --- | --- | --- |
 | `python` | `profiles/<slug>/pyproject-region.toml` | `pyproject.toml`, the first location `stacks.python` names |
 | `python` | `profiles/<slug>/src-ruff.toml` | `src/ruff.toml` — the nested configuration two source-scoped properties need |
+| `python` | `profiles/<slug>/pytest-region.toml` | `pyproject.toml`'s pytest table — where the manifest's `surfaces.pytest.writes` says, and see below |
 | `react` | `profiles/<slug>/eslint.config.mjs` | The repository root, written whole |
 
 **Before you write anything: a configuration file later in the register's
@@ -221,6 +245,34 @@ which line to remove, and stop. Do not absorb their values into your span: that
 deletes a line the team wrote and re-publishes their decision under this
 profile's name, where the next run would carry it forever.
 
+**The pytest region goes where `surfaces.pytest` in the manifest says, and
+nowhere it chooses.** pytest is a tool no control gates, so its locations come
+from Craft's register rather than from `stacks:`
+([ADR 0056](https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0056-craft-names-a-surface-only-where-the-register-names-none.md)).
+Three rules, and each is a measured failure:
+
+- **Any location in `surfaces.pytest.locations` that is not one of its `writes`
+  is a refusal.** A `pytest.toml`, `.pytest.toml`, `pytest.ini` or `.pytest.ini`
+  outranks `pyproject.toml`, so your lines would be ignored. A `[pytest]` in
+  `tox.ini` or a `[tool:pytest]` in `setup.cfg` ranks below it, so creating a
+  pytest table in `pyproject.toml` silently replaces the team's own
+  configuration. Report the file and stop.
+- **Write under the table the repository already has.** `[tool.pytest]` and
+  `[tool.pytest.ini_options]` in one file is an error pytest refuses to start
+  on. If one exists, write the span immediately after its header. If neither
+  does, write the first `writes` entry's header and the span together. The span
+  carries no header of its own for exactly this reason.
+- **`addopts` and `timeout` are one key each, and you own all of each or none.**
+  If either already exists outside your markers, report the options you would
+  have added, say which line to remove, and stop — the rule for `select` above.
+
+**Substitute every `{{NAME}}` from Step 2's answers, in the option and in the
+stamp.** The artefact carries the placeholder in both so that the stamp records
+the repository's number without anyone typing into a stamp. If the answer was
+not to set it, leave out the lines commented with the property that needs it
+and write `none` in the stamp. No `{{` may survive into the repository: a
+literal placeholder is a flag pytest does not understand, failing every run.
+
 **The React config is written whole or not at all.** A flat config is a module;
 no span of one means anything alone. If `eslint.config.*` exists and was not
 written by this skill, report and stop. The file you write is
@@ -243,7 +295,8 @@ know which it is.
 ## Step 6 — Write the pin
 
 Write `craft-install` into `.claude/skill-config.yaml` — your own key, with the
-profiles and versions you installed, and nothing else in that file. Another
+profiles and versions you installed, the answers to Step 2's questions under
+`asks:`, and nothing else in that file. Another
 skill's key is not yours to touch.
 
 The pin is what a later run compares against. Without it, the choice is re-asked
@@ -255,6 +308,10 @@ unverifiable.
 - **Python:** `uv run ruff check .` resolves the configuration and reports
   findings. Findings are expected and are not a failure of this install — a
   configuration error is.
+- **Python, with the pytest region:** `uv run pytest` starts, prints a
+  `--randomly-seed`, and names its config file as `pyproject.toml`. A failing
+  test, a refused connection or a floor not reached is the profile working and
+  is reported as such; pytest refusing to start is the install failing.
 - **React:** `npx eslint --print-config <a source file>` resolves without error,
   and the rules you expect are enabled.
 - **Both:** if `register-check` is installed, run it. Craft must not have broken
@@ -272,7 +329,8 @@ Report, in this order:
 2. The profile installed per stack, with its version, and where each value came
    from — the pin, or the answer just given.
 3. Every file written, and for each the section and the number of rules.
-4. The dependencies added, if any.
+4. The dependencies added, if any, and the answer to each question Step 2
+   asked — including a floor not set, and that it was therefore not installed.
 5. The residue: where it went, and what loads it.
 6. What is **not** enforced: the count, and the one-line reason it is not.
 7. The verification output.
@@ -283,8 +341,9 @@ A second run compares three things and writes nothing when all three agree:
 
 1. **The pinned version against the manifest's.** Report the difference; install
    only with a fresh yes.
-2. **The file as it stands against the rendered artefact.** Byte-for-byte inside
-   the markers. A difference is a hand edit, and reporting it is the point — a
+2. **The file as it stands against the rendered artefact**, with the pin's
+   `asks:` substituted as Step 4 substitutes them. Byte-for-byte inside the
+   markers. A difference is a hand edit, and reporting it is the point — a
    re-run that silently overwrote a deliberate change would be worse than one
    that refused.
 3. **The stack inference now against the stamp's.** A `tsconfig.json` that did

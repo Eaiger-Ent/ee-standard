@@ -1,12 +1,60 @@
 {
-  "craft_contract": 2,
+  "craft_contract": 3,
   "levels": [
     "standard",
     "strict"
   ],
+  "surfaces": {
+    "pytest": {
+      "locations": [
+        {
+          "file": "pytest.toml",
+          "section": "pytest"
+        },
+        {
+          "file": ".pytest.toml",
+          "section": "pytest"
+        },
+        {
+          "file": "pytest.ini",
+          "section": "pytest"
+        },
+        {
+          "file": ".pytest.ini",
+          "section": "pytest"
+        },
+        {
+          "file": "pyproject.toml",
+          "section": "tool.pytest"
+        },
+        {
+          "file": "pyproject.toml",
+          "section": "tool.pytest.ini_options"
+        },
+        {
+          "file": "tox.ini",
+          "section": "pytest"
+        },
+        {
+          "file": "setup.cfg",
+          "section": "tool:pytest"
+        }
+      ],
+      "writes": [
+        {
+          "file": "pyproject.toml",
+          "section": "tool.pytest"
+        },
+        {
+          "file": "pyproject.toml",
+          "section": "tool.pytest.ini_options"
+        }
+      ]
+    }
+  },
   "profiles": {
     "python/standard": {
-      "version": 2,
+      "version": 3,
       "stack": "python",
       "level": "standard",
       "properties": 40,
@@ -18,22 +66,34 @@
       "rules": 141,
       "read_from": "ruff 0.16.9",
       "declares_a_fix": 70,
-      "hand_work": 71
+      "hand_work": 71,
+      "dependencies": [],
+      "asks": {}
     },
     "python/strict": {
-      "version": 2,
+      "version": 3,
       "stack": "python",
       "level": "strict",
-      "properties": 52,
+      "properties": 55,
       "files": [
         "pyproject-region.toml",
+        "pytest-region.toml",
         "src-ruff.toml",
         "unenforced.md"
       ],
       "rules": 171,
       "read_from": "ruff 0.16.9",
       "declares_a_fix": 78,
-      "hand_work": 93
+      "hand_work": 93,
+      "dependencies": [
+        "pytest-cov",
+        "pytest-randomly",
+        "pytest-socket",
+        "pytest-timeout"
+      ],
+      "asks": {
+        "COVERAGE_FLOOR": "The branch-coverage percentage below which the suite fails. The repository's number, never a default \u2014 94 was right for the trial repository"
+      }
     },
     "react/standard": {
       "version": 2,

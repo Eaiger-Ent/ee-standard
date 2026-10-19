@@ -234,6 +234,7 @@ file `controls.yaml` already names, in a format that already exists:
 | `pyproject.toml` §`tool.mypy` | TOML | `stacks.python.gates.typecheck.config[0]` |
 | `eslint.config.js` | flat config, JavaScript | `stacks.typescript.gates.lint.config[0]` |
 | `tsconfig.json` §`compilerOptions` | JSON | `stacks.typescript.gates.typecheck.config[0]` |
+| `pyproject.toml` §`tool.pytest`, or §`tool.pytest.ini_options` where that is the table the repository has | TOML | `craft/meta.yaml` `surfaces.pytest.writes` — ADR 0056's exception, for a tool no control gates |
 
 The Craft register of ADR 0053 is a new file, and it is not a new *surface*: no
 repository's tools read it, the installer does, and what the installer writes is

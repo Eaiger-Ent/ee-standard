@@ -28,7 +28,16 @@
 # `source` and `modules` as a value. An installer that did not understand
 # `bases:` would write a configuration missing two presets and silently unbind
 # two properties, which is exactly the case this number exists to refuse.
-craft_contract: 2
+#
+# 3 (2026-10-19): ADR 0056. `surfaces:` below names where a tool keeps its
+# configuration, for a tool `controls.yaml`'s `stacks:` does not name; and an
+# instrument may be `tool: pytest` with `plugins:`, each a package the
+# installer adds plus the `options` and `settings` that switch it on, and
+# `asks:`, a value the repository supplies at install. An installer at
+# contract 2 would write a pytest region without adding the plugins it
+# configures — every option an unknown flag — or write a `{{PLACEHOLDER}}`
+# into a repository as though it were a value.
+craft_contract: 3
 
 # Ordered, and each a superset of the one below. ADR 0052.
 levels: [standard, strict]
@@ -144,6 +153,42 @@ sources:
     package: '@eslint-react/eslint-plugin'
     url: https://eslint-react.xyz/docs/rules/overview
     licence: MIT
+  # The four pytest plugins ADR 0056 makes installable, registered 2026-10-19
+  # with the maintenance signals ADR 0054 asks for, read from PyPI that day.
+  # Each was run in the trial repository for four weeks before it was here.
+  pytest-randomly:
+    title: pytest-randomly
+    url: https://github.com/pytest-dev/pytest-randomly
+    licence: MIT
+    registered: 2026-10-19
+    why: >
+      Runs the suite in a random order, printing the seed to repeat it, and
+      needs no configuration to do so. 5.0.0, released 2026-09-01.
+  pytest-timeout:
+    title: pytest-timeout
+    url: https://github.com/pytest-dev/pytest-timeout
+    licence: MIT
+    registered: 2026-10-19
+    why: >
+      Fails a test that runs past a limit. 2.4.0, released 2025-05-05 — the
+      oldest of the four, and a pytest-dev project.
+  pytest-socket:
+    title: pytest-socket
+    url: https://github.com/miketheman/pytest-socket
+    licence: MIT
+    registered: 2026-10-19
+    why: >
+      Refuses a network connection from a test. Switched on only through
+      `addopts`, which is why ADR 0056 rule 1 exists. 0.8.1, released
+      2026-08-19.
+  pytest-cov:
+    title: pytest-cov
+    url: https://github.com/pytest-dev/pytest-cov
+    licence: MIT
+    registered: 2026-10-19
+    why: >
+      Measures coverage during the run and fails it below a floor. Measures
+      nothing without `--cov`. 7.1.0, released 2026-03-21.
   commitizen:
     title: commitizen — `cz check`
     url: https://commitizen-tools.github.io/commitizen/commands/check/
@@ -228,6 +273,35 @@ predicates:
       react there and nowhere else, and its code is React code by every rule in
       `craft/react.yaml`.
 
+# ADR 0056: where a tool keeps its configuration, for a tool `controls.yaml`'s
+# `stacks:` does not name. **A tool named here and in `stacks:` is a schema
+# error** — the rule the predicates above follow, for the same reason: two lists
+# of where pytest looks would eventually disagree, and nobody would know which
+# the profile used. The day a control comes to gate pytest's configuration,
+# `tests/test_craft_register.py` fails and this entry moves.
+#
+# `locations` is the tool's own search order, first wins, as measured on pytest
+# 9.1.1 — not the order `stacks:` uses, which is the checker's. A pytest table
+# in `pyproject.toml` ignores `tox.ini` and `setup.cfg`, and anything above it
+# ignores `pyproject.toml`, so an installer finding any location other than the
+# two it writes stops (ADR 0056 rule 2). `writes` is those two, in preference:
+# the native table first, because two spellings in one file is an error and a
+# new repository should get the one pytest recommends.
+surfaces:
+  pytest:
+    locations:
+      - {file: pytest.toml, section: pytest}
+      - {file: .pytest.toml, section: pytest}
+      - {file: pytest.ini, section: pytest}
+      - {file: .pytest.ini, section: pytest}
+      - {file: pyproject.toml, section: tool.pytest}
+      - {file: pyproject.toml, section: tool.pytest.ini_options}
+      - {file: tox.ini, section: pytest}
+      - {file: setup.cfg, section: "tool:pytest"}
+    writes:
+      - {file: pyproject.toml, section: tool.pytest}
+      - {file: pyproject.toml, section: tool.pytest.ini_options}
+
 # A profile is `<stack>/<level>` and nothing more (ADR 0052), and its version is
 # a **counter rather than semver** — `design.profiles.md` § The version is a
 # counter, because semver would point the wrong way. Direction is recorded per
@@ -240,8 +314,16 @@ predicates:
 # file does. Entries kept per-file would split one profile's history across two.
 profiles:
   python/standard:
-    version: 2
+    version: 3
     changes:
+      - version: 3
+        moved: neither
+        what: >
+          The residue only. `python.test-independence`,
+          `python.no-flaky-tests` and `python.branch-coverage-floor` are bound at
+          `strict` from ADR 0056, so they leave this level's residue the way
+          every `strict`-bound property does. Nothing this level selects
+          changed.
       - version: 2
         moved: neither
         what: >
@@ -258,8 +340,18 @@ profiles:
           First publication. The selection S3 benched, migrated from
           `docs/craft/assess.rules.md` without change.
   python/strict:
-    version: 2
+    version: 3
     changes:
+      - version: 3
+        moved: narrowing
+        what: >
+          ADR 0056: the suite runs in a random order (`pytest-randomly`), a test
+          fails past 30 seconds (`pytest-timeout`), a connection past loopback
+          is refused (`pytest-socket`), and branch coverage below the
+          repository's own floor fails the run (`pytest-cov`). Four development
+          dependencies, the first this profile adds, and one region in
+          `pyproject.toml`'s pytest table. `docs/craft/review.trial.md` § The
+          guards, installed is the measurement.
       - version: 2
         moved: narrowing
         what: >
