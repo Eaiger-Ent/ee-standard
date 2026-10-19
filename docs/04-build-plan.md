@@ -1584,8 +1584,10 @@ the same four weeks; the evidence for each tick is
 - [ ] TYP-001 can be met by a repository that tracks a vendored file it may not
       edit, or the register says why it cannot. Today `lint-yaml`'s hook fails
       strict mypy and TYP-001 has no way to say *vendored*.
-- [ ] LNT-001's title and its verification agree about formatting: either a
-      format check is wired, or the title stops promising one.
+- [x] LNT-001's title and its verification agree about formatting: either a
+      format check is wired, or the title stops promising one. Closed
+      2026-10-19 by the title, [`18-phase-8-review.md`](18-phase-8-review.md)
+      § LNT-001's title.
 - [ ] `deployments` says when a stack a gate covers has arrived since the gate
       ran. The adopter's TypeScript half was hand-wired and `gate-quality` reads
       CURRENT.

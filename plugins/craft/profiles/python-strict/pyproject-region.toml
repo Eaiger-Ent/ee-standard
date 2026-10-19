@@ -1,12 +1,12 @@
 [tool.ruff]
-# >>> ee-craft python/strict@3
-# ee-craft: python/strict@3  ee-skill: craft-install@0.2.0  gates: none (no any. property binds an instrument)  craft-contract: 3
+# >>> ee-craft python/strict@4
+# ee-craft: python/strict@4  ee-skill: craft-install@0.2.0  gates: none (no any. property binds an instrument)  craft-contract: 3
 line-length = 88                                    # python.line-length
 preview = true                                      # PLR0904, PLR1702
 # <<< ee-craft
 
 [tool.ruff.lint]
-# >>> ee-craft python/strict@3
+# >>> ee-craft python/strict@4
 select = [
   "ANN001", "ANN201", "ANN204", "ANN205", "ANN206", # python.annotate-public-api
   "PLR0904",                                        # python.class-size
@@ -60,22 +60,22 @@ select = [
 # <<< ee-craft
 
 [tool.ruff.lint.flake8-type-checking]
-# >>> ee-craft python/strict@3
+# >>> ee-craft python/strict@4
 runtime-evaluated-decorators = ["dataclasses.dataclass"] # python.typing-only-imports
 # <<< ee-craft
 
 [tool.ruff.lint.mccabe]
-# >>> ee-craft python/strict@3
+# >>> ee-craft python/strict@4
 max-complexity = 10                                 # python.function-length
 # <<< ee-craft
 
 [tool.ruff.lint.pylint]
-# >>> ee-craft python/strict@3
+# >>> ee-craft python/strict@4
 max-public-methods = 20                             # python.class-size
 max-statements = 25                                 # python.function-length
 # <<< ee-craft
 
 [tool.mypy]
-# >>> ee-craft python/strict@3
+# >>> ee-craft python/strict@4
 disallow_any_explicit = true                        # python.no-any-anywhere
 # <<< ee-craft

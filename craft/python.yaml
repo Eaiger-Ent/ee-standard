@@ -429,13 +429,21 @@ properties:
     sources:
     - clean-code 005
     - pep8
-    instrument:
-      tool: ruff-format
-      formatter: true
-    level: standard
-    note: A formatter rather than a rule set, which is why the instrument names
-      no codes. The property is met by running it, and its line length is python.line-length's
-      number by construction.
+    unenforced: 'Counted as bound until 2026-10-19, and nothing enforced it. The
+      instrument was `ruff format` with no codes, on the reading that the property
+      *is met by running it* — and nothing runs it at a locus that can fail. The
+      editor binds ruff as the formatter (LNT-001''s `editor_binding`); no hook and
+      no CI step runs a format check, and LNT-001''s title, which promised one, was
+      corrected in Phase 8. A profile writes configuration, not loci, so Craft
+      cannot close this alone.'
+    candidate:
+      tool: ruff format --check
+      why_not: >
+        It needs a pre-commit hook and a CI step, which are a control's loci
+        rather than a profile's configuration. Whether formatting blocks a
+        merge is a control-register decision, recorded as not yet taken in
+        docs/18-phase-8-review.md § LNT-001's title. When a control wires it,
+        this property is `satisfied_by` that control rather than bound here.
   python.no-trailing-whitespace:
     asserts: No trailing or stray whitespace
     bucket: 1

@@ -54,10 +54,10 @@
   },
   "profiles": {
     "python/standard": {
-      "version": 3,
+      "version": 4,
       "stack": "python",
       "level": "standard",
-      "properties": 40,
+      "properties": 39,
       "files": [
         "pyproject-region.toml",
         "src-ruff.toml",
@@ -71,10 +71,10 @@
       "asks": {}
     },
     "python/strict": {
-      "version": 3,
+      "version": 4,
       "stack": "python",
       "level": "strict",
-      "properties": 55,
+      "properties": 54,
       "files": [
         "pyproject-region.toml",
         "pytest-region.toml",
