@@ -160,8 +160,10 @@ second error is a typed call into it. One line in that skill would let every
 repository that vendors it put `.claude/hooks` under strict mypy. That is a
 change to another repository, and it was raised on 2026-10-20 with the owner's
 yes: [incubator#1142](https://github.com/EqualExperts/ee-skills-incubator/issues/1142),
-`05-promotion.md` § What was raised, row 9. It reaches an adopter when a
-maintainer merges it and auto-promote publishes `lint-yaml`.
+`05-promotion.md` § What was raised, row 9. **Shipped 2026-10-20 in
+`lint-yaml@0.1.15`**, whose hook passes `mypy --strict`. A repository that
+vendors it re-copies the hook and adds `.claude/hooks` to `[tool.mypy] files`,
+and TYP-001 holds with no exemption.
 
 ## Some locus fails when the register's verdict is FAIL
 
