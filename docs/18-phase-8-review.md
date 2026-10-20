@@ -158,7 +158,10 @@ ee-skills marketplace on this machine, ships `yaml-lint-hook.py` with the same
 two errors. Both come from one function: `in_repo` has no annotations, and the
 second error is a typed call into it. One line in that skill would let every
 repository that vendors it put `.claude/hooks` under strict mypy. That is a
-change to another repository and is recorded here as owed, not made.
+change to another repository, and it was raised on 2026-10-20 with the owner's
+yes: [incubator#1142](https://github.com/EqualExperts/ee-skills-incubator/issues/1142),
+`05-promotion.md` § What was raised, row 9. It reaches an adopter when a
+maintainer merges it and auto-promote publishes `lint-yaml`.
 
 ## Some locus fails when the register's verdict is FAIL
 
