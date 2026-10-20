@@ -89,11 +89,8 @@ Nothing is written in this phase.
 ### Read the address from the register
 
 ```bash
-read -r REPOSITORY REF <<<"$(uv run --no-project --with pyyaml python -c '
-import sys, yaml
-install = yaml.safe_load(open(sys.argv[1]))["tools"]["register-check"].get("install") or {}
-print(install.get("repository", ""), install.get("ref", ""))
-' "$REGISTER")"
+read -r REPOSITORY REF <<<"$(uv run --no-project --with pyyaml python \
+  "${CLAUDE_SKILL_DIR}/scripts/read-install-address.py" "$REGISTER")"
 ```
 
 **Read through uv, not through `yq`.** This ran as `yq` until Phase 4 met a
