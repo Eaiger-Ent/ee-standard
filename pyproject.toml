@@ -66,8 +66,10 @@ select = [
 [tool.mypy]
 strict = true
 # `scripts` and `.claude/hooks` are first-party source too — TYP-001 says all
-# of it, not the convenient parts.
-files = ["src", "tests", "scripts", ".claude/hooks"]
+# of it, not the convenient parts. `plugins` since a skill shipped a script of
+# its own (register-install's, taken back from incubator #952): it runs in an
+# adopter's repository, which is a reason to check it more, not less.
+files = ["src", "tests", "scripts", ".claude/hooks", "plugins"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
