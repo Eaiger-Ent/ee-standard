@@ -20,10 +20,24 @@ Everything this skill does runs `register-check` — including the pre-flight th
 computes the plan. So Step 0 checks the checker is there and, if it is not,
 dispatches `/register-install`.
 
-It is not in the dispatch table below and is not selectable. No control names
-*the checker is installed*, so it deploys nothing and appears in no plan row; a
-plan that offered to skip it would offer to compute itself without the
-instrument it is computed with.
+It is not selectable. No control names *the checker is installed*, so it deploys
+nothing and appears in no plan row; a plan that offered to skip it would offer to
+compute itself without the instrument it is computed with.
+
+**It runs once more, at row 5a below.** `register-install` also writes the
+Conformance step — the CI step that runs the whole register in the job a merge
+waits for (ADR 0057). At Step 0 there is no gating workflow yet, so it defers
+that step; the gates write the workflow, and the second run writes the step into
+it, before `gate-repo` protects the branch.
+
+## `--yes`, for a re-run
+
+An adoption is re-run — after a failure, after a token arrives, after a control
+is added — and each run asked the same two questions. `--yes` pre-answers the plan
+as **Deploy all** and passes the same to `/register-install`, and answers nothing
+else: a gate still asks before a call that changes what a colleague can push, or
+before taking over a file somebody wrote by hand. `reference/unattended.md` holds
+the rule once.
 
 ## Why the dispatch order is what it is
 
@@ -36,6 +50,7 @@ Not alphabetical, and not the order the gates were built.
 | 3 | `gate-secrets` | Writes into `setup.sh` and the gating workflow, both of which now exist |
 | 4 | `gate-quality` | The same two files, plus the editor locus |
 | 5 | `gate-iac` | Independent; last of the file-writing gates |
+| 5a | `register-install`, again | Not a gate. Writes the Conformance step it deferred at Step 0, now that the gates have written a workflow for it |
 | 6 | `gate-repo` | Last, because its effect is not a file and cannot be reviewed before it takes effect |
 
 The first two positions are load-bearing. Everything else is preference.
