@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared vocabulary for the adoption route. Sourced by every stage, never run.
 #
 # THE ONE RULE: these scripts report what is true. START-HERE.md says what to do
@@ -104,15 +105,15 @@ installed() {
   command -v "$command_name" >/dev/null 2>&1
 }
 
-# /workspaces is where devcontainer.json mounts the repository; /.dockerenv
-# catches a container started any other way.
+# VS Code's Dev Containers sets REMOTE_CONTAINERS and Codespaces sets
+# CODESPACES; /.dockerenv catches a container started any other way.
 inside_container() {
   if [ -f /.dockerenv ]; then
     return 0
   fi
-  case "$PWD" in
-    /workspaces/*) return 0 ;;
-  esac
+  if [ -n "${REMOTE_CONTAINERS:-}" ] || [ -n "${CODESPACES:-}" ]; then
+    return 0
+  fi
   return 1
 }
 
@@ -134,6 +135,7 @@ run_hint() {
 # The order of the adoption, in one place. status.sh walks this list and nothing
 # else, and a test asserts it matches the files on disk in both directions.
 
+# shellcheck disable=SC2034  # read by status.sh, which sources this file
 ROUTE_SCRIPTS="00-tools.sh 10-repo.sh 20-platform.sh 25-credentials.sh 30-container.sh 40-adopt.sh"
 
 route_title() {

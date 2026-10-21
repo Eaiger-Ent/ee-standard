@@ -303,7 +303,9 @@ elif confirm "Copy the devcontainer template and substitute it?"; then
     rm -rf .devcontainer
     detail "Removed the copy rather than leave a half-substituted one. § 4 by hand."
   else
+    # portable-shell: guarded — an attached -i.bak suffix is read the same by GNU and BSD sed; the .bak files are removed below
     sed -i.bak -e "s/{{PROJECT_NAME}}/$(basename "$PWD")/g" .devcontainer/devcontainer.json
+    # portable-shell: guarded — an attached -i.bak suffix is read the same by GNU and BSD sed; the .bak files are removed below
     sed -i.bak \
       -e "s/{{UV_VERSION}}/${uv_version}/g" \
       -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86}/g" \
