@@ -1,9 +1,21 @@
 # register-install
 
 Adds `register-check` to a repository, pinned to the tagged ref the register
-names. One job, and nothing else.
+names, and writes the one CI step that runs it over the whole register.
 
-## Why this exists at all
+## What it does
+
+It adds the checker to the repository's dependencies, pinned to a git tag, and
+confirms `register-check --version` runs through the package manager. Then it
+appends a Conformance step to the job CI-001's `required_checks:` names, so the
+check a merge waits for carries every control's verdict (ADR 0057). Run it as
+`/register-install`, or let `/register-adopt` dispatch it. Pass `--yes` to
+pre-answer the one Install / Cancel question. It prints a plan before writing
+anything and a report afterwards. Nothing is committed.
+
+## Approach
+
+### Why this exists at all
 
 Because the checker had no way into a repository that was not its own.
 
@@ -19,7 +31,7 @@ That gap was invisible from inside, which is the shape of defect this project's
 review record keeps finding — a property that holds for the author's environment
 and was never a property of anything.
 
-## What it installs
+### What it installs
 
 A dependency pinned to a git tag:
 
@@ -43,7 +55,7 @@ install work for someone who has been granted nothing. That is a load-bearing
 dependency rather than a convenience: taking the repository private would break
 every adopter's install.
 
-## Why a skill of its own
+### Why a skill of its own
 
 Three candidates were considered and two rejected
 (ADR 0032).
@@ -61,20 +73,44 @@ about lockfiles, update proposals and frozen installs; the checker being present
 is a precondition of all three being *checkable*, which is a different thing. A
 gate writing something no control names is the drift this repository watches for.
 
+### Why it also writes the Conformance step
+
+Because nothing else asked the register for its verdict. Each gate's CI step
+runs that control's tools, and a control can pass its tools while failing its
+own checks: `uv run mypy` passes while TYP-001 fails on a module `files` leaves
+out. One adopting repository read TYP-001 FAIL for 27 days under a green build.
+The step runs the checker over the whole register as the **last** step of the
+job a merge waits for, so that verdict blocks the merge (ADR 0057).
+
+It goes in the job CI-001 names, not a new one, because a check no merge waits
+for blocks nothing. Where no gating workflow exists yet the step is deferred
+rather than written into a new workflow, because the workflow's setup belongs to
+the gates. `register-adopt` re-runs this skill after the gates for that case.
+The step lets exit `3` (nothing failed, something unverifiable) through and
+nothing else. It never uses `continue-on-error` or `|| true`, which would let a
+verified violation through as well.
+
 ## What it does not do
 
 It writes no `ee-control:` stamp. A stamp names a control and the gate that
 deployed it, and there is no control here to name — so the absence is the
-decision rather than an omission. It is the one deployed thing in this plugin
-that is unstamped on purpose.
+decision rather than an omission. The Conformance step is unstamped for the same
+reason: it deploys no control, it computes the verdict of the ones the gates
+deployed.
 
 It does not run the full audit afterwards. `register-check run` over a
 repository with no gates deployed reports failures for every control, which
 reads as this skill having broken something. `register-adopt` takes that run as
-its starting state, which is where the output means something.
+its starting state, which is where the output means something. The one local run
+it does make comes *before* the Conformance step is written. It names every
+control that will fail the required check once the step lands, so a red build
+after the merge is the expected one.
 
-It does not commit. What it changes is a manifest and a lockfile, and where they
-go is a decision for whoever is adopting.
+It does not commit. What it changes is a manifest, a lockfile and a workflow,
+and where they go is a decision for whoever is adopting.
+
+`--yes` answers the Install / Cancel question and nothing else. The plan is
+still printed. `reference/unattended.md` lists what it must never answer.
 
 ## What is still open
 
@@ -98,3 +134,10 @@ flag cannot be reached at all, which is preflight P9 and is what stopped the
 front door at Step 0 in Phase 4. The reasoning, and what guards the platform
 mutations instead, is
 ADR 0035.
+
+## References
+
+- [PEP 440 — direct references](https://peps.python.org/pep-0440/#direct-references) — the `name @ git+<url>@<tag>` grammar the pin uses
+- [uv — Git dependencies](https://docs.astral.sh/uv/concepts/projects/dependencies/#git) — how the pin is resolved and locked
+- [GitHub Actions — `continue-on-error`](https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepscontinue-on-error) — why the Conformance step must not carry it
+- ADRs 0016 (exit codes), 0020, 0032, 0035, 0036 and 0057, in the `ee-standard` repository

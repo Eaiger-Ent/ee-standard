@@ -16,8 +16,8 @@ They arrive identically — `403` — and the body is what separates them:
 gh api "repos/$OWNER/$NAME/rulesets" -i 2>&1 | grep -iE 'x-accepted|message'
 ```
 
-* **`"Upgrade to GitHub Pro or make this repository public"`** — a plan limit.
-* **`x-accepted-github-permissions`** names the permission the endpoint wanted.
+- **`"Upgrade to GitHub Pro or make this repository public"`** — a plan limit.
+- **`x-accepted-github-permissions`** names the permission the endpoint wanted.
   On the rulesets endpoints it is `metadata=read`, which every token holds and
   GitHub does not let you turn off, so a `403` carrying it is **never** about
   scope. This is the same header the permissions table in `docs/08-adopting.md`
