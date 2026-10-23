@@ -43,7 +43,7 @@ if command -v gh >/dev/null 2>&1; then
     echo "      Durable fix, on the HOST — survives a rebuild:"
     echo "        security add-generic-password -a \"\$USER\" -s GITHUB_TOKEN -w <token>"
     echo "      then rebuild. \`gh auth login\` in here works too and is lost on the"
-    echo "      next rebuild: only /home/vscode/.claude is a volume, and gh keeps its"
+    echo "      next rebuild: only ~/.claude is a volume, and gh keeps its"
     echo "      credentials in ~/.config/gh."
   fi
 fi

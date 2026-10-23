@@ -537,14 +537,12 @@ All of it went out on 2026-08-29, in the order this document sets.
 | 11. `register-adopt`: step 5a re-runs `register-install` after the gates (ADR 0057), `--yes`, and a README that says so | [incubator#1159](https://github.com/EqualExperts/ee-skills-incubator/issues/1159), 2026-10-21. **Merged 2026-10-21; at `control-register@0.1.13`.** The incubator moved the output blocks to a new `output-templates.md` and added two error rows — an explicit `--register` path wins, and a row-5a failure stops before `gate-repo` — all taken back. Tracking issue [#236](https://github.com/Eaiger-Ent/ee-standard/issues/236) |
 | 12. `gate-repo` | **Not raised: the incubator was ahead.** Incubator #1165 (2026-10-22) had already made it, and `gate-secrets`, read `reference/plan-limits.md`, more thoroughly than this repository had. Submitting ours would have reverted it, so it was taken back instead (#238) |
 | 13. `gate-secrets`: annotate the `setup.sh` version with `# renovate:`, and record the site in `pinned_at` (ADR 0045) | [incubator#1171](https://github.com/EqualExperts/ee-skills-incubator/issues/1171), 2026-10-23 — the two instructions this repository had from 2026-08-31 and #1165 lacked, on top of #1165. **Merged 2026-10-23; at `control-register@0.1.13`.** The incubator unquoted the version line (`TOOL_VERSION=<version>`), which the shipped Renovate rule matches either way and which this repository's own `setup.sh` already wrote, and added the two writes to the README's table; taken back. Tracking issue [#239](https://github.com/Eaiger-Ent/ee-standard/issues/239) |
+| 14. `templates/devcontainer/`: `CLAUDE_CONFIG_DIR`, a `# renovate:` line on the uv pin, and what `check-auth.sh` says a token does | [incubator#1174](https://github.com/EqualExperts/ee-skills-incubator/issues/1174), 2026-10-23, branch `amend/gate-build--whome192-20261023`. **Submitted under `gate-build` as a carrier**: a branch of shared files alone resolves to `control-register`, which no amendment can target, so it went under the skill that owns `.devcontainer/` with that skill unchanged — the submit script warned that *Step 0b* refuses a second skill, and the rationale said why. **Merged 2026-10-23 and shipped in `control-register@0.1.14`**, with one line changed — `~/.claude` for `/home/vscode/.claude` in `check-auth.sh` — taken back. Tracking issue [#241](https://github.com/Eaiger-Ent/ee-standard/issues/241) |
 
-**After rows 9–13, all nine skills and `reference/` match the published
-`control-register@0.1.13`**, apart from the docs link each `SKILL.md` names.
-**`templates/devcontainer/` does not, and runs the other way**: the incubator's
-copy is the August submission, and this repository's carries five later fixes —
-among them `CLAUDE_CONFIG_DIR`, without which a mounted `~/.claude` does not
-keep a session (v0.8.4), and the `# renovate:` annotation on the uv pin. No
-amendment above touched it. It is owed.
+**After rows 9–14, all of `control-register` matches the published
+`control-register@0.1.14`**, apart from the docs link each `SKILL.md` names.
+`templates/devcontainer/` went up as row 14, the one shared file no skill
+amendment had carried.
 
 **A submission is not the end of the conversation.** The incubator pushed four
 remediation commits onto submission 1's branch before merging it — descriptions
