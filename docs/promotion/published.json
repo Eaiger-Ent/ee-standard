@@ -1,0 +1,30 @@
+{
+  "plugin": "control-register",
+  "marketplace": "EqualExperts/ee-skills",
+  "version": "0.1.14",
+  "commit": "28e8bb1571209f81381f7242076941be7b09ba78",
+  "differences": {
+    ".claude-plugin/plugin.json": {
+      "stance": "by-design",
+      "why": "Two version lines. This repository's marketplace (ADR 0044) versions the plugin it serves, and the incubator assigns its own on promotion. Everything else in the manifest must match.",
+      "normalise": [
+        "\"version\": \"[^\"]*\""
+      ]
+    },
+    ".claude-plugin/deploys.json": {
+      "stance": "owed-upstream",
+      "why": "gate-secrets is at contractVersion 7 here, since #122 (2026-08-31), and 6 as published. skill-update reads this to tell an adopter a gate is stale, so an adopter installing from ee-skills is not told. No amendment has carried the plugin's own manifest files."
+    },
+    "README.md": {
+      "stance": "owed-upstream",
+      "why": "Rewritten here for adopters: what you get, where to start, and `uv run register-check` rather than a bare name (ADR 0020). The published README is the Phase 2 text, which still lists register-check as an unbuilt Phase 3 skill. No amendment has carried the plugin's root README."
+    },
+    "skills/*/SKILL.md": {
+      "stance": "by-design",
+      "why": "Each copy names its own repository's skill map: docs/02-skill-family.md here, docs/skill-relationship-map.md in the incubator, which substitutes it on promotion (docs/05-promotion.md row 8).",
+      "normalise": [
+        "docs/(?:02-skill-family|skill-relationship-map)\\.md"
+      ]
+    }
+  }
+}

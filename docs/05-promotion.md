@@ -539,10 +539,40 @@ All of it went out on 2026-08-29, in the order this document sets.
 | 13. `gate-secrets`: annotate the `setup.sh` version with `# renovate:`, and record the site in `pinned_at` (ADR 0045) | [incubator#1171](https://github.com/EqualExperts/ee-skills-incubator/issues/1171), 2026-10-23 — the two instructions this repository had from 2026-08-31 and #1165 lacked, on top of #1165. **Merged 2026-10-23; at `control-register@0.1.13`.** The incubator unquoted the version line (`TOOL_VERSION=<version>`), which the shipped Renovate rule matches either way and which this repository's own `setup.sh` already wrote, and added the two writes to the README's table; taken back. Tracking issue [#239](https://github.com/Eaiger-Ent/ee-standard/issues/239) |
 | 14. `templates/devcontainer/`: `CLAUDE_CONFIG_DIR`, a `# renovate:` line on the uv pin, and what `check-auth.sh` says a token does | [incubator#1174](https://github.com/EqualExperts/ee-skills-incubator/issues/1174), 2026-10-23, branch `amend/gate-build--whome192-20261023`. **Submitted under `gate-build` as a carrier**: a branch of shared files alone resolves to `control-register`, which no amendment can target, so it went under the skill that owns `.devcontainer/` with that skill unchanged — the submit script warned that *Step 0b* refuses a second skill, and the rationale said why. **Merged 2026-10-23 and shipped in `control-register@0.1.14`**, with one line changed — `~/.claude` for `/home/vscode/.claude` in `check-auth.sh` — taken back. Tracking issue [#241](https://github.com/Eaiger-Ent/ee-standard/issues/241) |
 
-**After rows 9–14, all of `control-register` matches the published
-`control-register@0.1.14`**, apart from the docs link each `SKILL.md` names.
 `templates/devcontainer/` went up as row 14, the one shared file no skill
 amendment had carried.
+
+### What differs from the published copy
+
+This section used to end on a sentence: after rows 9–14, all of
+`control-register` matched the published `control-register@0.1.14`, apart from
+the docs link each `SKILL.md` names. **The sentence was false when written.**
+The plugin's `README.md` and `deploys.json` differed too, and nothing read the
+sentence, so nothing noticed.
+
+The claim is now a record. [`promotion/published.sha256`](promotion/published.sha256)
+holds a digest of every file the marketplace published, in the format
+`sha256sum -c` reads, and [`promotion/published.json`](promotion/published.json)
+holds each difference from this tree. A difference is `owed-upstream` (this repository is ahead) or
+`by-design` (each copy is right where it is), and it says why.
+`tests/test_published_copy.py` fails on a difference the record does not
+declare, and on a declaration that has stopped being true. Where a difference is
+one substitution, as the docs link is, the record names a pattern, and the file
+may differ by that pattern and nothing else.
+
+The test needs only the repository. Whether the record still describes the
+marketplace needs the installed checkout, which CI does not have:
+
+```bash
+uv run python scripts/record_published.py --check   # does the record still hold?
+uv run python scripts/record_published.py           # re-record, after a take-back
+```
+
+Re-record after `claude plugin marketplace update ee-skills`, with the token
+scoped as § The submitting shell does. The script writes everything except
+`differences`, which is the part a person decides. What is `owed-upstream` is
+outstanding work, so `04-build-plan.md` § Phase 6 carries it, not this
+document.
 
 **A submission is not the end of the conversation.** The incubator pushed four
 remediation commits onto submission 1's branch before merging it — descriptions
