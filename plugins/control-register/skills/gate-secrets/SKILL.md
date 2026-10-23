@@ -274,10 +274,10 @@ into it; a stamp at the top would claim their blocks as SEC-001's.
 
 **Annotate the version, then record the site.** Write
 `# renovate: datasource=github-releases depName=<TOOL_REPO>` directly above an
-`UPPER_SNAKE_CASE`, quoted `TOOL_VERSION="<version>"`, as `templates/ci-steps.yaml`
+`UPPER_SNAKE_CASE` assignment, `TOOL_VERSION=<version>`, as `templates/ci-steps.yaml`
 does. No Dependabot manager reads a shell literal, so without the annotation the
-pin is unmanaged and never moves, and the custom manager matches only that
-spelling. Then, if the file is not already in `tools.<tool>.pinned_at`, append its
+pin is unmanaged and never moves, and Renovate's custom manager matches only an
+annotation followed on the next line by that assignment. Then, if the file is not already in `tools.<tool>.pinned_at`, append its
 path: that one field of `controls.yaml`, never a removal, and no stamp (ADR 0045,
 in the `ee-standard` repository). If the register cannot be written, name the
 path you would have added.

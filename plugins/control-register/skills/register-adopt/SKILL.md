@@ -362,36 +362,13 @@ reviewable change and a human decides where it goes.
 
 ## Output
 
-**Adopted:**
+Read `${CLAUDE_SKILL_DIR}/output-templates.md` and emit the block whose trigger matches:
 
-```text
-register-adopt deployed <n> controls in <repo>.
-  gate-build         BLD-001, DEV-001
-  gate-supply-chain  SUP-001, SUP-002, SUP-003
-  gate-secrets       SEC-001, SEC-002, SEC-003
-  gate-quality       LNT-001, TYP-001, TST-001
-  gate-repo          CI-001
-  not applicable     IAC-001 (no *.tf)
-  dispatch elsewhere DOC-001 (lint-md)
-Verified: register-check → exit <code>
-  local loci PASS; <remote blocks that could not answer, and why>.
-Still owed by a human: <platform acts>.
-Committed: <sha> — not pushed.
-```
-
-**Failed:**
-
-```text
-register-adopt stopped at <gate>: <the failing block, verbatim>.
-<n> gates ran before it and their changes are in the working tree, uncommitted.
-Nothing has been committed and nothing has been pushed.
-```
-
-**Cancelled:**
-
-```text
-register-adopt showed the plan and wrote nothing.
-```
+| State | Trigger |
+| --- | --- |
+| **Adopted** | Step 5 exited `0` or `3`, and Step 6 committed |
+| **Failed** | A gate, or `register-install` at row 5a, failed; or Step 5 exited `1` or `2` |
+| **Cancelled** | **Cancel** at Step 3 |
 
 ## Error handling
 
@@ -400,9 +377,11 @@ register-adopt showed the plan and wrote nothing.
 | `register-check` is not installed | Dispatch `/register-install` at Step 0. Never install it here |
 | `register-install` stops without installing | Stop. Every step below verifies through the checker, so a plan computed without it is a plan nobody checked |
 | No register found or it fails to load | Stop. There is nothing to plan from |
+| `--register` names a file and `<repo>/controls.yaml` also exists | Plan from `--register`: the explicit path wins, and it is the one passed to every gate, so plan, deployment and audit read one register. Name the path used above the plan table |
 | Not a git repository | Stop. Every assert reads what git tracks |
 | A control's `deployed_by` names a gate this plugin does not have | Plan it as **dispatch elsewhere** or **manual**. Never drop it from the plan |
 | A gate reports a failed deployment | Stop the sequence. Do not run the gates after it |
+| `register-install` at row 5a stops, or cannot place the Conformance step | Stop before `gate-repo`, emit **Failed** naming `register-install`, and say the branch is not yet protected. Dispatching `gate-repo` would protect a branch whose required check carries no register verdict (ADR 0057) |
 | A gate asks a question | Answer it or pass it on. Do not re-invoke with the question suppressed |
 | Verify exits `1` | Report a failed adoption and **do not commit** |
 | Verify exits `3` | Report success at the local loci, naming every skipped block |
@@ -432,7 +411,7 @@ which is the point of re-running after a register bump.
 
 ## Co-update partners
 
-Canonical source for both shared standards below:
+Canonical source for the shared standards below:
 `${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
 `docs/02-skill-family.md`.
 
@@ -447,4 +426,10 @@ Canonical source for both shared standards below:
 - **Provenance stamp and verify contract** — every skill here stamps what it
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;
-  co-update all nine when the contract version changes.
+  co-update all nine when the contract version changes. Canonical source: each
+  gate's `contractVersion` in `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/deploys.json`,
+  and the stamp grammar and exit codes in `register-check`, in the `ee-standard`
+  repository (ADR 0016) — never a skill's restatement of either.
+- **Unattended `--yes`** (`reference/unattended.md`) — shared with
+  `register-install`. Which questions `--yes` answers, and the three kinds it
+  must never answer, are stated there once; change them there, never here.
