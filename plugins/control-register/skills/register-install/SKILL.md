@@ -358,19 +358,27 @@ provenance stamp to refresh, because nothing here deploys a control.
 
 ## Co-update partners
 
-Canonical source for both shared standards below:
+Canonical source for the shared standards below:
 `${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
-`docs/02-skill-family.md`.
+`docs/02-skill-family.md`, whose rows list the skills that read each
+file — generated from the skills, so the row is the authority when this list
+and it disagree.
 
 - **Write narration shape** (`reference/write-narration.md`) — shared with
   `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
-  `gate-supply-chain`, `register-adopt`, `register-install` and
-  `register-variance`. Change the shape there, never here; ADR 0036 is the
-  reason it is one file rather than nine copies.
+  `gate-supply-chain`, `register-install` and `register-variance`. Change the
+  shape there, never here; ADR 0036 is the reason it is one file rather than a
+  copy per skill.
+- **Unattended `--yes`** (`reference/unattended.md`) — shared with
+  `register-adopt`. Which questions `--yes` answers, and the three kinds it
+  must never answer, are stated there once; change them there, never here.
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
 - **Provenance stamp and verify contract** — every skill here stamps what it
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;
-  co-update all nine when the contract version changes.
+  co-update all nine when the contract version changes. Canonical source: each
+  gate's `contractVersion` in `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/deploys.json`,
+  and the stamp grammar and exit codes in `register-check`, in the `ee-standard`
+  repository (ADR 0016) — never a skill's restatement of either.

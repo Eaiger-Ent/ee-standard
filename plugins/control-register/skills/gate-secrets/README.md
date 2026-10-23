@@ -18,6 +18,13 @@ which remote blocks could not answer and why.
 | pre-commit | `.pre-commit-config.yaml` | The scanner as a `local` hook, stamped at the hook |
 | ci | the gating workflow | A pinned install and a scan step, stamped |
 | remote | — | Nothing. Push protection is a platform act only an admin can take |
+| (dev environment) | `.devcontainer/setup.sh`, if it exists | A pinned install block under a `# renovate:` line, stamped at the block |
+| (register) | `controls.yaml` | Each file above that repeats the version, added to `tools.<tool>.pinned_at` |
+
+The `# renovate:` line is what lets an update bot move the pin; without it the
+version never changes. Adding the file to `pinned_at` is what makes
+`tool_versions_match_register` compare it. The gate only adds to that list,
+never removes from it.
 
 Both templates live in `templates/` and carry the placeholders the skill fills
 from the register: `precommit-hook.yaml` and `ci-steps.yaml`.
