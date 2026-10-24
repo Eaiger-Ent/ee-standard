@@ -179,10 +179,14 @@ Neither covers everything alone. The ruleset is the only one that covers
 `v0.9.0`, and immutable releases are the only one an admin cannot simply switch
 off for one tag. `tests/test_release_tags.py` holds the record's shape, and that
 its pattern covers the ref `tools.register-check.install.ref` names. It cannot
-see the platform. The ruleset was confirmed by reading it back from the API.
-It was not confirmed by a rejected push, because the probe (re-pushing
-`v0.9.0` as a lightweight tag on the same commit) was itself a force-push to a
-release tag.
+see the platform. The ruleset was confirmed twice on 2026-10-24: first by
+reading it back from the API, then by a rejected push. The probe re-pushed
+`v0.9.0` as a lightweight tag on the same commit, so it would have changed
+nothing that resolves had it succeeded. It is a force-push to a release tag, so
+the maintainer ran it rather than an agent. GitHub refused it:
+`GH013: Repository rule violations found for refs/tags/v0.9.0 … Cannot update
+this protected ref`. `v0.9.0` still names tag object `acdb71a` on commit
+`42e732f`.
 
 **What it costs.** The release procedure pushes the tag before the pull request
 is reviewed, because the tagged commit's tests read the local tag list. With no
