@@ -1505,6 +1505,18 @@ document that described it.
       skill and writing a second DOC-001 gate here were both rejected in the
       ADR, and `tests/test_adopter_guide.py` fails a guide that names a
       marketplace the register does not
+- [ ] **Nothing in `control-register` is owed to the published copy.** Added
+      2026-10-23, when the prose claim that the two copies matched "apart from
+      the docs link" became a record, `docs/promotion/published.json` and its digests, held by
+      `tests/test_published_copy.py`. Writing the record falsified the claim.
+      Two files are `owed-upstream` at `control-register@0.1.14`: the plugin's
+      `README.md`, still the Phase 2 text upstream, and `deploys.json`, where
+      `gate-secrets` is at contract 7 here and 6 there, so an adopter
+      installing from `ee-skills` is not told its `gate-secrets` deployment is
+      stale. The record says why for each. This closes when no difference in it
+      is `owed-upstream` and `scripts/record_published.py --check` passes
+      against the copy that shipped the fix. Each submission is an act in
+      another organisation's repository and needs its own yes
 
 ## Phase 7 — What two independent adoptions found
 
