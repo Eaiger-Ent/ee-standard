@@ -1,0 +1,46 @@
+// The release-tag ruleset: a pushed `v*` tag cannot be moved or deleted.
+//
+// A record, as `default-branch.json` beside it is. GitHub does not read this
+// path. What enforces the property is the ruleset this file was POSTed as, and
+// `GET /repos/Eaiger-Ent/ee-standard/rulesets` is how to see that it still does.
+//
+// **Why it exists.** An adopter pins the checker as
+// `register-check @ git+https://github.com/Eaiger-Ent/ee-standard@v0.9.0`
+// (ADR 0032), and ADR 0032 justified that pin by calling the tag immutable. A
+// git tag is not immutable. Until 2026-10-24 this repository had no tag ruleset
+// and immutable releases were off, so anyone with write access could have
+// moved `v0.9.0` to another commit. An adopter's `uv.lock` records the commit
+// it resolved, so a frozen install was safe. The next re-lock would have taken
+// whatever the tag then named, with nothing in the diff but a hash.
+//
+// GitHub's immutable releases, enabled the same day, lock a release's tag once
+// the release is published. They apply only to releases published after they
+// were enabled, and not to a tag before its release exists. This ruleset covers
+// both: every existing `v*` tag, and each new one from the moment it is pushed.
+//
+// **No bypass, on purpose.** The release procedure pushes the tag before its
+// pull request is reviewed. If review then changes the commit, the tag cannot
+// follow it, and the release is cut as the next patch version instead. A
+// version that was pushed may have been fetched, so it is not reused.
+//
+// Not a control, and deliberately not in `controls.yaml`. Tag immutability is
+// a property of this repository as the publisher of the checker, not of a
+// conformant Equal Experts repository, most of which publish nothing pinned by
+// tag. `tests/test_release_tags.py` holds this file's shape. It cannot see the
+// platform, which is what `default-branch.json`'s header says too.
+{
+  "name": "release-tags",
+  "target": "tag",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/tags/v*"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "update" },
+    { "type": "deletion" }
+  ],
+  "bypass_actors": []
+}
