@@ -1522,7 +1522,10 @@ document that described it.
       `.claude-plugin/` or `README.md`, which it treats as managed in
       `ee-skills`, and the issues closed as `implemented` regardless. An
       incubator submission cannot close this criterion; the record, re-read at
-      `0.1.16`, says so for each file
+      `0.1.16`, says so for each file. The two halves now take different routes.
+      `deploys.json` moves into each gate's own directory, which promotion
+      does copy ([ADR 0058](adr/0058-a-gate-declares-its-contract-in-its-own-directory.md),
+      **Proposed**). The README is asked for as a hand copy in incubator#1185
 
 ## Phase 7 — What two independent adoptions found
 
