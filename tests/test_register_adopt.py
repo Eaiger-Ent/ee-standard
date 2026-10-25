@@ -33,7 +33,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, gate_contract, make_repo, requires_tool
+from conftest import REPO_ROOT, declared_gates, gate_contract, make_repo, requires_tool
 from register_check.cli import main
 from register_check.provenance import stamps_in
 from register_check.register import Register, load_register
@@ -421,7 +421,7 @@ def test_the_dispatch_order_is_the_one_the_skill_states() -> None:
     order = [gate for _, gate in sorted(rows, key=lambda row: int(row[0]))]
     assert order[:2] == ["gate-build", "gate-supply-chain"], order
     assert order[-1] == "gate-repo", order
-    declared = set(json.loads((PLUGIN / ".claude-plugin/deploys.json").read_text())["gates"])
+    declared = set(declared_gates())
     assert set(order) == declared, declared.symmetric_difference(order)
 
 
@@ -440,7 +440,7 @@ def test_the_plan_can_name_every_control_in_the_register() -> None:
     satisfied by an absence has to be distinguishable from one nobody has got to.
     """
     register = _register()
-    sidecar = json.loads((PLUGIN / ".claude-plugin/deploys.json").read_text())["gates"]
+    sidecar = declared_gates()
     verified_by = {
         control: gate for gate, entry in sidecar.items() for control in entry["controls"]
     }

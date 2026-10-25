@@ -16,12 +16,10 @@ adoption.
 
 from __future__ import annotations
 
-import json
-
 import pytest
 import yaml
 
-from conftest import REPO_ROOT
+from conftest import REPO_ROOT, declared_gates
 from register_check.publish import (
     MARKABLE_FIELDS,
     PUBLISHED,
@@ -92,7 +90,7 @@ def test_a_marker_only_appears_on_a_repository_specific_field(
 def _creatable_paths() -> set[str]:
     """Every path the standard's own artefacts put in an adopter's repository."""
     plugin = REPO_ROOT / "plugins/control-register"
-    gates = json.loads((plugin / ".claude-plugin/deploys.json").read_text())["gates"]
+    gates = declared_gates()
     from_gates = {
         artefact.split("#")[0]
         for gate in gates.values()

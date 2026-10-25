@@ -17,12 +17,11 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any
 
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, a_register
+from conftest import REPO_ROOT, a_register, declared_gates
 from register_check.provenance import MARKER, stamps_in
 
 PLUGIN = REPO_ROOT / "plugins/control-register"
@@ -47,16 +46,10 @@ def test_the_plugin_declares_itself() -> None:
     assert isinstance(manifest["dependencies"], list)
 
 
-def _sidecar() -> dict[str, Any]:
-    loaded = json.loads((PLUGIN / ".claude-plugin/deploys.json").read_text(encoding="utf-8"))
-    assert isinstance(loaded, dict)
-    return loaded
-
-
 def test_the_deploys_sidecar_names_controls_the_register_defines() -> None:
     """A sidecar naming DOC-002 would recommend redeploying a control nobody has."""
     known = {control.id for control in a_register().controls}
-    for gate, entry in _sidecar()["gates"].items():
+    for gate, entry in declared_gates().items():
         assert set(entry["controls"]) <= known, set(entry["controls"]) - known
         assert isinstance(entry["contractVersion"], int)
         assert entry["artifacts"], f"{gate} deploys nothing and needs no contract"
@@ -72,15 +65,22 @@ def test_each_gate_carries_its_own_contract_version() -> None:
     whose output did not change fails the second one while appearing to pass it.
     Recorded as a decision the second gate forces in `10-phase-2-review.md`.
     """
-    sidecar = _sidecar()
-    assert sidecar["schemaVersion"] == 2
-    assert "contractVersion" not in sidecar, (
-        "a plugin-wide contract version is what this shape exists to remove"
-    )
+    declared = declared_gates()
+    for gate, entry in declared.items():
+        assert entry["schemaVersion"] == 3, gate
     directories = {skill.name for skill in SKILLS}
-    assert set(sidecar["gates"]) <= directories, set(sidecar["gates"]) - directories
     gates = {name for name in directories if name.startswith("gate-")}
-    assert gates <= set(sidecar["gates"]), gates - set(sidecar["gates"])
+    assert set(declared) == gates, set(declared).symmetric_difference(gates)
+
+
+def test_no_plugin_wide_declaration_is_left_to_go_stale() -> None:
+    """ADR 0058: the contract lives in each gate's directory, and only there.
+
+    `.claude-plugin/` is never synced by an incubator amendment, which is how
+    `gate-secrets` came to be published at contract 6 while it wrote 7. A file
+    left there would be a second copy that only one of the two plugins updates.
+    """
+    assert not (PLUGIN / ".claude-plugin/deploys.json").exists()
 
 
 def test_the_sidecar_agrees_with_the_register_about_who_deploys_what() -> None:
@@ -96,7 +96,7 @@ def test_the_sidecar_agrees_with_the_register_about_who_deploys_what() -> None:
     `gate-secrets`' list without a `deployed_by` of its own, which is correct —
     the gate checks it and writes nothing for it.
     """
-    sidecar = _sidecar()["gates"]
+    sidecar = declared_gates()
     for control in a_register().controls:
         gate = control.deployed_by
         if gate is None or gate not in sidecar:
@@ -139,10 +139,10 @@ def test_the_templates_stamp_what_they_write(skill: Path) -> None:
     register = a_register()
     substitutions = {
         "{{SKILL_VERSION}}": "0.1.0",
-        # Read from the sidecar rather than written here: a template that
+        # Read from the gate's declaration rather than written here: a template that
         # stamped a literal would be the second copy ADR 0038 exists to avoid,
         # and this test would keep passing over it.
-        "{{GATE_CONTRACT}}": _sidecar()["gates"].get(skill.name, {}).get("contractVersion", 0),
+        "{{GATE_CONTRACT}}": declared_gates().get(skill.name, {}).get("contractVersion", 0),
         "{{REGISTER_VERSION}}": register.version,
         "{{REGISTER_CONTRACT}}": str(register.register_contract),
     }
@@ -157,7 +157,7 @@ def test_the_templates_stamp_what_they_write(skill: Path) -> None:
         # write and nothing for a template to carry (ADR 0032). A *gate* with no
         # templates would be a gate whose deployment has no reviewable source.
         # `register-install` has shipped one since ADR 0057, handled above.
-        assert skill.name not in _sidecar()["gates"], (
+        assert skill.name not in declared_gates(), (
             f"{skill.name} deploys controls and ships no template to write them from"
         )
         pytest.skip(f"{skill.name} writes no artefacts of its own")
@@ -234,7 +234,7 @@ def test_the_gate_verifies_through_the_checker_and_not_otherwise(skill: Path) ->
     the first time the register moved.
     """
     text = (skill / "SKILL.md").read_text(encoding="utf-8")
-    entry = _sidecar()["gates"].get(skill.name)
+    entry = declared_gates().get(skill.name)
     if entry is None:
         pytest.skip(f"{skill.name} deploys nothing — there is no verify step to check")
     verify = [line for line in text.splitlines() if "register-check" in line and "run" in line]

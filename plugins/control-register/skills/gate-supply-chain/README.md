@@ -28,7 +28,7 @@ the install lints against nothing.
 
 The grouping is visible in the register rather than only here: all three
 controls carry `deployed_by: gate-supply-chain`, each reads back its own
-provenance stamp, and the plugin's `deploys.json` lists them under this gate
+provenance stamp, and this gate's own `deploys.json` lists them
 with a contract version of their own.
 
 ## Why SUP-003's gate is the checker

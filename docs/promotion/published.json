@@ -12,19 +12,43 @@
       ]
     },
     ".claude-plugin/deploys.json": {
+      "stance": "by-design",
+      "why": "Deleted here by ADR 0058, which moved each gate's contract into skills/<gate>/deploys.json. ee-skills keeps this file because the incubator's promote.py never syncs .claude-plugin/ on an amendment, so it stays at gate-secrets contract 6 indefinitely. Nothing reads it: register-check refuses a plugin that has only this file. Removing it upstream would be a hand change, and is not owed."
+    },
+    "skills/*/deploys.json": {
       "stance": "owed-upstream",
-      "why": "gate-secrets is at contractVersion 7 here, since #122 (2026-08-31), and 6 as published. skill-update reads this to tell an adopter a gate is stale, so an adopter installing from ee-skills is not told. Submitted as row 15 (incubator#1177), merged upstream in incubator#1183, and still not published: the incubator's promote.py amend path skips _NATIVE_PRESERVE ({.claude-plugin, data, LICENSE, README.md}) as managed in ee-skills, so no incubator amendment can deliver this file. It bumped the version (0.1.15) and shipped only plugin.json."
+      "why": "ADR 0058: each gate declares its contract in its own directory, because a promotion copies skill directories wholesale and never copies .claude-plugin/. Not yet submitted; one incubator amendment carries all six."
     },
     "README.md": {
       "stance": "owed-upstream",
-      "why": "Rewritten here for adopters: what you get, where to start, and `uv run register-check` rather than a bare name (ADR 0020). The published README is the Phase 2 text, which still lists register-check as an unbuilt Phase 3 skill. Submitted as row 16 (incubator#1178), merged upstream in incubator#1184, and still not published: the incubator's promote.py amend path skips _NATIVE_PRESERVE ({.claude-plugin, data, LICENSE, README.md}) as managed in ee-skills, so no incubator amendment can deliver this file. It bumped the version (0.1.16) and shipped only plugin.json."
+      "why": "Rewritten here for adopters: what you get, where to start, and `uv run register-check` rather than a bare name (ADR 0020). The published README is the Phase 2 text, which still lists register-check as an unbuilt Phase 3 skill. Submitted as row 16 (incubator#1178), merged upstream in incubator#1184, and still not published: the incubator's promote.py amend path skips _NATIVE_PRESERVE ({.claude-plugin, data, LICENSE, README.md}) as managed in ee-skills, so no incubator amendment can deliver this file. It bumped the version (0.1.16) and shipped only plugin.json. The Deployment contract section also names skills/<gate>/deploys.json since ADR 0058. Asked for as a hand copy in incubator#1185, which must take the incubator's copy after the ADR 0058 submission lands."
     },
-    "skills/*/SKILL.md": {
+    "skills/gate-*/SKILL.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0058 moved each gate's contract into skills/<gate>/deploys.json, and this SKILL.md now names that file: the GATE_CONTRACT row in a gate, or the shared canonical-source paragraph. Not yet submitted. It also differs by the docs link, which is by-design; once the submission ships, re-record and fold this back into one by-design skills/*/SKILL.md entry."
+    },
+    "skills/register-adopt/SKILL.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0058 moved each gate's contract into skills/<gate>/deploys.json, and this SKILL.md now names that file: the GATE_CONTRACT row in a gate, or the shared canonical-source paragraph. Not yet submitted. It also differs by the docs link, which is by-design; once the submission ships, re-record and fold this back into one by-design skills/*/SKILL.md entry."
+    },
+    "skills/register-install/SKILL.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0058 moved each gate's contract into skills/<gate>/deploys.json, and this SKILL.md now names that file: the GATE_CONTRACT row in a gate, or the shared canonical-source paragraph. Not yet submitted. It also differs by the docs link, which is by-design; once the submission ships, re-record and fold this back into one by-design skills/*/SKILL.md entry."
+    },
+    "skills/register-variance/SKILL.md": {
       "stance": "by-design",
       "why": "Each copy names its own repository's skill map: docs/02-skill-family.md here, docs/skill-relationship-map.md in the incubator, which substitutes it on promotion (docs/05-promotion.md row 8).",
       "normalise": [
         "docs/(?:02-skill-family|skill-relationship-map)\\.md"
       ]
+    },
+    "skills/gate-quality/README.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0058: says this gate's own deploys.json lists its controls, rather than the plugin's. Not yet submitted."
+    },
+    "skills/gate-supply-chain/README.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0058: says this gate's own deploys.json lists its controls, rather than the plugin's. Not yet submitted."
     }
   }
 }
