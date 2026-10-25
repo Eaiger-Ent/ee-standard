@@ -1,8 +1,8 @@
 {
   "plugin": "control-register",
   "marketplace": "EqualExperts/ee-skills",
-  "version": "0.1.14",
-  "commit": "28e8bb1571209f81381f7242076941be7b09ba78",
+  "version": "0.1.16",
+  "commit": "e8f0e47569bec08e47a1df530c2996ddb6af244e",
   "differences": {
     ".claude-plugin/plugin.json": {
       "stance": "by-design",
@@ -13,11 +13,11 @@
     },
     ".claude-plugin/deploys.json": {
       "stance": "owed-upstream",
-      "why": "gate-secrets is at contractVersion 7 here, since #122 (2026-08-31), and 6 as published. skill-update reads this to tell an adopter a gate is stale, so an adopter installing from ee-skills is not told. No amendment has carried the plugin's own manifest files."
+      "why": "gate-secrets is at contractVersion 7 here, since #122 (2026-08-31), and 6 as published. skill-update reads this to tell an adopter a gate is stale, so an adopter installing from ee-skills is not told. Submitted as row 15 (incubator#1177), merged upstream in incubator#1183, and still not published: the incubator's promote.py amend path skips _NATIVE_PRESERVE ({.claude-plugin, data, LICENSE, README.md}) as managed in ee-skills, so no incubator amendment can deliver this file. It bumped the version (0.1.15) and shipped only plugin.json."
     },
     "README.md": {
       "stance": "owed-upstream",
-      "why": "Rewritten here for adopters: what you get, where to start, and `uv run register-check` rather than a bare name (ADR 0020). The published README is the Phase 2 text, which still lists register-check as an unbuilt Phase 3 skill. No amendment has carried the plugin's root README."
+      "why": "Rewritten here for adopters: what you get, where to start, and `uv run register-check` rather than a bare name (ADR 0020). The published README is the Phase 2 text, which still lists register-check as an unbuilt Phase 3 skill. Submitted as row 16 (incubator#1178), merged upstream in incubator#1184, and still not published: the incubator's promote.py amend path skips _NATIVE_PRESERVE ({.claude-plugin, data, LICENSE, README.md}) as managed in ee-skills, so no incubator amendment can deliver this file. It bumped the version (0.1.16) and shipped only plugin.json."
     },
     "skills/*/SKILL.md": {
       "stance": "by-design",

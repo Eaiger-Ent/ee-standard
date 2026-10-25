@@ -1516,7 +1516,13 @@ document that described it.
       stale. The record says why for each. This closes when no difference in it
       is `owed-upstream` and `scripts/record_published.py --check` passes
       against the copy that shipped the fix. Each submission is an act in
-      another organisation's repository and needs its own yes
+      another organisation's repository and needs its own yes. Submissions 15
+      and 16 were merged in the incubator and published as `0.1.15` and
+      `0.1.16` without either file: `promote.py`'s amend path never syncs
+      `.claude-plugin/` or `README.md`, which it treats as managed in
+      `ee-skills`, and the issues closed as `implemented` regardless. An
+      incubator submission cannot close this criterion; the record, re-read at
+      `0.1.16`, says so for each file
 
 ## Phase 7 — What two independent adoptions found
 
