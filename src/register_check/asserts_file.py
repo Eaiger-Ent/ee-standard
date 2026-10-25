@@ -694,7 +694,7 @@ def provenance_stamp_present(
     in the file that exists to prevent second copies.
 
     What this still does not check is *how many* artefacts the gate should have
-    stamped, or at which loci. That list is the plugin's `deploys.json` rather
+    stamped, or at which loci. That list is each gate's `deploys.json` rather
     than the register's, and reading a plugin from the checker is Phase 5's
     sweep. So: each control now proves its own deployment was recorded, and no
     control proves the deployment was complete.

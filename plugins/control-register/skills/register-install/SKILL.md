@@ -379,6 +379,6 @@ and it disagree.
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;
   co-update all nine when the contract version changes. Canonical source: each
-  gate's `contractVersion` in `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/deploys.json`,
+  gate's `contractVersion` in its own `skills/<gate>/deploys.json` (ADR 0058),
   and the stamp grammar and exit codes in `register-check`, in the `ee-standard`
   repository (ADR 0016) — never a skill's restatement of either.

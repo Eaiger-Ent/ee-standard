@@ -2181,7 +2181,7 @@ are different questions, and the second has its own command:
 uv run register-check deployments
 ```
 
-It reads the plugin's `.claude-plugin/deploys.json` — which gate writes what, at
+It reads each gate's `skills/<gate>/deploys.json` — which gate writes what, at
 which **deployment contract** — and the `ee-control:` stamps in your repository,
 and it gives each gate one of six states:
 

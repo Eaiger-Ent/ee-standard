@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "contractVersion": 3,
+  "controls": [
+    "IAC-001"
+  ],
+  "artifacts": [
+    ".pre-commit-config.yaml#iac",
+    ".github/workflows/register-check.yml#iac"
+  ]
+}

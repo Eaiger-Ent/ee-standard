@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 3,
+  "contractVersion": 6,
+  "controls": [
+    "LNT-001",
+    "TYP-001",
+    "TST-001"
+  ],
+  "artifacts": [
+    ".devcontainer/devcontainer.json#customizations.vscode.extensions",
+    ".vscode/settings.json#editor-binding",
+    ".pre-commit-config.yaml#lint",
+    ".pre-commit-config.yaml#typecheck",
+    ".pre-commit-config.yaml#tests",
+    ".github/workflows/register-check.yml#lint",
+    ".github/workflows/register-check.yml#type-check",
+    ".github/workflows/register-check.yml#tests"
+  ]
+}

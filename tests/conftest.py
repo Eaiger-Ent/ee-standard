@@ -136,6 +136,18 @@ def make_repo(root: Path, files: dict[str, str], commit: bool = True) -> Repo:
     return Repo(root)
 
 
+def declared_gates() -> dict[str, dict[str, Any]]:
+    """Each gate's `deploys.json`, keyed by the gate directory that holds it.
+
+    One reader for every test, so the location ADR 0058 chose is spelled once
+    here rather than once per test that needs to know what a gate declares.
+    """
+    return {
+        path.parent.name: json.loads(path.read_text(encoding="utf-8"))
+        for path in sorted((REPO_ROOT / "plugins/control-register").glob("skills/*/deploys.json"))
+    }
+
+
 def gate_contract(gate: str) -> str:
     """The deployment contract the installed plugin declares for one gate.
 
@@ -143,12 +155,7 @@ def gate_contract(gate: str) -> str:
     existing at all: the number has one home, and a test that repeated it would
     keep passing over a bump nobody carried into the templates.
     """
-    sidecar = json.loads(
-        (REPO_ROOT / "plugins/control-register/.claude-plugin/deploys.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    return str(sidecar["gates"][gate]["contractVersion"])
+    return str(declared_gates()[gate]["contractVersion"])
 
 
 @pytest.fixture

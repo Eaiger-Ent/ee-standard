@@ -95,4 +95,4 @@ carry a value the register pins or a fact about this repository's own posture.
 | `plugins/control-register/reference/` | Prose more than one skill must follow, shipped once ([ADR 0036](adr/0036-shared-skill-prose-has-one-home.md)) |
 | `plugins/control-register/templates/devcontainer/` | The devcontainer an adopter copies |
 | `plugins/control-register/templates/sweep/` | The scheduled sweep an adopter copies |
-| `plugins/control-register/.claude-plugin/deploys.json` | One deployment contract **per gate**, not per plugin |
+| `plugins/control-register/skills/gate-*/deploys.json` | One deployment contract **per gate**, in the gate's own directory ([ADR 0058](adr/0058-a-gate-declares-its-contract-in-its-own-directory.md)) |

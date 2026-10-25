@@ -1525,7 +1525,13 @@ document that described it.
       `0.1.16`, says so for each file. The two halves now take different routes.
       `deploys.json` moves into each gate's own directory, which promotion
       does copy ([ADR 0058](adr/0058-a-gate-declares-its-contract-in-its-own-directory.md),
-      Accepted 2026-10-25; not yet implemented). The README is asked for as a hand copy in incubator#1185
+      Accepted 2026-10-25, implemented here; the six files reach the
+      incubator as one amendment, which needs its own yes). Release the checker
+      only after `ee-skills` publishes them: it refuses a plugin that has only
+      the old file, so an earlier release gives an adopter installing from
+      `ee-skills` an exit `2` from `register-check deployments`. The README is
+      asked for as a hand copy in incubator#1185, which must take the
+      incubator's copy after that amendment lands
 
 ## Phase 7 — What two independent adoptions found
 

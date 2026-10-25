@@ -328,7 +328,7 @@ see § What the incubator actually holds rather than a second description here.
 | --- | --- |
 | `LICENSE` | A copy of the repo-root Apache-2.0 file. `check_plugin_license.py` fails without it. |
 | `.claude-plugin/plugin.json` | Name, version, `dependencies`. |
-| `.claude-plugin/deploys.json` | The deployment contract sidecar — see [`02-skill-family.md`](02-skill-family.md). |
+| `skills/<gate>/deploys.json` | Each gate's deployment contract — see [`02-skill-family.md`](02-skill-family.md) and [ADR 0058](adr/0058-a-gate-declares-its-contract-in-its-own-directory.md). Not `.claude-plugin/`, which an amendment never syncs. |
 | `marketplace.json` entry | Category from `categories.json`. |
 | `readme-meta.json` entry | `readme_summary`, `internal`. A sidecar because `claude plugin validate` rejects unknown keys in `marketplace.json`. |
 | README Plugins section | Generated. Never hand-edited between the `BEGIN`/`END` markers — change the source and run `render_readme.py`. |

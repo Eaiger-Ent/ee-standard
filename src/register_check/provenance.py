@@ -20,9 +20,10 @@ versions alone cannot tell whether anything they hold is affected; with the
 contract they can.
 
 `gate-contract` is the same argument about the *gate* rather than the register
-(ADR 0038): `gates.<gate>.contractVersion` from the plugin's `deploys.json`,
-read by the gate as it writes. It moves only when what that gate writes changes,
-so a documentation release of the plugin recommends nothing. The skill version
+(ADR 0038): `contractVersion` from the `deploys.json` in the gate's own skill
+directory (ADR 0058), read by the gate as it writes. It moves only when what
+that gate writes changes, so a documentation release of the plugin recommends
+nothing. The skill version
 beside it cannot serve: eight skills share one `plugin.json` version, so it is
 not a per-gate fact at all.
 

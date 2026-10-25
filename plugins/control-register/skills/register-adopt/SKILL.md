@@ -23,7 +23,7 @@ that is the thing to say.
 **Three rules govern everything below.**
 
 **The register decides.** Which controls exist, which apply, and which gate
-deploys each are read from `controls.yaml` and from the plugin's `deploys.json`.
+deploys each are read from `controls.yaml` and from each gate's `deploys.json`.
 Nothing here holds a list of controls or a list of gates. A register that grows a
 control this skill has never heard of must still be planned and dispatched.
 
@@ -124,16 +124,17 @@ For every control in the register, record:
 | `GATE` | the control's `deployed_by`, or `—` where the register names none |
 | `VERDICT` | its verdict in the starting run |
 
-Then read the plugin's `deploys.json` for each gate named:
+Then read `${CLAUDE_PLUGIN_ROOT}/skills/<GATE>/deploys.json` for each gate named
+(ADR 0058):
 
 | State var | From |
 | --- | --- |
-| `ARTIFACTS` | `gates.<GATE>.artifacts` — what that gate writes |
-| `CONTRACT` | `gates.<GATE>.contractVersion` |
+| `ARTIFACTS` | `artifacts` — what that gate writes |
+| `CONTRACT` | `contractVersion` |
 
 ### Read what is already deployed
 
-Ask the checker, which reads the plugin's `deploys.json` and the repository's
+Ask the checker, which reads each gate's `deploys.json` and the repository's
 stamps through the one parser everything else reads them through:
 
 ```bash
@@ -169,7 +170,7 @@ the plan reads as a control that does not apply.
 | --- | --- | --- |
 | **deploy** | `deployed_by` names a gate in this plugin | the gate's name |
 | **dispatch elsewhere** | `deployed_by` names a skill this plugin does not contain — DOC-001 is `lint-md`'s | the skill's name, and that it is another plugin's |
-| **checked, not deployed** | `deploys.json` lists the control under a gate, and the control has no `deployed_by` | the gate that verifies it, and that nothing is written for it |
+| **checked, not deployed** | a gate's `deploys.json` lists the control, and the control has no `deployed_by` | the gate that verifies it, and that nothing is written for it |
 | **manual** | neither | a pointer to `docs/08-adopting.md` |
 
 **The third row is not a gap in the register.** SEC-003 — *CI carries no
@@ -427,7 +428,7 @@ Canonical source for the shared standards below:
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;
   co-update all nine when the contract version changes. Canonical source: each
-  gate's `contractVersion` in `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/deploys.json`,
+  gate's `contractVersion` in its own `skills/<gate>/deploys.json` (ADR 0058),
   and the stamp grammar and exit codes in `register-check`, in the `ee-standard`
   repository (ADR 0016) — never a skill's restatement of either.
 - **Unattended `--yes`** (`reference/unattended.md`) — shared with

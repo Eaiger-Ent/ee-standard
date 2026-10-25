@@ -26,7 +26,7 @@ is the first instance.
 
 The grouping is visible in the register rather than only here: all three
 controls carry `deployed_by: gate-quality`, each reads back its own provenance
-stamp, and the plugin's `deploys.json` lists them under this gate with a
+stamp, and this gate's own `deploys.json` lists them with a
 contract version of their own.
 
 *Each* is the operative word. The stamp read-back matches on the control, not
