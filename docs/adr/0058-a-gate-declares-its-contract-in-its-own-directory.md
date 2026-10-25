@@ -1,6 +1,6 @@
 # ADR 0058: A Gate Declares Its Deployment Contract in Its Own Skill Directory
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-25
 **Revision:** 1
 
