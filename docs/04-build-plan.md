@@ -1529,9 +1529,10 @@ document that described it.
       incubator as one amendment, which needs its own yes). Release the checker
       only after `ee-skills` publishes them: it refuses a plugin that has only
       the old file, so an earlier release gives an adopter installing from
-      `ee-skills` an exit `2` from `register-check deployments`. The README is
-      asked for as a hand copy in incubator#1185, which must take the
-      incubator's copy after that amendment lands
+      `ee-skills` an exit `2` from `register-check deployments`. The README
+      reached `ee-skills` by hand (incubator#1185, applied as ee-skills#1435);
+      only its ADR 0058 paragraph is still owed, and it needs a second hand
+      copy unless incubator#1186, the `promote.py` root cause, lands first
 
 ## Phase 7 — What two independent adoptions found
 

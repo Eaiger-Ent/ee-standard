@@ -2,7 +2,7 @@
   "plugin": "control-register",
   "marketplace": "EqualExperts/ee-skills",
   "version": "0.1.16",
-  "commit": "e8f0e47569bec08e47a1df530c2996ddb6af244e",
+  "commit": "520459e7f7704d57e365afb93804d0e84d4f781a",
   "differences": {
     ".claude-plugin/plugin.json": {
       "stance": "by-design",
@@ -21,7 +21,7 @@
     },
     "README.md": {
       "stance": "owed-upstream",
-      "why": "Rewritten here for adopters: what you get, where to start, and `uv run register-check` rather than a bare name (ADR 0020). The published README is the Phase 2 text, which still lists register-check as an unbuilt Phase 3 skill. Submitted as row 16 (incubator#1178), merged upstream in incubator#1184, and still not published: the incubator's promote.py amend path skips _NATIVE_PRESERVE ({.claude-plugin, data, LICENSE, README.md}) as managed in ee-skills, so no incubator amendment can deliver this file. It bumped the version (0.1.16) and shipped only plugin.json. The Deployment contract section also names skills/<gate>/deploys.json since ADR 0058. Asked for as a hand copy in incubator#1185, which must take the incubator's copy after the ADR 0058 submission lands."
+      "why": "Rewritten here for adopters (submission 16, incubator#1178, merged upstream in incubator#1184). promote.py's amend path skips _NATIVE_PRESERVE ({.claude-plugin, data, LICENSE, README.md}) as managed in ee-skills, so the incubator's copy reached ee-skills only by hand: incubator#1185, applied as ee-skills#1435 (11280c1). The one difference left is the Deployment contract paragraph, which names skills/<gate>/deploys.json since ADR 0058. It goes upstream with the ADR 0058 submission, and needs a second hand copy unless incubator#1186 (the promote.py root cause) lands first."
     },
     "skills/gate-*/SKILL.md": {
       "stance": "owed-upstream",
