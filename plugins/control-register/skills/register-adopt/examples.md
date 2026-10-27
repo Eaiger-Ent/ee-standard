@@ -19,9 +19,10 @@ A full adoption run over a repository that had none of the standard deployed:
   answer, and why
 - what is still owed by a human (platform acts) is listed
 - the commit lists the control IDs deployed and was made only after the verify
-  step; it is not pushed
+  step; it is not pushed. The one push is the earlier gates' work, landed before
+  `gate-repo` protects the branch (Step 4)
 
-Output matches the **Adopted** block in `SKILL.md` § Output.
+Output matches the **Adopted** block in `output-templates.md`.
 
 The **Cancelled** block is equally strong when confirmation is declined: the
 plan was shown and nothing was written.
@@ -39,4 +40,5 @@ plan was shown and nothing was written.
   passed — the **Failed** block exists precisely to say how many gates ran, that
   their changes sit uncommitted in the working tree, and that nothing was
   committed or pushed
-- pushing. This skill commits and stops; the push is a human's decision
+- pushing Step 6's commit. Apart from landing the earlier gates' work before
+  `gate-repo` (Step 4), this skill commits and stops; the push is a human's decision

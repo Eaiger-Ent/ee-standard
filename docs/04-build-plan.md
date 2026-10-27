@@ -1505,7 +1505,7 @@ document that described it.
       skill and writing a second DOC-001 gate here were both rejected in the
       ADR, and `tests/test_adopter_guide.py` fails a guide that names a
       marketplace the register does not
-- [ ] **Nothing in `control-register` is owed to the published copy.** Added
+- [x] **Nothing in `control-register` is owed to the published copy.** Added
       2026-10-23, when the prose claim that the two copies matched "apart from
       the docs link" became a record, `docs/promotion/published.json` and its digests, held by
       `tests/test_published_copy.py`. Writing the record falsified the claim.
@@ -1532,7 +1532,27 @@ document that described it.
       `ee-skills` an exit `2` from `register-check deployments`. The README
       reached `ee-skills` by hand (incubator#1185, applied as ee-skills#1435);
       only its ADR 0058 paragraph is still owed, and it needs a second hand
-      copy unless incubator#1186, the `promote.py` root cause, lands first
+      copy unless incubator#1186, the `promote.py` root cause, lands first.
+      **Closed 2026-10-27 at `control-register@0.1.20`**, verified in the
+      devcontainer by `scripts/record_published.py --check` (`PASS`) and
+      `tests/test_published_copy.py`. ADR 0058 went up as eight amendments,
+      incubator#1196–#1201, #1209 and #1210 ([`05-promotion.md`](05-promotion.md)
+      row 17), and shipped in `0.1.19` with the README paragraph, since #1186
+      had landed. `0.1.20` deleted the plugin-wide `.claude-plugin/deploys.json`
+      (incubator#1215, #1217). What the incubator's review added on the way was
+      taken back, so the record now declares two differences, both `by-design`:
+      the manifest's version line and the docs link each `SKILL.md` names
+- [ ] **The released checker reads what `ee-skills` publishes.** Added
+      2026-10-27. The criterion above ordered the release *after* `ee-skills`
+      published the per-gate files; `ee-skills` went further and deleted the old
+      file in `0.1.20`, before any release. So `register-check@v0.9.0`, the ref
+      `tools.register-check.install` names, exits `2` from `register-check
+      deployments --plugin <control-register@0.1.20>` (*ships no
+      .claude-plugin/deploys.json*), and against `0.1.19` reports
+      `gate-secrets` defective off the old file's contract 6. Both were run in
+      the devcontainer from a `v0.9.0` worktree. An adopter installing today
+      is on both. This closes when a tag that reads `skills/<gate>/deploys.json`
+      is cut by the release procedure and the register names it
 
 ## Phase 7 — What two independent adoptions found
 

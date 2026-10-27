@@ -113,4 +113,4 @@ stated rather than glossed.
 
 - [GitHub — About rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) — why `gate-repo` runs last and confirms each call on its own
 - `reference/unattended.md` — what `--yes` answers and what it must never answer
-- ADRs 0032, 0036, 0038, 0039 and 0057, and `docs/08-adopting.md`, in the `ee-standard` repository
+- ADRs 0032, 0036, 0038, 0039, 0057 and 0058, and `docs/08-adopting.md`, in the `ee-standard` repository

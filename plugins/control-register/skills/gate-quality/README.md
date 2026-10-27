@@ -4,6 +4,14 @@ Deploys LNT-001 — *lint and format violations block the merge* — TYP-001 —
 *static type checking runs in strict mode and blocks* — and TST-001 — *a failing
 test fails the build* — in whichever repository you point it at.
 
+## What it does
+
+It pins the register's linter and type checker, and makes their configuration
+say what the controls claim. It wires them, and the test command the repository
+picks, at the editor, pre-commit and CI loci. It then verifies all three
+controls through `register-check`. It is run as `/gate-quality`, or dispatched
+by `/register-adopt`.
+
 ## What it writes
 
 | Locus | Artefact | Contents |
@@ -16,7 +24,9 @@ Three templates live in `templates/` and carry the placeholders the skill fills
 from the register: `editor-extensions.json`, `precommit-hooks.yaml` and
 `ci-steps.yaml`.
 
-## Why three controls and one skill
+## Approach
+
+### Why three controls and one skill
 
 Because they share two files. LNT-001, TYP-001 and TST-001 all reach the same
 `.pre-commit-config.yaml` and the same gating workflow, and three skills writing
@@ -33,7 +43,7 @@ contract version of their own.
 on this skill's name, so recording the CI steps and forgetting the editor locus
 fails LNT-001 rather than passing on TST-001's stamp.
 
-## Why it takes no opinions
+### Why it takes no opinions
 
 Which linter, which type checker, where each keeps its configuration, which key
 turns strictness on, which editor extension serves it, how every locus invokes
@@ -47,7 +57,7 @@ The consequence is worth stating plainly: **this skill cannot deploy without a
 register.** That is deliberate. There is no default to fall back on, because a
 default is a decision nobody recorded.
 
-## The two values it does not simply copy
+### The two values it does not simply copy
 
 **The hooks' file filter** is derived from the register's `source_globs` rather
 than picked from pre-commit's `types:` vocabulary. `source_globs` is the set of
@@ -59,7 +69,7 @@ the spellings it accepts for each ecosystem, and the repository picks one — so
 the skill asks, offering exactly that set, rather than choosing. If a gating
 step already runs one of them, that is the answer and nothing is asked.
 
-## Why it verifies through `register-check`
+### Why it verifies through `register-check`
 
 The last step runs
 `register-check run --control LNT-001 --control TYP-001 --control TST-001`,
@@ -81,3 +91,9 @@ flag cannot be reached at all, which is preflight P9 and is what stopped the
 front door at Step 0 in Phase 4. The reasoning, and what guards the platform
 mutations instead, is
 ADR 0035.
+
+## References
+
+- [pre-commit](https://pre-commit.com/) — the framework the local hooks are
+  written for
+- ADRs 0035 and 0058 in the `ee-standard` repository

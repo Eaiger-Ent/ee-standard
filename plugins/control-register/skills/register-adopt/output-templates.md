@@ -51,3 +51,15 @@ Trigger: **Cancel** at Step 3.
 ```text
 register-adopt showed the plan and wrote nothing.
 ```
+
+## Blocked
+
+Trigger: a stop before Step 2 — `register-install` did not install the checker, the
+register is missing or fails to load, `--repo` is not a git repository, or a stamp
+claims a contract ahead of the installed gate.
+
+```text
+register-adopt stopped before planning: <the cause, and the checker's or loader's message verbatim>.
+Nothing has been written, committed or pushed.
+Next: <the act that clears it — install register-check, fix the register, run in a git repository, or report the AHEAD stamp>.
+```
