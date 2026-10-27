@@ -25,17 +25,21 @@ upgrade is a reviewable change like any other.
 
 **Find out where yours came from first.** The plugin is published to two
 marketplaces, each install is a separate copy, and both can be installed at once.
-Update the copy you have, and do not add the other:
+Update the copy you have, and do not add the other.
 
-```bash
-claude plugin list | grep control-register
+**Every command in this step runs inside Claude Code**, so you never leave the
+session. The plugin commands take a `/plugin` prefix there. A shell command takes
+a `!` prefix, which runs it in the session and shows the output:
+
+```text
+! claude plugin list | grep control-register
 ```
 
 This must print **one** row. Update that one and no other:
 
 | The row ends | Run |
 | --- | --- |
-| `@ee-standard` | `claude plugin marketplace update ee-standard`, then `claude plugin update control-register@ee-standard` |
+| `@ee-standard` | `/plugin marketplace update ee-standard`, then `/plugin update control-register@ee-standard` |
 | `@ee-skills` | `/ee-skills-manage:skill-update` in Claude Code. It updates every plugin from that marketplace, and reports which gates are owed a re-run |
 
 **Two rows means two copies**, and every skill is registered twice. Keep one
@@ -43,14 +47,14 @@ and uninstall the other. `ee-standard` is the copy this guide assumes, and it
 gets each release first, while `ee-skills` gets it when the release is promoted.
 To keep `ee-standard`:
 
-```bash
-claude plugin uninstall control-register@ee-skills
+```text
+/plugin uninstall control-register@ee-skills
 ```
 
-Then restart Claude Code, or run `/reload-plugins`. The skills you invoke next
+Then run `/reload-plugins`, or restart Claude Code. The skills you invoke next
 are the new release's.
 
-**Done when** `claude plugin list | grep control-register` prints one row, at a
+**Done when** `! claude plugin list | grep control-register` prints one row, at a
 version newer than the one you had.
 
 ## 2 — See what changed
