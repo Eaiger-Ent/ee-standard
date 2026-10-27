@@ -4,6 +4,7 @@ A control register for Equal Experts repositories, the skills that deploy it, an
 the checker that audits it.
 
 **Adopting this into your repository?** → [`START-HERE.md`](START-HERE.md)
+**Already adopted, and a new release is out?** → [`UPGRADING.md`](UPGRADING.md)
 **Want to know how it works?** → [`HOW-IT-WORKS.md`](HOW-IT-WORKS.md)
 **Working on this repository?** → [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md)
 
@@ -77,6 +78,10 @@ Two starting points, depending on who you are.
 take for you — repository visibility, branch rulesets, push protection, and the
 dependency-update bots — because those are the ones discovered late and paid for
 twice. Every step carries the evidence that shows it worked.
+
+**Upgrading a repository that has already adopted** → [`UPGRADING.md`](UPGRADING.md).
+Six steps: update the plugin, read what changed, move your register's pin,
+move the checker, re-run the gates that are owed, and land it as one pull request.
 
 **Working on this repository** → [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md).
 

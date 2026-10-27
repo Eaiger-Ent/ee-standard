@@ -150,6 +150,7 @@ for where anything lives. Both are more current than any list kept here.
 | --- | --- |
 | `HOW-IT-WORKS.md` | The mechanism, one screen |
 | `START-HERE.md` | Adopting the standard, six steps |
+| `UPGRADING.md` | Moving an adopted repository to a new release |
 | `docs/00-concepts.md` | The vocabulary every other document assumes |
 | `docs/01-register-schema.md` | Field-by-field spec of `controls.yaml` |
 | `docs/04-build-plan.md` | The only list of outstanding work |

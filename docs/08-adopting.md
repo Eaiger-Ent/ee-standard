@@ -2178,8 +2178,14 @@ whether the artefacts satisfying it are what the gate would write today. Those
 are different questions, and the second has its own command:
 
 ```bash
-uv run register-check deployments
+plugin=$(ls -d "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/ee-standard/control-register/*/ | sort -V | tail -1)
+uv run register-check deployments --plugin "$plugin"
 ```
+
+**Name the plugin.** A skill runs with `CLAUDE_PLUGIN_ROOT` set, and a shell does
+not, so a bare `register-check deployments` in your repository exits `2` with
+*no skills/\*/deploys.json found*. The first line finds the newest installed
+copy of the plugin.
 
 It reads each gate's `skills/<gate>/deploys.json` — which gate writes what, at
 which **deployment contract** — and the `ee-control:` stamps in your repository,
