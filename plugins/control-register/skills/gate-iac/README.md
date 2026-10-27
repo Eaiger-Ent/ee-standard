@@ -3,6 +3,13 @@
 Deploys IAC-001 — *infrastructure code is statically analysed before apply* —
 in whichever repository you point it at.
 
+## What it does
+
+It checks that the register pins both infrastructure analysers, wires one hook
+that runs IAC-001 at pre-commit and in CI, and migrates any hook it replaces.
+It then verifies the control through `register-check`. It is run as `/gate-iac`,
+or dispatched by `/register-adopt`.
+
 ## What it writes
 
 | Locus | Artefact | Contents |
@@ -13,7 +20,9 @@ in whichever repository you point it at.
 Two templates live in `templates/` and carry the placeholders the skill fills:
 `precommit-hook.yaml` and `ci-steps.yaml`.
 
-## Why one hook runs two analysers
+## Approach
+
+### Why one hook runs two analysers
 
 IAC-001's verify blocks are `checkov --directory . --compact --quiet` and
 `tflint --recursive`. The hook runs the **control**, and the control runs both:
@@ -30,7 +39,7 @@ It also means the arguments stay the register's. `--compact --quiet` and
 `--recursive` are in `controls.yaml` and this skill never rewrites them: a
 control whose arguments a skill chooses is a control nobody can review.
 
-## The verdict this gate is most likely to produce
+### The verdict this gate is most likely to produce
 
 **`UNCLASSIFIED`, not `PASS`.** IAC-001 names two analysers and this standard's
 register pins neither, because this repository has no `*.tf` to analyse. An
@@ -44,7 +53,7 @@ What closes it is a `tools.checkov` and `tools.tflint` entry in **your**
 register, naming the loci you install them at — your register records your own
 files (`08-adopting.md` § 3.5).
 
-## Exit `1` has two causes and they are not the same
+### Exit `1` has two causes and they are not the same
 
 - A failing wiring or stamp block is a **failed deployment**.
 - A failing `checkov` or `tflint` block is a **successful deployment** finding
@@ -76,3 +85,12 @@ flag cannot be reached at all, which is preflight P9 and is what stopped the
 front door at Step 0 in Phase 4. The reasoning, and what guards the platform
 mutations instead, is
 ADR 0035.
+
+## References
+
+- [Checkov](https://www.checkov.io/) — the static analyser behind
+  `checkov --directory .`
+- [TFLint](https://github.com/terraform-linters/tflint) — the linter behind
+  `tflint --recursive`
+- ADRs 0016, 0019, 0035 and 0058, and `docs/08-adopting.md`, in the
+  `ee-standard` repository

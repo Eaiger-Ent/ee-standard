@@ -47,7 +47,7 @@ enforcement.
   rather than on a predicate that never looked, and there is no install step to
   write. SUP-003 still applies if there are workflows — say so, and deploy it
   alone.
-- You want every gate, not these three. Use `register-adopt`, which plans across
+- You want every gate, not these four. Use `register-adopt`, which plans across
   the whole register and dispatches here.
 
 ## Inputs
@@ -339,9 +339,10 @@ Report the verdict as given:
 | `2` | Usage error, or the target is not a repository | Fix the invocation; nothing was verified |
 | `3` | No violation, but something could not be verified | Say which block was skipped and why |
 
-Exit `0` is the expected result. None of these three controls declares a
+Exit `0` is the expected result. None of these four controls declares a
 `remote` locus, so nothing is waiting on Phase 3 and a `3` means a block
-declared itself partial — read which, rather than rounding up.
+declared itself partial — offline, SUP-004's published-digest block is the
+likely one — read which, rather than rounding up.
 
 ---
 

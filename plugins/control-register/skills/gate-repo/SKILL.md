@@ -438,6 +438,7 @@ Read `${CLAUDE_SKILL_DIR}/output-templates.md` and emit the block whose trigger 
 | Condition | Action |
 | ----------- | -------- |
 | No register found or it fails to load | Stop. Emit **Aborted** |
+| `--repo` has no GitHub remote, or more than one naming different `<owner>/<name>` | None: stop, emit **Aborted**. Several: ask which repository to protect; never pick a remote silently |
 | No `administration: write` on the token | Stop **before writing the record**. Say which permission is missing and who grants it |
 | A `403` that `reference/plan-limits.md` classifies as the plan | Write the record, make no call, emit **Recorded, not applied (plan limit)** (§2P) |
 | The user chooses **Record only** | Write the file, report CI-001 as not deployed, and do not soften that |

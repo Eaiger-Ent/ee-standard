@@ -4,6 +4,13 @@ Deploys BLD-001 — *every container image stage ends as a non-root user* — an
 DEV-001 — *devcontainer features are version-pinned* — in whichever repository
 you point it at.
 
+## What it does
+
+It makes the container's user an explicit non-root `remoteUser`, pins the image
+by digest and every feature in the lock file, and wires one checker hook that
+enforces both controls at pre-commit and in CI. It then verifies both through
+`register-check`. It is run as `/gate-build`, or dispatched by `/register-adopt`.
+
 ## What it writes
 
 | Locus | Artefact | Contents |
@@ -17,7 +24,9 @@ you point it at.
 Three templates live in `templates/` and carry the placeholders the skill
 fills: `devcontainer.json`, `precommit-hook.yaml` and `ci-steps.yaml`.
 
-## Why two controls and one skill
+## Approach
+
+### Why two controls and one skill
 
 Because they read the same file. BLD-001 wants a user and DEV-001 wants two
 pins, and both are keys in `devcontainer.json`. Two skills editing one file in
@@ -27,7 +36,7 @@ One hook covers both loci and carries **two** stamps. The read-back matches on
 the control being evaluated, so a hook stamped for BLD-001 alone leaves DEV-001's
 pre-commit locus unrecorded even though the same command enforces it.
 
-## It pins what it finds; it does not choose
+### It pins what it finds; it does not choose
 
 The shipped **template** decides which image and which features a repository
 starts from, and an adopter whose stack it does not fit chooses for themselves.
@@ -41,7 +50,7 @@ which is a worse failure than the one being fixed.
 The template lives at `plugins/control-register/templates/devcontainer/`. It
 produces the initial `.devcontainer/`; this gate pins it afterwards.
 
-## The two half-states it exists to catch
+### The two half-states it exists to catch
 
 **A lock file covering some features.** Phase 0.5's own exit criterion was
 re-opened over exactly this: a lock file pinning three of four features reads as
@@ -56,7 +65,7 @@ neither.
 may become root on any digest bump. Non-root by luck is not the property BLD-001
 states, and this was a JSON key nothing verified until register contract 7.
 
-## `.devcontainer/setup.sh` is its file, not its content
+### `.devcontainer/setup.sh` is its file, not its content
 
 This gate creates `setup.sh` when the devcontainer has none. It does not own
 what other gates install there: `gate-secrets` writes and stamps the scanner's
@@ -86,3 +95,9 @@ flag cannot be reached at all, which is preflight P9 and is what stopped the
 front door at Step 0 in Phase 4. The reasoning, and what guards the platform
 mutations instead, is
 ADR 0035.
+
+## References
+
+- [Development Container specification — lockfiles](https://containers.dev/implementors/features/#lockfile) — what `devcontainer-lock.json` pins
+- ADRs 0016, 0035, 0037, 0038 and 0058, and `docs/08-adopting.md`, in the
+  `ee-standard` repository

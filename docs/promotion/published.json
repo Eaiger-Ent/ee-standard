@@ -1,8 +1,8 @@
 {
   "plugin": "control-register",
   "marketplace": "EqualExperts/ee-skills",
-  "version": "0.1.16",
-  "commit": "520459e7f7704d57e365afb93804d0e84d4f781a",
+  "version": "0.1.20",
+  "commit": "e9f120a067b03d483e5cf8d23be02892e9fd3e85",
   "differences": {
     ".claude-plugin/plugin.json": {
       "stance": "by-design",
@@ -11,44 +11,12 @@
         "\"version\": \"[^\"]*\""
       ]
     },
-    ".claude-plugin/deploys.json": {
+    "skills/*/SKILL.md": {
       "stance": "by-design",
-      "why": "Deleted here by ADR 0058, which moved each gate's contract into skills/<gate>/deploys.json. ee-skills keeps this file because the incubator's promote.py never syncs .claude-plugin/ on an amendment, so it stays at gate-secrets contract 6 indefinitely. Nothing reads it: register-check refuses a plugin that has only this file. Removing it upstream would be a hand change, and is not owed."
-    },
-    "skills/*/deploys.json": {
-      "stance": "owed-upstream",
-      "why": "ADR 0058: each gate declares its contract in its own directory, because a promotion copies skill directories wholesale and never copies .claude-plugin/. Not yet submitted; one incubator amendment carries all six."
-    },
-    "README.md": {
-      "stance": "owed-upstream",
-      "why": "Rewritten here for adopters (submission 16, incubator#1178, merged upstream in incubator#1184). promote.py's amend path skips _NATIVE_PRESERVE ({.claude-plugin, data, LICENSE, README.md}) as managed in ee-skills, so the incubator's copy reached ee-skills only by hand: incubator#1185, applied as ee-skills#1435 (11280c1). The one difference left is the Deployment contract paragraph, which names skills/<gate>/deploys.json since ADR 0058. It goes upstream with the ADR 0058 submission, and needs a second hand copy unless incubator#1186 (the promote.py root cause) lands first."
-    },
-    "skills/gate-*/SKILL.md": {
-      "stance": "owed-upstream",
-      "why": "ADR 0058 moved each gate's contract into skills/<gate>/deploys.json, and this SKILL.md now names that file: the GATE_CONTRACT row in a gate, or the shared canonical-source paragraph. Not yet submitted. It also differs by the docs link, which is by-design; once the submission ships, re-record and fold this back into one by-design skills/*/SKILL.md entry."
-    },
-    "skills/register-adopt/SKILL.md": {
-      "stance": "owed-upstream",
-      "why": "ADR 0058 moved each gate's contract into skills/<gate>/deploys.json, and this SKILL.md now names that file: the GATE_CONTRACT row in a gate, or the shared canonical-source paragraph. Not yet submitted. It also differs by the docs link, which is by-design; once the submission ships, re-record and fold this back into one by-design skills/*/SKILL.md entry."
-    },
-    "skills/register-install/SKILL.md": {
-      "stance": "owed-upstream",
-      "why": "ADR 0058 moved each gate's contract into skills/<gate>/deploys.json, and this SKILL.md now names that file: the GATE_CONTRACT row in a gate, or the shared canonical-source paragraph. Not yet submitted. It also differs by the docs link, which is by-design; once the submission ships, re-record and fold this back into one by-design skills/*/SKILL.md entry."
-    },
-    "skills/register-variance/SKILL.md": {
-      "stance": "by-design",
-      "why": "Each copy names its own repository's skill map: docs/02-skill-family.md here, docs/skill-relationship-map.md in the incubator, which substitutes it on promotion (docs/05-promotion.md row 8).",
+      "why": "Each copy names its own repository's skill map: docs/02-skill-family.md here, docs/skill-relationship-map.md in the incubator, which substitutes it on promotion (docs/05-promotion.md row 8). Nothing else may differ: ADR 0058's SKILL.md changes shipped in 0.1.19, and what the incubator's review added there was taken back here.",
       "normalise": [
         "docs/(?:02-skill-family|skill-relationship-map)\\.md"
       ]
-    },
-    "skills/gate-quality/README.md": {
-      "stance": "owed-upstream",
-      "why": "ADR 0058: says this gate's own deploys.json lists its controls, rather than the plugin's. Not yet submitted."
-    },
-    "skills/gate-supply-chain/README.md": {
-      "stance": "owed-upstream",
-      "why": "ADR 0058: says this gate's own deploys.json lists its controls, rather than the plugin's. Not yet submitted."
     }
   }
 }

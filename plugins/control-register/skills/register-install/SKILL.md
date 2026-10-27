@@ -88,6 +88,14 @@ Nothing is written in this phase.
 
 ### Read the address from the register
 
+Check both paths first, and if either is missing, stop and name it — the script
+below would otherwise end in a traceback rather than a reason:
+
+```bash
+test -d "$REPO" || echo "NO REPO: $REPO"
+test -f "$REGISTER" || echo "NO REGISTER: $REGISTER"
+```
+
 ```bash
 read -r REPOSITORY REF <<<"$(uv run --no-project --with pyyaml python \
   "${CLAUDE_SKILL_DIR}/scripts/read-install-address.py" "$REGISTER")"
@@ -123,6 +131,12 @@ Match what is present against `ecosystems.<name>.manifest` and
 `.lockfiles` in the register. Never ask which ecosystem this is — a repository
 that declares its way into one is a repository whose predicate was not
 evaluated, which is the thing `applies_to` exists to prevent.
+
+**More than one match is a stop, not a choice.** Two manifests, or two
+lockfiles of one ecosystem (`uv.lock` beside `poetry.lock`), mean the repository
+records its dependencies two ways. Name every file found and stop: picking one
+would decide which tool the team uses, and a pin recorded in the lockfile
+nobody reads is not a pin.
 
 Then read two commands out of that ecosystem:
 
@@ -250,7 +264,8 @@ grep -n 'register-check' "$REPO"/<lockfile> || echo "NOT LOCKED"
 ```
 
 `NOT LOCKED` is a failure, not a warning. It is the state in which every locus
-works on the machine that ran the install and on no other.
+works on the machine that ran the install and on no other. The manifest is
+already written by now, so emit **Partial**, not **Stopped**.
 
 **Do not run the full audit here.** `register-check run` over a repository with
 no gates deployed reports failures for every control, which reads as this skill
@@ -274,7 +289,7 @@ that runs on `push` or `pull_request`:
 | --- | --- |
 | The job exists | Add the step as its **last** step, after every gate's own. Say so in the plan |
 | The job carries a step that already runs the checker with no `--control` | Write nothing. Say which step already does it — a second full run is the same verdict twice |
-| A gating workflow exists, without that job | Stop this step and report it: the register requires a check no job produces, which CI-001 already reports, and choosing a job for it is the team's decision |
+| A gating workflow exists, without that job | Stop this step, emit **Partial**, and report it: the register requires a check no job produces, which CI-001 already reports, and choosing a job for it is the team's decision |
 | No gating workflow exists | **Defer**, write nothing to CI, and say so: the workflow, its frozen install and its pinned uv are the gates' to write, and a workflow written here would be a second copy of their setup. `register-adopt` re-runs this skill after the gates for exactly this case |
 
 **Nothing written here may carry `continue-on-error`**, and the script is the
@@ -316,7 +331,17 @@ Nothing was written. Verified: <runner> register-check --version → <version>.
 register-install moved register-check from <old ref> to <new ref> in <repo>.
 ```
 
-**Stopped:**
+**Partial** — Step 3 wrote the pin, then Step 4 found it `NOT LOCKED` or Step 5
+found a gating workflow without the required check's job:
+
+```text
+register-install wrote register-check @ git+<repository>@<ref> to <manifest>, then stopped.
+  not done:    <locking — the lockfile does not record the pin | the Conformance step — <workflow> has no job <id>>
+  next:        <run the ecosystem's lock command | add the required check's job, then re-run /register-install>
+Not committed. Revert <manifest> to undo, or fix the above and re-run.
+```
+
+**Stopped** — any stop before Step 3, so nothing was written:
 
 ```text
 register-install wrote nothing: <the reason, verbatim>.
@@ -326,12 +351,14 @@ register-install wrote nothing: <the reason, verbatim>.
 
 | Condition | Action |
 | ----------- | -------- |
+| `--repo` is not a directory, or the register file does not exist | Stop before reading anything, naming the missing path |
+| More than one manifest, or more than one of an ecosystem's lockfiles, is present | Stop and name every file found. Never pick one |
 | The register has no `tools.register-check.install` | Stop. Name the contract the register declares and the contract this needs (29). Never guess an address |
 | The ecosystem has no `git_dependency` | Stop. Say which ecosystem, and that no spelling for a git dependency exists for it in this register |
 | No lockfile matches the ecosystem's list | Stop. There is nowhere to record the pin, and an unrecorded pin is not one |
 | This repository *is* the checker | Stop. It cannot depend on itself |
 | The package manager cannot resolve the ref | Stop and show its output. The tag is the register's claim, and it is wrong |
-| Installed but not in the lockfile | Report a failure. A manifest-only pin resolves differently on the next machine |
+| Installed but not in the lockfile | Emit **Partial**. A manifest-only pin resolves differently on the next machine |
 
 ## Idempotency
 
@@ -350,9 +377,10 @@ provenance stamp to refresh, because nothing here deploys a control.
 
 ## Calibration
 
-- **Strong:** `${CLAUDE_SKILL_DIR}/examples.md` §Strong — a deployment where
-  every value came from the register, every declared locus is wired and stamped,
-  and the checker's verdict is reported as given.
+- **Strong:** `${CLAUDE_SKILL_DIR}/examples.md` §Strong — an install where
+  every value came from the register, the pin is recorded in both the manifest
+  and the lockfile, and the checker's version is verified through the package
+  manager's runner.
 - **Weak:** `${CLAUDE_SKILL_DIR}/examples.md` §Weak — a run whose output
   claims more than the artefacts deliver.
 
@@ -366,7 +394,7 @@ and it disagree.
 
 - **Write narration shape** (`reference/write-narration.md`) — shared with
   `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
-  `gate-supply-chain`, `register-install` and `register-variance`. Change the
+  `gate-supply-chain` and `register-variance`. Change the
   shape there, never here; ADR 0036 is the reason it is one file rather than a
   copy per skill.
 - **Unattended `--yes`** (`reference/unattended.md`) — shared with
@@ -375,10 +403,11 @@ and it disagree.
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
-- **Provenance stamp and verify contract** — every skill here stamps what it
-  writes and verifies through `register-check`. The stamp fields and the
+- **Provenance stamp and verify contract** — every gate here stamps what it
+  writes and verifies through `register-check`; this skill writes no stamp, but
+  its Conformance step runs that checker. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;
   co-update all nine when the contract version changes. Canonical source: each
-  gate's `contractVersion` in its own `skills/<gate>/deploys.json` (ADR 0058),
+  gate's `contractVersion` in its own `${CLAUDE_PLUGIN_ROOT}/skills/<gate>/deploys.json` (ADR 0058),
   and the stamp grammar and exit codes in `register-check`, in the `ee-standard`
   repository (ADR 0016) — never a skill's restatement of either.
