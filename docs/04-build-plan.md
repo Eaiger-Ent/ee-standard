@@ -1542,7 +1542,7 @@ document that described it.
       (incubator#1215, #1217). What the incubator's review added on the way was
       taken back, so the record now declares two differences, both `by-design`:
       the manifest's version line and the docs link each `SKILL.md` names
-- [ ] **The released checker reads what `ee-skills` publishes.** Added
+- [x] **The released checker reads what `ee-skills` publishes.** Added
       2026-10-27. The criterion above ordered the release *after* `ee-skills`
       published the per-gate files; `ee-skills` went further and deleted the old
       file in `0.1.20`, before any release. So `register-check@v0.9.0`, the ref
@@ -1552,7 +1552,11 @@ document that described it.
       `gate-secrets` defective off the old file's contract 6. Both were run in
       the devcontainer from a `v0.9.0` worktree. An adopter installing today
       is on both. This closes when a tag that reads `skills/<gate>/deploys.json`
-      is cut by the release procedure and the register names it
+      is cut by the release procedure and the register names it.
+      **Closed 2026-10-27 by `v0.9.1`**, which `tools.register-check.install`
+      names. Its `register-check deployments` exits `0` against both
+      `control-register@0.1.20` and `0.1.19` (*0 defective*), run in the
+      devcontainer from the tagged commit
 
 ## Phase 7 — What two independent adoptions found
 
