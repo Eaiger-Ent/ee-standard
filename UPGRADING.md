@@ -23,20 +23,35 @@ upgrade is a reviewable change like any other.
 
 ## 1 — Update the plugin
 
+**Find out where yours came from first.** The plugin is published to two
+marketplaces, each install is a separate copy, and both can be installed at once.
+Update the copy you have, and do not add the other:
+
 ```bash
-claude plugin marketplace update ee-standard
-claude plugin update control-register@ee-standard
+claude plugin list | grep control-register
+```
+
+This must print **one** row. Update that one and no other:
+
+| The row ends | Run |
+| --- | --- |
+| `@ee-standard` | `claude plugin marketplace update ee-standard`, then `claude plugin update control-register@ee-standard` |
+| `@ee-skills` | `/ee-skills-manage:skill-update` in Claude Code. It updates every plugin from that marketplace, and reports which gates are owed a re-run |
+
+**Two rows means two copies**, and every skill is registered twice. Keep one
+and uninstall the other. `ee-standard` is the copy this guide assumes, and it
+gets each release first, while `ee-skills` gets it when the release is promoted.
+To keep `ee-standard`:
+
+```bash
+claude plugin uninstall control-register@ee-skills
 ```
 
 Then restart Claude Code, or run `/reload-plugins`. The skills you invoke next
 are the new release's.
 
-**Done when** `claude plugin list | grep control-register` shows a version
-newer than the one you had.
-
-If you installed from the `EqualExperts/ee-skills` marketplace instead, run
-`/ee-skills-manage:skill-update`. It does both commands and also reports which
-gates are owed a re-run.
+**Done when** `claude plugin list | grep control-register` prints one row, at a
+version newer than the one you had.
 
 ## 2 — See what changed
 
@@ -112,7 +127,7 @@ Ask which gates are behind the release you just installed. Name the plugin: in a
 shell, nothing tells the checker where Claude Code keeps it.
 
 ```bash
-plugin=$(ls -d "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/ee-standard/control-register/*/ | sort -V | tail -1)
+plugin=$(claude plugin list --json | uv run --no-project python -c "import json,sys; print(next(p['installPath'] for p in json.load(sys.stdin) if p['id'].startswith('control-register@')))")
 uv run register-check deployments --plugin "$plugin"
 ```
 
