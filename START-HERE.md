@@ -955,6 +955,10 @@ the first time the hook runs.
 
 ## You are done when
 
+**When a new release comes out**, [`UPGRADING.md`](UPGRADING.md) is the route
+from here. Re-running this file is not: it would replace a register you have
+since made your own.
+
 **Step 5 is what put the checker there.** `register-check` does not exist before
 it: `/register-adopt` dispatches `/register-install`, which adds it to your
 project as a dependency pinned to a tagged release. Two things follow, and both
