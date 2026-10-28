@@ -1646,6 +1646,25 @@ the same four weeks; the evidence for each tick is
       ran. Closed 2026-10-19, [`18-phase-8-review.md`](18-phase-8-review.md)
       § `deployments` says when a stack has arrived.
 
+## Phase 9 — YAML is linted before anything reads it
+
+[ADR 0059](adr/0059-yaml-is-linted-before-anything-reads-it.md), accepted
+2026-10-28, adds YML-001. Nothing below is built yet.
+
+- [ ] YML-001 is in `controls.yaml`: the correctness floor and the coverage
+      globs in `args`, `yamllint` in `tools:`, the new assert in the closed set,
+      and `meta.register_contract` bumped.
+- [ ] The ten gate templates under `plugins/control-register/skills/*/templates/`
+      carry a non-YAML suffix, and every gate and test that reads one follows.
+- [ ] `lint-yaml` is deployed here from a release that includes incubator#1143,
+      and `.claude/hooks/yaml-lint.py` passes TYP-001 unedited.
+- [ ] `uv run register-check run --control YML-001` passes here, and fails when
+      a duplicate key is added to `controls.yaml`.
+- [ ] `08-adopting.md` carries the by-hand route for YML-001, in both pinning
+      forms, with how you know each step worked.
+- [ ] The two asks of `lint-yaml` are filed upstream: a pinned install outside a
+      uv project, and the floor's three rules at `level: error` in its config.
+
 ## What is deliberately not in scope
 
 | Excluded | Why |
