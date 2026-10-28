@@ -1,10 +1,10 @@
 # ADR 0059: YAML Is Linted Before Anything Reads It
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-28
 **Revision:** 1
 
-Proposed rationale for a new control, **YML-001**, in `controls.yaml`.
+Rationale for control **YML-001** in `controls.yaml`.
 
 ## Background
 
@@ -139,10 +139,28 @@ fail.
 `args`, so a repository whose YAML has another extension changes the register,
 not the checker.
 
-**Pinning.** `yamllint`'s version is a `tools:` entry. Every locus reaches that
-pin ([ADR 0020](0020-a-locus-reaches-the-pinned-artefact.md)). For a repository
-with a Python lockfile, that means `source: lockfile`, reached through
-`uv run yamllint`.
+**Pinning.** `yamllint`'s version is a `tools:` entry in the repository's own
+register, and every locus reaches that pin
+([ADR 0020](0020-a-locus-reaches-the-pinned-artefact.md)). There are two forms:
+
+| Repository | `tools.yamllint` | Invocation at every locus |
+| --- | --- | --- |
+| Has a Python lockfile | `source: lockfile`, as `register-check` is pinned | `uv run yamllint` |
+| Has no Python lockfile | `source: literal`, a `version`, and `pinned_at` naming the loci that repeat it | `uvx --from yamllint==<version> yamllint` |
+
+The second form is the one `uv` already uses here: a PyPI tool with no lockfile
+to own it, its version written once in the register and repeated at each locus,
+and `tool_versions_match_register` failing the build if one drifts. Measured
+2026-10-28 from an empty directory, with no `yamllint` on `PATH`,
+`uvx --from yamllint==1.37.1 yamllint --version` printed `yamllint 1.37.1`. An
+absent `yamllint` is UNCLASSIFIED ([ADR 0016](0016-exit-codes-for-unverifiable-controls.md)),
+never a pass. This is how IAC-001 already treats an analyser the repository has
+not pinned.
+
+`yamllint`'s pre-commit hook repository, pinned by `rev:`, was the other
+candidate. It is rejected because it reaches the editor locus only by running
+`pre-commit` from the hook, and it puts the version in `.pre-commit-config.yaml`
+rather than in the register.
 
 **What the checker gains.** One `kind: command` block that runs the pinned
 `yamllint` over the covered files. One `kind: file` assert, a sibling of
@@ -178,19 +196,16 @@ it. `08-adopting.md` gains that route for YML-001, as § 3 has for DOC-001.
   Then a deployment is shown to meet YML-001, rather than meeting it only
   because `extends: default` happens to.
 
+**The literal form pins `yamllint` and not its dependencies.** `uvx` resolves
+PyYAML and pathspec fresh on each cold cache, where a lockfile would fix them.
+That is the accepted cost of not making every repository carry a Python
+lockfile for one linter. A repository that wants the stronger pin uses the
+lockfile form.
+
 **Existing adopters may fail a new Tier 1 control.** This is the cost of a new
 birth condition. The floor is chosen to keep that cost close to zero: a
 repository that fails it has a duplicate key, a stray boolean or a file that
 does not parse, and each of those is a real defect.
-
-## Open Question
-
-**How a repository with no Python lockfile reaches a pinned `yamllint`.** This
-must be settled before this ADR is accepted, because `applies_to: [always]`
-reaches such repositories. The candidates are `yamllint`'s own pre-commit hook
-repository, pinned by `rev:` and run in CI through `pre-commit`, or a
-`source: literal` entry in `tools:`. Neither has been measured against ADR 0020
-yet.
 
 ## Related ADRs
 
@@ -204,6 +219,8 @@ yet.
   are renamed rather than ignored
 - [ADR 0020](0020-a-locus-reaches-the-pinned-artefact.md): how each locus
   reaches the pin
+- [ADR 0016](0016-exit-codes-for-unverifiable-controls.md): why an absent
+  `yamllint` is UNCLASSIFIED rather than a pass
 - [ADR 0044](0044-the-adopter-installs-from-the-public-marketplace.md): the
   by-hand route for a deploying skill an adopter cannot install
 
