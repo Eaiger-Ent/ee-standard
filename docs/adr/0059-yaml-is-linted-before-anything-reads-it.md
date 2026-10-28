@@ -181,9 +181,8 @@ legal at the start of a YAML value, such as `__TOOL_INVOCATION__`, parses.
 Measured 2026-10-28: all twelve templates, respelled that way, give zero
 findings under the floor.
 
-So the placeholder spelling changes, everywhere it is used in
-`plugins/control-register/`, and the files keep their names. This is better on
-three counts:
+So the placeholder spelling changes and the files keep their names. This is
+better on three counts:
 
 - **YML-001 covers the templates.** A template that is broken YAML fails here,
   before it ships, rather than in an adopter's CI. Renaming would have taken
@@ -195,10 +194,16 @@ three counts:
   and some carry quotes of their own, such as DOC-001's `"**/*.md"`, so every
   substitution would need escaping, and the rendered output would change.
 
-The spelling changes in one pass across every template and substitution table,
-including templates that are not YAML, so that one marker means a placeholder
-everywhere. Excluding the templates from YML-001 remains the exemption ADR 0019
-forbids.
+**The scope is one substitution mechanism.** The spelling changes in one pass
+across every file under `plugins/control-register/skills/*/templates/` and every
+skill's substitution table, including the templates that are not YAML, so a
+gate has one marker to replace. The devcontainer and adoption templates under
+`plugins/control-register/templates/` keep `{{...}}`. They are a second
+mechanism: an adopter or `guided.sh` substitutes them with `sed`, as
+`08-adopting.md` § 2.0 and [ADR 0034](0034-the-template-bootstraps-uv.md)
+describe. They are JSON and shell, not YAML, so YML-001 never reads them.
+
+Excluding the templates from YML-001 remains the exemption ADR 0019 forbids.
 
 **This repository deploys `lint-yaml`, and receives its hook.** The hook lands
 as `.claude/hooks/yaml-lint.py`, inside `[tool.mypy] files`. It must be a
