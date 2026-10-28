@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-10-28
-**Revision:** 1
+**Revision:** 2
 
 Rationale for control **YML-001** in `controls.yaml`.
 
@@ -59,9 +59,11 @@ repository without it is still conformant.
 | `lint-yaml`'s shipped config (`extends: default`, 120 columns) | 528: 325 indentation, 104 braces, 39 line length, 38 document start, 10 syntax, 12 other |
 | Correctness only: syntax, `key-duplicates`, `truthy` | 10, all syntax, all gate templates |
 
-The ten are `plugins/control-register/skills/*/templates/*.yaml`. They contain
-`{{TOOL_INVOCATION}}` placeholders, so they are not YAML until a gate renders
-them. Everything else in this repository already passes the correctness rules.
+The ten are `plugins/control-register/skills/*/templates/*.yaml`. Each fails
+on a line whose value starts with a `{{TOOL_INVOCATION}}`-style placeholder: a
+YAML value that begins with `{` opens a flow mapping. The YAML around the
+placeholders is sound. Everything else in this repository already passes the
+correctness rules.
 
 ## Alternatives Considered
 
@@ -170,11 +172,33 @@ set, and `meta.register_contract` is bumped.
 
 ## Consequences
 
-**The gate templates have to stop pretending to be YAML.** The ten files under
-`plugins/control-register/skills/*/templates/` take a non-YAML suffix, such as
-`.yaml.tmpl`. Excluding them would be the exemption ADR 0019 forbids. Renaming
-them is accurate. Every gate that reads a template, and each test that names
-one, changes with it. Each affected gate's version moves.
+**Amended 2026-10-28 (revision 2): the gate templates are made valid YAML,
+not renamed.** Revision 1 said the ten failing templates would take a non-YAML
+suffix such as `.yaml.tmpl`. That treated the failure as a property of
+templates. It is a property of one spelling. Every failing line is a value that
+starts with a `{{...}}` placeholder, and a placeholder spelled with characters
+legal at the start of a YAML value, such as `__TOOL_INVOCATION__`, parses.
+Measured 2026-10-28: all twelve templates, respelled that way, give zero
+findings under the floor.
+
+So the placeholder spelling changes, everywhere it is used in
+`plugins/control-register/`, and the files keep their names. This is better on
+three counts:
+
+- **YML-001 covers the templates.** A template that is broken YAML fails here,
+  before it ships, rather than in an adopter's CI. Renaming would have taken
+  that check away.
+- **What a gate writes does not change.** A gate replaces a marker with the
+  same value it replaced before. The rendered output is byte-identical.
+- **No escaping is introduced.** Quoting each templated value was the other way
+  to make the templates parse. It is rejected: substituted values are raw text
+  and some carry quotes of their own, such as DOC-001's `"**/*.md"`, so every
+  substitution would need escaping, and the rendered output would change.
+
+The spelling changes in one pass across every template and substitution table,
+including templates that are not YAML, so that one marker means a placeholder
+everywhere. Excluding the templates from YML-001 remains the exemption ADR 0019
+forbids.
 
 **This repository deploys `lint-yaml`, and receives its hook.** The hook lands
 as `.claude/hooks/yaml-lint.py`, inside `[tool.mypy] files`. It must be a
@@ -216,7 +240,7 @@ does not parse, and each of those is a real defect.
 - [ADR 0018](0018-register-checker-boundary.md): why the floor and the globs
   are register data
 - [ADR 0019](0019-exemptions-cannot-hide-tracked-files.md): why the templates
-  are renamed rather than ignored
+  are made valid YAML rather than ignored
 - [ADR 0020](0020-a-locus-reaches-the-pinned-artefact.md): how each locus
   reaches the pin
 - [ADR 0016](0016-exit-codes-for-unverifiable-controls.md): why an absent
@@ -235,3 +259,10 @@ does not parse, and each of those is a real defect.
   incubator#1142 / #1143: the hook's `in_repo` annotation
 - [`08-adopting.md`](../08-adopting.md) § 3.2, point 2: the vendored-hook case
   that raised this
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-10-28 | Original decision: YML-001, `yamllint` with a correctness floor at three loci, deployed by `lint-yaml`. | Nathan Carney |
+| 2 | 2026-10-28 | § Consequences: the gate templates become valid YAML by respelling their placeholders, rather than being renamed to a non-YAML suffix. | Nathan Carney |
