@@ -292,8 +292,8 @@ LNT-001 is the only one of the three that declares an `editor` locus, so this
 step writes one stamp and it names LNT-001.
 
 Read `${CLAUDE_SKILL_DIR}/templates/editor-extensions.json` and substitute
-`{{EDITOR_EXTENSION}}`, `{{STACK}}`, `{{SKILL_VERSION}}`,
-`{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`.
+`<<EDITOR_EXTENSION>>`, `<<STACK>>`, `<<SKILL_VERSION>>`,
+`<<GATE_CONTRACT>>`, `<<REGISTER_VERSION>>` and `<<REGISTER_CONTRACT>>`.
 
 - **The repository has a devcontainer:** merge the extension into
   `customizations.vscode.extensions`, preserving every other entry.
@@ -334,7 +334,7 @@ The stamps go at the hooks, never at the top of the file.
 ## Step 5 — Wire the ci locus
 
 Read `${CLAUDE_SKILL_DIR}/templates/ci-steps.yaml` and substitute the same
-values plus `{{TEST_COMMAND}}`.
+values plus `<<TEST_COMMAND>>`.
 
 - **A gating workflow exists with a frozen-install step:** add the three steps
   to that job, after the install. They run the tools the lockfile just placed,

@@ -8,38 +8,38 @@
 # own holds five — and a whole-file stamp would claim the ones this gate does
 # not own (docs/00-concepts.md § The provenance stamp).
 #
-# {{LINT_INVOCATION}} and {{TYPECHECK_INVOCATION}} are the register's
-# `stacks.{{STACK}}.gates.<role>.invocation`, written verbatim. That string is
+# <<LINT_INVOCATION>> and <<TYPECHECK_INVOCATION>> are the register's
+# `stacks.<<STACK>>.gates.<role>.invocation`, written verbatim. That string is
 # what every locus runs and what the checker matches a CI step against, so the
 # gate never composes its own: a bare tool name here would be a hook resolving
 # from PATH rather than from the artefact the lockfile pins (ADR 0020).
-      # ee-control: LNT-001  ee-skill: gate-quality@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
-      - id: {{LINT_HOOK_ID}}
-        name: {{LINT_TOOL}} ({{STACK}}, LNT-001)
-        entry: {{LINT_INVOCATION}}
+      # ee-control: LNT-001  ee-skill: gate-quality@<<SKILL_VERSION>>  gate-contract: <<GATE_CONTRACT>>  register: v<<REGISTER_VERSION>>  register-contract: <<REGISTER_CONTRACT>>
+      - id: <<LINT_HOOK_ID>>
+        name: <<LINT_TOOL>> (<<STACK>>, LNT-001)
+        entry: <<LINT_INVOCATION>>
         language: system
-        # Derived from the register's `stacks.{{STACK}}.source_globs`, which is
+        # Derived from the register's `stacks.<<STACK>>.source_globs`, which is
         # the set of tracked files this stack's gates are claimed to cover. A
         # hand-picked pre-commit `types:` tag would be a second statement of
         # that set, free to name fewer files than the control claims.
-        files: '{{SOURCE_PATTERN}}'
+        files: '<<SOURCE_PATTERN>>'
 
-      # ee-control: TYP-001  ee-skill: gate-quality@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: TYP-001  ee-skill: gate-quality@<<SKILL_VERSION>>  gate-contract: <<GATE_CONTRACT>>  register: v<<REGISTER_VERSION>>  register-contract: <<REGISTER_CONTRACT>>
       #
       # `pass_filenames: false` is deliberate and is not a narrowing. The type
       # checker is given the roots its own coverage list names — the register's
-      # `coverage_key`, `{{COVERAGE_KEY}}` — so that one list is both what runs
+      # `coverage_key`, `<<COVERAGE_KEY>>` — so that one list is both what runs
       # here and what the checker reads back. Passing staged filenames instead
       # would make the hook's coverage whatever a commit happened to touch,
       # which is smaller than the control claims and invisible in review.
-      - id: {{TYPECHECK_HOOK_ID}}
-        name: {{TYPECHECK_TOOL}} ({{STACK}}, TYP-001)
-        entry: {{TYPECHECK_INVOCATION}}
+      - id: <<TYPECHECK_HOOK_ID>>
+        name: <<TYPECHECK_TOOL>> (<<STACK>>, TYP-001)
+        entry: <<TYPECHECK_INVOCATION>>
         language: system
         pass_filenames: false
-        files: '{{SOURCE_PATTERN}}'
+        files: '<<SOURCE_PATTERN>>'
 
-      # ee-control: TST-001  ee-skill: gate-quality@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
+      # ee-control: TST-001  ee-skill: gate-quality@<<SKILL_VERSION>>  gate-contract: <<GATE_CONTRACT>>  register: v<<REGISTER_VERSION>>  register-contract: <<REGISTER_CONTRACT>>
       #
       # TST-001's pre-push locus, written only when the register gives that
       # control a `pre-push` locus — a hook for a locus the register does not
@@ -59,13 +59,13 @@
       # disambiguate, so a register value to name it would be a field invented
       # for a template.
       #
-      # {{TEST_COMMAND}} is the register's — `ecosystems.<eco>.test_commands`
+      # <<TEST_COMMAND>> is the register's — `ecosystems.<eco>.test_commands`
       # resolved for this repository — written verbatim, as the ci locus writes
       # it. A spelling composed here would be a second answer to a question the
       # register has already answered.
       - id: tests
-        name: {{TEST_COMMAND}} (TST-001)
-        entry: {{TEST_COMMAND}}
+        name: <<TEST_COMMAND>> (TST-001)
+        entry: <<TEST_COMMAND>>
         language: system
         pass_filenames: false
         always_run: true

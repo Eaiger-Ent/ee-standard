@@ -155,9 +155,9 @@ def test_no_shipped_file_declares_a_platform_credential_at_all() -> None:
     that shipped one would hand an adopter a credential name and a set of events
     they never chose — a decision arriving as a default.
 
-    Read as text rather than parsed: the templates carry `{{PLACEHOLDER}}`
-    substitutions and are not valid YAML until a gate fills them in, so a parser
-    would fail on the files this most needs to read.
+    Read as text rather than parsed: not every shipped file is YAML, and the
+    devcontainer templates carry `{{PLACEHOLDER}}` substitutions an adopter
+    fills in, so a parser would fail on files this needs to read.
     """
     offenders = [
         str(path.relative_to(REPO_ROOT))
