@@ -1649,14 +1649,16 @@ the same four weeks; the evidence for each tick is
 ## Phase 9 — YAML is linted before anything reads it
 
 [ADR 0059](adr/0059-yaml-is-linted-before-anything-reads-it.md), accepted
-2026-10-28, adds YML-001. Nothing below is built yet.
+2026-10-28, adds YML-001. The evidence for each tick is
+[`19-phase-9-review.md`](19-phase-9-review.md).
 
 - [ ] YML-001 is in `controls.yaml`: the correctness floor and the coverage
       globs in `args`, `yamllint` in `tools:`, the new assert in the closed set,
       and `meta.register_contract` bumped.
-- [ ] Every gate template under `plugins/control-register/skills/*/templates/`
+- [x] Every gate template under `plugins/control-register/skills/*/templates/`
       is valid YAML, its placeholders respelled in one pass, and a gate renders
-      byte-identical output from it (ADR 0059 revision 2).
+      byte-identical output from it (ADR 0059 revision 2). Closed 2026-10-28,
+      [`19-phase-9-review.md`](19-phase-9-review.md).
 - [ ] `lint-yaml` is deployed here from a release that includes incubator#1143,
       and `.claude/hooks/yaml-lint.py` passes TYP-001 unedited.
 - [ ] `uv run register-check run --control YML-001` passes here, and fails when
