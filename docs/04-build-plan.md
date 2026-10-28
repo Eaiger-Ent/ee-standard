@@ -1654,8 +1654,9 @@ the same four weeks; the evidence for each tick is
 - [ ] YML-001 is in `controls.yaml`: the correctness floor and the coverage
       globs in `args`, `yamllint` in `tools:`, the new assert in the closed set,
       and `meta.register_contract` bumped.
-- [ ] The ten gate templates under `plugins/control-register/skills/*/templates/`
-      carry a non-YAML suffix, and every gate and test that reads one follows.
+- [ ] Every gate template under `plugins/control-register/skills/*/templates/`
+      is valid YAML, its placeholders respelled in one pass, and a gate renders
+      byte-identical output from it (ADR 0059 revision 2).
 - [ ] `lint-yaml` is deployed here from a release that includes incubator#1143,
       and `.claude/hooks/yaml-lint.py` passes TYP-001 unedited.
 - [ ] `uv run register-check run --control YML-001` passes here, and fails when
