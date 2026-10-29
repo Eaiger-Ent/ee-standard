@@ -47,3 +47,53 @@ next to a comment saying so.
 `owed-upstream`. One incubator amendment has to carry the templates and the
 `SKILL.md` prose together, because a gate whose `SKILL.md` and templates
 disagree about the marker deploys with placeholders left in.
+
+## YML-001 is in the register, and passes here
+
+**Closed 2026-10-29**, items 1 and 4, at register contract 37.
+
+**What landed.** YML-001 in `controls.yaml`, with ADR 0059's fields. Its floor
+and globs are in the file block's `args`. `tools.yamllint` uses the lockfile
+form, because this repository has `uv.lock`. `yamllint` 1.38.0 is a dev
+dependency, and `yaml_gate_wired_at_all_loci` is in the closed set. This
+repository is wired at all three loci by hand: `.yamllint.yml`,
+`.claude/hooks/yaml-lint.py` and its `PostToolUse` entry, a `repo: local`
+pre-commit hook, and a step in the Conformance job. None of it is stamped,
+because `lint-yaml` has not run here (item 3, below).
+
+**How it was shown to hold.**
+
+| Claim | Evidence |
+| --- | --- |
+| The floor costs nothing here | `uv run yamllint .` over all 38 tracked YAML files: 0 findings |
+| Coverage is what git tracks | `yamllint --list-files .` matches `git ls-files '*.yml' '*.yaml'` exactly, plus `.yamllint.yml` itself. `ignore-from-file: .gitignore` hides nothing tracked |
+| It fails on ADR 0059's case | A second `verify:` added to DOC-001 in `controls.yaml`: `run --control YML-001` exits `1`, `duplication of key "verify" in mapping` |
+| Each part of the assert is load-bearing | Nine more mutations in this repository, each a `FAIL` naming its cause: `truthy` at warning, `key-duplicates` removed, `allowed-values` widened, `extends: default` with no floor, an `ignore:` over `.github/`, `yaml-files` narrowed, and each of the three loci unwired |
+| The tests are load-bearing | Eleven tests in `test_asserts_command.py`, reading the floor from the register. Four mutations of the assert, each caught: the level check removed, the editor locus check removed, list widening allowed, a preset's level assumed `error` |
+
+**Why the floor must be stated.** A rule a configuration inherits through
+`extends` keeps the preset's level, and yamllint's `default` preset sets
+`truthy` to warning. Warnings exit `0`. So the assert rejects a floor rule
+reached only through a preset, which is the shape `lint-yaml` writes.
+
+## What `lint-yaml` 0.1.15 would deploy
+
+Measured 2026-10-29, while item 3 was being prepared. `lint-yaml` 0.1.15 is
+published in `ee-skills`. ADR 0059 says it is "in neither `ee-skills` nor this
+repository's marketplace", and that is no longer true. Its hook carries
+incubator#1143's annotation and passes `uv run mypy` here unedited, so item 3's
+TYP-001 half holds.
+
+The rest does not meet YML-001. A run here would write:
+
+| Locus | What it writes | Why YML-001 fails it |
+| --- | --- | --- |
+| Config | `.yamllint.yml` with `extends: default`, overwriting this one | `key-duplicates` is not stated, and `truthy` has no `level`, so the preset's warning applies |
+| Editor | `.claude/hooks/yaml-lint.py` | Fails `uv run ruff check` seven times (E401, I001, PTH110, PTH119), and its `python3` shebang fails `test_toolchain_pin.py`. With a configured invocation it labels its output `uv`, not `yamllint` |
+| Pre-commit | `adrienverge/yamllint` pinned by `rev:` | The form ADR 0059 rejects: the version is in `.pre-commit-config.yaml`, not the register |
+| CI | `pip install yamllint` in `lint.yml` | Pins nothing (ADR 0020). This one is already the ADR's first upstream ask |
+
+So item 3 is blocked on `lint-yaml` itself. Its config, its pre-commit hook
+and its hook script's lint conformance would be three asks beyond the ADR's
+two. The hand-wired hook here is that script with exactly those three edits,
+and its header names each one.

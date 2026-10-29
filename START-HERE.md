@@ -1018,7 +1018,7 @@ predictable set, and the order you clear them in matters.
 
 | The report says | What it means | What clears it |
 | --- | --- | --- |
-| `DOC-001 FAIL` — *no tracked markdownlint configuration file* | The one control no gate in this plugin deploys — it is `lint-md`'s, in another marketplace. **Tracked** is the operative word: a file git does not carry is not wired | `/lint-md` if you can reach it, else the seven steps in [`docs/08-adopting.md`](docs/08-adopting.md) § 3 — see below |
+| `DOC-001 FAIL` — *no tracked markdownlint configuration file* | One of the two controls no gate in this plugin deploys — it is `lint-md`'s, in another marketplace, as YML-001 is `lint-yaml`'s. **Tracked** is the operative word: a file git does not carry is not wired | `/lint-md` if you can reach it, else the seven steps in [`docs/08-adopting.md`](docs/08-adopting.md) § 3 — see below |
 | `SUP-001 FAIL` — *markdownlint-cli2 is sourced from package-lock.json, which is not tracked* | **The same cause**, not a second one. The register pins that tool from a lockfile you do not have yet | Committing `package-lock.json` in the step above |
 | `SEC-001 FAIL` — *push protection is 'disabled'* | The local blocks pass — the scanner runs at every locus. This is the server-side stop, and only GitHub can turn it on | Settings → Code security → enable push protection. Admin, and one click |
 | `CI-001 FAIL` — *not protected as the register requires* | Note its file block **passed**: you have *recorded* the ruleset. Recording is intent; this block asks what GitHub enforces, and the answer is nothing | `/gate-repo`, which applies the recorded ruleset through the API |
