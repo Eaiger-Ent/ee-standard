@@ -1393,6 +1393,201 @@ def markdown_gate_wired_at_all_loci(
     )
 
 
+#: Where yamllint looks for a project configuration, in its own order. A
+#: property of the tool rather than of any repository, like the markdownlint
+#: spellings above.
+_YAMLLINT_CONFIGS = (".yamllint", ".yamllint.yaml", ".yamllint.yml")
+
+#: yamllint's `yaml-files` when a configuration names none.
+_YAMLLINT_DEFAULT_FILES = ("*.yaml", "*.yml", ".yamllint")
+
+
+def _ignore_patterns(repo: Repo, conf: Mapping[str, Any]) -> list[tuple[str, str]]:
+    """Every exclusion one yamllint `ignore` scope declares, with where it came from.
+
+    yamllint takes `ignore` as a block of lines or a list, and `ignore-from-file`
+    as one filename or several, each read as `.gitignore` syntax. A scope is the
+    whole configuration or a single rule: a rule's own `ignore` exempts files
+    from that rule alone, which for a floor rule is the same weakening.
+    """
+    found: list[tuple[str, str]] = []
+    inline = conf.get("ignore")
+    lines = inline.splitlines() if isinstance(inline, str) else inline or []
+    found += [("ignore", str(line)) for line in lines]
+    named = conf.get("ignore-from-file")
+    for name in [named] if isinstance(named, str) else named or []:
+        if str(name) in repo.tracked:
+            found += [(str(name), line) for line in repo.read(str(name)).splitlines()]
+    return found
+
+
+def _gitignore_hides(pattern: str, path: str) -> bool:
+    """Whether one `.gitignore`-syntax line excludes `path`.
+
+    The subset yamllint's own matcher needs here: a pattern with no inner `/`
+    matches a path component at any depth, one with an inner `/` is anchored at
+    the root, and a trailing `/` matches directories only. A negation is not
+    applied. That can fail a configuration whose `!` line re-includes a file,
+    and can never pass one that hides a file, which is the direction to be
+    wrong in.
+    """
+    line = pattern.strip()
+    if not line or line.startswith(("#", "!")):
+        return False
+    directory = line.endswith("/")
+    line = line.rstrip("/")
+    parts = path.split("/")
+    if "/" in line:
+        line = line.lstrip("/")
+        candidates = ["/".join(parts[:i]) for i in range(1, len(parts) + 1)]
+    else:
+        candidates = parts
+    if directory:
+        candidates = candidates[:-1]  # the file itself is not a directory
+    return any(fnmatch.fnmatchcase(candidate, line) for candidate in candidates)
+
+
+def _floor_problems(path: str, conf: Mapping[str, Any], floor: Mapping[str, Any]) -> list[str]:
+    """Where the configuration falls short of the register's floor.
+
+    The floor must be *stated*, not inferred. A rule inherited through `extends`
+    takes the preset's level, and yamllint's `default` sets `truthy` to warning,
+    which exits `0`. So a configuration that reaches a floor rule only through a
+    preset does not meet the floor, and one with no `extends` meets it only by
+    naming the rule (ADR 0059, § Consequences).
+
+    `narrowing-only`: a list option may hold fewer values than the register's
+    and never more. Any other option must equal it. The checker cannot know
+    which end of an arbitrary option is the stricter one, so a repository that
+    tightens one changes the floor in its own register.
+    """
+    rules = conf.get("rules")
+    rules = rules if isinstance(rules, dict) else {}
+    extends = conf.get("extends")
+    problems: list[str] = []
+    for name, options in floor.items():
+        stated = rules.get(name)
+        if stated is None:
+            via = f", and `extends: {extends}` sets its level, not the register" if extends else ""
+            problems.append(f"{path}: floor rule `{name}` is not stated{via}")
+            continue
+        if stated == "disable" or stated is False:
+            problems.append(f"{path}: floor rule `{name}` is disabled")
+            continue
+        stated = {} if stated == "enable" or stated is True else stated
+        if not isinstance(stated, dict):
+            problems.append(f"{path}: floor rule `{name}` is {stated!r}, not a rule configuration")
+            continue
+        # yamllint's own default level is `error`, but only where nothing is
+        # inherited. Under `extends` an absent level is the preset's.
+        level = stated.get("level", None if extends else "error")
+        if level != "error":
+            said = f"at level {level}" if level else "at the level its preset sets"
+            problems.append(
+                f"{path}: floor rule `{name}` is {said}, and yamllint exits 0 over "
+                "anything below error"
+            )
+        if _ignore_patterns_declared(stated):
+            problems.append(f"{path}: floor rule `{name}` declares its own ignore")
+        for option, required in (options or {}).items():
+            if option not in stated:
+                problems.append(f"{path}: floor rule `{name}` does not state `{option}`")
+            elif isinstance(required, list):
+                extra = [v for v in stated[option] or [] if v not in required]
+                if extra:
+                    problems.append(
+                        f"{path}: `{name}.{option}` allows {extra}, beyond the register's "
+                        f"{required}"
+                    )
+            elif stated[option] != required:
+                problems.append(
+                    f"{path}: `{name}.{option}` is {stated[option]!r}, where the register "
+                    f"requires {required!r}"
+                )
+    return problems
+
+
+def _ignore_patterns_declared(conf: Mapping[str, Any]) -> bool:
+    return bool(conf.get("ignore") or conf.get("ignore-from-file"))
+
+
+def yaml_gate_wired_at_all_loci(
+    repo: Repo,
+    register: Register,
+    args: Mapping[str, object],
+) -> AssertResult:
+    """YML-001's `enforces`, read from the configuration and the three loci.
+
+    The sibling of `markdown_gate_wired_at_all_loci`, and for the same reason:
+    a command block's exit code says the files that were linted passed the
+    rules that were on. It says nothing about which files were linted, which
+    rules were on, or whether anything runs the tool before CI. A configuration
+    with the floor at warning, an `ignore:` over the workflows, or a pre-commit
+    hook nobody wired all leave `yamllint .` exiting `0`.
+
+    The floor, the tool and the globs come from the register (ADR 0018). What
+    stays here is the shape: every floor rule stated at level error with the
+    register's options, every glob a YAML file, no tracked file hidden
+    (ADR 0019), and each locus reaching the pinned artefact (ADR 0020).
+    """
+    tool = str(args.get("tool", ""))
+    globs = args.get("globs")
+    floor = args.get("floor")
+    if not tool or not isinstance(globs, list) or not globs or not isinstance(floor, dict):
+        return _fail(
+            "assert requires 'tool', a non-empty 'globs' list and a 'floor' mapping "
+            "from the register"
+        )
+
+    path = next((p for p in _YAMLLINT_CONFIGS if p in repo.tracked), None)
+    if path is None:
+        # Not a gap to fill with yamllint's defaults: `truthy` is at warning there.
+        return _fail(f"no tracked yamllint configuration ({', '.join(_YAMLLINT_CONFIGS)})")
+    conf = yaml.safe_load(repo.read(path))
+    if not isinstance(conf, dict):
+        return _fail(f"{path} is not a yamllint configuration mapping")
+
+    pinned = register.tools.get(tool)
+    invocation = pinned.invocation if pinned and pinned.invocation else tool
+
+    problems = _floor_problems(path, conf, floor)
+
+    yaml_files = conf.get("yaml-files", list(_YAMLLINT_DEFAULT_FILES))
+    missing = [g for g in globs if g not in (yaml_files or [])]
+    if missing:
+        problems.append(f"{path}: `yaml-files` does not include {missing}, so those are not linted")
+
+    covered = sorted(p for p in repo.tracked if any(fnmatch.fnmatch(p, str(g)) for g in globs))
+    for source, pattern in _ignore_patterns(repo, conf):
+        hidden = [p for p in covered if _gitignore_hides(pattern, p)]
+        if hidden:
+            shown = ", ".join(hidden[:3])
+            more = f" and {len(hidden) - 3} more" if len(hidden) > 3 else ""
+            problems.append(
+                f"{path}: '{pattern.strip()}' from {source} hides {len(hidden)} tracked "
+                f"file(s) ({shown}{more})"
+            )
+
+    # The editor locus is the PostToolUse hook `lint-yaml` writes. There is no
+    # editor extension in the register's args because none runs yamllint: the
+    # hook is the whole locus, so its absence fails where DOC-001's would not.
+    hooks = [s for s in _editor_hook_scripts(repo) if invocation in _script_strings(repo.read(s))]
+    if not hooks:
+        problems.append(f"editor locus — no PostToolUse hook script runs '{invocation}'")
+    problems.extend(_hook_script_problems(repo, tool, invocation))
+    if not _hook_mentions(repo, invocation):
+        problems.append(f"pre-commit locus — no hook runs '{invocation}'")
+    if not _ci_run_mentions(repo, re.escape(invocation), hook=tool):
+        problems.append(f"ci locus — no gating step runs '{invocation}'")
+
+    if problems:
+        return _fail("; ".join(problems))
+    return _ok(
+        f"{path} states the floor at error over {len(covered)} tracked file(s), hiding none, "
+        f"and every locus reaches {tool} through '{invocation}'"
+    )
+
+
 def _fingerprint_paths(line: str, tracked: set[str]) -> list[str]:
     """Tracked paths named by one gitleaks ignore entry.
 
@@ -1869,6 +2064,7 @@ COMMAND_ASSERTS: dict[str, AssertFn] = {
     "typecheck-strict-and-blocking": typecheck_strict_and_blocking,
     "tests-run-and-block": tests_run_and_block,
     "markdown_gate_wired_at_all_loci": markdown_gate_wired_at_all_loci,
+    "yaml_gate_wired_at_all_loci": yaml_gate_wired_at_all_loci,
     "secrets_gate_wired_at_all_loci": secrets_gate_wired_at_all_loci,
     "gate_wired_at_declared_loci": gate_wired_at_declared_loci,
     "ruleset_recorded_matches_register": ruleset_recorded_matches_register,

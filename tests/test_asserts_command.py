@@ -13,6 +13,7 @@ from register_check.asserts_command import (
     no_static_cloud_keys,
     no_unregistered_workflow_secrets,
     typecheck_strict_and_blocking,
+    yaml_gate_wired_at_all_loci,
 )
 from register_check.asserts_command import (
     tests_run_and_block as check_tests_run_and_block,  # aliased: pytest would collect the name
@@ -528,3 +529,163 @@ def test_an_untracked_path_in_a_hook_command_is_not_read(tmp_path: Path) -> None
         **{".claude/settings.json": _hook_settings(".claude/hooks/absent.py")},
     )
     assert markdown_gate_wired_at_all_loci(repo, a_register(), _DOC_ARGS).passed
+
+
+# YML-001 (ADR 0059). The args are read from the register rather than restated:
+# the floor is a register fact, and a copy of it here would be a second one.
+def _yml_args() -> dict[str, object]:
+    control = next(c for c in a_register().controls if c.id == "YML-001")
+    block = next(b for b in control.verify if b.assert_name == "yaml_gate_wired_at_all_loci")
+    return block.args
+
+
+_YAMLLINT_CONFIG = (
+    "ignore-from-file: .gitignore\n"
+    "rules:\n"
+    "  key-duplicates:\n    level: error\n"
+    "  truthy:\n"
+    "    allowed-values: ['true', 'false']\n    check-keys: false\n    level: error\n"
+)
+
+
+def _yaml_repo(root: Path, **overrides: str) -> Repo:
+    """A repo wired for YML-001 at all three loci, with the floor stated."""
+    files = {
+        ".yamllint.yml": _YAMLLINT_CONFIG,
+        ".gitignore": ".venv/\nnode_modules/\n",
+        ".claude/settings.json": _hook_settings(".claude/hooks/yaml-lint.py"),
+        ".claude/hooks/yaml-lint.py": 'LINT_INVOCATION = "uv run yamllint"\n',
+        ".pre-commit-config.yaml": (
+            "repos:\n  - repo: local\n    hooks:\n      - id: yamllint\n"
+            "        entry: uv run yamllint\n"
+        ),
+        ".github/workflows/ci.yml": _workflow("uv run yamllint ."),
+    }
+    files.update(overrides)
+    return make_repo(root, {k: v for k, v in files.items() if v})
+
+
+def _yaml_verdict(repo: Repo) -> tuple[bool, str]:
+    result = yaml_gate_wired_at_all_loci(repo, a_register(), _yml_args())
+    return result.passed, result.message
+
+
+def test_yaml_gate_wired_at_all_loci(tmp_path: Path) -> None:
+    passed, message = _yaml_verdict(_yaml_repo(tmp_path))
+    assert passed, message
+    assert "uv run yamllint" in message
+
+
+def test_yaml_floor_below_error_is_no_floor(tmp_path: Path) -> None:
+    """yamllint exits 0 over warnings, so a floor rule at warning cannot fail."""
+    warned = _YAMLLINT_CONFIG.replace(
+        "check-keys: false\n    level: error", "check-keys: false\n    level: warning"
+    )
+    passed, message = _yaml_verdict(_yaml_repo(tmp_path, **{".yamllint.yml": warned}))
+    assert not passed
+    assert "`truthy` is at level warning" in message
+
+
+def test_yaml_floor_reached_only_through_a_preset_is_not_stated(tmp_path: Path) -> None:
+    """`extends: default` sets `truthy` to warning; the floor must be named.
+
+    Also the shape `lint-yaml` 0.1.15 writes: a `truthy` block with no `level`,
+    under `extends: default`, which inherits the preset's warning.
+    """
+    preset = (
+        "extends: default\nrules:\n  truthy:\n"
+        "    allowed-values: ['true', 'false']\n    check-keys: false\n"
+    )
+    passed, message = _yaml_verdict(_yaml_repo(tmp_path, **{".yamllint.yml": preset}))
+    assert not passed
+    assert "`key-duplicates` is not stated, and `extends: default`" in message
+    assert "`truthy` is at the level its preset sets" in message
+
+
+def test_yaml_floor_disabled_is_caught(tmp_path: Path) -> None:
+    disabled = _YAMLLINT_CONFIG.replace(
+        "  key-duplicates:\n    level: error\n", "  key-duplicates: disable\n"
+    )
+    passed, message = _yaml_verdict(_yaml_repo(tmp_path, **{".yamllint.yml": disabled}))
+    assert not passed
+    assert "`key-duplicates` is disabled" in message
+
+
+def test_yaml_floor_options_may_narrow_and_never_widen(tmp_path: Path) -> None:
+    wider = _YAMLLINT_CONFIG.replace("['true', 'false']", "['true', 'false', 'yes']")
+    passed, message = _yaml_verdict(_yaml_repo(tmp_path / "wide", **{".yamllint.yml": wider}))
+    assert not passed
+    assert "allows ['yes']" in message
+
+    narrower = _YAMLLINT_CONFIG.replace("['true', 'false']", "['false']")
+    passed, message = _yaml_verdict(_yaml_repo(tmp_path / "narrow", **{".yamllint.yml": narrower}))
+    assert passed, message
+
+    keys = _YAMLLINT_CONFIG.replace("check-keys: false", "check-keys: true")
+    passed, message = _yaml_verdict(_yaml_repo(tmp_path / "keys", **{".yamllint.yml": keys}))
+    assert not passed
+    assert "`truthy.check-keys` is True" in message
+
+
+def test_yaml_ignore_hiding_a_tracked_file_fails(tmp_path: Path) -> None:
+    """ADR 0019: scoping out the virtualenv is fine, hiding the workflows is not."""
+    inline = _YAMLLINT_CONFIG.replace("ignore-from-file: .gitignore\n", "")
+    hiding = "ignore: |\n  .github/\n" + inline
+    passed, message = _yaml_verdict(_yaml_repo(tmp_path / "inline", **{".yamllint.yml": hiding}))
+    assert not passed
+    assert "'.github/' from ignore hides 1 tracked file(s) (.github/workflows/ci.yml)" in message
+
+    # The same hiding, arriving through a file `ignore-from-file` names. Not
+    # `.gitignore`: a file it names is untracked, which is exactly why naming
+    # `.gitignore` is safe.
+    from_file = _YAMLLINT_CONFIG.replace(".gitignore", ".yamlignore")
+    repo = _yaml_repo(
+        tmp_path / "file", **{".yamllint.yml": from_file, ".yamlignore": "ci.yml\n"}
+    )
+    passed, message = _yaml_verdict(repo)
+    assert not passed
+    assert "'ci.yml' from .yamlignore hides 1 tracked file(s)" in message
+
+
+def test_a_floor_rule_with_its_own_ignore_fails(tmp_path: Path) -> None:
+    scoped = _YAMLLINT_CONFIG.replace(
+        "  key-duplicates:\n    level: error\n",
+        "  key-duplicates:\n    level: error\n    ignore: .github/\n",
+    )
+    passed, message = _yaml_verdict(_yaml_repo(tmp_path, **{".yamllint.yml": scoped}))
+    assert not passed
+    assert "`key-duplicates` declares its own ignore" in message
+
+
+def test_yaml_files_narrower_than_the_register_globs_fails(tmp_path: Path) -> None:
+    narrowed = "yaml-files: ['*.yaml']\n" + _YAMLLINT_CONFIG
+    passed, message = _yaml_verdict(_yaml_repo(tmp_path, **{".yamllint.yml": narrowed}))
+    assert not passed
+    assert "`yaml-files` does not include ['*.yml']" in message
+
+
+def test_yaml_gate_missing_at_each_locus_is_caught(tmp_path: Path) -> None:
+    cases = {
+        ".github/workflows/ci.yml": "ci locus",
+        ".pre-commit-config.yaml": "pre-commit locus",
+        ".claude/settings.json": "editor locus",
+    }
+    for path, expected in cases.items():
+        repo = _yaml_repo(tmp_path / expected.replace(" ", "-"), **{path: ""})
+        passed, message = _yaml_verdict(repo)
+        assert not passed, path
+        assert expected in message, message
+
+
+def test_a_yaml_hook_on_the_bare_name_does_not_reach_the_pin(tmp_path: Path) -> None:
+    """`lint-yaml`'s default invocation resolves from PATH (ADR 0020)."""
+    repo = _yaml_repo(tmp_path, **{".claude/hooks/yaml-lint.py": 'LINT_INVOCATION = "yamllint"\n'})
+    passed, message = _yaml_verdict(repo)
+    assert not passed
+    assert "yaml-lint.py runs yamllint but not through 'uv run yamllint'" in message
+
+
+def test_no_yamllint_config_is_not_yamllints_defaults(tmp_path: Path) -> None:
+    passed, message = _yaml_verdict(_yaml_repo(tmp_path, **{".yamllint.yml": ""}))
+    assert not passed
+    assert "no tracked yamllint configuration" in message

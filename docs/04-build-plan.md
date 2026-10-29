@@ -1652,21 +1652,28 @@ the same four weeks; the evidence for each tick is
 2026-10-28, adds YML-001. The evidence for each tick is
 [`19-phase-9-review.md`](19-phase-9-review.md).
 
-- [ ] YML-001 is in `controls.yaml`: the correctness floor and the coverage
+- [x] YML-001 is in `controls.yaml`: the correctness floor and the coverage
       globs in `args`, `yamllint` in `tools:`, the new assert in the closed set,
-      and `meta.register_contract` bumped.
+      and `meta.register_contract` bumped. Closed 2026-10-29 at contract 37,
+      [`19-phase-9-review.md`](19-phase-9-review.md).
 - [x] Every gate template under `plugins/control-register/skills/*/templates/`
       is valid YAML, its placeholders respelled in one pass, and a gate renders
       byte-identical output from it (ADR 0059 revision 2). Closed 2026-10-28,
       [`19-phase-9-review.md`](19-phase-9-review.md).
 - [ ] `lint-yaml` is deployed here from a release that includes incubator#1143,
       and `.claude/hooks/yaml-lint.py` passes TYP-001 unedited.
-- [ ] `uv run register-check run --control YML-001` passes here, and fails when
-      a duplicate key is added to `controls.yaml`.
+- [x] `uv run register-check run --control YML-001` passes here, and fails when
+      a duplicate key is added to `controls.yaml`. Closed 2026-10-29, over a
+      hand-wired deployment, [`19-phase-9-review.md`](19-phase-9-review.md).
 - [ ] `08-adopting.md` carries the by-hand route for YML-001, in both pinning
       forms, with how you know each step worked.
 - [ ] The two asks of `lint-yaml` are filed upstream: a pinned install outside a
       uv project, and the floor's three rules at `level: error` in its config.
+      Item 3 found three more, recorded in
+      [`19-phase-9-review.md`](19-phase-9-review.md): its pre-commit hook
+      should reach the register's pin rather than a `rev:`, its config should
+      state the floor rather than inherit `default`'s warning, and its hook
+      script should pass ruff.
 
 ## What is deliberately not in scope
 

@@ -72,9 +72,10 @@ _ADOPTER = {
 #: adopter's own fact and not something inherited from the standard's register.
 _ADOPTER_CHECKS = ("build",)
 
-# Controls this adoption is expected to reach. DOC-001 belongs to `lint-md` in
-# another plugin and IAC-001 has no Terraform to analyse — both are planned
-# rather than deployed, which is what the plan-completeness test below is about.
+# Controls this adoption is expected to reach. DOC-001 belongs to `lint-md` and
+# YML-001 to `lint-yaml`, each in another plugin, and IAC-001 has no Terraform to
+# analyse — all three are planned rather than deployed, which is what the
+# plan-completeness test below is about.
 _DEPLOYED = (
     "BLD-001",
     "DEV-001",
@@ -460,7 +461,7 @@ def test_the_plan_can_name_every_control_in_the_register() -> None:
     # `gate-secrets` now writes and stamps one artefact for it. SEC-003 stays,
     # and is the row's only member.
     assert deploy == set(_DEPLOYED) | {"IAC-001"}, deploy
-    assert elsewhere == {"DOC-001"}, elsewhere
+    assert elsewhere == {"DOC-001", "YML-001"}, elsewhere
     assert checked == {"SEC-003"}, checked
     assert not manual, f"controls in no plan row at all: {sorted(manual)}"
     # And the skill names all four rows, so none of this is a category the
@@ -497,9 +498,10 @@ def test_after_adopting_every_local_locus_verifies(
     `SKIPPED (no credentials)` until Phase 3. Reporting it as a clean pass would
     claim two loci no code has touched.
 
-    DOC-001 fails on purpose and is not counted: it is `lint-md`'s, in another
-    plugin, and this adoption plans it as *dispatch elsewhere*. A test that
-    deployed it here would be testing a skill this repository does not ship.
+    DOC-001 and YML-001 fail on purpose and are not counted: they are
+    `lint-md`'s and `lint-yaml`'s, in other plugins, and this adoption plans
+    them as *dispatch elsewhere*. A test that deployed them here would be
+    testing skills this repository does not ship.
     """
     code, out = _verdict(adopted, capsys)
 
@@ -518,7 +520,7 @@ def test_after_adopting_every_local_locus_verifies(
     assert verdict("CI-001") == "SKIPPED (no credentials)"
     assert verdict("IAC-001") == "SKIPPED (predicate)"
     assert "incomplete" in out
-    assert code in (1, 3), out  # 1 only because DOC-001 is another plugin's
+    assert code in (1, 3), out  # 1 only because DOC-001 and YML-001 are other plugins'
 
 
 def test_the_templates_gitignore_is_what_satisfies_sec_001s_ignore_rule(

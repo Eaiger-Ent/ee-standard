@@ -24,3 +24,9 @@ lint-md:
   # it. The tool is scoped with `gitignore: true` in .markdownlint-cli2.yaml
   # instead, which is derived rather than kept.
   ignores: []
+
+lint-yaml:
+  # uv.lock pins yamllint here (`tools.yamllint` in controls.yaml), and every
+  # locus must reach that version rather than whatever `yamllint` is on PATH
+  # (ADR 0020). The skill's default is the bare name.
+  invocation: uv run yamllint

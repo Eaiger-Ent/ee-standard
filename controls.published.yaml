@@ -375,7 +375,11 @@ meta:
   #     step reach every control; now `run --control X` reaches X and nothing
   #     else. It alters what a conformant repository's CI must contain, which
   #     `register-install` now writes.
-  register_contract: 36
+  # 37: YML-001 — every tracked YAML file passes `yamllint` with a correctness
+  #     floor, at the editor, pre-commit and CI loci (ADR 0059). A new Tier 1
+  #     control and a new assert, `yaml_gate_wired_at_all_loci`, so a skill
+  #     reading the register has a control to deploy that did not exist.
+  register_contract: 37
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -433,6 +437,14 @@ tools:
     # version is repeated. A `lockfile` tool records `invocation` — how the
     # pinned artefact is reached, so that a locus cannot silently run another.
     invocation: node_modules/.bin/markdownlint-cli2
+  # YML-001's linter, in the lockfile form ADR 0059 gives a repository that has
+  # a Python lockfile. One without one pins it `source: literal`, with a
+  # `version` and the `pinned_at` loci that repeat it, and every locus runs
+  # `uvx --from yamllint==<version> yamllint` — the shape `uv` has below.
+  yamllint:
+    source: lockfile
+    lockfile: uv.lock
+    invocation: uv run yamllint
   gitleaks:
     source: literal
     # Where the release is fetched from. It lived only inside the `depName=`
@@ -1831,6 +1843,50 @@ controls:
     baseline: null
     review_by: 2027-08-16
     rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0013-one-markdown-rule-set.md
+
+  - id: YML-001
+    title: YAML passes one pinned linter with a correctness floor
+    enforces: >
+      yamllint runs over every tracked YAML file from a single configuration
+      wired at editor, pre-commit and CI loci. The floor is syntax,
+      duplicate keys and YAML 1.1 booleans, each at level error; a
+      repository may add rules or tighten these, never disable or lower
+      them, and no exemption may hide a tracked file.
+    standard:
+      name: YAML 1.2.2 specification
+      url: https://yaml.org/spec/1.2.2/
+    tier: 1
+    rung: blocking
+    locus: [editor, pre-commit, ci]
+    applies_to: [always]
+    deployed_by: lint-yaml
+    verify:
+      - kind: command
+        # The tool's exit code over the whole tree. Coverage is the config's:
+        # `yaml-files` says which files are YAML and `ignore` says which are
+        # not linted, and the file block below holds both to `globs`. An
+        # absent install is UNCLASSIFIED (ADR 0016), never a pass.
+        run: uv run yamllint .
+      - kind: file
+        # The floor, the tool and the globs are register facts (ADR 0018). A
+        # repository whose YAML has another extension changes `globs`, and one
+        # that wants another rule adds it to its own config. What the assert
+        # holds is the shape: each floor rule present at level error with
+        # these options, nothing tracked hidden, and all three loci wired.
+        assert: yaml_gate_wired_at_all_loci
+        args:
+          tool: yamllint
+          globs: ["*.yml", "*.yaml"]
+          floor:
+            key-duplicates: {}
+            truthy:
+              allowed-values: ["true", "false"]
+              check-keys: false
+    owner: platform-engineering
+    variance: narrowing-only
+    baseline: null
+    review_by: 2027-10-28
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0059-yaml-is-linted-before-anything-reads-it.md
 
 # ---------------------------------------------------------------------------
 # Meta-controls. These do not check the code — they check the register and its
