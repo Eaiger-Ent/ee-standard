@@ -25,7 +25,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, gate_contract, make_repo
+from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo
 from register_check.cli import main
 from register_check.provenance import stamps_in
 from register_check.register import Register, load_register
@@ -60,15 +60,15 @@ def _render(template: str, register: Register) -> str:
     tool = "register-check"
     text = template
     for placeholder, value in {
-        "{{TOOL}}": tool,
-        "{{TOOL_INVOCATION}}": register.tools[tool].invocation or "",
-        "{{SKILL_VERSION}}": SKILL_VERSION,
-        "{{GATE_CONTRACT}}": gate_contract("gate-iac"),
-        "{{REGISTER_VERSION}}": register.version,
-        "{{REGISTER_CONTRACT}}": str(register.register_contract),
+        "<<TOOL>>": tool,
+        "<<TOOL_INVOCATION>>": register.tools[tool].invocation or "",
+        "<<SKILL_VERSION>>": SKILL_VERSION,
+        "<<GATE_CONTRACT>>": gate_contract("gate-iac"),
+        "<<REGISTER_VERSION>>": register.version,
+        "<<REGISTER_CONTRACT>>": str(register.register_contract),
     }.items():
         text = text.replace(placeholder, value)
-    assert "{{" not in text, f"a placeholder was not filled: {text}"
+    assert not UNFILLED.search(text), f"a placeholder was not filled: {text}"
     return text
 
 

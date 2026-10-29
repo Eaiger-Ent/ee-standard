@@ -27,7 +27,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, gate_contract, make_repo
+from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo
 from register_check.cli import main
 from register_check.provenance import stamps_in
 from register_check.register import Register, load_register
@@ -92,24 +92,24 @@ def _render(template: str, register: Register) -> str:
 
     This is the substitution the skill performs, and the only place the values
     can come from. A placeholder left unfilled is a failure here rather than an
-    artefact deployed with `{{FROZEN_INSTALL}}` in it.
+    artefact deployed with `<<FROZEN_INSTALL>>` in it.
     """
     ecosystem = register.ecosystems[ECOSYSTEM]
     tool = "register-check"
     text = template
     for placeholder, value in {
-        "{{ECOSYSTEM}}": ECOSYSTEM,
-        "{{ECOSYSTEM_SPELLING}}": ecosystem.dependabot[0],
-        "{{FROZEN_INSTALL}}": ecosystem.frozen_install_command[LOCKFILE],
-        "{{TOOL}}": tool,
-        "{{TOOL_INVOCATION}}": register.tools[tool].invocation or "",
-        "{{SKILL_VERSION}}": SKILL_VERSION,
-        "{{GATE_CONTRACT}}": gate_contract("gate-supply-chain"),
-        "{{REGISTER_VERSION}}": register.version,
-        "{{REGISTER_CONTRACT}}": str(register.register_contract),
+        "<<ECOSYSTEM>>": ECOSYSTEM,
+        "<<ECOSYSTEM_SPELLING>>": ecosystem.dependabot[0],
+        "<<FROZEN_INSTALL>>": ecosystem.frozen_install_command[LOCKFILE],
+        "<<TOOL>>": tool,
+        "<<TOOL_INVOCATION>>": register.tools[tool].invocation or "",
+        "<<SKILL_VERSION>>": SKILL_VERSION,
+        "<<GATE_CONTRACT>>": gate_contract("gate-supply-chain"),
+        "<<REGISTER_VERSION>>": register.version,
+        "<<REGISTER_CONTRACT>>": str(register.register_contract),
     }.items():
         text = text.replace(placeholder, value)
-    assert "{{" not in text, f"a placeholder was not filled: {text}"
+    assert not UNFILLED.search(text), f"a placeholder was not filled: {text}"
     return text
 
 
@@ -117,7 +117,7 @@ def _body(template: str, marker: str | None = None) -> str:
     """The template's payload, without the leading comment block explaining it.
 
     Dropped before substitution, not after: the comment talks *about* the
-    placeholders, so rendering it first would leave a `{{` behind and the
+    placeholders, so rendering it first would leave a `<<` behind and the
     unfilled-placeholder check would fire on prose. `marker` is needed where the
     payload itself opens with a comment — `.github/dependabot.yml` carries its
     stamp at the top of the file, which is the one artefact where a whole-file

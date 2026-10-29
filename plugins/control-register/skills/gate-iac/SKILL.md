@@ -192,9 +192,9 @@ both, so there is no second wiring for either and the two can never disagree
 about what "analysed" means.
 
 **The pre-commit locus.** Read
-`${CLAUDE_SKILL_DIR}/templates/precommit-hook.yaml` and substitute `{{TOOL}}`,
-`{{TOOL_INVOCATION}}`, `{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and
-`{{REGISTER_CONTRACT}}`.
+`${CLAUDE_SKILL_DIR}/templates/precommit-hook.yaml` and substitute `<<TOOL>>`,
+`<<TOOL_INVOCATION>>`, `<<SKILL_VERSION>>`, `<<GATE_CONTRACT>>`, `<<REGISTER_VERSION>>` and
+`<<REGISTER_CONTRACT>>`.
 
 - **`PRECOMMIT_STATE` is `ABSENT`:** create `.pre-commit-config.yaml` with a
   single `repos: - repo: local` entry holding the block.

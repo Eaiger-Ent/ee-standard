@@ -27,7 +27,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, gate_contract, make_repo, requires_tool
+from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo, requires_tool
 from register_check.cli import main
 from register_check.provenance import Stamp, stamps_in
 from register_check.register import Register, load_register
@@ -61,28 +61,28 @@ def _render(template: str, register: Register, tool: str) -> str:
 
     This is the substitution the skill performs, and the only place the values
     can come from. A placeholder left unfilled is a failure here rather than an
-    artefact deployed with `{{TOOL_VERSION}}` in it.
+    artefact deployed with `<<TOOL_VERSION>>` in it.
     """
     pinned = register.tools[tool]
     text = template
     for placeholder, value in {
-        "{{TOOL}}": tool,
-        "{{TOOL_VERSION}}": pinned.version or "",
-        "{{TOOL_SHA256}}": pinned.sha256 or "",
-        "{{TOOL_REPO}}": pinned.release_repo or "",
+        "<<TOOL>>": tool,
+        "<<TOOL_VERSION>>": pinned.version or "",
+        "<<TOOL_SHA256>>": pinned.sha256 or "",
+        "<<TOOL_REPO>>": pinned.release_repo or "",
         # The checker, not the scanner. SEC-002's locus assert names it, and the
         # gate reaches it by `invocation` rather than by name — a bare name
         # resolves from PATH, and what answered would be auditing the repository
         # (ADR 0020).
-        "{{CHECKER}}": _checker(register),
-        "{{CHECKER_INVOCATION}}": register.tools[_checker(register)].invocation or "",
-        "{{SKILL_VERSION}}": SKILL_VERSION,
-        "{{GATE_CONTRACT}}": gate_contract("gate-secrets"),
-        "{{REGISTER_VERSION}}": register.version,
-        "{{REGISTER_CONTRACT}}": str(register.register_contract),
+        "<<CHECKER>>": _checker(register),
+        "<<CHECKER_INVOCATION>>": register.tools[_checker(register)].invocation or "",
+        "<<SKILL_VERSION>>": SKILL_VERSION,
+        "<<GATE_CONTRACT>>": gate_contract("gate-secrets"),
+        "<<REGISTER_VERSION>>": register.version,
+        "<<REGISTER_CONTRACT>>": str(register.register_contract),
     }.items():
         text = text.replace(placeholder, value)
-    assert "{{" not in text, f"a placeholder was not filled: {text}"
+    assert not UNFILLED.search(text), f"a placeholder was not filled: {text}"
     return text
 
 
@@ -101,7 +101,7 @@ def _body(template: str) -> str:
     """The template's payload, without the leading comment block explaining it.
 
     Dropped before substitution, not after: the comment talks *about* the
-    placeholders, so rendering it first would leave a `{{` behind and the
+    placeholders, so rendering it first would leave a `<<` behind and the
     unfilled-placeholder check would fire on prose.
     """
     lines = template.splitlines(keepends=True)

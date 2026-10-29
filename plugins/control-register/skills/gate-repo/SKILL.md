@@ -190,12 +190,12 @@ repository.
 ## Step 1 — Record the ruleset
 
 Read `${CLAUDE_SKILL_DIR}/templates/default-branch.json` and substitute
-`{{RULESET_NAME}}`, `{{REQUIRED_CHECKS}}`, `{{REQUIRE_BRANCHES_UP_TO_DATE}}`,
-`{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`. Write it
+`<<RULESET_NAME>>`, `<<REQUIRED_CHECKS>>`, `<<REQUIRE_BRANCHES_UP_TO_DATE>>`,
+`<<SKILL_VERSION>>`, `<<GATE_CONTRACT>>`, `<<REGISTER_VERSION>>` and `<<REGISTER_CONTRACT>>`. Write it
 to `RULESET_PATH` and **git-add it**; a ruleset git does not carry is not one
 anybody can review.
 
-`{{REQUIRED_CHECKS}}` becomes one `{ "context": "<job id>" }` object per entry
+`<<REQUIRED_CHECKS>>` becomes one `{ "context": "<job id>" }` object per entry
 in `REQUIRED_CHECKS`, comma-separated. Before writing them, check each against
 `CONTEXTS`:
 

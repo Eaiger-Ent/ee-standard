@@ -26,8 +26,8 @@
 // protecting the default branch the day the default moves, silently.
 // --- .github/rulesets/default-branch.json ---
 {
-  // ee-control: CI-001  ee-skill: gate-repo@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
-  "name": "{{RULESET_NAME}}",
+  // ee-control: CI-001  ee-skill: gate-repo@<<SKILL_VERSION>>  gate-contract: <<GATE_CONTRACT>>  register: v<<REGISTER_VERSION>>  register-contract: <<REGISTER_CONTRACT>>
+  "name": "<<RULESET_NAME>>",
   "target": "branch",
   "enforcement": "active",
   "conditions": {
@@ -55,14 +55,14 @@
     },
     {
       "type": "required_status_checks",
-      // `{{REQUIRED_CHECKS}}` is CI-001's `required_checks`, one
+      // `<<REQUIRED_CHECKS>>` is CI-001's `required_checks`, one
       // `{ "context": ... }` object per entry. A rule of this type naming no
       // context requires no check at all — the ruleset would be accepted, the
       // control would report satisfied, and a pull request could merge with CI
       // red. That is what this template wrote before contract 19.
       "parameters": {
-        "required_status_checks": [{{REQUIRED_CHECKS}}],
-        "strict_required_status_checks_policy": {{REQUIRE_BRANCHES_UP_TO_DATE}},
+        "required_status_checks": [<<REQUIRED_CHECKS>>],
+        "strict_required_status_checks_policy": <<REQUIRE_BRANCHES_UP_TO_DATE>>,
         "do_not_enforce_on_create": false
       }
     },

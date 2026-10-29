@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import shutil
 import subprocess
 from collections.abc import Mapping
@@ -18,6 +19,12 @@ from register_check.remote import CI_VARIABLE, TOKEN_VARIABLES, GitHub
 from register_check.repo import Repo
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+#: A gate template's placeholder, as `<<NAME>>` (ADR 0059 revision 2). Every
+#: render test asserts none survives, so this is the one place the spelling is
+#: written down: a check for a marker the templates no longer use passes
+#: whatever the render left behind.
+UNFILLED = re.compile(r"<<[A-Z][A-Z0-9_]*>>")
 
 
 @pytest.fixture(autouse=True)

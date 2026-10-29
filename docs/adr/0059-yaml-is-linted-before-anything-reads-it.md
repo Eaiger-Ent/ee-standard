@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-10-28
-**Revision:** 2
+**Revision:** 3
 
 Rationale for control **YML-001** in `controls.yaml`.
 
@@ -177,9 +177,17 @@ not renamed.** Revision 1 said the ten failing templates would take a non-YAML
 suffix such as `.yaml.tmpl`. That treated the failure as a property of
 templates. It is a property of one spelling. Every failing line is a value that
 starts with a `{{...}}` placeholder, and a placeholder spelled with characters
-legal at the start of a YAML value, such as `__TOOL_INVOCATION__`, parses.
-Measured 2026-10-28: all twelve templates, respelled that way, give zero
-findings under the floor.
+legal at the start of a YAML value parses.
+
+**Amended 2026-10-28 (revision 3): the marker is `<<NAME>>`.** Revision 2 gave
+`__TOOL_INVOCATION__` as its example. That spelling parses, but it is ambiguous.
+`gate-secrets` has `{{TOOL}}_${TOOL_VERSION}`, which becomes
+`__TOOL___${TOOL_VERSION}`, and nothing can tell `TOOL` followed by `_` from a
+placeholder named `TOOL_`. That includes the model running the gate. A marker
+whose delimiters cannot occur inside a name has no such case, so the marker is
+`<<NAME>>`. Measured 2026-10-28: all twelve templates, respelled that way, give
+zero findings under the floor, and render byte-identical output
+([`19-phase-9-review.md`](../19-phase-9-review.md)).
 
 So the placeholder spelling changes and the files keep their names. This is
 better on three counts:
@@ -271,3 +279,4 @@ does not parse, and each of those is a real defect.
 | --- | --- | --- | --- |
 | 1 | 2026-10-28 | Original decision: YML-001, `yamllint` with a correctness floor at three loci, deployed by `lint-yaml`. | Nathan Carney |
 | 2 | 2026-10-28 | § Consequences: the gate templates become valid YAML by respelling their placeholders, rather than being renamed to a non-YAML suffix. | Nathan Carney |
+| 3 | 2026-10-28 | § Consequences: the marker is `<<NAME>>`, not revision 2's example `__NAME__`, which is ambiguous next to an underscore. | Nathan Carney |

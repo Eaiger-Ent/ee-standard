@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, gate_contract, make_repo
+from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo
 from register_check.cli import main
 from register_check.provenance import stamps_in
 from register_check.register import Register, load_register
@@ -75,23 +75,23 @@ def _render(template: str, register: Register) -> str:
     """A template with every placeholder filled from the register or the repo.
 
     A placeholder left unfilled is a failure here rather than an artefact
-    deployed with `{{IMAGE_DIGEST}}` in it.
+    deployed with `<<IMAGE_DIGEST>>` in it.
     """
     tool = "register-check"
     text = template
     for placeholder, value in {
-        "{{TOOL}}": tool,
-        "{{TOOL_INVOCATION}}": register.tools[tool].invocation or "",
-        "{{CONTAINER_USER}}": "vscode",
-        "{{IMAGE}}": _IMAGE,
-        "{{IMAGE_DIGEST}}": _DIGEST,
-        "{{SKILL_VERSION}}": SKILL_VERSION,
-        "{{GATE_CONTRACT}}": gate_contract("gate-build"),
-        "{{REGISTER_VERSION}}": register.version,
-        "{{REGISTER_CONTRACT}}": str(register.register_contract),
+        "<<TOOL>>": tool,
+        "<<TOOL_INVOCATION>>": register.tools[tool].invocation or "",
+        "<<CONTAINER_USER>>": "vscode",
+        "<<IMAGE>>": _IMAGE,
+        "<<IMAGE_DIGEST>>": _DIGEST,
+        "<<SKILL_VERSION>>": SKILL_VERSION,
+        "<<GATE_CONTRACT>>": gate_contract("gate-build"),
+        "<<REGISTER_VERSION>>": register.version,
+        "<<REGISTER_CONTRACT>>": str(register.register_contract),
     }.items():
         text = text.replace(placeholder, value)
-    assert "{{" not in text, f"a placeholder was not filled: {text}"
+    assert not UNFILLED.search(text), f"a placeholder was not filled: {text}"
     return text
 
 
@@ -99,7 +99,7 @@ def _body(template: str, comment: str = "#") -> str:
     """The template's payload, without the comment block explaining it.
 
     Dropped before substitution, not after: the comments talk *about* the
-    placeholders, so rendering them first would leave a `{{` behind and the
+    placeholders, so rendering them first would leave a `<<` behind and the
     unfilled-placeholder check would fire on prose.
     """
     lines = template.splitlines(keepends=True)

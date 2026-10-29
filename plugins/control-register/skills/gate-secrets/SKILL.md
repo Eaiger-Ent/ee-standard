@@ -104,7 +104,7 @@ release recommends nothing (ADR 0038). If either is unset, stop and say so.
 
 A `tools:` entry with `source: lockfile` carries an `invocation` instead of a
 version: the locus must reach the pinned artefact by that path, not by the bare
-tool name (ADR 0020). Use it verbatim wherever `{{TOOL}}` appears as a command
+tool name (ADR 0020). Use it verbatim wherever `<<TOOL>>` appears as a command
 below.
 
 **If `args.tool` names a tool the `tools:` table does not define**, stop. The
@@ -200,8 +200,8 @@ failing: an unverified secret scanner is a gate in name only.
 ## Step 2 — Write the local hooks
 
 Read `${CLAUDE_SKILL_DIR}/templates/precommit-hook.yaml` and substitute
-`{{TOOL}}`, `{{CHECKER}}`, `{{CHECKER_INVOCATION}}`, `{{SKILL_VERSION}}`,
-`{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}` from the
+`<<TOOL>>`, `<<CHECKER>>`, `<<CHECKER_INVOCATION>>`, `<<SKILL_VERSION>>`,
+`<<GATE_CONTRACT>>`, `<<REGISTER_VERSION>>` and `<<REGISTER_CONTRACT>>` from the
 values stored in pre-flight. Two blocks: SEC-001's pre-commit hook, and SEC-002's
 pre-push hook where the register gives that control a `pre-push` locus. Keep the
 second block's `stages:` key — without it the hook runs at every stage the
@@ -224,7 +224,7 @@ naming SEC-001 must not be credited for SEC-002's artefact.
 ## Step 3 — Wire the ci locus
 
 Read `${CLAUDE_SKILL_DIR}/templates/ci-steps.yaml` and substitute the same
-values plus `{{TOOL_VERSION}}`, `{{TOOL_SHA256}}` and `{{TOOL_REPO}}`.
+values plus `<<TOOL_VERSION>>`, `<<TOOL_SHA256>>` and `<<TOOL_REPO>>`.
 
 Write the `Credentials` step only if `AUDIT_STATE` shows no gating step already
 running the checker with no `--control`: a full audit reaches SEC-002 already, a

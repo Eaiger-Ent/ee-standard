@@ -277,7 +277,7 @@ state, which is where that output means something.
 ## Step 5 — Write the Conformance step
 
 Read `${CLAUDE_SKILL_DIR}/templates/conformance-step.yaml` and substitute
-`{{CHECKER_INVOCATION}}` with the register's `tools.register-check.invocation`.
+`<<CHECKER_INVOCATION>>` with the register's `tools.register-check.invocation`.
 Nothing else in it is a value of yours to choose.
 
 **Where it goes is the register's.** The job is the one CI-001's verify block

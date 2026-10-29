@@ -138,13 +138,13 @@ def test_the_templates_stamp_what_they_write(skill: Path) -> None:
     """
     register = a_register()
     substitutions = {
-        "{{SKILL_VERSION}}": "0.1.0",
+        "<<SKILL_VERSION>>": "0.1.0",
         # Read from the gate's declaration rather than written here: a template that
         # stamped a literal would be the second copy ADR 0038 exists to avoid,
         # and this test would keep passing over it.
-        "{{GATE_CONTRACT}}": declared_gates().get(skill.name, {}).get("contractVersion", 0),
-        "{{REGISTER_VERSION}}": register.version,
-        "{{REGISTER_CONTRACT}}": str(register.register_contract),
+        "<<GATE_CONTRACT>>": declared_gates().get(skill.name, {}).get("contractVersion", 0),
+        "<<REGISTER_VERSION>>": register.version,
+        "<<REGISTER_CONTRACT>>": str(register.register_contract),
     }
     templates = sorted((skill / "templates").glob("*"))
     if not templates:
@@ -209,7 +209,7 @@ def test_no_skill_repeats_a_version_the_register_pins(field: str, literal: str) 
     A skill that hard-coded `8.30.1` would deploy that version after the
     register moved on, and `tool_versions_match_register` would report drift in
     a repository whose owner changed nothing. The templates carry
-    `{{TOOL_VERSION}}`; the value arrives at deploy time or not at all.
+    `<<TOOL_VERSION>>`; the value arrives at deploy time or not at all.
     """
     offenders = [
         str(path.relative_to(REPO_ROOT))
@@ -244,3 +244,47 @@ def test_the_gate_verifies_through_the_checker_and_not_otherwise(skill: Path) ->
         assert f"--control {control}" in joined, (
             f"{skill.name} deploys {control} and does not verify it through the checker"
         )
+
+
+#: Every YAML template a gate ships. Collected rather than listed, so a new one
+#: is covered the day it is added.
+YAML_TEMPLATES = sorted(
+    p for p in (PLUGIN / "skills").glob("*/templates/*") if p.suffix in {".yaml", ".yml"}
+)
+
+
+def test_the_yaml_templates_were_found() -> None:
+    """A glob that matched nothing would pass the test below vacuously."""
+    assert len(YAML_TEMPLATES) >= 10, f"found only {len(YAML_TEMPLATES)} YAML templates"
+
+
+@pytest.mark.parametrize(
+    "template", YAML_TEMPLATES, ids=lambda p: f"{p.parent.parent.name}/{p.name}"
+)
+def test_a_yaml_template_is_yaml_before_it_is_rendered(template: Path) -> None:
+    """ADR 0059 revision 2: a gate's YAML template parses as shipped.
+
+    With `{{NAME}}` placeholders ten of them did not — a value that begins with
+    `{` opens a flow mapping — so nothing could check them until a gate had
+    written them into someone's repository. `<<NAME>>` is a plain scalar, so a
+    template that is broken YAML now fails here, before it ships.
+    """
+    yaml.safe_load(template.read_text(encoding="utf-8"))
+
+
+def test_the_gate_skills_spell_a_placeholder_one_way() -> None:
+    """No gate skill file carries the retired `{{NAME}}` spelling.
+
+    A gate replaces one marker. A template that mixed `{{NAME}}` with `<<NAME>>`
+    would deploy with the old one left in, and every render test, which looks
+    for the new one, would pass over it. The devcontainer and adoption templates
+    under `plugins/control-register/templates/` are a separate mechanism that an
+    adopter's `sed` fills, and keep `{{NAME}}` (ADR 0059 revision 2).
+    """
+    retired = re.compile(r"\{\{[A-Z][A-Z0-9_]*\}\}")
+    offenders = [
+        str(path.relative_to(REPO_ROOT))
+        for path in (PLUGIN / "skills").rglob("*")
+        if path.is_file() and retired.search(path.read_text(encoding="utf-8", errors="ignore"))
+    ]
+    assert not offenders, f"retired `{{{{NAME}}}}` placeholders in: {', '.join(offenders)}"

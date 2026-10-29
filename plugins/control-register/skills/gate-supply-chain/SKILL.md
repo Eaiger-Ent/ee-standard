@@ -188,8 +188,8 @@ repository.
 ## Step 1 — Wire the frozen install (SUP-001)
 
 Read `${CLAUDE_SKILL_DIR}/templates/ci-steps.yaml` and substitute
-`{{FROZEN_INSTALL}}`, `{{ECOSYSTEM}}`, `{{TOOL_INVOCATION}}`, `{{TOOL}}`,
-`{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`.
+`<<FROZEN_INSTALL>>`, `<<ECOSYSTEM>>`, `<<TOOL_INVOCATION>>`, `<<TOOL>>`,
+`<<SKILL_VERSION>>`, `<<GATE_CONTRACT>>`, `<<REGISTER_VERSION>>` and `<<REGISTER_CONTRACT>>`.
 
 - **`INSTALL_STATE` shows a frozen install already:** write nothing, stamp the
   step that is there for SUP-001, and say it was adopted.

@@ -195,8 +195,8 @@ question about that image rather than about this control.
 ## Step 2 — Pin the image and every feature (DEV-001)
 
 Read `${CLAUDE_SKILL_DIR}/templates/devcontainer.json` and substitute
-`{{CONTAINER_USER}}`, `{{IMAGE}}`, `{{IMAGE_DIGEST}}`, `{{SKILL_VERSION}}`,
-`{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`. Merge it into the
+`<<CONTAINER_USER>>`, `<<IMAGE>>`, `<<IMAGE_DIGEST>>`, `<<SKILL_VERSION>>`,
+`<<GATE_CONTRACT>>`, `<<REGISTER_VERSION>>` and `<<REGISTER_CONTRACT>>`. Merge it into the
 `devcontainer.json` that is there — **as text, not by reparsing and dumping**.
 The stamps are `//` comments and a round trip through a JSON writer drops them;
 the checker reads this file with a JSONC reader, so the comments stay legal.
