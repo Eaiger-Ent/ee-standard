@@ -33,7 +33,15 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, UNFILLED, declared_gates, gate_contract, make_repo, requires_tool
+from conftest import (
+    REPO_ROOT,
+    UNFILLED,
+    declared_gates,
+    gate_contract,
+    make_repo,
+    requires_tool,
+    template_payload,
+)
 from register_check.cli import main
 from register_check.provenance import stamps_in
 from register_check.register import Register, load_register
@@ -189,8 +197,13 @@ def _payload(path: Path, comment: str = "#", marker: str | None = None) -> str:
     editor locus has a devcontainer shape and a `.vscode/` shape, and a gate
     writes one, never both. Everything from the marker line to the next
     `--- ` section is that shape.
+
+    A YAML hook or step template has one marker and a payload at column 0,
+    indented here to the six columns `_hooks` and `_steps` append at.
     """
     text = path.read_text(encoding="utf-8")
+    if path.suffix == ".yaml" and marker is None:
+        return template_payload(text, 6)
     if marker is not None:
         after = text.split(marker, 1)[1]
         return after.split("\n" + comment + " ---", 1)[0].split("\n", 1)[1]

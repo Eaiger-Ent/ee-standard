@@ -1660,6 +1660,15 @@ the same four weeks; the evidence for each tick is
       is valid YAML, its placeholders respelled in one pass, and a gate renders
       byte-identical output from it (ADR 0059 revision 2). Closed 2026-10-28,
       [`19-phase-9-review.md`](19-phase-9-review.md).
+- [x] Every YAML gate template's payload starts at column 0, below a `# ---`
+      marker, and each skill that writes one indents it to the list it joins
+      (`reference/template-layout.md`). The templates pass yamllint's `default`
+      preset, and a gate writes the same bytes. Closed 2026-10-30,
+      [`19-phase-9-review.md`](19-phase-9-review.md).
+- [ ] This repository's `.yamllint.yml` is the shape the amended `lint-yaml`
+      writes (incubator#1220): `extends: default`, the floor stated at
+      `level: error`, `line-length` at 200 and `document-start` disabled. And
+      `uv run yamllint .` passes with it.
 - [ ] `lint-yaml` is deployed here from a release that includes incubator#1143,
       and `.claude/hooks/yaml-lint.py` passes TYP-001 unedited.
 - [x] `uv run register-check run --control YML-001` passes here, and fails when

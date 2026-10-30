@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, a_register, declared_gates
+from conftest import REPO_ROOT, a_register, declared_gates, template_payload
 from register_check.provenance import MARKER, stamps_in
 
 PLUGIN = REPO_ROOT / "plugins/control-register"
@@ -270,6 +270,24 @@ def test_a_yaml_template_is_yaml_before_it_is_rendered(template: Path) -> None:
     template that is broken YAML now fails here, before it ships.
     """
     yaml.safe_load(template.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize(
+    "template", YAML_TEMPLATES, ids=lambda p: f"{p.parent.parent.name}/{p.name}"
+)
+def test_a_yaml_template_payload_starts_at_column_0(template: Path) -> None:
+    """The payload sits below one marker, unindented, so it lints as shipped.
+
+    Before 2026-10-30 a hook's payload was indented six columns, the depth of
+    the `hooks:` list it joins, and under yamllint's `default` preset that gave
+    22 findings across the templates. The gate now indents it on writing
+    (`reference/template-layout.md`), and the render tests indent it the same
+    way through `template_payload`. A payload put back at depth fails here.
+    """
+    payload = template_payload(template.read_text(encoding="utf-8"), 0)
+    lines = [line for line in payload.splitlines() if line.strip()]
+    assert lines, f"{template.name}: nothing below the marker"
+    assert not lines[0].startswith(" "), f"{template.name}: payload starts indented"
 
 
 def test_the_gate_skills_spell_a_placeholder_one_way() -> None:
