@@ -26,6 +26,25 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 #: whatever the render left behind.
 UNFILLED = re.compile(r"<<[A-Z][A-Z0-9_]*>>")
 
+#: The line that ends a YAML gate template's explanatory comments. Everything
+#: below it is the payload, at column 0 so the template lints as shipped.
+TEMPLATE_MARKER = re.compile(r"^# --- .+ ---\n", re.MULTILINE)
+
+
+def template_payload(template: str, indent: int) -> str:
+    """A YAML template's payload, laid out as the gate writes it.
+
+    This is `plugins/control-register/reference/template-layout.md`, done
+    once: the text below the marker, every non-blank line indented to the
+    list it joins. Taken before substitution, because the comments above the
+    marker talk *about* the placeholders and would fail the `UNFILLED` check.
+    """
+    parts = TEMPLATE_MARKER.split(template)
+    assert len(parts) == 2, f"expected one `# --- ... ---` marker, found {len(parts) - 1}"
+    return "".join(
+        " " * indent + line if line.strip() else line for line in parts[1].splitlines(keepends=True)
+    )
+
 
 @pytest.fixture(autouse=True)
 def _no_ambient_github_token(monkeypatch: pytest.MonkeyPatch) -> None:

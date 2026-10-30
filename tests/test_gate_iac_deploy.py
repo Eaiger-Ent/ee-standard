@@ -25,7 +25,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo
+from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo, template_payload
 from register_check.cli import main
 from register_check.provenance import stamps_in
 from register_check.register import Register, load_register
@@ -72,13 +72,6 @@ def _render(template: str, register: Register) -> str:
     return text
 
 
-def _body(template: str) -> str:
-    """The template's payload, without the comment block explaining it."""
-    lines = template.splitlines(keepends=True)
-    start = next(i for i, line in enumerate(lines) if not line.startswith("#"))
-    return "".join(lines[start:])
-
-
 def _deploy(root: Path, register: Register) -> None:
     """Write both artefacts, as Step 2 of the skill describes.
 
@@ -86,11 +79,13 @@ def _deploy(root: Path, register: Register) -> None:
     skill's documented do-not-install path. Step 3 writes nothing either — this
     adopter has no predecessor tool and no suppression file.
     """
-    hook = _render(_body((SKILL / "templates/precommit-hook.yaml").read_text()), register)
+    hook = _render(
+        template_payload((SKILL / "templates/precommit-hook.yaml").read_text(), 6), register
+    )
     (root / ".pre-commit-config.yaml").write_text(
         "repos:\n  - repo: local\n    hooks:\n" + hook, encoding="utf-8"
     )
-    steps = _render(_body((SKILL / "templates/ci-steps.yaml").read_text()), register)
+    steps = _render(template_payload((SKILL / "templates/ci-steps.yaml").read_text(), 6), register)
     workflow = root / ".github/workflows/ci.yml"
     workflow.write_text(workflow.read_text(encoding="utf-8") + steps, encoding="utf-8")
 
@@ -187,7 +182,7 @@ def test_one_hook_runs_the_control_and_the_control_runs_both_analysers() -> None
     property, checked rather than described.
     """
     template = (SKILL / "templates/precommit-hook.yaml").read_text(encoding="utf-8")
-    entry = next(line for line in _body(template).splitlines() if "entry:" in line)
+    entry = next(line for line in template_payload(template, 6).splitlines() if "entry:" in line)
     assert "--control IAC-001" in entry
     analysers = [
         block.run

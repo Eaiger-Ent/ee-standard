@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo
+from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo, template_payload
 from register_check.cli import main
 from register_check.provenance import stamps_in
 from register_check.register import Register, load_register
@@ -127,7 +127,9 @@ def _deploy(root: Path, register: Register) -> None:
     devcontainer.write_text(existing + ",\n" + inner + "\n}\n", encoding="utf-8")
 
     # Step 4 — the pre-commit locus. One hook, two stamps.
-    hook = _render(_body((SKILL / "templates/precommit-hook.yaml").read_text()), register)
+    hook = _render(
+        template_payload((SKILL / "templates/precommit-hook.yaml").read_text(), 6), register
+    )
     (root / ".pre-commit-config.yaml").write_text(
         "repos:\n  - repo: local\n    hooks:\n" + hook, encoding="utf-8"
     )
@@ -135,7 +137,7 @@ def _deploy(root: Path, register: Register) -> None:
     # Step 4 — the ci locus. This adopter's workflow runs no audit at all, so
     # the step is written rather than skipped; the no-op path is exercised
     # separately below.
-    steps = _render(_body((SKILL / "templates/ci-steps.yaml").read_text()), register)
+    steps = _render(template_payload((SKILL / "templates/ci-steps.yaml").read_text(), 6), register)
     workflow = root / ".github/workflows/ci.yml"
     workflow.write_text(workflow.read_text(encoding="utf-8") + steps, encoding="utf-8")
 

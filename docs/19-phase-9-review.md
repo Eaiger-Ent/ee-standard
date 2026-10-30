@@ -97,3 +97,39 @@ So item 3 is blocked on `lint-yaml` itself. Its config, its pre-commit hook
 and its hook script's lint conformance would be three asks beyond the ADR's
 two. The hand-wired hook here is that script with exactly those three edits,
 and its header names each one.
+
+## A template's payload starts at column 0
+
+**Closed 2026-10-30.**
+
+**The defect.** Under yamllint's `default` preset the gate templates had 22
+findings, all `indentation` and `comments-indentation`. That preset is what
+`lint-yaml` writes and what this repository is moving to. Each payload was
+indented six columns, the depth of the `hooks:` or `steps:` list it joins, so a
+template read on its own was indented for no reason it could show.
+
+**The fix.** Each YAML template's payload is at column 0, below one marker line
+that names the file and the list it joins:
+``# --- .pre-commit-config.yaml: items of the `repo: local` entry's `hooks:` ---``
+or ``# --- the gating workflow: items of the gating job's `steps:` ---``.
+`dependabot.yaml` already had one. The rule for writing it is in
+`plugins/control-register/reference/template-layout.md`, and each of the six
+skills that writes a YAML template points there (ADR 0036): read the column of
+the list's existing items from the file, indent each non-blank line by it, and
+use six spaces in a file being created. The header comments were already never
+written, and the marker is not written either.
+
+**How it was shown to hold.**
+
+| Claim | Evidence |
+| --- | --- |
+| A gate writes exactly what it wrote before | For all 12 YAML templates, the payload indented as the reference says equals the body at `main`, byte for byte. So no `contractVersion` moves (ADR 0038, consequence 1) |
+| The templates pass `default` | `yamllint` with `extends: default`, `line-length` 200 and `document-start` disabled, over `skills/*/templates/*.yaml`: 22 findings at `main`, 0 after |
+| The render tests write what the gate writes | `template_payload` in `tests/conftest.py` is the reference's rule, done once. All five render test files use it, so the hooks and steps they deploy are the gate's |
+| A payload cannot go back to depth | `test_a_yaml_template_payload_starts_at_column_0`, one case per template. It fails with `gate-iac`'s hook put back at six columns |
+| The rule has one home | `test_shared_reference.py` holds `template-layout.md` to its heading, and fails a skill that inlines it |
+
+**Owed upstream.** `docs/promotion/published.json` adds this to the ADR 0059
+revision 2 difference, and declares `reference/template-layout.md` as well. The
+same amendment has to carry both changes, because a `SKILL.md` that does not
+indent, given a template at column 0, writes a hook pre-commit rejects.

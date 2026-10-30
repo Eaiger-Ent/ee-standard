@@ -32,7 +32,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo
+from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo, template_payload
 from register_check.cli import main
 from register_check.provenance import stamps_in
 from register_check.register import Gate, Register, load_register
@@ -211,7 +211,8 @@ def _deploy(root: Path, register: Register) -> None:
 
     # Step 4 — the pre-commit locus.
     hooks = _render(
-        _body((SKILL / "templates/precommit-hooks.yaml").read_text(encoding="utf-8")), register
+        template_payload((SKILL / "templates/precommit-hooks.yaml").read_text(encoding="utf-8"), 6),
+        register,
     )
     (root / ".pre-commit-config.yaml").write_text(
         "repos:\n  - repo: local\n    hooks:\n" + hooks, encoding="utf-8"
@@ -219,7 +220,8 @@ def _deploy(root: Path, register: Register) -> None:
 
     # Step 5 — the ci locus, appended to the job that already installs frozen.
     steps = _render(
-        _body((SKILL / "templates/ci-steps.yaml").read_text(encoding="utf-8")), register
+        template_payload((SKILL / "templates/ci-steps.yaml").read_text(encoding="utf-8"), 6),
+        register,
     )
     workflow = root / ".github/workflows/ci.yml"
     workflow.write_text(workflow.read_text(encoding="utf-8") + steps, encoding="utf-8")
