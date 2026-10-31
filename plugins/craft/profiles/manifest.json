@@ -64,7 +64,7 @@
         "unenforced.md"
       ],
       "rules": 141,
-      "read_from": "ruff 0.16.9",
+      "read_from": "ruff 0.17.3",
       "declares_a_fix": 70,
       "hand_work": 71,
       "dependencies": [],
@@ -82,7 +82,7 @@
         "unenforced.md"
       ],
       "rules": 171,
-      "read_from": "ruff 0.16.9",
+      "read_from": "ruff 0.17.3",
       "declares_a_fix": 78,
       "hand_work": 93,
       "dependencies": [
