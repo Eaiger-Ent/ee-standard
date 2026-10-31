@@ -37,6 +37,10 @@
     "reference/template-layout.md": {
       "stance": "owed-upstream",
       "why": "ADR 0059 revision 2: the gate skills' placeholders are respelled from {{NAME}} to <<NAME>>, so each YAML template parses as shipped and YML-001 can read it. Then, 2026-10-30: each YAML template's payload sits at column 0 below a `# ---` marker, so it also passes yamllint's `default` preset, and the skill indents it to the list it joins on writing (reference/template-layout.md). What a gate renders is byte-identical after both. Not yet submitted; one incubator amendment carries the templates, the prose in each SKILL.md, editor-binding-rules.md and reference/template-layout.md together, because a gate whose SKILL.md and templates disagree about the marker or the layout deploys with placeholders left in, or at the wrong depth."
+    },
+    "templates/adopt/guided.sh": {
+      "stance": "owed-upstream",
+      "why": "Python 3.15 (Renovate #213): the guided route's `uv init --python` names the interpreter this repository pins in .python-version, which moved from 3.14 to 3.15. tests/test_toolchain_pin.py holds START-HERE.md and 08-adopting.md to that pin, and this script runs the same step as START-HERE's block. Not yet submitted."
     }
   }
 }

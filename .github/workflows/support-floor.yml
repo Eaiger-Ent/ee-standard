@@ -37,8 +37,13 @@ jobs:
   support-floor:
     runs-on: ubuntu-latest
     steps:
-      # SUP-003 — pinned to a commit SHA.
+      # SUP-003 — pinned to a commit SHA. Full history, because the suite reads
+      # the tag the register pins the checker to (test_register_install.py), and
+      # a shallow checkout has no tags. The gap below was closed from ADR 0028
+      # until the pin moved to 3.15, so nothing ran here to show it.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Is there a gap between the floor and the pin?
         id: gap
@@ -62,6 +67,13 @@ jobs:
         run: |
           # renovate: datasource=pypi depName=uv
           pip install uv==0.13.6
+
+      # The suite lints rendered Markdown with the binary package-lock.json pins
+      # (test_craft_render.py), as the Conformance job does. `npm ci` is also
+      # SUP-001's frozen node install.
+      - name: Install markdownlint
+        if: steps.gap.outputs.gap == 'true'
+        run: npm ci --no-audit --no-fund
 
       - name: Tests, on the oldest interpreter this package claims to support
         if: steps.gap.outputs.gap == 'true'
