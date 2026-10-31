@@ -99,8 +99,10 @@ jobs:
       # ee-control: TYP-001  ee-skill: gate-quality@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
       # YML-001's ci locus (ADR 0059). In this job rather than in lint.yml
       # because this job already has the uv the register pins, and a second
-      # install would be a second place to bump it. Hand-wired: `lint-yaml`
-      # would `pip install yamllint`, which pins nothing.
+      # install would be a second place to bump it. Written by hand before
+      # `lint-yaml` 0.1.16 ran here on 2026-10-31. Its Step 4 picks `lint.yml`
+      # by name, finds no step there, and would add a second step and a second
+      # uv install. So this step was kept and Step 4 skipped.
       - name: Lint YAML
         run: uv run yamllint .
 
