@@ -1677,13 +1677,15 @@ the same four weeks; the evidence for each tick is
       hand-wired deployment, [`19-phase-9-review.md`](19-phase-9-review.md).
 - [ ] `08-adopting.md` carries the by-hand route for YML-001, in both pinning
       forms, with how you know each step worked.
-- [ ] The two asks of `lint-yaml` are filed upstream: a pinned install outside a
+- [x] The two asks of `lint-yaml` are filed upstream: a pinned install outside a
       uv project, and the floor's three rules at `level: error` in its config.
       Item 3 found three more, recorded in
       [`19-phase-9-review.md`](19-phase-9-review.md): its pre-commit hook
       should reach the register's pin rather than a `rev:`, its config should
       state the floor rather than inherit `default`'s warning, and its hook
-      script should pass ruff.
+      script should pass ruff. Closed 2026-10-31: all five were filed as
+      incubator#1220, merged 2026-10-29 and published in `lint-yaml` 0.1.16,
+      whose hook passes ruff, mypy and `test_toolchain_pin.py` here unedited.
 
 ## What is deliberately not in scope
 

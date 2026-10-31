@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-10-28
-**Revision:** 3
+**Revision:** 4
 
 Rationale for control **YML-001** in `controls.yaml`.
 
@@ -219,19 +219,30 @@ release that includes incubator#1143, or TYP-001 fails here as it did in the
 adopter's repository. The hook is a deployed artefact like `md-lint.py`, not a
 vendored skill. ADR 0044's rule that nothing is copied still holds.
 
-**Adopters on the public route deploy it by hand.** `lint-yaml` is in the
-incubator only. It is in neither `ee-skills` nor this repository's marketplace.
+**Adopters on the public route deploy it by hand.** `lint-yaml` is published
+in `ee-skills`, which is private, and not in this repository's marketplace.
 [ADR 0044](0044-the-adopter-installs-from-the-public-marketplace.md) part 2
 already covers this: the by-hand route is supported, and the register verifies
 it. `08-adopting.md` gains that route for YML-001, as § 3 has for DOC-001.
 
-**Two things are asked of `lint-yaml` upstream.** Neither blocks this decision.
+**Amended 2026-10-31 (revision 4): what was asked of `lint-yaml` upstream, and
+what shipped.** Revision 1 said `lint-yaml` was in the incubator only, and in
+neither `ee-skills` nor this marketplace. By 2026-10-29 it was published in
+`ee-skills` as 0.1.15, so the paragraph above now says so. Revision 1 also asked
+two things of it, and the second was worded as if `extends: default` met the
+floor. It does not: `default` sets `truthy` to warning, and yamllint exits 0
+over warnings. Preparing the deployment found three more asks
+([`19-phase-9-review.md`](../19-phase-9-review.md) § What `lint-yaml` 0.1.15
+would deploy). All five were submitted as incubator#1220 and shipped in
+`lint-yaml` 0.1.16:
 
-- Outside a uv project it runs `pip install yamllint`, which pins nothing. That
-  fails ADR 0020 at every locus.
-- Its shipped config should state the floor's three rules at `level: error`.
-  Then a deployment is shown to meet YML-001, rather than meeting it only
-  because `extends: default` happens to.
+| Ask | What 0.1.16 does |
+| --- | --- |
+| A pinned install outside a uv project | Runs `uvx --from yamllint==<version> yamllint` at every locus, or `uv run yamllint` where the project has a lockfile |
+| The floor stated in its config | Writes `extends: default` with `key-duplicates` and `truthy` stated at `level: error` |
+| The pre-commit hook reaches the same pin | A `repo: local` hook whose `entry:` is the configured invocation, not the `adrienverge/yamllint` mirror pinned by `rev:` |
+| The CI step reaches the same pin | Runs the configured invocation, not `pip install yamllint` |
+| The hook script passes ruff | Passes `ruff check`, `mypy` and this repository's shebang rule unedited, measured 2026-10-31 |
 
 **The literal form pins `yamllint` and not its dependencies.** `uvx` resolves
 PyYAML and pathspec fresh on each cold cache, where a lockfile would fix them.
@@ -280,3 +291,4 @@ does not parse, and each of those is a real defect.
 | 1 | 2026-10-28 | Original decision: YML-001, `yamllint` with a correctness floor at three loci, deployed by `lint-yaml`. | Nathan Carney |
 | 2 | 2026-10-28 | § Consequences: the gate templates become valid YAML by respelling their placeholders, rather than being renamed to a non-YAML suffix. | Nathan Carney |
 | 3 | 2026-10-28 | § Consequences: the marker is `<<NAME>>`, not revision 2's example `__NAME__`, which is ambiguous next to an underscore. | Nathan Carney |
+| 4 | 2026-10-31 | § Consequences: `lint-yaml` is published in `ee-skills`, not the incubator only; `default` does not meet the floor; all five upstream asks shipped in `lint-yaml` 0.1.16. | Awaiting ratification |
