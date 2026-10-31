@@ -291,4 +291,4 @@ does not parse, and each of those is a real defect.
 | 1 | 2026-10-28 | Original decision: YML-001, `yamllint` with a correctness floor at three loci, deployed by `lint-yaml`. | Nathan Carney |
 | 2 | 2026-10-28 | § Consequences: the gate templates become valid YAML by respelling their placeholders, rather than being renamed to a non-YAML suffix. | Nathan Carney |
 | 3 | 2026-10-28 | § Consequences: the marker is `<<NAME>>`, not revision 2's example `__NAME__`, which is ambiguous next to an underscore. | Nathan Carney |
-| 4 | 2026-10-31 | § Consequences: `lint-yaml` is published in `ee-skills`, not the incubator only; `default` does not meet the floor; all five upstream asks shipped in `lint-yaml` 0.1.16. | Awaiting ratification |
+| 4 | 2026-10-31 | § Consequences: `lint-yaml` is published in `ee-skills`, not the incubator only; `default` does not meet the floor; all five upstream asks shipped in `lint-yaml` 0.1.16. | Nathan Carney |

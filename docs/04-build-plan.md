@@ -1677,8 +1677,11 @@ the same four weeks; the evidence for each tick is
 - [x] `uv run register-check run --control YML-001` passes here, and fails when
       a duplicate key is added to `controls.yaml`. Closed 2026-10-29, over a
       hand-wired deployment, [`19-phase-9-review.md`](19-phase-9-review.md).
-- [ ] `08-adopting.md` carries the by-hand route for YML-001, in both pinning
-      forms, with how you know each step worked.
+- [ ] `08-adopting.md` tells an adopter how to deploy YML-001, with how you
+      know each step worked. Until 2026-10-31 this read *the by-hand route*.
+      [ADR 0060](adr/0060-this-marketplace-mirrors-the-lint-skills.md) makes
+      the route installing `lint-yaml` from this marketplace, so this closes
+      with Phase 10's guide item.
 - [x] The two asks of `lint-yaml` are filed upstream: a pinned install outside a
       uv project, and the floor's three rules at `level: error` in its config.
       Item 3 found three more, recorded in
@@ -1688,6 +1691,33 @@ the same four weeks; the evidence for each tick is
       script should pass ruff. Closed 2026-10-31: all five were filed as
       incubator#1220, merged 2026-10-29 and published in `lint-yaml` 0.1.16,
       whose hook passes ruff, mypy and `test_toolchain_pin.py` here unedited.
+
+## Phase 10 — The lint skills are mirrored here
+
+[ADR 0060](adr/0060-this-marketplace-mirrors-the-lint-skills.md), accepted
+2026-10-31, serves `lint-md` and `lint-yaml` from this marketplace as mirrors of
+the copies published in `ee-skills`. An `ee-skills` maintainer agreed to the
+republication on the same day.
+
+- [ ] `plugins/lint-md/` and `plugins/lint-yaml/` hold the published trees at a
+      recorded version and commit. `docs/promotion/mirrored.json` holds a
+      digest per file, and a test fails on any file that differs from the
+      record, or is present on one side only.
+- [ ] The one declared difference holds and nothing else does: each mirror's
+      `plugin.json` drops `dependencies`, and may differ by nothing more.
+- [ ] A script re-mirrors a plugin from the installed `ee-skills` checkout and
+      rewrites the record. With `--check` it reports a mirror that is behind,
+      and exits `0` over one, because a mirror behind is reported, never
+      enforced.
+- [ ] `marketplace.json` lists both plugins, and `tests/test_adopter_guide.py`
+      accepts `lint-md@ee-standard` and `lint-yaml@ee-standard` from the
+      register's address.
+- [ ] `08-adopting.md` and `START-HERE.md` install both skills from this
+      marketplace. § 3's by-hand route becomes the fallback, for an adopter who
+      will not install a plugin.
+- [ ] Upstream is asked to drop the unused `dependencies` key from both
+      plugins, so the mirrors can become byte-identical. Filing it is an act in
+      another organisation's repository and needs its own yes.
 
 ## What is deliberately not in scope
 

@@ -1,6 +1,6 @@
 # ADR 0060: This Marketplace Mirrors the Lint Skills
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-31
 **Revision:** 1
 
@@ -91,6 +91,10 @@ is implemented until a maintainer of `EqualExperts/ee-skills` has agreed to
 `lint-md` and `lint-yaml` being republished from a public repository. That yes
 is recorded here, by name and date, when this ADR is accepted. If they refuse,
 this ADR is rejected and ADR 0044 part 2 stands.
+
+**Met 2026-10-31.** Nathan Carney, a maintainer of `EqualExperts/ee-skills`,
+agreed to `lint-md` and `lint-yaml` being republished from this repository,
+when accepting this ADR.
 
 **What changes.**
 
