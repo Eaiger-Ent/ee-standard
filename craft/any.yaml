@@ -34,7 +34,7 @@ properties:
     asserts: 'Commit subjects follow `type(scope): description`'
     bucket: 1
     sources:
-    - git 001
+      - git 001
     unenforced: The instrument exists and the group is simply on — every repository
       has commit messages, so there is no artefact whose absence makes the property
       inapplicable.
@@ -50,13 +50,13 @@ properties:
     asserts: A commit subject is imperative present tense
     bucket: 2
     sources:
-    - git 002
+      - git 002
     unenforced: Nothing asserts it reliably. A word-list check would be a heuristic.
   any.commit-subject-length:
     asserts: A subject fits in 72 characters
     bucket: 1
     sources:
-    - git 003
+      - git 003
     unenforced: The same group and the same cost as `any.conventional-commits`.
     candidate:
       tool: 'commitlint `header-max-length`, or commitizen `message_length_limit`'
@@ -72,7 +72,7 @@ properties:
     asserts: A commit body or footer names the work item
     bucket: 1
     sources:
-    - git 004
+      - git 004
     unenforced: The same group and the same cost as `any.conventional-commits`.
     candidate:
       tool: commitlint `references-empty`
@@ -91,7 +91,7 @@ properties:
     asserts: Nothing lands on the default branch outside a pull request
     bucket: 1
     sources:
-    - git 005
+      - git 005
     out_of_scope: control
     why: '**Already gated: CI-001.** The control register requires a default-branch
       ruleset that forbids it, and `gate-repo` records what was applied.'
@@ -99,7 +99,7 @@ properties:
     asserts: Every check passes before merge
     bucket: 1
     sources:
-    - git 006
+      - git 006
     out_of_scope: control
     why: '**Already gated: CI-001.** Required status checks are part of the same
       ruleset.'
@@ -107,7 +107,7 @@ properties:
     asserts: Branches read `type/short-description`
     bucket: 1
     sources:
-    - git 101
+      - git 101
     out_of_scope: profile
     why: A GitHub ruleset branch-name pattern. It cannot even go in the ruleset
       `gate-repo` records, which fails anything not targeting `~DEFAULT_BRANCH`.
@@ -118,14 +118,14 @@ properties:
     asserts: A pull request is reviewable in under thirty minutes
     bucket: 2
     sources:
-    - git 102
+      - git 102
     unenforced: A diff-size threshold could hold it and the number would be arbitrary.
       No source in the register proposes one.
   any.linear-merged-history:
     asserts: Merged history contains only logical commits
     bucket: 1
     sources:
-    - git 103
+      - git 103
     out_of_scope: profile
     why: A GitHub ruleset merge-method restriction. It could be added to the ruleset
       `gate-repo` records — `_ruleset_problems` treats an extra rule as a narrowing
@@ -136,13 +136,13 @@ properties:
     asserts: A pull request says what changed, why, and how to verify
     bucket: 2
     sources:
-    - git 104
+      - git 104
     unenforced: A template exists; a check that it was filled in does not.
   any.delete-merged-branches:
     asserts: Branches are deleted after merge
     bucket: 1
     sources:
-    - git 105
+      - git 105
     out_of_scope: profile
     why: A repository setting, not a rule and not a file. Platform state applied
       through the API.
@@ -150,7 +150,7 @@ properties:
     asserts: Commits are signed where policy requires
     bucket: 1
     sources:
-    - git 201
+      - git 201
     out_of_scope: profile
     why: 'A GitHub ruleset signature requirement, and the same objection as `any.linear-merged-history`:
       it could go in the recorded ruleset, and a profile writing into a gate''s
@@ -159,7 +159,7 @@ properties:
     asserts: Releases are tagged `vMAJOR.MINOR.PATCH`
     bucket: 1
     sources:
-    - git 202
+      - git 202
     out_of_scope: profile
     why: A GitHub ruleset tag pattern, which cannot go in the ruleset `gate-repo`
       records at all — that file fails anything not targeting `~DEFAULT_BRANCH`.
@@ -167,14 +167,14 @@ properties:
     asserts: A changelog is updated as part of release
     bucket: 2
     sources:
-    - git 203
+      - git 203
     unenforced: A check that the file moved with the tag could hold it. Nothing
       registered does.
   any.rest-resource-nouns:
     asserts: Paths name resources, not actions
     bucket: 2
     sources:
-    - api 001
+      - api 001
     gated_on: openapi-document
     unenforced: '`spectral` over an OpenAPI document would assert it.'
     candidate:
@@ -186,7 +186,7 @@ properties:
     asserts: Collections are plural, items are addressed by id
     bucket: 2
     sources:
-    - api 101
+      - api 101
     gated_on: openapi-document
     unenforced: '`spectral` over an OpenAPI document would assert it.'
     candidate:
@@ -198,13 +198,13 @@ properties:
     asserts: Methods carry their standard meanings and idempotency
     bucket: 3
     sources:
-    - api 002
+      - api 002
     unenforced: Bucket 3. The spelling is checkable; the semantics are not.
   any.standard-status-codes:
     asserts: Responses use the conventional status codes
     bucket: 2
     sources:
-    - api 003
+      - api 003
     gated_on: openapi-document
     unenforced: '`spectral`, against a declared set of status codes.'
     candidate:
@@ -216,7 +216,7 @@ properties:
     asserts: Errors carry a code, a message and a correlation id
     bucket: 2
     sources:
-    - api 004
+      - api 004
     gated_on: openapi-document
     unenforced: '`spectral`, against a shared error schema.'
     candidate:
@@ -228,7 +228,7 @@ properties:
     asserts: The API version is explicit from the first release
     bucket: 2
     sources:
-    - api 005
+      - api 005
     gated_on: openapi-document
     unenforced: '`spectral` over an OpenAPI document would assert it.'
     candidate:
@@ -240,7 +240,7 @@ properties:
     asserts: No collection endpoint returns an unbounded list
     bucket: 2
     sources:
-    - api 006
+      - api 006
     gated_on: openapi-document
     unenforced: '`spectral` over an OpenAPI document would assert it.'
     candidate:
@@ -252,7 +252,7 @@ properties:
     asserts: Every endpoint has request and response schemas and examples
     bucket: 2
     sources:
-    - api 104
+      - api 104
     gated_on: openapi-document
     unenforced: '`spectral` over an OpenAPI document would assert it.'
     candidate:
@@ -264,7 +264,7 @@ properties:
     asserts: Date and time fields are ISO 8601 strings
     bucket: 2
     sources:
-    - api 106
+      - api 106
     gated_on: openapi-document
     unenforced: '`spectral`, against a format assertion.'
     candidate:
@@ -276,7 +276,7 @@ properties:
     asserts: A 201 carries a `Location`
     bucket: 2
     sources:
-    - api 105
+      - api 105
     gated_on: openapi-document
     unenforced: '`spectral` over an OpenAPI document would assert it.'
     candidate:
@@ -288,7 +288,7 @@ properties:
     asserts: Collection query parameters are documented
     bucket: 2
     sources:
-    - api 102
+      - api 102
     gated_on: openapi-document
     unenforced: '`spectral` over an OpenAPI document would assert it.'
     candidate:
@@ -300,13 +300,13 @@ properties:
     asserts: A request id is present in every response and traced through
     bucket: 3
     sources:
-    - api 103
+      - api 103
     unenforced: Bucket 3. The header is checkable; propagation is not.
   any.health-endpoint:
     asserts: A health endpoint reports service and dependency state
     bucket: 2
     sources:
-    - api 202
+      - api 202
     gated_on: openapi-document
     unenforced: '`spectral` for its presence, and for nothing about its truthfulness.'
     candidate:
@@ -318,28 +318,28 @@ properties:
     asserts: Frequently polled resources support `ETag`
     bucket: 3
     sources:
-    - api 203
+      - api 203
     unenforced: Bucket 3.
   any.json-merge-patch:
     asserts: Partial updates use RFC 7396
     bucket: 3
     sources:
-    - api 201
+      - api 201
     unenforced: Bucket 3.
   any.no-secrets-in-vcs:
     asserts: No credential is committed
     bucket: 1
     sources:
-    - security 001
-    - asvs
+      - security 001
+      - asvs
     out_of_scope: control
     why: '**Already gated: SEC-001 and SEC-002.** Two loci, one class of defect.'
   any.dependency-vulnerability-scanning:
     asserts: Known CVEs in dependencies are surfaced
     bucket: 1
     sources:
-    - security 202
-    - asvs
+      - security 202
+      - asvs
     out_of_scope: control
     why: '**Adjacent to SUP-002 rather than identical.** That control gates update
       proposals; CVE surfacing is a different claim about the same dependencies.
@@ -349,8 +349,8 @@ properties:
     asserts: HTTP is rejected or redirected; HSTS is set
     bucket: 2
     sources:
-    - security 002
-    - asvs
+      - security 002
+      - asvs
     gated_on: terraform
     unenforced: Checkable in infrastructure code where the listener is declared.
       IAC-001 is adjacent.
@@ -363,8 +363,8 @@ properties:
     asserts: CSP, `nosniff`, frame options and referrer policy are set
     bucket: 2
     sources:
-    - security 101
-    - asvs
+      - security 101
+      - asvs
     gated_on: terraform
     unenforced: Checkable in infrastructure code, or in a response test at a different
       locus.
@@ -377,15 +377,15 @@ properties:
     asserts: Every non-public endpoint authenticates
     bucket: 3
     sources:
-    - security 003
-    - asvs
+      - security 003
+      - asvs
     unenforced: Bucket 3.
   any.authorise-separately-from-authenticate:
     asserts: Permission is checked as well as identity
     bucket: 3
     sources:
-    - security 004
-    - asvs
+      - security 004
+      - asvs
     unenforced: Bucket 3, and **the single most consequential property in this register
       and the least checkable.** Recorded rather than dropped, because the residue
       is what the installer hands back as prose labelled unenforced, and this is
@@ -394,15 +394,15 @@ properties:
     asserts: Input is validated at the system boundary
     bucket: 3
     sources:
-    - security 005
-    - asvs
+      - security 005
+      - asvs
     unenforced: Bucket 3.
   any.rate-limit-sensitive-endpoints:
     asserts: Authentication and sensitive writes are rate limited
     bucket: 2
     sources:
-    - security 102
-    - asvs
+      - security 102
+      - asvs
     gated_on: terraform
     unenforced: Checkable in infrastructure code where the limit is declared.
     candidate:
@@ -414,16 +414,16 @@ properties:
     asserts: Passwords use bcrypt, Argon2 or scrypt
     bucket: 2
     sources:
-    - security 104
-    - asvs
+      - security 104
+      - asvs
     unenforced: 'Per-stack, and asymmetric: `python.no-insecure-hash` catches the
       negative and nothing asserts the positive.'
   any.explicit-cors:
     asserts: CORS origins are explicit, never `*` with credentials
     bucket: 2
     sources:
-    - security 105
-    - asvs
+      - security 105
+      - asvs
     gated_on: terraform
     unenforced: Checkable in infrastructure code or in configuration.
     candidate:
@@ -435,22 +435,22 @@ properties:
     asserts: Secrets rotate on a schedule and on compromise
     bucket: 3
     sources:
-    - security 106
-    - asvs
+      - security 106
+      - asvs
     unenforced: Bucket 3. A process, not a code property.
   any.security-audit-logging:
     asserts: Security-relevant events are logged
     bucket: 3
     sources:
-    - security 201
-    - asvs
+      - security 201
+      - asvs
     unenforced: Bucket 3.
   any.threat-modelling:
     asserts: New features handling sensitive data are threat modelled
     bucket: 3
     sources:
-    - security 203
-    - asvs
+      - security 203
+      - asvs
     unenforced: Bucket 3, and arguably not a code rule at all. S2 flagged it as
       a candidate for removal at S4; **it is kept**, because removing a row is a
       claim that the property does not matter and the register's own answer is that

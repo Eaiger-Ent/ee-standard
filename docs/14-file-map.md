@@ -47,7 +47,7 @@ One file cannot hold both policies.
 | `.python-version` | The interpreter the gates run on ([ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md)). A *pin*, not the support floor |
 | `.markdownlint.yaml` | DOC-001's rule set |
 | `.markdownlint-cli2.yaml` | DOC-001's runner config — `gitignore: true`, `ignores: []` |
-| `.yamllint.yml` | YML-001's rule set: the floor, at error, and `ignore-from-file: .gitignore` |
+| `.yamllint.yml` | YML-001's rule set: `extends: default`, the floor stated at error, and `ignore-from-file: .gitignore`. The shape the amended `lint-yaml` writes |
 | `.pre-commit-config.yaml` | Both local loci. A hook's `stages:` says which ([ADR 0039](adr/0039-a-push-is-a-locus.md)) |
 | `.gitignore` | Two of its lines are a stamped SEC-001 artefact |
 | `renovate.json` | Update proposals for what Dependabot cannot see |
