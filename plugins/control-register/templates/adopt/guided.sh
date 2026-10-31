@@ -190,7 +190,7 @@ else
   echo "This standard cannot be adopted by an empty repository: three controls"
   echo "need a project, a lockfile and a passing test before they mean anything."
   if confirm "Create the smallest project that satisfies all three?"; then
-    uv init --name "$(basename "$PWD" | tr '_' '-')" --python 3.14
+    uv init --name "$(basename "$PWD" | tr '_' '-')" --python 3.15
     uv add --dev pytest
     mkdir -p tests
     printf 'def test_it_runs() -> None:\n    assert True\n' > tests/test_smoke.py

@@ -248,14 +248,14 @@ verifies them.
 all three. Run it in your repository root before step 5:
 
 ```bash
-uv init --name "$(basename "$PWD" | tr '_' '-')" --python 3.14
+uv init --name "$(basename "$PWD" | tr '_' '-')" --python 3.15
 uv add --dev pytest
 mkdir -p tests
 printf 'def test_it_runs() -> None:\n    assert True\n' > tests/test_smoke.py
 git add pyproject.toml uv.lock .python-version tests/
 ```
 
-**`--python 3.14` is not optional, and `uv init` will not choose it for you.**
+**`--python 3.15` is not optional, and `uv init` will not choose it for you.**
 It writes both files that matter — `.python-version`, which *selects* the
 interpreter every locus runs on, and `requires-python`, which *constrains*
 resolution. Leave it out and uv picks whatever it finds: an adopter got 3.13,

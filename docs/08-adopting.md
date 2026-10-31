@@ -717,7 +717,7 @@ fails on a file nothing has told you to write:
 Write the version your project runs on. The last line is for after § 2.3:
 
 ```bash
-echo "3.14" > .python-version
+echo "3.15" > .python-version
 git add .python-version
 uv run register-check run --control SUP-001
 ```
