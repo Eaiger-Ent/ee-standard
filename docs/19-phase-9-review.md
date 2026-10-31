@@ -163,3 +163,44 @@ floor is a narrowing.
 | It passes | `uv run yamllint .`: 0 findings, warnings included. `run --control YML-001`: PASS |
 | The floor must still be stated | With `level: error` removed from `truthy`, YML-001 fails: the rule is at the preset's level |
 | Nothing else moved | 1862 tests pass. No `register_contract` bump, because no `verify`, `rung`, `variance` or `applies_to` changed |
+
+## `lint-yaml` 0.1.16 is deployed here
+
+**Closed 2026-10-31**, item 3. incubator#1220 was merged on 2026-10-29 and
+published as `lint-yaml` 0.1.16. It was installed at user scope and run here.
+
+**What the run did, locus by locus.**
+
+| Step | Result |
+| --- | --- |
+| 1. Install | `uv add --dev yamllint` changed nothing: 1.38.0 was already in `uv.lock`. The invocation is `uv run yamllint`, from `.claude/skill-config.yaml` |
+| 2. Config | `.yamllint.yml` overwritten with the skill's config, then two values changed by hand (below) |
+| 2.5a. Editor hook | The hand-wired copy was `STALE`. Replaced with the canonical script, and `LINT_INVOCATION` written. It now differs from upstream by that line only |
+| 2.5b. Settings | Entry already present. Skipped |
+| 3. Pre-commit | The `repo: local` hook already present. Skipped |
+| 4. CI | Skipped, by the operator's choice. The skill picks `lint.yml` by name, finds no step there, and would add a second step and `astral-sh/setup-uv`. YML-001's ci locus is already the step in `register-check.yml`, with the uv the register pins |
+| 5. Smoke test | 85 findings under the skill's config: 46 `line-length` over 120, and 39 `document-start` warnings |
+
+**The two values changed by hand.** `line-length` is 200, because pinned
+digests, URLs and stamps cannot be wrapped. With 120, YML-001 fails. And
+`document-start` is disabled, because no file here opens with `---` and a gate
+template must not. The file says both, at each rule.
+
+**How it was shown to hold.**
+
+| Claim | Evidence |
+| --- | --- |
+| The hook passes TYP-001 and LNT-001 unedited | `uv run mypy` and `uv run ruff check .claude/hooks` are clean, and `test_toolchain_pin.py` passes |
+| The hook runs | Given `controls.yaml` under the skill's config, it reports the findings and labels them `yamllint`, not `uv`. That is the TOOL-label fix from the amendment |
+| YML-001 holds | `uv run yamllint .`: 0 findings. `run --control YML-001`: PASS. 1862 tests pass and pre-commit is clean |
+
+**Three things still to ask of `lint-yaml`.**
+
+- **Step 4 matches the workflow by file name.** It checks only the one file it
+  picks, so a repository whose step is in another workflow gets a second one.
+  It should look for the configured invocation in every workflow first.
+- **`validate-config.py` imports `yaml` under a bare `python3`.** That
+  interpreter has no PyYAML in this container, so the script crashed. It was
+  run with `uv run python` instead.
+- **Nothing the skill writes is stamped.** So `register-check deployments`
+  cannot list YML-001 under `lint-yaml`, as it lists DOC-001 under `lint-md`.

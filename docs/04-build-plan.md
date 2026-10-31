@@ -1670,8 +1670,10 @@ the same four weeks; the evidence for each tick is
       `level: error`, `line-length` at 200 and `document-start` disabled. And
       `uv run yamllint .` passes with it. Closed 2026-10-31,
       [`19-phase-9-review.md`](19-phase-9-review.md).
-- [ ] `lint-yaml` is deployed here from a release that includes incubator#1143,
-      and `.claude/hooks/yaml-lint.py` passes TYP-001 unedited.
+- [x] `lint-yaml` is deployed here from a release that includes incubator#1143,
+      and `.claude/hooks/yaml-lint.py` passes TYP-001 unedited. Closed
+      2026-10-31 by `lint-yaml` 0.1.16,
+      [`19-phase-9-review.md`](19-phase-9-review.md).
 - [x] `uv run register-check run --control YML-001` passes here, and fails when
       a duplicate key is added to `controls.yaml`. Closed 2026-10-29, over a
       hand-wired deployment, [`19-phase-9-review.md`](19-phase-9-review.md).
