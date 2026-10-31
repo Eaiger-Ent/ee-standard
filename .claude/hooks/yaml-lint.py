@@ -1,21 +1,6 @@
 #!/usr/bin/env -S uv run python
-# YML-001's editor locus, as a PostToolUse hook (ADR 0059).
-#
-# Hand-wired, not deployed, and so carrying no provenance stamp: a stamp records
-# a run of the deploying skill, and `lint-yaml` has not run here. This is
-# `lint-yaml` 0.1.15's `scripts/yaml-lint-hook.py` as published in ee-skills,
-# with `LINT_INVOCATION` written from .claude/skill-config.yaml, as the skill's
-# Step 2.5a would write it. Three edits beyond that, each a narrowing and each
-# owed upstream (docs/19-phase-9-review.md):
-#
-# - the shebang resolves through uv, as every tracked script here must
-#   (tests/test_toolchain_pin.py);
-# - one import per line, sorted (ruff E401, I001);
-# - `pathlib` in place of `os.path` (ruff PTH110, PTH119).
-#
-# Unedited, the script passes `uv run mypy` (incubator#1143) and fails
-# `uv run ruff check` seven times, so it could not be the editor locus of one
-# control while failing another (LNT-001).
+"""PostToolUse hook: lint YAML files with yamllint and report what it finds."""
+
 import json
 import shlex
 import subprocess
@@ -37,7 +22,12 @@ LINT = shlex.split(LINT_INVOCATION)
 # What to call the thing in the hook's own output. A configured invocation need not be
 # yamllint at all, and a line that says "yamllint" over the output of something else sends
 # the reader to the wrong tool's documentation.
-TOOL = Path(LINT[0]).name if LINT else 'yaml-lint'
+# The tool is the first token that names yamllint, not the first token: in `uv run yamllint`
+# or `uvx --from yamllint==1.38.0 yamllint` the first token is the runner.
+TOOL = next(
+    (Path(token).name for token in LINT if Path(token).name == 'yamllint'),
+    Path(LINT[0]).name if LINT else 'yaml-lint',
+)
 
 
 # Repo-scope guard (#664). A PostToolUse hook is handed every Write/Edit the session
