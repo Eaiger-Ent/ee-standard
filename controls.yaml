@@ -1089,7 +1089,7 @@ controls:
       # naming nothing tracked scopes the tool and is allowed.
       - kind: file
         assert: secrets_gate_wired_at_all_loci
-        args: { tool: gitleaks, ignore_file: .gitleaksignore }
+        args: {tool: gitleaks, ignore_file: .gitleaksignore}
       # The rule that acts before a credential is a git object. Every other
       # block above and below reads what git or the remote already has;
       # `fetch-secrets.sh` writes these two files on the host at every container
@@ -1106,7 +1106,7 @@ controls:
       # stamp nothing reads records a claim rather than establishing one (§ F).
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-secrets }
+        args: {skill: gate-secrets}
       - kind: remote
         assert: github_push_protection_enabled
     owner: platform-engineering
@@ -1148,7 +1148,7 @@ controls:
       # only the first claim.
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       # SEC-002 gains a `deployed_by` here, having had none since Phase 0: the
       # gate checked this control and wrote nothing for it, so there was no
       # artefact to stamp. A locus is something a gate installs, so giving
@@ -1156,7 +1156,7 @@ controls:
       # stamp naming SEC-001 must not be credited for it.
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-secrets }
+        args: {skill: gate-secrets}
     owner: platform-engineering
     deployed_by: gate-secrets
     variance: forbidden
@@ -1277,14 +1277,14 @@ controls:
       # is a day old.
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       # The gate's own deployment, read back by the gate that wrote it. Per
       # control rather than per gate: `gate-supply-chain` owns three, so a stamp
       # naming SUP-002 satisfying SUP-001 would let the frozen-install step go
       # unstamped with nothing reporting it (contract 12's finding, inherited).
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-supply-chain }
+        args: {skill: gate-supply-chain}
     owner: platform-engineering
     deployed_by: gate-supply-chain
     variance: narrowing-only
@@ -1316,10 +1316,10 @@ controls:
         assert: dependency_update_config_covers_all_ecosystems
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-supply-chain }
+        args: {skill: gate-supply-chain}
     owner: platform-engineering
     deployed_by: gate-supply-chain
     variance: narrowing-only
@@ -1378,10 +1378,10 @@ controls:
       # falling into `register-adopt`'s "manual" row.
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-supply-chain }
+        args: {skill: gate-supply-chain}
     owner: platform-engineering
     deployed_by: gate-supply-chain
     variance: forbidden
@@ -1418,10 +1418,10 @@ controls:
       # resolves from PATH (ADR 0020).
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-supply-chain }
+        args: {skill: gate-supply-chain}
     owner: platform-engineering
     deployed_by: gate-supply-chain
     variance: narrowing-only
@@ -1480,10 +1480,10 @@ controls:
       # register pins none because this repository has no Dockerfile.
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-build }
+        args: {skill: gate-build}
     owner: platform-engineering
     deployed_by: gate-build
     variance: forbidden
@@ -1516,10 +1516,10 @@ controls:
         assert: devcontainer_image_digest_pinned
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-build }
+        args: {skill: gate-build}
     owner: platform-engineering
     deployed_by: gate-build
     variance: narrowing-only
@@ -1575,7 +1575,7 @@ controls:
           require_branches_up_to_date: true
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-repo }
+        args: {skill: gate-repo}
       # A recorded ruleset is what a repository *intends*; only the platform
       # can say what it enforces, and nothing above may stand in for that. This
       # block reads the rules GitHub reports as **in effect** on the default
@@ -1633,7 +1633,7 @@ controls:
         # tool, its config locations, its pre-commit hook and its editor
         # extension are read from there, so mandating a different linter is a
         # register change and not a checker change (ADR 0018).
-        args: { role: lint }
+        args: {role: lint}
       # The other half of ADR 0020: `linter-wired-at-all-loci` verifies that
       # every locus runs `uv run ruff check`, which reaches the artefact uv.lock
       # pins — and reaches PATH instead if ruff is not in the project at all
@@ -1641,7 +1641,7 @@ controls:
       # assert the existence of the thing it invokes, so this block does.
       - kind: file
         assert: stack_tool_pinned_in_lockfile
-        args: { role: lint }
+        args: {role: lint}
       - kind: file
         assert: no-failure-suppression
       # Each of `gate-quality`'s three controls reads back its own stamp. The
@@ -1653,7 +1653,7 @@ controls:
       # per gate stops being the same statement.
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-quality }
+        args: {skill: gate-quality}
     owner: platform-engineering
     deployed_by: gate-quality
     variance: narrowing-only
@@ -1685,13 +1685,13 @@ controls:
     verify:
       - kind: file
         assert: typecheck-strict-and-blocking
-        args: { role: typecheck }
+        args: {role: typecheck}
       - kind: file
         assert: stack_tool_pinned_in_lockfile
-        args: { role: typecheck }
+        args: {role: typecheck}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-quality }
+        args: {skill: gate-quality}
     owner: platform-engineering
     deployed_by: gate-quality
     variance: narrowing-only
@@ -1742,7 +1742,7 @@ controls:
         assert: no-failure-suppression
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-quality }
+        args: {skill: gate-quality}
     owner: platform-engineering
     deployed_by: gate-quality
     variance: forbidden
@@ -1787,10 +1787,10 @@ controls:
       # neither because this repository has no `*.tf` to analyse.
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-iac }
+        args: {skill: gate-iac}
     owner: platform-engineering
     deployed_by: gate-iac
     variance: narrowing-only
