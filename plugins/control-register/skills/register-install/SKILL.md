@@ -280,6 +280,9 @@ Read `${CLAUDE_SKILL_DIR}/templates/conformance-step.yaml` and substitute
 `<<CHECKER_INVOCATION>>` with the register's `tools.register-check.invocation`.
 Nothing else in it is a value of yours to choose.
 
+Write every YAML template as `${CLAUDE_PLUGIN_ROOT}/reference/template-layout.md`
+says: the payload below its `# ---` marker, indented to the list it joins.
+
 **Where it goes is the register's.** The job is the one CI-001's verify block
 names in `required_checks:` — the check a merge waits for is the one that has to
 carry the verdict, or the verdict blocks nothing. Find that job in a workflow
@@ -403,6 +406,8 @@ and it disagree.
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
+- **Template layout** (`reference/template-layout.md`) — shared with every
+  skill that writes a YAML template: all the gates but `gate-repo`, and `register-install`.
 - **Provenance stamp and verify contract** — every gate here stamps what it
   writes and verifies through `register-check`; this skill writes no stamp, but
   its Conformance step runs that checker. The stamp fields and the

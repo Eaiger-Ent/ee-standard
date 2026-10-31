@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-29
-**Revision:** 1
+**Revision:** 2
 
 ## Background
 
@@ -60,6 +60,14 @@ The coupling is held by a test rather than by this sentence:
 already gives for the checker. An adopter obtains the register, the checker and
 the plugin from one public repository, and rewriting the guide to name a second
 address fails the build.
+
+**Amended 2026-10-31 (revision 2): part 2 is superseded by
+[ADR 0060](0060-this-marketplace-mirrors-the-lint-skills.md).** Part 2 was
+written for one control, and YML-001 made it two. ADR 0060 serves `lint-md` and
+`lint-yaml` from this marketplace as mirrors of the `ee-skills` copies, so an
+outside adopter installs them rather than wiring them by hand. Part 1 is
+unchanged and still in force, so this ADR stays Accepted. Part 2 is kept below
+as the record of what it decided.
 
 **2. A control whose deploying skill an adopter cannot install is satisfied by
 hand, and verified by the register.**
@@ -152,3 +160,10 @@ No control's `rung`, `verify`, `variance` or `applies_to` changes, and the
 register gains no field, so **the contract does not move.** That is the shape of
 the answer Phase 6's criterion predicted: a publication decision rather than a
 code change.
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-29 | Original decision: the adopter's route is the public marketplace, and a control whose deploying skill an adopter cannot install is satisfied by hand. | Nathan Carney |
+| 2 | 2026-10-31 | § Decision: part 2 is superseded by ADR 0060, which mirrors `lint-md` and `lint-yaml` in this marketplace. Part 1 is unchanged. | Nathan Carney |

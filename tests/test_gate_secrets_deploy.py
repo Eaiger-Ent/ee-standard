@@ -27,7 +27,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo, requires_tool
+from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo, requires_tool, template_payload
 from register_check.cli import main
 from register_check.provenance import Stamp, stamps_in
 from register_check.register import Register, load_register
@@ -97,18 +97,6 @@ def _checker(register: Register) -> str:
     return str(block.args["tool"])
 
 
-def _body(template: str) -> str:
-    """The template's payload, without the leading comment block explaining it.
-
-    Dropped before substitution, not after: the comment talks *about* the
-    placeholders, so rendering it first would leave a `<<` behind and the
-    unfilled-placeholder check would fire on prose.
-    """
-    lines = template.splitlines(keepends=True)
-    start = next(i for i, line in enumerate(lines) if not line.startswith("#"))
-    return "".join(lines[start:])
-
-
 def _deploy(root: Path, register: Register, tool: str = "gitleaks") -> None:
     """Write both artefacts, as Steps 2 and 3 of the skill describe.
 
@@ -117,11 +105,15 @@ def _deploy(root: Path, register: Register, tool: str = "gitleaks") -> None:
     instruction to a reader, and the placement here is the simple case it
     describes: appended to a job that already runs on push and pull_request.
     """
-    hook = _render(_body((SKILL / "templates/precommit-hook.yaml").read_text()), register, tool)
+    hook = _render(
+        template_payload((SKILL / "templates/precommit-hook.yaml").read_text(), 6), register, tool
+    )
     (root / ".pre-commit-config.yaml").write_text(
         "repos:\n  - repo: local\n    hooks:\n" + hook, encoding="utf-8"
     )
-    steps = _render(_body((SKILL / "templates/ci-steps.yaml").read_text()), register, tool)
+    steps = _render(
+        template_payload((SKILL / "templates/ci-steps.yaml").read_text(), 6), register, tool
+    )
     workflow = root / ".github/workflows/ci.yml"
     workflow.write_text(workflow.read_text(encoding="utf-8") + steps, encoding="utf-8")
     _ignore(root, register)

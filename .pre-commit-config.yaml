@@ -31,11 +31,12 @@ repos:
         entry: node_modules/.bin/markdownlint-cli2
         language: system
         types: [markdown]
-      # YML-001 (ADR 0059). Hand-wired and unstamped, because `lint-yaml` has
-      # not run here. Its own hook is the upstream mirror pinned by `rev:`,
-      # which puts yamllint's version in this file rather than in the register,
-      # and ADR 0059 rejects that form. This one reaches the version uv.lock
-      # pins. It reads .yamllint.yml from the root, like every other locus.
+      # YML-001 (ADR 0059). Written by hand before `lint-yaml` 0.1.16 ran here
+      # on 2026-10-31. That run found it and skipped it: it is the `repo: local`
+      # shape the skill now writes, with the configured invocation as `entry:`.
+      # Only `name:` is this repository's, adding the control id. Unstamped,
+      # because `lint-yaml` writes no stamp. It reads .yamllint.yml from the
+      # root, like every other locus.
       - id: yamllint
         name: yamllint (YML-001)
         entry: uv run yamllint

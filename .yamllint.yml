@@ -1,32 +1,33 @@
 # YML-001's single definition (ADR 0059), read by every locus: the editor hook
 # passes it with `-c`, and the pre-commit hook and the CI step find it in the
-# repository root. Hand-written, not deployed — `lint-yaml` has not run here,
-# and its own config would not meet the floor (docs/19-phase-9-review.md).
+# repository root.
 #
-# The floor and nothing else. Syntax errors are reported whatever this says;
-# the two rules below are the rest of what `controls.yaml` requires, each at
-# `level: error`, because yamllint exits 0 over warnings and a floor rule left
-# at warning is a check that cannot fail. Style rules are a repository's
-# choice to add, and none is added here: `extends: default` found 528 findings
-# in this repository, nearly all indentation and braces.
-#
-# No `extends`, so no rule is on that this file does not name. A rule inherited
-# from a preset takes the preset's level, and `default` sets `truthy` to
-# warning.
+# Deployed by `lint-yaml` 0.1.16 on 2026-10-31, then two values changed by
+# hand, each marked below. `lint-yaml` writes no provenance stamp, and YML-001
+# reads none, so nothing here claims the run beyond this line.
+extends: default
 
-# Not `ignore:`. `.gitignore` names what this repository does not author — the
-# virtualenv, node_modules — and ADR 0019 forbids an exemption that hides a
-# tracked file. `yamllint --list-files .` lists exactly what git tracks.
+# Not linted: what the repository does not author (a virtualenv, node_modules).
+# Never list a tracked file here — hiding authored YAML is a weakening, not a scope.
 ignore-from-file: .gitignore
 
 rules:
-  # YAML 1.2.2 says keys are unique; PyYAML keeps the last and drops the rest
-  # without a word. A second `verify:` silently replaced DOC-001's checks.
+  # Changed from the skill's 120. This repository's register and workflows
+  # carry pinned digests, URLs and provenance stamps, each a single token that
+  # cannot be wrapped. Measured at 120: 46 findings.
+  line-length:
+    max: 200
+  # The correctness floor, stated at error rather than inherited: `default` sets `truthy`
+  # to warning, and yamllint exits 0 over warnings — a check that cannot fail.
   key-duplicates:
     level: error
-  # YAML 1.1 reads `NO` as false and `on` as true. `check-keys: false` keeps a
-  # workflow's `on:` key legal.
   truthy:
     allowed-values: ['true', 'false']
     check-keys: false
     level: error
+  comments:
+    min-spaces-from-content: 1
+  # Added; the skill leaves `default`'s warning on. No file here opens with
+  # `---`, and a gate template must not: its payload is spliced into a file that
+  # already has its own start. Measured with it on: 39 warnings.
+  document-start: disable
