@@ -38,6 +38,7 @@ SKILLS = sorted(p for p in (PLUGIN / "skills").iterdir() if p.is_dir())
 SHARED_HEADINGS = {
     "plan-limits.md": "When the platform refuses on the plan, not the token",
     "pre-commit-runner.md": "Before you write a pre-commit hook, make sure something runs it",
+    "template-layout.md": "A template is written below its marker, indented to where it goes",
     "unattended.md": "Running without being asked the same question again",
     "write-narration.md": "Say what each write is for, before you make it",
 }

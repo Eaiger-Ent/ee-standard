@@ -28,5 +28,7 @@ lint-md:
 lint-yaml:
   # uv.lock pins yamllint here (`tools.yamllint` in controls.yaml), and every
   # locus must reach that version rather than whatever `yamllint` is on PATH
-  # (ADR 0020). The skill's default is the bare name.
+  # (ADR 0020). The same as 0.1.16's default for a project with a
+  # pyproject.toml. The hook script it copies still reads the bare name until
+  # Step 2.5a writes this value over it.
   invocation: uv run yamllint

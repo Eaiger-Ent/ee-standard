@@ -207,6 +207,9 @@ pre-push hook where the register gives that control a `pre-push` locus. Keep the
 second block's `stages:` key — without it the hook runs at every stage the
 repository has installed.
 
+Write every YAML template as `${CLAUDE_PLUGIN_ROOT}/reference/template-layout.md`
+says: the payload below its `# ---` marker, indented to the list it joins.
+
 - **`PRECOMMIT_STATE` is `ABSENT`:** create `.pre-commit-config.yaml` with a
   single `repos: - repo: local` entry holding the block.
 - **`PRECOMMIT_STATE` is `EXISTS`, `HOOK_STATE` is `ABSENT`:** append the block
@@ -486,6 +489,8 @@ and it disagree.
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
+- **Template layout** (`reference/template-layout.md`) — shared with every
+  skill that writes a YAML template: all the gates but `gate-repo`, and `register-install`.
 - **Provenance stamp and verify contract** — every skill here stamps what it
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;
