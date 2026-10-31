@@ -32,7 +32,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, gate_contract, make_repo
+from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo, template_payload
 from register_check.cli import main
 from register_check.provenance import stamps_in
 from register_check.register import Gate, Register, load_register
@@ -92,32 +92,32 @@ def _render(template: str, register: Register) -> str:
 
     This is the substitution the skill performs, and the only place the values
     can come from. A placeholder left unfilled is a failure here rather than an
-    artefact deployed with `{{LINT_TOOL}}` in it.
+    artefact deployed with `<<LINT_TOOL>>` in it.
     """
     lint: Gate = register.stacks[STACK].gates["lint"]
     typecheck: Gate = register.stacks[STACK].gates["typecheck"]
     text = template
     for placeholder, value in {
-        "{{STACK}}": STACK,
-        "{{SOURCE_PATTERN}}": _source_pattern(register),
-        "{{LINT_TOOL}}": lint.tool,
-        "{{LINT_INVOCATION}}": lint.invocation,
-        "{{LINT_HOOK_ID}}": lint.pre_commit or "",
-        "{{EDITOR_EXTENSION}}": lint.editor_extension or "",
-        "{{EDITOR_LANGUAGE}}": lint.editor_binding.language if lint.editor_binding else "",
-        "{{EDITOR_BINDING_SETTING}}": (lint.editor_binding.setting if lint.editor_binding else ""),
-        "{{TYPECHECK_TOOL}}": typecheck.tool,
-        "{{TYPECHECK_INVOCATION}}": typecheck.invocation,
-        "{{TYPECHECK_HOOK_ID}}": typecheck.pre_commit or "",
-        "{{COVERAGE_KEY}}": typecheck.coverage_key or "",
-        "{{TEST_COMMAND}}": TEST_COMMAND,
-        "{{SKILL_VERSION}}": SKILL_VERSION,
-        "{{GATE_CONTRACT}}": gate_contract("gate-quality"),
-        "{{REGISTER_VERSION}}": register.version,
-        "{{REGISTER_CONTRACT}}": str(register.register_contract),
+        "<<STACK>>": STACK,
+        "<<SOURCE_PATTERN>>": _source_pattern(register),
+        "<<LINT_TOOL>>": lint.tool,
+        "<<LINT_INVOCATION>>": lint.invocation,
+        "<<LINT_HOOK_ID>>": lint.pre_commit or "",
+        "<<EDITOR_EXTENSION>>": lint.editor_extension or "",
+        "<<EDITOR_LANGUAGE>>": lint.editor_binding.language if lint.editor_binding else "",
+        "<<EDITOR_BINDING_SETTING>>": (lint.editor_binding.setting if lint.editor_binding else ""),
+        "<<TYPECHECK_TOOL>>": typecheck.tool,
+        "<<TYPECHECK_INVOCATION>>": typecheck.invocation,
+        "<<TYPECHECK_HOOK_ID>>": typecheck.pre_commit or "",
+        "<<COVERAGE_KEY>>": typecheck.coverage_key or "",
+        "<<TEST_COMMAND>>": TEST_COMMAND,
+        "<<SKILL_VERSION>>": SKILL_VERSION,
+        "<<GATE_CONTRACT>>": gate_contract("gate-quality"),
+        "<<REGISTER_VERSION>>": register.version,
+        "<<REGISTER_CONTRACT>>": str(register.register_contract),
     }.items():
         text = text.replace(placeholder, value)
-    assert "{{" not in text, f"a placeholder was not filled: {text}"
+    assert not UNFILLED.search(text), f"a placeholder was not filled: {text}"
     return text
 
 
@@ -125,7 +125,7 @@ def _body(template: str, marker: str | None = None, comment: str = "//") -> str:
     """The template's payload, without the comment block explaining it.
 
     Dropped before substitution, not after: the comments talk *about* the
-    placeholders, so rendering them first would leave a `{{` behind and the
+    placeholders, so rendering them first would leave a `<<` behind and the
     unfilled-placeholder check would fire on prose. `marker` selects one of the
     two shapes in a template that ships more than one — the editor locus has a
     devcontainer shape and a `.vscode/` shape, and a gate writes one, never
@@ -211,7 +211,8 @@ def _deploy(root: Path, register: Register) -> None:
 
     # Step 4 — the pre-commit locus.
     hooks = _render(
-        _body((SKILL / "templates/precommit-hooks.yaml").read_text(encoding="utf-8")), register
+        template_payload((SKILL / "templates/precommit-hooks.yaml").read_text(encoding="utf-8"), 6),
+        register,
     )
     (root / ".pre-commit-config.yaml").write_text(
         "repos:\n  - repo: local\n    hooks:\n" + hooks, encoding="utf-8"
@@ -219,7 +220,8 @@ def _deploy(root: Path, register: Register) -> None:
 
     # Step 5 — the ci locus, appended to the job that already installs frozen.
     steps = _render(
-        _body((SKILL / "templates/ci-steps.yaml").read_text(encoding="utf-8")), register
+        template_payload((SKILL / "templates/ci-steps.yaml").read_text(encoding="utf-8"), 6),
+        register,
     )
     workflow = root / ".github/workflows/ci.yml"
     workflow.write_text(workflow.read_text(encoding="utf-8") + steps, encoding="utf-8")

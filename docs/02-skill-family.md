@@ -47,7 +47,6 @@ the dispatcher model used by `design-authoring`.
 plugins/control-register/
   .claude-plugin/
     plugin.json          name, version, dependencies
-    deploys.json         sidecar — see § The deploys sidecar
   LICENSE                required by CI on every plugin
   skills/
     register-adopt/      dispatcher — the front door
@@ -59,6 +58,7 @@ plugins/control-register/
     gate-repo/           CI-001  (remote locus)
     gate-quality/        LNT-001, TYP-001, TST-001
     gate-iac/            IAC-001
+    gate-*/deploys.json  each gate's contract — see § The deploys sidecar
 ```
 
 Gates are grouped by the artefact they write, not one-per-control. `gate-quality`
@@ -195,21 +195,21 @@ neither current nor stale.
 
 ### The `deploys` sidecar
 
+`skills/gate-secrets/deploys.json`, one per gate:
+
 ```json
 {
-  "schemaVersion": 2,
-  "gates": {
-    "gate-secrets": {
-      "contractVersion": 5,
-      "controls": ["SEC-001", "SEC-002"],
-      "artifacts": [
-        ".pre-commit-config.yaml#gitleaks",
-        ".github/workflows/register-check.yml#secret-scan"
-      ]
-    }
-  }
+  "schemaVersion": 3,
+  "contractVersion": 7,
+  "controls": ["SEC-001", "SEC-002", "SEC-003"],
+  "artifacts": [
+    ".pre-commit-config.yaml#gitleaks",
+    ".github/workflows/register-check.yml#secret-scan"
+  ]
 }
 ```
+
+The directory names the gate, so the file does not.
 
 **One contract per gate, not per plugin.** Six gates ship in this one plugin, so
 a plugin-wide `contractVersion` would make changing what `gate-quality` writes
@@ -220,28 +220,32 @@ fires for the wrong gates fails the second while appearing to pass it. The
 second gate is what forced the shape; `10-phase-2-review.md` records it as a
 decision rather than a refactor nobody wrote down.
 
-`tests/test_plugin.py` holds the sidecar to the register in the one direction
-that can be wrong: a control the register marks `deployed_by: <gate>` must
-appear under that gate. `SEC-002` is listed under `gate-secrets` without a
+`tests/test_plugin.py` holds each declaration to the register in the one
+direction that can be wrong: a control the register marks `deployed_by: <gate>`
+must appear in that gate's file. `SEC-002` is listed under `gate-secrets` without a
 `deployed_by` of its own, which is correct — the gate checks it and writes
 nothing for it.
 
-This ships as `.claude-plugin/deploys.json`, a **sidecar rather than a key in
-`plugin.json`**. The precedent is `readme-meta.json` in `ee-skills`, which exists
-as a sidecar because `claude plugin validate` rejects unknown keys in
-`marketplace.json`. Whether `plugin.json` tolerates unknown keys has not been
-confirmed, and a sidecar costs nothing while removing the risk entirely. If
-validation is later confirmed to permit it, folding the block into `plugin.json`
-is a trivial change.
+**It ships in the gate's own directory, not `.claude-plugin/`**
+([ADR 0058](adr/0058-a-gate-declares-its-contract-in-its-own-directory.md)). It
+began there, as one file for all six gates, and an incubator amendment never
+syncs that folder. So `gate-secrets` was published at contract 6 while it wrote
+7, and every adopter on that route had a stamp that could never read stale. A
+promotion copies skill directories wholesale, so a contract bump now ships in
+the same diff as the change that needed it. The old file is **not** a fallback:
+`register-check` refuses a plugin that has only that file, and names the ADR.
+
+It is still a **sidecar rather than a key in `plugin.json`**. The precedent is
+`readme-meta.json` in `ee-skills`, which exists as a sidecar because
+`claude plugin validate` rejects unknown keys in `marketplace.json`, and
+`plugin.json` is the one file the marketplace rewrites on every release.
 
 ### Where the recommendation surfaces
 
 `skill-update` already collects `id`, `version`, `scope` and `installPath` for
-every plugin at its discovery step. Reading each plugin's `deploys.json` from
-`installPath` needs no new infrastructure — the data is in hand at the point the
-skill already pauses to report. Per-gate contracts do not change that: it is
-still one file at one path, and the gate a stamp names is the key to compare
-against.
+every plugin at its discovery step, and the data is in hand at the point the
+skill already pauses to report. It reads no declaration itself: the gate a stamp
+names is the key, and `register-check deployments` does the comparison.
 
 The reconciliation itself is `register-check deployments`, so `skill-update` and
 `register-adopt` report the same states from the same code rather than each
@@ -318,10 +322,12 @@ fixes were written as a section pasted into every skill they governed — twelve
 copies of two rules — and the count reached 510 before anything noticed. So
 **prose more than one skill must follow is shipped once**, under
 `plugins/control-register/reference/`, and read at runtime through
-`${CLAUDE_PLUGIN_ROOT}`; the skill carries a pointer and nothing more. Three
-files exist: `pre-commit-runner.md`, `write-narration.md` and `plan-limits.md` —
-the last for the two gates whose controls verify platform state a plan can
-withhold, `gate-repo` and `gate-secrets`.
+`${CLAUDE_PLUGIN_ROOT}`; the skill carries a pointer and nothing more. Five
+files exist: `pre-commit-runner.md`, `write-narration.md`, `unattended.md`,
+`template-layout.md` and `plan-limits.md` — the last for the two gates whose
+controls verify platform state a plan can withhold, `gate-repo` and
+`gate-secrets`. `template-layout.md` says how a YAML template's payload, shipped
+at column 0, is indented to the list it joins.
 `tests/test_shared_reference.py` fails a pointer to a file the plugin does not
 ship, and a skill that takes the section back.
 

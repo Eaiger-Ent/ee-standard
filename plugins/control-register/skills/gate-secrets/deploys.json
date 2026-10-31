@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 3,
+  "contractVersion": 7,
+  "controls": [
+    "SEC-001",
+    "SEC-002",
+    "SEC-003"
+  ],
+  "artifacts": [
+    ".pre-commit-config.yaml#gitleaks",
+    ".github/workflows/register-check.yml#secret-scan",
+    ".devcontainer/setup.sh#gitleaks",
+    ".pre-commit-config.yaml#secrets-pre-push",
+    ".github/workflows/register-check.yml#secrets-conformance"
+  ]
+}

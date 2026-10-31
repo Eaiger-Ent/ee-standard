@@ -153,7 +153,7 @@ verify:
     run: gitleaks detect --no-banner --redact
   - kind: file             # a file exists and matches a shape
     assert: precommit_hook_present
-    args: { id: gitleaks }
+    args: {id: gitleaks}
   - kind: remote           # platform API state
     assert: github_push_protection_enabled
 ```
@@ -172,7 +172,7 @@ deployed_by: gate-secrets
 verify:
   - kind: file
     assert: provenance_stamp_present
-    args: { skill: gate-secrets }
+    args: {skill: gate-secrets}
 ```
 
 The two must name the same skill, and the schema rejects a register where they
@@ -724,10 +724,10 @@ A control reaches its gate through the verify block's `args`:
 ```yaml
       - kind: file
         assert: linter-wired-at-all-loci
-        args: { role: lint }
+        args: {role: lint}
       - kind: file
         assert: stack_tool_pinned_in_lockfile
-        args: { role: lint }
+        args: {role: lint}
 ```
 
 The two blocks are the two halves of ADR 0020 and are separable on purpose. The

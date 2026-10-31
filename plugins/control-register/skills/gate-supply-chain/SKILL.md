@@ -47,7 +47,7 @@ enforcement.
   rather than on a predicate that never looked, and there is no install step to
   write. SUP-003 still applies if there are workflows — say so, and deploy it
   alone.
-- You want every gate, not these three. Use `register-adopt`, which plans across
+- You want every gate, not these four. Use `register-adopt`, which plans across
   the whole register and dispatches here.
 
 ## Inputs
@@ -107,13 +107,13 @@ And once, not per ecosystem:
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
 | `SKILL_VERSION` | the plugin's `.claude-plugin/plugin.json`, `version` |
-| `GATE_CONTRACT` | the plugin's `.claude-plugin/deploys.json`, `gates.gate-supply-chain.contractVersion` |
+| `GATE_CONTRACT` | this gate's own `deploys.json`, `contractVersion` |
 
-The last two rows are the **plugin's** numbers rather than the register's,
-read from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/`. `GATE_CONTRACT` is what a
-stamp records as `gate-contract`, and it moves only when what this gate writes
-changes, so a documentation release of the plugin recommends nothing
-(ADR 0038). If `${CLAUDE_PLUGIN_ROOT}` is unset, stop and say so.
+The last two rows are the **plugin's** numbers, not the register's: from
+`${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and from this gate's own
+`${CLAUDE_SKILL_DIR}/deploys.json` (ADR 0058). `GATE_CONTRACT` is the stamp's
+`gate-contract`; it moves only when this gate's output does, so a documentation
+release recommends nothing (ADR 0038). If either is unset, stop and say so.
 
 **`FROZEN_INSTALL` is keyed by lockfile, not by ecosystem.** `uv sync --frozen`
 and `poetry install --sync` are both python; which one is right is a fact about
@@ -188,8 +188,11 @@ repository.
 ## Step 1 — Wire the frozen install (SUP-001)
 
 Read `${CLAUDE_SKILL_DIR}/templates/ci-steps.yaml` and substitute
-`{{FROZEN_INSTALL}}`, `{{ECOSYSTEM}}`, `{{TOOL_INVOCATION}}`, `{{TOOL}}`,
-`{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`.
+`<<FROZEN_INSTALL>>`, `<<ECOSYSTEM>>`, `<<TOOL_INVOCATION>>`, `<<TOOL>>`,
+`<<SKILL_VERSION>>`, `<<GATE_CONTRACT>>`, `<<REGISTER_VERSION>>` and `<<REGISTER_CONTRACT>>`.
+
+Write every YAML template as `${CLAUDE_PLUGIN_ROOT}/reference/template-layout.md`
+says: the payload below its `# ---` marker, indented to the list it joins.
 
 - **`INSTALL_STATE` shows a frozen install already:** write nothing, stamp the
   step that is there for SUP-001, and say it was adopted.
@@ -339,9 +342,10 @@ Report the verdict as given:
 | `2` | Usage error, or the target is not a repository | Fix the invocation; nothing was verified |
 | `3` | No violation, but something could not be verified | Say which block was skipped and why |
 
-Exit `0` is the expected result. None of these three controls declares a
+Exit `0` is the expected result. None of these four controls declares a
 `remote` locus, so nothing is waiting on Phase 3 and a `3` means a block
-declared itself partial — read which, rather than rounding up.
+declared itself partial — offline, SUP-004's published-digest block is the
+likely one — read which, rather than rounding up.
 
 ---
 
@@ -431,6 +435,8 @@ Canonical source for both shared standards below:
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
+- **Template layout** (`reference/template-layout.md`) — shared with every
+  skill that writes a YAML template: all the gates but `gate-repo`, and `register-install`.
 - **Provenance stamp and verify contract** — every skill here stamps what it
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;

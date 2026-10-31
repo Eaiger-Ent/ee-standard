@@ -41,6 +41,7 @@ _PASTE_PATH = (
     "START-HERE.md",
     "HOW-IT-WORKS.md",
     "README.md",
+    "UPGRADING.md",
     "docs/06-devcontainer-setup.md",
     "docs/08-adopting.md",
     "plugins/control-register/templates/devcontainer/README.md",

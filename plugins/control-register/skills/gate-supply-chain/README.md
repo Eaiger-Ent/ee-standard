@@ -1,8 +1,18 @@
 # gate-supply-chain
 
 Deploys SUP-001 — *dependencies resolve from a committed lockfile* — SUP-002 —
-*dependency updates are proposed automatically* — and SUP-003 — *third-party CI
-actions are pinned to a commit SHA* — in whichever repository you point it at.
+*dependency updates are proposed automatically* — SUP-003 — *third-party CI
+actions are pinned to a commit SHA* — and SUP-004 — *a pinned release artefact's
+digest is the one the project published* — in whichever repository you point it
+at.
+
+## What it does
+
+It wires a frozen lockfile install above every other gate's CI steps,
+configures update proposals for each ecosystem present, and rewrites every third-party
+action from a tag to the commit it points at. It then verifies all four controls
+through `register-check`. It is run as `/gate-supply-chain`, or dispatched by
+`/register-adopt`.
 
 ## What it writes
 
@@ -17,21 +27,24 @@ actions are pinned to a commit SHA* — in whichever repository you point it at.
 Three templates live in `templates/` and carry the placeholders the skill fills
 from the register: `ci-steps.yaml`, `dependabot.yaml` and `precommit-hook.yaml`.
 
-## Why three controls and one skill
+## Approach
+
+### Why one skill for the supply-chain controls
 
 Because they are one property split three ways — what a build resolves, how it
 stays current, and what it is allowed to fetch — and because two of them write
 into the same gating workflow. SUP-001's install step has to sit *above* every
 other gate's steps in that workflow, since those steps run the tools it places.
 No separate skill could guarantee that ordering, and a lint step written before
-the install lints against nothing.
+the install lints against nothing. SUP-004 extends the same property to whether
+a pinned artefact is the one its project published.
 
-The grouping is visible in the register rather than only here: all three
+The grouping is visible in the register rather than only here: its
 controls carry `deployed_by: gate-supply-chain`, each reads back its own
-provenance stamp, and the plugin's `deploys.json` lists them under this gate
+provenance stamp, and this gate's own `deploys.json` lists them
 with a contract version of their own.
 
-## Why SUP-003's gate is the checker
+### Why SUP-003's gate is the checker
 
 No third-party action linter shares this register's notion of an owner-exempt
 action — `actions-pinned-to-sha` reads the repository's own owner from the
@@ -51,7 +64,7 @@ does not credit them — a distinction that exists because this repository's own
 pre-commit config ran `register-check schema` and would otherwise have been
 credited with a SUP-003 gate that could never have failed it.
 
-## Why it takes no opinions
+### Why it takes no opinions
 
 Which lockfiles count for an ecosystem, what installing from one looks like,
 which `package-ecosystem:` spellings a bot accepts, and how a locus reaches the
@@ -88,3 +101,12 @@ flag cannot be reached at all, which is preflight P9 and is what stopped the
 front door at Step 0 in Phase 4. The reasoning, and what guards the platform
 mutations instead, is
 ADR 0035.
+
+## References
+
+- [GitHub — Security hardening for GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions)
+  — why a third-party action is pinned to a full-length commit SHA
+- [Dependabot options reference](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference)
+  — the `dependabot.yml` keys SUP-002 writes
+- ADRs 0020, 0035 and 0058, and `docs/08-adopting.md`, in the `ee-standard`
+  repository

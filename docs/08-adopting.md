@@ -1110,8 +1110,10 @@ checked.
 ## 3 — The gates
 
 All six gates are built — see § 3.1 to § 3.6, and § 0 for the front door that
-dispatches them in order. DOC-001 is the one control no gate here deploys: it is
-`lint-md`'s, in another plugin.
+dispatches them in order. Two controls are deployed by no gate here. DOC-001 is
+`lint-md`'s and YML-001 is `lint-yaml`'s, each in another plugin. This section is
+DOC-001's route. YML-001's by-hand route is not written yet: it is Phase 9 item
+5 in [`04-build-plan.md`](04-build-plan.md).
 
 **And that plugin is one you may not be able to install.** `lint-md` lives in
 the `EqualExperts/ee-skills` marketplace, which is **private**. If your account
@@ -1124,9 +1126,9 @@ rather than a stopgap
 six steps below are the supported route for an adopter who cannot reach
 `ee-skills`, and `register-check` runs the same two verify blocks over what you
 write as over anything a gate writes, because a control is verified by what your
-repository contains and not by what put it there. DOC-001 is **the one control
-an outside adopter satisfies by hand**, and it is one control's worth of extra
-work, written here rather than discovered.
+repository contains and not by what put it there. DOC-001 was **the one control
+an outside adopter satisfies by hand** until YML-001 joined it (ADR 0059). It is
+one control's worth of extra work, written here rather than discovered.
 
 Two routes were rejected and are worth knowing about, because both look
 reasonable. **Copying `lint-md` into your repository** is what Phase 4 did, and
@@ -2178,10 +2180,16 @@ whether the artefacts satisfying it are what the gate would write today. Those
 are different questions, and the second has its own command:
 
 ```bash
-uv run register-check deployments
+plugin=$(claude plugin list --json | uv run --no-project python -c "import json,sys; print(next(p['installPath'] for p in json.load(sys.stdin) if p['id'].startswith('control-register@')))")
+uv run register-check deployments --plugin "$plugin"
 ```
 
-It reads the plugin's `.claude-plugin/deploys.json` — which gate writes what, at
+**Name the plugin.** A skill runs with `CLAUDE_PLUGIN_ROOT` set, and a shell does
+not, so a bare `register-check deployments` in your repository exits `2` with
+*no skills/\*/deploys.json found*. The first line asks Claude Code where it
+installed the plugin, whichever marketplace it came from.
+
+It reads each gate's `skills/<gate>/deploys.json` — which gate writes what, at
 which **deployment contract** — and the `ee-control:` stamps in your repository,
 and it gives each gate one of six states:
 

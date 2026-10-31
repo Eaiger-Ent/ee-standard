@@ -17,12 +17,11 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any
 
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, a_register
+from conftest import REPO_ROOT, a_register, declared_gates, template_payload
 from register_check.provenance import MARKER, stamps_in
 
 PLUGIN = REPO_ROOT / "plugins/control-register"
@@ -47,16 +46,10 @@ def test_the_plugin_declares_itself() -> None:
     assert isinstance(manifest["dependencies"], list)
 
 
-def _sidecar() -> dict[str, Any]:
-    loaded = json.loads((PLUGIN / ".claude-plugin/deploys.json").read_text(encoding="utf-8"))
-    assert isinstance(loaded, dict)
-    return loaded
-
-
 def test_the_deploys_sidecar_names_controls_the_register_defines() -> None:
     """A sidecar naming DOC-002 would recommend redeploying a control nobody has."""
     known = {control.id for control in a_register().controls}
-    for gate, entry in _sidecar()["gates"].items():
+    for gate, entry in declared_gates().items():
         assert set(entry["controls"]) <= known, set(entry["controls"]) - known
         assert isinstance(entry["contractVersion"], int)
         assert entry["artifacts"], f"{gate} deploys nothing and needs no contract"
@@ -72,15 +65,22 @@ def test_each_gate_carries_its_own_contract_version() -> None:
     whose output did not change fails the second one while appearing to pass it.
     Recorded as a decision the second gate forces in `10-phase-2-review.md`.
     """
-    sidecar = _sidecar()
-    assert sidecar["schemaVersion"] == 2
-    assert "contractVersion" not in sidecar, (
-        "a plugin-wide contract version is what this shape exists to remove"
-    )
+    declared = declared_gates()
+    for gate, entry in declared.items():
+        assert entry["schemaVersion"] == 3, gate
     directories = {skill.name for skill in SKILLS}
-    assert set(sidecar["gates"]) <= directories, set(sidecar["gates"]) - directories
     gates = {name for name in directories if name.startswith("gate-")}
-    assert gates <= set(sidecar["gates"]), gates - set(sidecar["gates"])
+    assert set(declared) == gates, set(declared).symmetric_difference(gates)
+
+
+def test_no_plugin_wide_declaration_is_left_to_go_stale() -> None:
+    """ADR 0058: the contract lives in each gate's directory, and only there.
+
+    `.claude-plugin/` is never synced by an incubator amendment, which is how
+    `gate-secrets` came to be published at contract 6 while it wrote 7. A file
+    left there would be a second copy that only one of the two plugins updates.
+    """
+    assert not (PLUGIN / ".claude-plugin/deploys.json").exists()
 
 
 def test_the_sidecar_agrees_with_the_register_about_who_deploys_what() -> None:
@@ -96,7 +96,7 @@ def test_the_sidecar_agrees_with_the_register_about_who_deploys_what() -> None:
     `gate-secrets`' list without a `deployed_by` of its own, which is correct —
     the gate checks it and writes nothing for it.
     """
-    sidecar = _sidecar()["gates"]
+    sidecar = declared_gates()
     for control in a_register().controls:
         gate = control.deployed_by
         if gate is None or gate not in sidecar:
@@ -138,13 +138,13 @@ def test_the_templates_stamp_what_they_write(skill: Path) -> None:
     """
     register = a_register()
     substitutions = {
-        "{{SKILL_VERSION}}": "0.1.0",
-        # Read from the sidecar rather than written here: a template that
+        "<<SKILL_VERSION>>": "0.1.0",
+        # Read from the gate's declaration rather than written here: a template that
         # stamped a literal would be the second copy ADR 0038 exists to avoid,
         # and this test would keep passing over it.
-        "{{GATE_CONTRACT}}": _sidecar()["gates"].get(skill.name, {}).get("contractVersion", 0),
-        "{{REGISTER_VERSION}}": register.version,
-        "{{REGISTER_CONTRACT}}": str(register.register_contract),
+        "<<GATE_CONTRACT>>": declared_gates().get(skill.name, {}).get("contractVersion", 0),
+        "<<REGISTER_VERSION>>": register.version,
+        "<<REGISTER_CONTRACT>>": str(register.register_contract),
     }
     templates = sorted((skill / "templates").glob("*"))
     if not templates:
@@ -157,7 +157,7 @@ def test_the_templates_stamp_what_they_write(skill: Path) -> None:
         # write and nothing for a template to carry (ADR 0032). A *gate* with no
         # templates would be a gate whose deployment has no reviewable source.
         # `register-install` has shipped one since ADR 0057, handled above.
-        assert skill.name not in _sidecar()["gates"], (
+        assert skill.name not in declared_gates(), (
             f"{skill.name} deploys controls and ships no template to write them from"
         )
         pytest.skip(f"{skill.name} writes no artefacts of its own")
@@ -209,7 +209,7 @@ def test_no_skill_repeats_a_version_the_register_pins(field: str, literal: str) 
     A skill that hard-coded `8.30.1` would deploy that version after the
     register moved on, and `tool_versions_match_register` would report drift in
     a repository whose owner changed nothing. The templates carry
-    `{{TOOL_VERSION}}`; the value arrives at deploy time or not at all.
+    `<<TOOL_VERSION>>`; the value arrives at deploy time or not at all.
     """
     offenders = [
         str(path.relative_to(REPO_ROOT))
@@ -234,7 +234,7 @@ def test_the_gate_verifies_through_the_checker_and_not_otherwise(skill: Path) ->
     the first time the register moved.
     """
     text = (skill / "SKILL.md").read_text(encoding="utf-8")
-    entry = _sidecar()["gates"].get(skill.name)
+    entry = declared_gates().get(skill.name)
     if entry is None:
         pytest.skip(f"{skill.name} deploys nothing — there is no verify step to check")
     verify = [line for line in text.splitlines() if "register-check" in line and "run" in line]
@@ -244,3 +244,65 @@ def test_the_gate_verifies_through_the_checker_and_not_otherwise(skill: Path) ->
         assert f"--control {control}" in joined, (
             f"{skill.name} deploys {control} and does not verify it through the checker"
         )
+
+
+#: Every YAML template a gate ships. Collected rather than listed, so a new one
+#: is covered the day it is added.
+YAML_TEMPLATES = sorted(
+    p for p in (PLUGIN / "skills").glob("*/templates/*") if p.suffix in {".yaml", ".yml"}
+)
+
+
+def test_the_yaml_templates_were_found() -> None:
+    """A glob that matched nothing would pass the test below vacuously."""
+    assert len(YAML_TEMPLATES) >= 10, f"found only {len(YAML_TEMPLATES)} YAML templates"
+
+
+@pytest.mark.parametrize(
+    "template", YAML_TEMPLATES, ids=lambda p: f"{p.parent.parent.name}/{p.name}"
+)
+def test_a_yaml_template_is_yaml_before_it_is_rendered(template: Path) -> None:
+    """ADR 0059 revision 2: a gate's YAML template parses as shipped.
+
+    With `{{NAME}}` placeholders ten of them did not — a value that begins with
+    `{` opens a flow mapping — so nothing could check them until a gate had
+    written them into someone's repository. `<<NAME>>` is a plain scalar, so a
+    template that is broken YAML now fails here, before it ships.
+    """
+    yaml.safe_load(template.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize(
+    "template", YAML_TEMPLATES, ids=lambda p: f"{p.parent.parent.name}/{p.name}"
+)
+def test_a_yaml_template_payload_starts_at_column_0(template: Path) -> None:
+    """The payload sits below one marker, unindented, so it lints as shipped.
+
+    Before 2026-10-30 a hook's payload was indented six columns, the depth of
+    the `hooks:` list it joins, and under yamllint's `default` preset that gave
+    22 findings across the templates. The gate now indents it on writing
+    (`reference/template-layout.md`), and the render tests indent it the same
+    way through `template_payload`. A payload put back at depth fails here.
+    """
+    payload = template_payload(template.read_text(encoding="utf-8"), 0)
+    lines = [line for line in payload.splitlines() if line.strip()]
+    assert lines, f"{template.name}: nothing below the marker"
+    assert not lines[0].startswith(" "), f"{template.name}: payload starts indented"
+
+
+def test_the_gate_skills_spell_a_placeholder_one_way() -> None:
+    """No gate skill file carries the retired `{{NAME}}` spelling.
+
+    A gate replaces one marker. A template that mixed `{{NAME}}` with `<<NAME>>`
+    would deploy with the old one left in, and every render test, which looks
+    for the new one, would pass over it. The devcontainer and adoption templates
+    under `plugins/control-register/templates/` are a separate mechanism that an
+    adopter's `sed` fills, and keep `{{NAME}}` (ADR 0059 revision 2).
+    """
+    retired = re.compile(r"\{\{[A-Z][A-Z0-9_]*\}\}")
+    offenders = [
+        str(path.relative_to(REPO_ROOT))
+        for path in (PLUGIN / "skills").rglob("*")
+        if path.is_file() and retired.search(path.read_text(encoding="utf-8", errors="ignore"))
+    ]
+    assert not offenders, f"retired `{{{{NAME}}}}` placeholders in: {', '.join(offenders)}"

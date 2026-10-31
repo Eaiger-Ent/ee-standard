@@ -35,6 +35,7 @@ One file cannot hold both policies.
 | `controls.published.yaml` | **Generated.** The register an adopter fetches, derived from `controls.yaml` by removing `# local-only` entries ([ADR 0048](adr/0048-the-published-register-is-derived.md)). Written by `register-check publish`; `tests/test_published_register.py` fails a stale one |
 | `deployment-decisions.yaml` | Declined deployments — see above |
 | `START-HERE.md` | **The adoption quickstart.** The happy path for a junior with a Mac and nothing else: what to install, which credentials, six steps. Held runnable by `tests/test_start_here.py` |
+| `UPGRADING.md` | **The upgrade route.** For a repository that has already adopted: move the plugin, the register's pin and the checker to a new release, then re-run the gates that are owed. Six steps, each with the evidence that it worked |
 | `adopt.sh` | **The bootstrap.** The one file an adopter fetches by hand, before Claude Code or a plugin exists — it needs `git` and `curl` and no credentials, resolves the newest tag, clones it anonymously, and runs the route in `plugins/control-register/templates/adopt/` from there ([ADR 0049](adr/0049-the-adoption-route-is-executable.md) revision 2). Fetched from `main` and pins nothing by design: it holds no rules, and what it clones is pinned |
 | `HOW-IT-WORKS.md` | The mechanism in one screen, for a person deciding whether to adopt or reading a verdict. Links `docs/00-concepts.md` for every term rather than restating one |
 | `README.md` | What this repository is, for a person arriving cold |
@@ -46,6 +47,7 @@ One file cannot hold both policies.
 | `.python-version` | The interpreter the gates run on ([ADR 0027](adr/0027-the-interpreter-is-a-pinned-tool.md)). A *pin*, not the support floor |
 | `.markdownlint.yaml` | DOC-001's rule set |
 | `.markdownlint-cli2.yaml` | DOC-001's runner config — `gitignore: true`, `ignores: []` |
+| `.yamllint.yml` | YML-001's rule set: `extends: default`, the floor stated at error, and `ignore-from-file: .gitignore`. Deployed by `lint-yaml` 0.1.16, with `line-length` and `document-start` changed by hand |
 | `.pre-commit-config.yaml` | Both local loci. A hook's `stages:` says which ([ADR 0039](adr/0039-a-push-is-a-locus.md)) |
 | `.gitignore` | Two of its lines are a stamped SEC-001 artefact |
 | `renovate.json` | Update proposals for what Dependabot cannot see |
@@ -95,4 +97,4 @@ carry a value the register pins or a fact about this repository's own posture.
 | `plugins/control-register/reference/` | Prose more than one skill must follow, shipped once ([ADR 0036](adr/0036-shared-skill-prose-has-one-home.md)) |
 | `plugins/control-register/templates/devcontainer/` | The devcontainer an adopter copies |
 | `plugins/control-register/templates/sweep/` | The scheduled sweep an adopter copies |
-| `plugins/control-register/.claude-plugin/deploys.json` | One deployment contract **per gate**, not per plugin |
+| `plugins/control-register/skills/gate-*/deploys.json` | One deployment contract **per gate**, in the gate's own directory ([ADR 0058](adr/0058-a-gate-declares-its-contract-in-its-own-directory.md)) |

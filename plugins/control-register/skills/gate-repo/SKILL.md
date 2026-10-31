@@ -114,13 +114,13 @@ If this fails, stop and show the error.
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
 | `SKILL_VERSION` | the plugin's `.claude-plugin/plugin.json`, `version` |
-| `GATE_CONTRACT` | the plugin's `.claude-plugin/deploys.json`, `gates.gate-repo.contractVersion` |
+| `GATE_CONTRACT` | this gate's own `deploys.json`, `contractVersion` |
 
-The last two rows are the **plugin's** numbers rather than the register's,
-read from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/`. `GATE_CONTRACT` is what a
-stamp records as `gate-contract`, and it moves only when what this gate writes
-changes, so a documentation release of the plugin recommends nothing
-(ADR 0038). If `${CLAUDE_PLUGIN_ROOT}` is unset, stop and say so.
+The last two rows are the **plugin's** numbers, not the register's: from
+`${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and from this gate's own
+`${CLAUDE_SKILL_DIR}/deploys.json` (ADR 0058). `GATE_CONTRACT` is the stamp's
+`gate-contract`; it moves only when this gate's output does, so a documentation
+release recommends nothing (ADR 0038). If either is unset, stop and say so.
 
 `REQUIREMENTS` and the `kind: remote` block's `args:` are the **same** values,
 and that is deliberate: two blocks would be two definitions of "protected", free
@@ -190,12 +190,12 @@ repository.
 ## Step 1 — Record the ruleset
 
 Read `${CLAUDE_SKILL_DIR}/templates/default-branch.json` and substitute
-`{{RULESET_NAME}}`, `{{REQUIRED_CHECKS}}`, `{{REQUIRE_BRANCHES_UP_TO_DATE}}`,
-`{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`. Write it
+`<<RULESET_NAME>>`, `<<REQUIRED_CHECKS>>`, `<<REQUIRE_BRANCHES_UP_TO_DATE>>`,
+`<<SKILL_VERSION>>`, `<<GATE_CONTRACT>>`, `<<REGISTER_VERSION>>` and `<<REGISTER_CONTRACT>>`. Write it
 to `RULESET_PATH` and **git-add it**; a ruleset git does not carry is not one
 anybody can review.
 
-`{{REQUIRED_CHECKS}}` becomes one `{ "context": "<job id>" }` object per entry
+`<<REQUIRED_CHECKS>>` becomes one `{ "context": "<job id>" }` object per entry
 in `REQUIRED_CHECKS`, comma-separated. Before writing them, check each against
 `CONTEXTS`:
 
@@ -438,6 +438,7 @@ Read `${CLAUDE_SKILL_DIR}/output-templates.md` and emit the block whose trigger 
 | Condition | Action |
 | ----------- | -------- |
 | No register found or it fails to load | Stop. Emit **Aborted** |
+| `--repo` has no GitHub remote, or more than one naming different `<owner>/<name>` | None: stop, emit **Aborted**. Several: ask which repository to protect; never pick a remote silently |
 | No `administration: write` on the token | Stop **before writing the record**. Say which permission is missing and who grants it |
 | A `403` that `reference/plan-limits.md` classifies as the plan | Write the record, make no call, emit **Recorded, not applied (plan limit)** (§2P) |
 | The user chooses **Record only** | Write the file, report CI-001 as not deployed, and do not soften that |
@@ -494,6 +495,6 @@ file's readers and win when this list disagrees.
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;
   co-update all nine when the contract version changes. Canonical source: each
-  gate's `contractVersion` in `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/deploys.json`,
+  gate's `contractVersion` in its own `skills/<gate>/deploys.json` (ADR 0058),
   and the stamp grammar and exit codes in `register-check`, in the `ee-standard`
   repository (ADR 0016) — never a skill's restatement of either.

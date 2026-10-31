@@ -188,8 +188,9 @@ With the contract in the stamp, they can.
 
 `gate-contract` is the same argument one level down, and it is the number the
 staleness report actually compares ([ADR 0038](adr/0038-the-stamp-records-the-deployment-contract.md)).
-It is `gates.<gate>.contractVersion` from the plugin's `deploys.json`, read by
-the gate as it writes, and it moves only when what *that gate* writes changes.
+It is `contractVersion` from the gate's own `skills/<gate>/deploys.json`
+([ADR 0058](adr/0058-a-gate-declares-its-contract-in-its-own-directory.md)),
+read by the gate as it writes, and it moves only when what *that gate* writes changes.
 The skill version beside it cannot serve: the eight skills share one
 `plugin.json` version, so it is not a per-gate fact at all and a rule keyed to
 it would move six gates whenever one shipped.

@@ -23,7 +23,7 @@ that is the thing to say.
 **Three rules govern everything below.**
 
 **The register decides.** Which controls exist, which apply, and which gate
-deploys each are read from `controls.yaml` and from the plugin's `deploys.json`.
+deploys each are read from `controls.yaml` and from each gate's `deploys.json`.
 Nothing here holds a list of controls or a list of gates. A register that grows a
 control this skill has never heard of must still be planned and dispatched.
 
@@ -124,16 +124,21 @@ For every control in the register, record:
 | `GATE` | the control's `deployed_by`, or `—` where the register names none |
 | `VERDICT` | its verdict in the starting run |
 
-Then read the plugin's `deploys.json` for each gate named:
+Then read every `${CLAUDE_PLUGIN_ROOT}/skills/*/deploys.json` — each gate in this
+plugin has its own (ADR 0058). Read them all, not only those of the gates a
+`deployed_by` names: a gate can verify a control nothing names it for, and the
+**checked, not deployed** row below is found only from the gate's side. A
+`deployed_by` with no such file is not a gate in this plugin:
 
 | State var | From |
 | --- | --- |
-| `ARTIFACTS` | `gates.<GATE>.artifacts` — what that gate writes |
-| `CONTRACT` | `gates.<GATE>.contractVersion` |
+| `CONTROLS` | `controls` — what that gate verifies |
+| `ARTIFACTS` | `artifacts` — what that gate writes |
+| `CONTRACT` | `contractVersion` |
 
 ### Read what is already deployed
 
-Ask the checker, which reads the plugin's `deploys.json` and the repository's
+Ask the checker, which reads each gate's `deploys.json` and the repository's
 stamps through the one parser everything else reads them through:
 
 ```bash
@@ -169,7 +174,7 @@ the plan reads as a control that does not apply.
 | --- | --- | --- |
 | **deploy** | `deployed_by` names a gate in this plugin | the gate's name |
 | **dispatch elsewhere** | `deployed_by` names a skill this plugin does not contain — DOC-001 is `lint-md`'s | the skill's name, and that it is another plugin's |
-| **checked, not deployed** | `deploys.json` lists the control under a gate, and the control has no `deployed_by` | the gate that verifies it, and that nothing is written for it |
+| **checked, not deployed** | a gate's `deploys.json` lists the control, and the control has no `deployed_by` | the gate that verifies it, and that nothing is written for it |
 | **manual** | neither | a pointer to `docs/08-adopting.md` |
 
 **The third row is not a gap in the register.** SEC-003 — *CI carries no
@@ -369,23 +374,24 @@ Read `${CLAUDE_SKILL_DIR}/output-templates.md` and emit the block whose trigger 
 | **Adopted** | Step 5 exited `0` or `3`, and Step 6 committed |
 | **Failed** | A gate, or `register-install` at row 5a, failed; or Step 5 exited `1` or `2` |
 | **Cancelled** | **Cancel** at Step 3 |
+| **Blocked** | A stop before Step 2: no checker, no register, not a git repository, or a stamp ahead of the installed contract |
 
 ## Error handling
 
 | Condition | Action |
 | ----------- | -------- |
 | `register-check` is not installed | Dispatch `/register-install` at Step 0. Never install it here |
-| `register-install` stops without installing | Stop. Every step below verifies through the checker, so a plan computed without it is a plan nobody checked |
-| No register found or it fails to load | Stop. There is nothing to plan from |
+| `register-install` stops without installing | Emit **Blocked**. Every step below verifies through the checker, so a plan computed without it is a plan nobody checked |
+| No register found or it fails to load | Emit **Blocked** with the loader's error. There is nothing to plan from |
 | `--register` names a file and `<repo>/controls.yaml` also exists | Plan from `--register`: the explicit path wins, and it is the one passed to every gate, so plan, deployment and audit read one register. Name the path used above the plan table |
-| Not a git repository | Stop. Every assert reads what git tracks |
+| Not a git repository | Emit **Blocked**. Every assert reads what git tracks |
 | A control's `deployed_by` names a gate this plugin does not have | Plan it as **dispatch elsewhere** or **manual**. Never drop it from the plan |
 | A gate reports a failed deployment | Stop the sequence. Do not run the gates after it |
 | `register-install` at row 5a stops, or cannot place the Conformance step | Stop before `gate-repo`, emit **Failed** naming `register-install`, and say the branch is not yet protected. Dispatching `gate-repo` would protect a branch whose required check carries no register verdict (ADR 0057) |
 | A gate asks a question | Answer it or pass it on. Do not re-invoke with the question suppressed |
 | Verify exits `1` | Report a failed adoption and **do not commit** |
 | Verify exits `3` | Report success at the local loci, naming every skipped block |
-| A stamp names a contract ahead of the register | A defect, not staleness. Report it and stop |
+| A stamp names a contract ahead of the register | A defect, not staleness. Emit **Blocked** naming the gate and both contract numbers |
 
 ## Idempotency
 
@@ -427,7 +433,7 @@ Canonical source for the shared standards below:
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;
   co-update all nine when the contract version changes. Canonical source: each
-  gate's `contractVersion` in `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/deploys.json`,
+  gate's `contractVersion` in its own `${CLAUDE_PLUGIN_ROOT}/skills/<gate>/deploys.json` (ADR 0058),
   and the stamp grammar and exit codes in `register-check`, in the `ee-standard`
   repository (ADR 0016) — never a skill's restatement of either.
 - **Unattended `--yes`** (`reference/unattended.md`) — shared with

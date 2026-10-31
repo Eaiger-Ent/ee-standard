@@ -23,7 +23,7 @@
 // it. Say the binding rather than correct one.
 //
 // Every value is the register's: the language and the setting are
-// `stacks.{{STACK}}.gates.lint.editor_binding`, and the extension is that
+// `stacks.<<STACK>>.gates.lint.editor_binding`, and the extension is that
 // gate's `editor_extension`. A gate whose register entry declares no
 // `editor_binding` binds no file type, and this artefact is not written for it
 // — eslint is a linter and not TypeScript's formatter.
@@ -33,8 +33,8 @@
 //
 // --- .vscode/settings.json — merged into what is already there ---
 {
-  // ee-control: LNT-001  ee-skill: gate-quality@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
-  "[{{EDITOR_LANGUAGE}}]": {
-    "{{EDITOR_BINDING_SETTING}}": "{{EDITOR_EXTENSION}}"
+  // ee-control: LNT-001  ee-skill: gate-quality@<<SKILL_VERSION>>  gate-contract: <<GATE_CONTRACT>>  register: v<<REGISTER_VERSION>>  register-contract: <<REGISTER_CONTRACT>>
+  "[<<EDITOR_LANGUAGE>>]": {
+    "<<EDITOR_BINDING_SETTING>>": "<<EDITOR_EXTENSION>>"
   }
 }

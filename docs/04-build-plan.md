@@ -1505,7 +1505,7 @@ document that described it.
       skill and writing a second DOC-001 gate here were both rejected in the
       ADR, and `tests/test_adopter_guide.py` fails a guide that names a
       marketplace the register does not
-- [ ] **Nothing in `control-register` is owed to the published copy.** Added
+- [x] **Nothing in `control-register` is owed to the published copy.** Added
       2026-10-23, when the prose claim that the two copies matched "apart from
       the docs link" became a record, `docs/promotion/published.json` and its digests, held by
       `tests/test_published_copy.py`. Writing the record falsified the claim.
@@ -1516,7 +1516,47 @@ document that described it.
       stale. The record says why for each. This closes when no difference in it
       is `owed-upstream` and `scripts/record_published.py --check` passes
       against the copy that shipped the fix. Each submission is an act in
-      another organisation's repository and needs its own yes
+      another organisation's repository and needs its own yes. Submissions 15
+      and 16 were merged in the incubator and published as `0.1.15` and
+      `0.1.16` without either file: `promote.py`'s amend path never syncs
+      `.claude-plugin/` or `README.md`, which it treats as managed in
+      `ee-skills`, and the issues closed as `implemented` regardless. An
+      incubator submission cannot close this criterion; the record, re-read at
+      `0.1.16`, says so for each file. The two halves now take different routes.
+      `deploys.json` moves into each gate's own directory, which promotion
+      does copy ([ADR 0058](adr/0058-a-gate-declares-its-contract-in-its-own-directory.md),
+      Accepted 2026-10-25, implemented here; the six files reach the
+      incubator as one amendment, which needs its own yes). Release the checker
+      only after `ee-skills` publishes them: it refuses a plugin that has only
+      the old file, so an earlier release gives an adopter installing from
+      `ee-skills` an exit `2` from `register-check deployments`. The README
+      reached `ee-skills` by hand (incubator#1185, applied as ee-skills#1435);
+      only its ADR 0058 paragraph is still owed, and it needs a second hand
+      copy unless incubator#1186, the `promote.py` root cause, lands first.
+      **Closed 2026-10-27 at `control-register@0.1.20`**, verified in the
+      devcontainer by `scripts/record_published.py --check` (`PASS`) and
+      `tests/test_published_copy.py`. ADR 0058 went up as eight amendments,
+      incubator#1196–#1201, #1209 and #1210 ([`05-promotion.md`](05-promotion.md)
+      row 17), and shipped in `0.1.19` with the README paragraph, since #1186
+      had landed. `0.1.20` deleted the plugin-wide `.claude-plugin/deploys.json`
+      (incubator#1215, #1217). What the incubator's review added on the way was
+      taken back, so the record now declares two differences, both `by-design`:
+      the manifest's version line and the docs link each `SKILL.md` names
+- [x] **The released checker reads what `ee-skills` publishes.** Added
+      2026-10-27. The criterion above ordered the release *after* `ee-skills`
+      published the per-gate files; `ee-skills` went further and deleted the old
+      file in `0.1.20`, before any release. So `register-check@v0.9.0`, the ref
+      `tools.register-check.install` names, exits `2` from `register-check
+      deployments --plugin <control-register@0.1.20>` (*ships no
+      .claude-plugin/deploys.json*), and against `0.1.19` reports
+      `gate-secrets` defective off the old file's contract 6. Both were run in
+      the devcontainer from a `v0.9.0` worktree. An adopter installing today
+      is on both. This closes when a tag that reads `skills/<gate>/deploys.json`
+      is cut by the release procedure and the register names it.
+      **Closed 2026-10-27 by `v0.9.1`**, which `tools.register-check.install`
+      names. Its `register-check deployments` exits `0` against both
+      `control-register@0.1.20` and `0.1.19` (*0 defective*), run in the
+      devcontainer from the tagged commit
 
 ## Phase 7 — What two independent adoptions found
 
@@ -1605,6 +1645,79 @@ the same four weeks; the evidence for each tick is
 - [x] `deployments` says when a stack a gate covers has arrived since the gate
       ran. Closed 2026-10-19, [`18-phase-8-review.md`](18-phase-8-review.md)
       § `deployments` says when a stack has arrived.
+
+## Phase 9 — YAML is linted before anything reads it
+
+[ADR 0059](adr/0059-yaml-is-linted-before-anything-reads-it.md), accepted
+2026-10-28, adds YML-001. The evidence for each tick is
+[`19-phase-9-review.md`](19-phase-9-review.md).
+
+- [x] YML-001 is in `controls.yaml`: the correctness floor and the coverage
+      globs in `args`, `yamllint` in `tools:`, the new assert in the closed set,
+      and `meta.register_contract` bumped. Closed 2026-10-29 at contract 37,
+      [`19-phase-9-review.md`](19-phase-9-review.md).
+- [x] Every gate template under `plugins/control-register/skills/*/templates/`
+      is valid YAML, its placeholders respelled in one pass, and a gate renders
+      byte-identical output from it (ADR 0059 revision 2). Closed 2026-10-28,
+      [`19-phase-9-review.md`](19-phase-9-review.md).
+- [x] Every YAML gate template's payload starts at column 0, below a `# ---`
+      marker, and each skill that writes one indents it to the list it joins
+      (`reference/template-layout.md`). The templates pass yamllint's `default`
+      preset, and a gate writes the same bytes. Closed 2026-10-30,
+      [`19-phase-9-review.md`](19-phase-9-review.md).
+- [x] This repository's `.yamllint.yml` is the shape the amended `lint-yaml`
+      writes (incubator#1220): `extends: default`, the floor stated at
+      `level: error`, `line-length` at 200 and `document-start` disabled. And
+      `uv run yamllint .` passes with it. Closed 2026-10-31,
+      [`19-phase-9-review.md`](19-phase-9-review.md).
+- [x] `lint-yaml` is deployed here from a release that includes incubator#1143,
+      and `.claude/hooks/yaml-lint.py` passes TYP-001 unedited. Closed
+      2026-10-31 by `lint-yaml` 0.1.16,
+      [`19-phase-9-review.md`](19-phase-9-review.md).
+- [x] `uv run register-check run --control YML-001` passes here, and fails when
+      a duplicate key is added to `controls.yaml`. Closed 2026-10-29, over a
+      hand-wired deployment, [`19-phase-9-review.md`](19-phase-9-review.md).
+- [ ] `08-adopting.md` tells an adopter how to deploy YML-001, with how you
+      know each step worked. Until 2026-10-31 this read *the by-hand route*.
+      [ADR 0060](adr/0060-this-marketplace-mirrors-the-lint-skills.md) makes
+      the route installing `lint-yaml` from this marketplace, so this closes
+      with Phase 10's guide item.
+- [x] The two asks of `lint-yaml` are filed upstream: a pinned install outside a
+      uv project, and the floor's three rules at `level: error` in its config.
+      Item 3 found three more, recorded in
+      [`19-phase-9-review.md`](19-phase-9-review.md): its pre-commit hook
+      should reach the register's pin rather than a `rev:`, its config should
+      state the floor rather than inherit `default`'s warning, and its hook
+      script should pass ruff. Closed 2026-10-31: all five were filed as
+      incubator#1220, merged 2026-10-29 and published in `lint-yaml` 0.1.16,
+      whose hook passes ruff, mypy and `test_toolchain_pin.py` here unedited.
+
+## Phase 10 — The lint skills are mirrored here
+
+[ADR 0060](adr/0060-this-marketplace-mirrors-the-lint-skills.md), accepted
+2026-10-31, serves `lint-md` and `lint-yaml` from this marketplace as mirrors of
+the copies published in `ee-skills`. An `ee-skills` maintainer agreed to the
+republication on the same day.
+
+- [ ] `plugins/lint-md/` and `plugins/lint-yaml/` hold the published trees at a
+      recorded version and commit. `docs/promotion/mirrored.json` holds a
+      digest per file, and a test fails on any file that differs from the
+      record, or is present on one side only.
+- [ ] The one declared difference holds and nothing else does: each mirror's
+      `plugin.json` drops `dependencies`, and may differ by nothing more.
+- [ ] A script re-mirrors a plugin from the installed `ee-skills` checkout and
+      rewrites the record. With `--check` it reports a mirror that is behind,
+      and exits `0` over one, because a mirror behind is reported, never
+      enforced.
+- [ ] `marketplace.json` lists both plugins, and `tests/test_adopter_guide.py`
+      accepts `lint-md@ee-standard` and `lint-yaml@ee-standard` from the
+      register's address.
+- [ ] `08-adopting.md` and `START-HERE.md` install both skills from this
+      marketplace. § 3's by-hand route becomes the fallback, for an adopter who
+      will not install a plugin.
+- [ ] Upstream is asked to drop the unused `dependencies` key from both
+      plugins, so the mirrors can become byte-identical. Filing it is an act in
+      another organisation's repository and needs its own yes.
 
 ## What is deliberately not in scope
 

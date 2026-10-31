@@ -91,13 +91,13 @@ the authority for anything, and every step below reads it.
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
 | `SKILL_VERSION` | the plugin's `.claude-plugin/plugin.json`, `version` |
-| `GATE_CONTRACT` | the plugin's `.claude-plugin/deploys.json`, `gates.gate-build.contractVersion` |
+| `GATE_CONTRACT` | this gate's own `deploys.json`, `contractVersion` |
 
-The last two rows are the **plugin's** numbers rather than the register's,
-read from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/`. `GATE_CONTRACT` is what a
-stamp records as `gate-contract`, and it moves only when what this gate writes
-changes, so a documentation release of the plugin recommends nothing
-(ADR 0038). If `${CLAUDE_PLUGIN_ROOT}` is unset, stop and say so.
+The last two rows are the **plugin's** numbers, not the register's: from
+`${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and from this gate's own
+`${CLAUDE_SKILL_DIR}/deploys.json` (ADR 0058). `GATE_CONTRACT` is the stamp's
+`gate-contract`; it moves only when this gate's output does, so a documentation
+release recommends nothing (ADR 0038). If either is unset, stop and say so.
 
 **If `tools.<TOOL>` has no `invocation`**, stop. The pre-commit gate would have
 to run a bare tool name, which resolves from `PATH` — and what answered would be
@@ -195,8 +195,8 @@ question about that image rather than about this control.
 ## Step 2 — Pin the image and every feature (DEV-001)
 
 Read `${CLAUDE_SKILL_DIR}/templates/devcontainer.json` and substitute
-`{{CONTAINER_USER}}`, `{{IMAGE}}`, `{{IMAGE_DIGEST}}`, `{{SKILL_VERSION}}`,
-`{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`. Merge it into the
+`<<CONTAINER_USER>>`, `<<IMAGE>>`, `<<IMAGE_DIGEST>>`, `<<SKILL_VERSION>>`,
+`<<GATE_CONTRACT>>`, `<<REGISTER_VERSION>>` and `<<REGISTER_CONTRACT>>`. Merge it into the
 `devcontainer.json` that is there — **as text, not by reparsing and dumping**.
 The stamps are `//` comments and a round trip through a JSON writer drops them;
 the checker reads this file with a JSONC reader, so the comments stay legal.
@@ -260,6 +260,9 @@ enforces this before a commit lands and before a merge does*.
 **The pre-commit locus.** Read
 `${CLAUDE_SKILL_DIR}/templates/precommit-hook.yaml` and substitute the same
 values.
+
+Write every YAML template as `${CLAUDE_PLUGIN_ROOT}/reference/template-layout.md`
+says: the payload below its `# ---` marker, indented to the list it joins.
 
 - **`PRECOMMIT_STATE` is `ABSENT`:** create `.pre-commit-config.yaml` with a
   single `repos: - repo: local` entry holding the block.
@@ -401,6 +404,8 @@ Canonical source for both shared standards below:
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
+- **Template layout** (`reference/template-layout.md`) — shared with every
+  skill that writes a YAML template: all the gates but `gate-repo`, and `register-install`.
 - **Provenance stamp and verify contract** — every skill here stamps what it
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;

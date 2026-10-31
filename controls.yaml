@@ -367,7 +367,11 @@ meta:
   #     step reach every control; now `run --control X` reaches X and nothing
   #     else. It alters what a conformant repository's CI must contain, which
   #     `register-install` now writes.
-  register_contract: 36
+  # 37: YML-001 — every tracked YAML file passes `yamllint` with a correctness
+  #     floor, at the editor, pre-commit and CI loci (ADR 0059). A new Tier 1
+  #     control and a new assert, `yaml_gate_wired_at_all_loci`, so a skill
+  #     reading the register has a control to deploy that did not exist.
+  register_contract: 37
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -425,6 +429,14 @@ tools:
     # version is repeated. A `lockfile` tool records `invocation` — how the
     # pinned artefact is reached, so that a locus cannot silently run another.
     invocation: node_modules/.bin/markdownlint-cli2
+  # YML-001's linter, in the lockfile form ADR 0059 gives a repository that has
+  # a Python lockfile. One without one pins it `source: literal`, with a
+  # `version` and the `pinned_at` loci that repeat it, and every locus runs
+  # `uvx --from yamllint==<version> yamllint` — the shape `uv` has below.
+  yamllint:
+    source: lockfile
+    lockfile: uv.lock
+    invocation: uv run yamllint
   gitleaks:
     source: literal
     # Where the release is fetched from. It lived only inside the `depName=`
@@ -485,7 +497,7 @@ tools:
     # one tool in the repository that is not pinned.
     install:
       repository: https://github.com/Eaiger-Ent/ee-standard
-      ref: v0.9.0
+      ref: v0.9.1
   uv:
     source: literal
     # Where the release artefact is fetched from, as for gitleaks. The
@@ -1077,7 +1089,7 @@ controls:
       # naming nothing tracked scopes the tool and is allowed.
       - kind: file
         assert: secrets_gate_wired_at_all_loci
-        args: { tool: gitleaks, ignore_file: .gitleaksignore }
+        args: {tool: gitleaks, ignore_file: .gitleaksignore}
       # The rule that acts before a credential is a git object. Every other
       # block above and below reads what git or the remote already has;
       # `fetch-secrets.sh` writes these two files on the host at every container
@@ -1094,7 +1106,7 @@ controls:
       # stamp nothing reads records a claim rather than establishing one (§ F).
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-secrets }
+        args: {skill: gate-secrets}
       - kind: remote
         assert: github_push_protection_enabled
     owner: platform-engineering
@@ -1136,7 +1148,7 @@ controls:
       # only the first claim.
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       # SEC-002 gains a `deployed_by` here, having had none since Phase 0: the
       # gate checked this control and wrote nothing for it, so there was no
       # artefact to stamp. A locus is something a gate installs, so giving
@@ -1144,7 +1156,7 @@ controls:
       # stamp naming SEC-001 must not be credited for it.
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-secrets }
+        args: {skill: gate-secrets}
     owner: platform-engineering
     deployed_by: gate-secrets
     variance: forbidden
@@ -1265,14 +1277,14 @@ controls:
       # is a day old.
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       # The gate's own deployment, read back by the gate that wrote it. Per
       # control rather than per gate: `gate-supply-chain` owns three, so a stamp
       # naming SUP-002 satisfying SUP-001 would let the frozen-install step go
       # unstamped with nothing reporting it (contract 12's finding, inherited).
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-supply-chain }
+        args: {skill: gate-supply-chain}
     owner: platform-engineering
     deployed_by: gate-supply-chain
     variance: narrowing-only
@@ -1304,10 +1316,10 @@ controls:
         assert: dependency_update_config_covers_all_ecosystems
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-supply-chain }
+        args: {skill: gate-supply-chain}
     owner: platform-engineering
     deployed_by: gate-supply-chain
     variance: narrowing-only
@@ -1366,10 +1378,10 @@ controls:
       # falling into `register-adopt`'s "manual" row.
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-supply-chain }
+        args: {skill: gate-supply-chain}
     owner: platform-engineering
     deployed_by: gate-supply-chain
     variance: forbidden
@@ -1406,10 +1418,10 @@ controls:
       # resolves from PATH (ADR 0020).
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-supply-chain }
+        args: {skill: gate-supply-chain}
     owner: platform-engineering
     deployed_by: gate-supply-chain
     variance: narrowing-only
@@ -1468,10 +1480,10 @@ controls:
       # register pins none because this repository has no Dockerfile.
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-build }
+        args: {skill: gate-build}
     owner: platform-engineering
     deployed_by: gate-build
     variance: forbidden
@@ -1504,10 +1516,10 @@ controls:
         assert: devcontainer_image_digest_pinned
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-build }
+        args: {skill: gate-build}
     owner: platform-engineering
     deployed_by: gate-build
     variance: narrowing-only
@@ -1563,7 +1575,7 @@ controls:
           require_branches_up_to_date: true
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-repo }
+        args: {skill: gate-repo}
       # A recorded ruleset is what a repository *intends*; only the platform
       # can say what it enforces, and nothing above may stand in for that. This
       # block reads the rules GitHub reports as **in effect** on the default
@@ -1621,7 +1633,7 @@ controls:
         # tool, its config locations, its pre-commit hook and its editor
         # extension are read from there, so mandating a different linter is a
         # register change and not a checker change (ADR 0018).
-        args: { role: lint }
+        args: {role: lint}
       # The other half of ADR 0020: `linter-wired-at-all-loci` verifies that
       # every locus runs `uv run ruff check`, which reaches the artefact uv.lock
       # pins — and reaches PATH instead if ruff is not in the project at all
@@ -1629,7 +1641,7 @@ controls:
       # assert the existence of the thing it invokes, so this block does.
       - kind: file
         assert: stack_tool_pinned_in_lockfile
-        args: { role: lint }
+        args: {role: lint}
       - kind: file
         assert: no-failure-suppression
       # Each of `gate-quality`'s three controls reads back its own stamp. The
@@ -1641,7 +1653,7 @@ controls:
       # per gate stops being the same statement.
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-quality }
+        args: {skill: gate-quality}
     owner: platform-engineering
     deployed_by: gate-quality
     variance: narrowing-only
@@ -1673,13 +1685,13 @@ controls:
     verify:
       - kind: file
         assert: typecheck-strict-and-blocking
-        args: { role: typecheck }
+        args: {role: typecheck}
       - kind: file
         assert: stack_tool_pinned_in_lockfile
-        args: { role: typecheck }
+        args: {role: typecheck}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-quality }
+        args: {skill: gate-quality}
     owner: platform-engineering
     deployed_by: gate-quality
     variance: narrowing-only
@@ -1730,7 +1742,7 @@ controls:
         assert: no-failure-suppression
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-quality }
+        args: {skill: gate-quality}
     owner: platform-engineering
     deployed_by: gate-quality
     variance: forbidden
@@ -1775,10 +1787,10 @@ controls:
       # neither because this repository has no `*.tf` to analyse.
       - kind: file
         assert: gate_wired_at_declared_loci
-        args: { tool: register-check }
+        args: {tool: register-check}
       - kind: file
         assert: provenance_stamp_present
-        args: { skill: gate-iac }
+        args: {skill: gate-iac}
     owner: platform-engineering
     deployed_by: gate-iac
     variance: narrowing-only
@@ -1827,6 +1839,50 @@ controls:
     baseline: null
     review_by: 2027-08-16
     rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0013-one-markdown-rule-set.md
+
+  - id: YML-001
+    title: YAML passes one pinned linter with a correctness floor
+    enforces: >
+      yamllint runs over every tracked YAML file from a single configuration
+      wired at editor, pre-commit and CI loci. The floor is syntax,
+      duplicate keys and YAML 1.1 booleans, each at level error; a
+      repository may add rules or tighten these, never disable or lower
+      them, and no exemption may hide a tracked file.
+    standard:
+      name: YAML 1.2.2 specification
+      url: https://yaml.org/spec/1.2.2/
+    tier: 1
+    rung: blocking
+    locus: [editor, pre-commit, ci]
+    applies_to: [always]
+    deployed_by: lint-yaml
+    verify:
+      - kind: command
+        # The tool's exit code over the whole tree. Coverage is the config's:
+        # `yaml-files` says which files are YAML and `ignore` says which are
+        # not linted, and the file block below holds both to `globs`. An
+        # absent install is UNCLASSIFIED (ADR 0016), never a pass.
+        run: uv run yamllint .
+      - kind: file
+        # The floor, the tool and the globs are register facts (ADR 0018). A
+        # repository whose YAML has another extension changes `globs`, and one
+        # that wants another rule adds it to its own config. What the assert
+        # holds is the shape: each floor rule present at level error with
+        # these options, nothing tracked hidden, and all three loci wired.
+        assert: yaml_gate_wired_at_all_loci
+        args:
+          tool: yamllint
+          globs: ["*.yml", "*.yaml"]
+          floor:
+            key-duplicates: {}
+            truthy:
+              allowed-values: ["true", "false"]
+              check-keys: false
+    owner: platform-engineering
+    variance: narrowing-only
+    baseline: null
+    review_by: 2027-10-28
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0059-yaml-is-linted-before-anything-reads-it.md
 
 # ---------------------------------------------------------------------------
 # Meta-controls. These do not check the code — they check the register and its
