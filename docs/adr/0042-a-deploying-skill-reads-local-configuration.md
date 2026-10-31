@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-27
-**Revision:** 2
+**Revision:** 3
 
 ## Background
 
@@ -85,9 +85,12 @@ Three places it cannot go, and each exclusion is a rule already in force:
   repository's posture, and [ADR 0022](0022-a-platform-token-ci-carries.md)
   requirement 6 keeps posture out of what an adopter installs.
   `tests/test_posture.py` enforces it.
-- **`.claude-plugin/deploys.json`.** That is the *plugin's* sidecar, declaring
-  what a gate writes. A declination is the consuming repository's record about a
-  skill it did not run.
+- **A gate's `skills/<gate>/deploys.json`.** That is the *plugin's* sidecar,
+  declaring what a gate writes. A declination is the consuming repository's
+  record about a skill it did not run. **Amended 2026-10-25:** this item named
+  `.claude-plugin/deploys.json` until
+  [ADR 0058](0058-a-gate-declares-its-contract-in-its-own-directory.md) moved
+  the declaration into each gate's directory.
 - **`.claude/skill-config.yaml`, the file this ADR proposes above.** Its name and
   location belong to `ee-skills` rather than to us, and writing our own records
   into someone else's contract is how that contract stops being one.
@@ -224,3 +227,4 @@ renewed, and `deployment-decisions.yaml` now reads `declined: []`.
 | --- | --- | --- | --- |
 | 1 | 2026-08-27 | Original decision: a skill that deploys artefacts takes the values it writes as input, read from a repository-local file keyed by skill name, with an absent file meaning today's behaviour. | Nathan Carney |
 | 2 | 2026-08-27 | § Decision extended with where a declination is recorded — `deployment-decisions.yaml` at the repository root — and the two properties that make it a record rather than an opt-out: it names the version it declines, and it expires. Revision 1 named this as the next criterion's; it is the other half of this decision. A stricter reading of ADR 0026 would have made it a new ADR. | Nathan Carney |
+| 3 | 2026-10-25 | The list of what a declination record is not names a gate's `skills/<gate>/deploys.json` rather than `.claude-plugin/deploys.json`, following ADR 0058. Nothing decided here changed. | Nathan Carney, by accepting ADR 0058 |

@@ -1,7 +1,7 @@
 """Which gates are deployed in a repository, and which are owed a redeployment.
 
-The register says what conformant means; the plugin's `.claude-plugin/deploys.json`
-says which gate writes which artefact and at what **deployment contract**; the
+The register says what conformant means; each gate's `skills/<gate>/deploys.json`
+says which artefacts it writes and at what **deployment contract**; the
 `ee-control:` stamps in the repository say what was actually written. This module
 is the join, and it is the reader ADR 0038 added the stamp's `gate-contract`
 field for.
@@ -31,15 +31,17 @@ from pathlib import Path
 
 import yaml
 
-from register_check.provenance import stamps_by_file
+from register_check.predicates import compile_predicate
+from register_check.provenance import stamps_by_file, stamps_in
 from register_check.register import Control, Register
 from register_check.repo import Repo
 from register_check.runner import applies
 
-#: The sidecar's shape this code understands. A file declaring anything else is
-#: an error rather than a best-effort read: guessing at an unknown layout is how
-#: a reader reports "never deployed" over a repository that is fully deployed.
-SCHEMA_VERSION = 2
+#: The declaration's shape this code understands. A file declaring anything else
+#: is an error rather than a best-effort read: guessing at an unknown layout is
+#: how a reader reports "never deployed" over a repository that is fully deployed.
+#: 3 is ADR 0058's: one file per gate, in the gate's own skill directory.
+SCHEMA_VERSION = 3
 
 #: Where the plugin lives when nothing says otherwise. `CLAUDE_PLUGIN_ROOT` is
 #: what a skill has in hand at runtime (the spelling ADR 0036's shared reference
@@ -48,7 +50,16 @@ SCHEMA_VERSION = 2
 _PLUGIN_ENV = "CLAUDE_PLUGIN_ROOT"
 _PLUGIN_IN_REPO = "plugins/control-register"
 
-_SIDECAR = ".claude-plugin/deploys.json"
+#: Where each gate declares its contract, relative to the plugin root, and the
+#: directory name is the gate's. In the gate's own directory because that is
+#: what a promotion copies (ADR 0058).
+_DECLARATIONS = "skills/*/deploys.json"
+
+#: Where the declaration lived before ADR 0058. It is never read: the
+#: incubator never syncs `.claude-plugin/` on an amendment, so the published
+#: copy keeps a stale one indefinitely, and falling back to it would bring back
+#: the fault the move removed. It is named only to say why a plugin was refused.
+_LEGACY = ".claude-plugin/deploys.json"
 
 
 class State(Enum):
@@ -375,6 +386,12 @@ class GateReport:
     deployed: tuple[int | None, ...]
     stamped_paths: tuple[str, ...]
     absent_paths: tuple[str, ...]
+    #: Stacks that apply to this repository now and that this gate has not
+    #: wired, one line each. A stamp records what a gate wrote, not which
+    #: stacks it found, so a stack that arrives after the gate ran leaves every
+    #: stamp current and the gate reading CURRENT — Phase 8's finding, from a
+    #: repository whose TypeScript half was wired by hand three weeks in.
+    stacks_not_covered: tuple[str, ...] = ()
 
     @property
     def behind(self) -> list[int]:
@@ -412,7 +429,13 @@ class Report:
 
     @property
     def owed(self) -> list[GateReport]:
-        return [g for g in self.gates if g.state in OWED]
+        """Gates owed a run: behind on contract, or short of a stack that applies.
+
+        A gate missing a stack keeps its state, because the stamps it has are not
+        behind — but it is owed a run all the same, and a summary that counted it
+        as current would be the silence this exists to end.
+        """
+        return [g for g in self.gates if g.state in OWED or g.stacks_not_covered]
 
     @property
     def defective(self) -> list[GateReport]:
@@ -428,52 +451,72 @@ class BadDecisions(Exception):
 
 
 def find_plugin(repo: Repo, explicit: Path | None = None) -> Path:
-    """The plugin root whose `deploys.json` this run reads.
+    """The plugin root whose gates' `deploys.json` this run reads.
 
     Explicit beats environment beats repository, and none of the three is a
-    fallback for a *wrong* one: a `--plugin` naming a directory with no sidecar
-    raises rather than quietly moving on to the next candidate, because the
-    answer to "which plugin did you mean" is never "some other one".
+    fallback for a *wrong* one: a `--plugin` naming a directory with no
+    declarations raises rather than quietly moving on to the next candidate,
+    because the answer to "which plugin did you mean" is never "some other one".
     """
     if explicit is not None:
-        return _require_sidecar(explicit)
+        return _require_declarations(explicit)
     from_env = os.environ.get(_PLUGIN_ENV)
     if from_env:
-        return _require_sidecar(Path(from_env))
+        return _require_declarations(Path(from_env))
     candidate = repo.root / _PLUGIN_IN_REPO
-    if (candidate / _SIDECAR).is_file():
+    if _declarations(candidate):
         return candidate
-    raise NoPlugin(f"no {_SIDECAR} found — pass --plugin <plugin root>, or set {_PLUGIN_ENV}")
+    if (candidate / _LEGACY).is_file():
+        _require_declarations(candidate)  # raises, and says the plugin predates ADR 0058
+    raise NoPlugin(
+        f"no {_DECLARATIONS} found — pass --plugin <plugin root>, or set {_PLUGIN_ENV}"
+    )
 
 
-def _require_sidecar(root: Path) -> Path:
-    if not (root / _SIDECAR).is_file():
-        raise NoPlugin(f"{root} ships no {_SIDECAR}")
-    return root
+def _declarations(root: Path) -> list[Path]:
+    return sorted(root.glob(_DECLARATIONS))
+
+
+def _require_declarations(root: Path) -> Path:
+    if _declarations(root):
+        return root
+    if (root / _LEGACY).is_file():
+        raise NoPlugin(
+            f"{root} predates ADR 0058: it ships {_LEGACY} and no {_DECLARATIONS}. "
+            "That file is not read, because a published copy keeps a stale one; "
+            "install a release of the plugin that declares its gates per skill"
+        )
+    raise NoPlugin(f"{root} ships no {_DECLARATIONS}")
 
 
 def load_gates(plugin: Path) -> tuple[Gate, ...]:
-    """The gates the installed plugin declares, in the order it declares them."""
-    raw = json.loads((plugin / _SIDECAR).read_text(encoding="utf-8"))
+    """The gates the installed plugin declares, one per `skills/<gate>/deploys.json`.
+
+    In directory order, which is a stable order rather than a meaningful one: the
+    report orders gates by the register's tier and rung, not by this.
+    """
+    paths = _declarations(plugin)
+    if not paths:
+        raise NoPlugin(f"{plugin} declares no gates: no {_DECLARATIONS}")
+    return tuple(_load_gate(path) for path in paths)
+
+
+def _load_gate(path: Path) -> Gate:
+    raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
-        raise NoPlugin(f"{plugin / _SIDECAR} is not an object")
+        raise NoPlugin(f"{path} is not an object")
     version = raw.get("schemaVersion")
     if version != SCHEMA_VERSION:
         raise NoPlugin(
-            f"{plugin / _SIDECAR} declares schemaVersion {version!r}, "
-            f"and this checker reads {SCHEMA_VERSION}"
+            f"{path} declares schemaVersion {version!r}, and this checker reads {SCHEMA_VERSION}"
         )
-    gates = raw.get("gates")
-    if not isinstance(gates, dict):
-        raise NoPlugin(f"{plugin / _SIDECAR} declares no gates")
-    return tuple(
-        Gate(
-            name=name,
-            contract=int(entry["contractVersion"]),
-            controls=tuple(entry.get("controls", ())),
-            artifacts=tuple(entry.get("artifacts", ())),
-        )
-        for name, entry in gates.items()
+    if not isinstance(raw.get("contractVersion"), int):
+        raise NoPlugin(f"{path} declares no integer contractVersion")
+    return Gate(
+        name=path.parent.name,
+        contract=raw["contractVersion"],
+        controls=tuple(raw.get("controls", ())),
+        artifacts=tuple(raw.get("artifacts", ())),
     )
 
 
@@ -482,14 +525,85 @@ def _applicable(gate: Gate, register: Register, repo: Repo) -> bool:
 
     Any, not all: `gate-quality` deploys three controls and a repository that
     satisfies one of them is owed the gate. A gate naming no control the
-    register defines is treated as applicable — that is a defect in the
-    sidecar, which `tests/test_plugin.py` holds, and swallowing it here as
+    register defines is treated as applicable — that is a defect in the gate's
+    declaration, which `tests/test_plugin.py` holds, and swallowing it here as
     "nothing to do" would hide it.
     """
     controls = [c for c in register.controls if c.id in gate.controls]
     if not controls:
         return True
     return any(applies(c, register, repo)[0] for c in controls if isinstance(c, Control))
+
+
+#: Where pre-commit reads its hooks. pre-commit's own filename, not a register
+#: fact — no repository could need it to differ without pre-commit changing.
+_PRE_COMMIT = ".pre-commit-config.yaml"
+
+#: A hook entry, `- id: <name>`, at any indent.
+_HOOK = re.compile(r"^\s*-\s+id:\s*['\"]?([^\s'\"]+)")
+
+
+def hook_owners(text: str) -> dict[str, set[str]]:
+    """Which skills' stamps head each pre-commit hook, by hook id.
+
+    A gate stamps the hook it writes, in the comment block directly above it,
+    rather than the top of the file (`provenance.stamps_in`). So the block that
+    owns a hook is the unbroken run of comment lines immediately above its
+    `- id:` line, and a blank line ends it — a hand-written hook below a
+    gate's is not credited to the gate by sitting near it.
+    """
+    lines = text.splitlines()
+    owners: dict[str, set[str]] = {}
+    for index, line in enumerate(lines):
+        match = _HOOK.match(line)
+        if not match:
+            continue
+        start = index
+        while start > 0 and lines[start - 1].lstrip().startswith("#"):
+            start -= 1
+        block = "\n".join(lines[start:index])
+        owners.setdefault(match.group(1), set()).update(s.skill for s in stamps_in(block))
+    return owners
+
+
+def stacks_not_covered(gate: Gate, register: Register, repo: Repo) -> tuple[str, ...]:
+    """Stacks that apply now whose hook for this gate's role is not this gate's.
+
+    The role comes from the register: a control this gate deploys whose verify
+    block names `role:` is a role the gate wires, for every stack `stacks:`
+    gives a gate in it (ADR 0018 — which hook a stack's linter runs as is
+    `stacks.<stack>.gates.<role>.pre_commit`, never a name held here). Only the
+    pre-commit locus is read: it is the one where a stamp sits beside the thing
+    it governs, and it is enough to tell a stack the gate wired from one it did
+    not.
+    """
+    if not repo.exists(_PRE_COMMIT):
+        return ()
+    roles = sorted(
+        {
+            str(block.args["role"])
+            for control in register.controls
+            if isinstance(control, Control) and control.id in gate.controls
+            for block in control.verify
+            if block.args.get("role")
+        }
+    )
+    owners = hook_owners(repo.read(_PRE_COMMIT))
+    found: list[str] = []
+    for role in roles:
+        for stack, wired in sorted(register.gates(role).items()):
+            if not wired.pre_commit:
+                continue
+            if not compile_predicate(register.predicates.get(stack, False))(repo):
+                continue
+            if wired.pre_commit not in owners:
+                found.append(f"{stack}: no {wired.pre_commit} hook — {gate.name} has not wired it")
+            elif gate.name not in owners[wired.pre_commit]:
+                found.append(
+                    f"{stack}: the {wired.pre_commit} hook carries no {gate.name} stamp — "
+                    f"wired by hand, or arrived after {gate.name} last ran"
+                )
+    return tuple(found)
 
 
 def _classify(gate: Gate, deployed: list[int | None], applicable: bool) -> State:
@@ -573,7 +687,7 @@ def build(
     today: datetime.date | None = None,
     installed: Inventory | None = None,
 ) -> Report:
-    """Read the sidecar and the repository's stamps, and join them.
+    """Read the gates' declarations and the repository's stamps, and join them.
 
     The register is the third input, and it is here for the same reason the
     runner resolves a remote target once for a whole run: applicability is a
@@ -594,13 +708,20 @@ def build(
             if mine:
                 paths.append(path)
                 deployed.extend(s.gate_contract for s in mine)
+        state = _classify(gate, deployed, _applicable(gate, register, repo))
         reports.append(
             GateReport(
                 gate=gate,
-                state=_classify(gate, deployed, _applicable(gate, register, repo)),
+                state=state,
                 deployed=tuple(deployed),
                 stamped_paths=tuple(sorted(paths)),
                 absent_paths=tuple(p for p in gate.paths if not repo.exists(p)),
+                # Only for a gate that has deployed: one that never ran is
+                # already reported as owed, and listing every stack it would
+                # cover says nothing the state does not.
+                stacks_not_covered=(
+                    stacks_not_covered(gate, register, repo) if deployed else ()
+                ),
             )
         )
     foreign = tuple(
@@ -675,6 +796,9 @@ def render(report: Report, register: Register) -> str:
         lines.append(f"           {_explain(gate)}")
         if gate.absent_paths:
             lines.append(f"           artefacts absent: {', '.join(gate.absent_paths)}")
+        if gate.stacks_not_covered:
+            lines.append("           a stack applies that this gate has not wired — run it again:")
+            lines.extend(f"             ! {finding}" for finding in gate.stacks_not_covered)
     if report.foreign:
         lines.append("")
         lines.append("  Deployed by a skill this plugin does not ship:")

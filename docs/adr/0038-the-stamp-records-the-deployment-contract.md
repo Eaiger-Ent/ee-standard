@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-26
-**Revision:** 1
+**Revision:** 2
 
 ## Background
 
@@ -14,8 +14,9 @@ month, and one that fires on nothing is invisible.
 
 The design that answers them was settled in Phase 2 and is recorded in
 [`02-skill-family.md`](../02-skill-family.md) § Staleness: each gate declares a
-`contractVersion` in `.claude-plugin/deploys.json` that moves only when what the
-gate writes changes, and *"redeployment is recommended when the installed
+`contractVersion` in its own `skills/<gate>/deploys.json`
+([ADR 0058](0058-a-gate-declares-its-contract-in-its-own-directory.md)) that
+moves only when what the gate writes changes, and *"redeployment is recommended when the installed
 contract version is ahead of the one stamped in the repo"*.
 
 The stamp does not carry it. What a stamp records today is:
@@ -78,9 +79,17 @@ as a fifth field, immediately after the skill it qualifies:
 # ee-control: SEC-001  ee-skill: gate-secrets@0.1.0  gate-contract: 5  register: v0.23.0  register-contract: 30
 ```
 
-The number is `gates.<gate>.contractVersion` from the plugin's `deploys.json`,
-read at deploy time by the gate that is writing, from the file it ships with. It
-therefore cannot drift: the writer and the declaration are the same artefact.
+The number is `contractVersion` from the `deploys.json` in the gate's own
+directory, read at deploy time by the gate that is writing, from the file it
+ships with. It therefore cannot drift: the writer and the declaration are the
+same artefact.
+
+**Amended 2026-10-25: where the declaration lives.** This decision first read
+the number from one plugin-wide `.claude-plugin/deploys.json`. An incubator
+amendment never syncs that folder, so the published copy held `gate-secrets` at
+6 while the gate wrote 7. [ADR 0058](0058-a-gate-declares-its-contract-in-its-own-directory.md)
+moved the declaration into each gate's directory. The decision above is
+unchanged; only the path it names moved.
 
 Four consequences follow directly, and each is one of the phase's criteria:
 
@@ -140,3 +149,10 @@ defined once.
 - [`02-skill-family.md`](../02-skill-family.md) § Staleness
 - [`00-concepts.md`](../00-concepts.md) § The provenance stamp
 - [`04-build-plan.md`](../04-build-plan.md) § Phase 5
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-26 | Original decision: a provenance stamp records the deployment contract of the gate that wrote it, as a fifth field read from the plugin's `deploys.json`. | Nathan Carney |
+| 2 | 2026-10-25 | § Background and § Decision name the declaration's new home, `skills/<gate>/deploys.json`, which ADR 0058 chose because an incubator amendment never syncs `.claude-plugin/`. The decision is unchanged. | Nathan Carney, by accepting ADR 0058 |

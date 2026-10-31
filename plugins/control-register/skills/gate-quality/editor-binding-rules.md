@@ -11,9 +11,9 @@ mandate a binding the register does not — eslint is a linter, not TypeScript's
 formatter.
 
 Otherwise read `${CLAUDE_SKILL_DIR}/templates/editor-settings.json`, substitute
-`{{EDITOR_LANGUAGE}}`, `{{EDITOR_BINDING_SETTING}}`, `{{EDITOR_EXTENSION}}`,
-`{{STACK}}`, `{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and
-`{{REGISTER_CONTRACT}}`, and merge it into **`.vscode/settings.json`**,
+`<<EDITOR_LANGUAGE>>`, `<<EDITOR_BINDING_SETTING>>`, `<<EDITOR_EXTENSION>>`,
+`<<STACK>>`, `<<SKILL_VERSION>>`, `<<GATE_CONTRACT>>`, `<<REGISTER_VERSION>>` and
+`<<REGISTER_CONTRACT>>`, and merge it into **`.vscode/settings.json`**,
 preserving every other setting. Create the file where it does not exist.
 
 - **`BINDING_STATE` shows another extension holding the language:** replace that

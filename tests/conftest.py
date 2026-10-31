@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import shutil
 import subprocess
 from collections.abc import Mapping
@@ -18,6 +19,31 @@ from register_check.remote import CI_VARIABLE, TOKEN_VARIABLES, GitHub
 from register_check.repo import Repo
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+#: A gate template's placeholder, as `<<NAME>>` (ADR 0059 revision 2). Every
+#: render test asserts none survives, so this is the one place the spelling is
+#: written down: a check for a marker the templates no longer use passes
+#: whatever the render left behind.
+UNFILLED = re.compile(r"<<[A-Z][A-Z0-9_]*>>")
+
+#: The line that ends a YAML gate template's explanatory comments. Everything
+#: below it is the payload, at column 0 so the template lints as shipped.
+TEMPLATE_MARKER = re.compile(r"^# --- .+ ---\n", re.MULTILINE)
+
+
+def template_payload(template: str, indent: int) -> str:
+    """A YAML template's payload, laid out as the gate writes it.
+
+    This is `plugins/control-register/reference/template-layout.md`, done
+    once: the text below the marker, every non-blank line indented to the
+    list it joins. Taken before substitution, because the comments above the
+    marker talk *about* the placeholders and would fail the `UNFILLED` check.
+    """
+    parts = TEMPLATE_MARKER.split(template)
+    assert len(parts) == 2, f"expected one `# --- ... ---` marker, found {len(parts) - 1}"
+    return "".join(
+        " " * indent + line if line.strip() else line for line in parts[1].splitlines(keepends=True)
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -136,6 +162,18 @@ def make_repo(root: Path, files: dict[str, str], commit: bool = True) -> Repo:
     return Repo(root)
 
 
+def declared_gates() -> dict[str, dict[str, Any]]:
+    """Each gate's `deploys.json`, keyed by the gate directory that holds it.
+
+    One reader for every test, so the location ADR 0058 chose is spelled once
+    here rather than once per test that needs to know what a gate declares.
+    """
+    return {
+        path.parent.name: json.loads(path.read_text(encoding="utf-8"))
+        for path in sorted((REPO_ROOT / "plugins/control-register").glob("skills/*/deploys.json"))
+    }
+
+
 def gate_contract(gate: str) -> str:
     """The deployment contract the installed plugin declares for one gate.
 
@@ -143,12 +181,7 @@ def gate_contract(gate: str) -> str:
     existing at all: the number has one home, and a test that repeated it would
     keep passing over a bump nobody carried into the templates.
     """
-    sidecar = json.loads(
-        (REPO_ROOT / "plugins/control-register/.claude-plugin/deploys.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    return str(sidecar["gates"][gate]["contractVersion"])
+    return str(declared_gates()[gate]["contractVersion"])
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-24
-**Revision:** 1
+**Revision:** 3
 
 ## Background
 
@@ -64,7 +64,8 @@ everything else.
 It needs a release process that does not exist: a build, an attached wheel, a
 published digest, and something that keeps all three in step. That is real work
 whose value is defence against a compromised source — and the source here is
-this repository, over HTTPS, at an immutable tag. The threat that ladder is
+this repository, over HTTPS, at an immutable tag (it was not immutable until
+revision 3; see § What makes the tag a pin). The threat that ladder is
 about is a third party's release; this is our own.
 
 ### 3. Vendor a copy into each adopting repository
@@ -135,6 +136,64 @@ Three candidates were considered for the job and two were rejected:
 and stops; the binary is what runs at every locus, with no Claude present.
 Enforcement is never Claude, and a skill that installs a gate is still not one.
 
+## Changed by ADR 0057
+
+**Amended 2026-10-19 by [ADR
+0057](0057-register-install-writes-the-conformance-step.md).** `register-install`
+owns one artefact beyond the dependency: the Conformance step that runs the
+checker it installs. ADR 0057 is the decision and the reason; *owns nothing
+else* above reads as *owns nothing else but that step*. Nothing else here
+changes.
+
+## What makes the tag a pin
+
+**Amended 2026-10-24, revision 3.** The decision is unchanged. One premise of
+it was false. Option 2 was rejected partly because the source sits "at an
+immutable tag", and § The artefact says "the tag is a pin". A git tag is a
+movable ref. On 2026-10-23 this repository had no tag ruleset, and GitHub's
+immutable releases were off (`GET /repos/Eaiger-Ent/ee-standard/immutable-releases`
+returned `"enabled": false`). Anyone with write access could have moved
+`v0.9.0`. ADR 0005 had already said why for actions: only a full commit SHA is
+immutable.
+
+**How exposed adopters were.** An adopter's `uv.lock` records the commit a git
+dependency resolved to, and SUP-001 installs frozen, so a moved tag changed
+nothing at an existing lock. The next re-lock would have taken whatever the tag
+then named, and the diff would have shown only a new hash.
+
+**Why the pin is not a SHA in the register.** That is harness2's answer
+(google-research/harness2 fetches each dependency by commit and refuses a
+checkout at another one). It cannot work here. The tagged commit's register must
+name its own tag, or an adopter reading the register at that tag is told to
+install the previous checker. A commit cannot contain its own SHA.
+
+**What makes it a pin from 2026-10-24.** Two platform settings, both applied
+the same day:
+
+| Setting | What it protects | What it leaves |
+| --- | --- | --- |
+| Ruleset `release-tags`, recorded in `.github/rulesets/release-tags.json`: `refs/tags/v*`, rules `update` and `deletion`, no bypass | Every `v*` tag, existing ones included, from the moment it is pushed | An admin can still edit or delete the ruleset itself |
+| Immutable releases, enabled | A release's tag and assets once the release is published, against admins too | Releases published before it was enabled, including `v0.9.0`. GitHub applies it to future releases only |
+
+Neither covers everything alone. The ruleset is the only one that covers
+`v0.9.0`, and immutable releases are the only one an admin cannot simply switch
+off for one tag. `tests/test_release_tags.py` holds the record's shape, and that
+its pattern covers the ref `tools.register-check.install.ref` names. It cannot
+see the platform. The ruleset was confirmed twice on 2026-10-24: first by
+reading it back from the API, then by a rejected push. The probe re-pushed
+`v0.9.0` as a lightweight tag on the same commit, so it would have changed
+nothing that resolves had it succeeded. It is a force-push to a release tag, so
+the maintainer ran it rather than an agent. GitHub refused it:
+`GH013: Repository rule violations found for refs/tags/v0.9.0 … Cannot update
+this protected ref`. `v0.9.0` still names tag object `acdb71a` on commit
+`42e732f`.
+
+**What it costs.** The release procedure pushes the tag before the pull request
+is reviewed, because the tagged commit's tests read the local tag list. With no
+bypass, a review that changes the commit cannot move the tag after it. The
+release is cut as the next patch version instead. A tag that was pushed may
+already have been fetched, so it is never reused.
+
 ## Consequences
 
 ### A release-tagging discipline has to exist
@@ -193,3 +252,11 @@ the guide before the criterion below is judged* — is what that has to satisfy.
   — the `name @ url` spelling this decision writes, and its exclusion from
   published indexes, which is why option 1 remains a separate step rather than a
   consequence of this one.
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-24 | Original decision: the checker is installed from a tagged ref, by a skill that owns nothing else. | Nathan Carney |
+| 2 | 2026-10-19 | Changed by ADR 0057: register-install also writes the Conformance step that runs the checker it installs. | Nathan Carney |
+| 3 | 2026-10-24 | The tag was not immutable as § Option 2 claimed. Records the release-tags ruleset and immutable releases that now make it a pin. Decision unchanged. | Nathan Carney |

@@ -33,7 +33,15 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, gate_contract, make_repo, requires_tool
+from conftest import (
+    REPO_ROOT,
+    UNFILLED,
+    declared_gates,
+    gate_contract,
+    make_repo,
+    requires_tool,
+    template_payload,
+)
 from register_check.cli import main
 from register_check.provenance import stamps_in
 from register_check.register import Register, load_register
@@ -72,9 +80,10 @@ _ADOPTER = {
 #: adopter's own fact and not something inherited from the standard's register.
 _ADOPTER_CHECKS = ("build",)
 
-# Controls this adoption is expected to reach. DOC-001 belongs to `lint-md` in
-# another plugin and IAC-001 has no Terraform to analyse — both are planned
-# rather than deployed, which is what the plan-completeness test below is about.
+# Controls this adoption is expected to reach. DOC-001 belongs to `lint-md` and
+# YML-001 to `lint-yaml`, each in another plugin, and IAC-001 has no Terraform to
+# analyse — all three are planned rather than deployed, which is what the
+# plan-completeness test below is about.
 _DEPLOYED = (
     "BLD-001",
     "DEV-001",
@@ -135,49 +144,49 @@ def _fill(text: str, register: Register, gate: str, **extra: str) -> str:
     """A shipped template with every placeholder filled from the register.
 
     One substitution map for all six gates. A placeholder no gate fills is a
-    template shipped with `{{` in it, which is a deployment nobody could use.
+    template shipped with a `<<NAME>>` in it, which is a deployment nobody could use.
     """
     ecosystem = register.ecosystems["python"]
     stack = register.stacks["python"]
     values = {
-        "{{TOOL}}": "register-check",
-        "{{TOOL_INVOCATION}}": register.tools["register-check"].invocation or "",
-        # `gate-secrets` is the one gate whose `{{TOOL}}` is not the checker —
+        "<<TOOL>>": "register-check",
+        "<<TOOL_INVOCATION>>": register.tools["register-check"].invocation or "",
+        # `gate-secrets` is the one gate whose `<<TOOL>>` is not the checker —
         # it is the scanner — so the checker it also needs has a name of its own
         # rather than an override that would collide (register contract 32).
-        "{{CHECKER}}": "register-check",
-        "{{CHECKER_INVOCATION}}": register.tools["register-check"].invocation or "",
-        "{{ECOSYSTEM}}": "python",
-        "{{ECOSYSTEM_SPELLING}}": ecosystem.dependabot[0],
-        "{{FROZEN_INSTALL}}": ecosystem.frozen_install_command["uv.lock"],
-        "{{STACK}}": "python",
-        "{{SOURCE_PATTERN}}": r"\.pyi?$",
-        "{{LINT_TOOL}}": stack.gates["lint"].tool,
-        "{{LINT_HOOK_ID}}": stack.gates["lint"].pre_commit or "",
-        "{{LINT_INVOCATION}}": stack.gates["lint"].invocation,
-        "{{EDITOR_EXTENSION}}": stack.gates["lint"].editor_extension or "",
-        "{{EDITOR_LANGUAGE}}": (
+        "<<CHECKER>>": "register-check",
+        "<<CHECKER_INVOCATION>>": register.tools["register-check"].invocation or "",
+        "<<ECOSYSTEM>>": "python",
+        "<<ECOSYSTEM_SPELLING>>": ecosystem.dependabot[0],
+        "<<FROZEN_INSTALL>>": ecosystem.frozen_install_command["uv.lock"],
+        "<<STACK>>": "python",
+        "<<SOURCE_PATTERN>>": r"\.pyi?$",
+        "<<LINT_TOOL>>": stack.gates["lint"].tool,
+        "<<LINT_HOOK_ID>>": stack.gates["lint"].pre_commit or "",
+        "<<LINT_INVOCATION>>": stack.gates["lint"].invocation,
+        "<<EDITOR_EXTENSION>>": stack.gates["lint"].editor_extension or "",
+        "<<EDITOR_LANGUAGE>>": (
             stack.gates["lint"].editor_binding.language
             if stack.gates["lint"].editor_binding
             else ""
         ),
-        "{{EDITOR_BINDING_SETTING}}": (
+        "<<EDITOR_BINDING_SETTING>>": (
             stack.gates["lint"].editor_binding.setting if stack.gates["lint"].editor_binding else ""
         ),
-        "{{TYPECHECK_TOOL}}": stack.gates["typecheck"].tool,
-        "{{TYPECHECK_HOOK_ID}}": stack.gates["typecheck"].pre_commit or "",
-        "{{TYPECHECK_INVOCATION}}": stack.gates["typecheck"].invocation,
-        "{{COVERAGE_KEY}}": stack.gates["typecheck"].coverage_key or "",
-        "{{TEST_COMMAND}}": "uv run pytest",
-        "{{SKILL_VERSION}}": SKILL_VERSION,
-        "{{GATE_CONTRACT}}": gate_contract(gate),
-        "{{REGISTER_VERSION}}": register.version,
-        "{{REGISTER_CONTRACT}}": str(register.register_contract),
+        "<<TYPECHECK_TOOL>>": stack.gates["typecheck"].tool,
+        "<<TYPECHECK_HOOK_ID>>": stack.gates["typecheck"].pre_commit or "",
+        "<<TYPECHECK_INVOCATION>>": stack.gates["typecheck"].invocation,
+        "<<COVERAGE_KEY>>": stack.gates["typecheck"].coverage_key or "",
+        "<<TEST_COMMAND>>": "uv run pytest",
+        "<<SKILL_VERSION>>": SKILL_VERSION,
+        "<<GATE_CONTRACT>>": gate_contract(gate),
+        "<<REGISTER_VERSION>>": register.version,
+        "<<REGISTER_CONTRACT>>": str(register.register_contract),
         **extra,
     }
     for placeholder, value in values.items():
         text = text.replace(placeholder, value)
-    assert "{{" not in text, f"{gate}: a placeholder was not filled: {text[:200]}"
+    assert not UNFILLED.search(text), f"{gate}: a placeholder was not filled: {text[:200]}"
     return text
 
 
@@ -188,8 +197,13 @@ def _payload(path: Path, comment: str = "#", marker: str | None = None) -> str:
     editor locus has a devcontainer shape and a `.vscode/` shape, and a gate
     writes one, never both. Everything from the marker line to the next
     `--- ` section is that shape.
+
+    A YAML hook or step template has one marker and a payload at column 0,
+    indented here to the six columns `_hooks` and `_steps` append at.
     """
     text = path.read_text(encoding="utf-8")
+    if path.suffix == ".yaml" and marker is None:
+        return template_payload(text, 6)
     if marker is not None:
         after = text.split(marker, 1)[1]
         return after.split("\n" + comment + " ---", 1)[0].split("\n", 1)[1]
@@ -249,7 +263,7 @@ def _deploy_all(root: Path, register: Register) -> None:
         ),
         register,
         "gate-build",
-        **{"{{CONTAINER_USER}}": "vscode", "{{IMAGE}}": "x", "{{IMAGE_DIGEST}}": "y"},
+        **{"<<CONTAINER_USER>>": "vscode", "<<IMAGE>>": "x", "<<IMAGE_DIGEST>>": "y"},
     )
     devcontainer = root / ".devcontainer/devcontainer.json"
     text = devcontainer.read_text(encoding="utf-8")
@@ -289,10 +303,10 @@ def _deploy_all(root: Path, register: Register) -> None:
     # 3 — gate-secrets.
     secrets = _gate("gate-secrets")
     scanner = {
-        "{{TOOL}}": "gitleaks",
-        "{{TOOL_VERSION}}": "0.0.0",
-        "{{TOOL_SHA256}}": "0" * 64,
-        "{{TOOL_REPO}}": "example/gitleaks",
+        "<<TOOL>>": "gitleaks",
+        "<<TOOL_VERSION>>": "0.0.0",
+        "<<TOOL_SHA256>>": "0" * 64,
+        "<<TOOL_REPO>>": "example/gitleaks",
     }
     _hooks(
         root, _fill(_payload(secrets / "precommit-hook.yaml"), register, "gate-secrets", **scanner)
@@ -387,11 +401,11 @@ def _ruleset_values(register: Register) -> dict[str, str]:
     control = next(c for c in register.controls if c.id == "CI-001")
     block = next(b for b in control.verify if b.assert_name == "ruleset_recorded_matches_register")
     return {
-        "{{RULESET_NAME}}": "default-branch-protection",
-        "{{REQUIRED_CHECKS}}": ", ".join(
+        "<<RULESET_NAME>>": "default-branch-protection",
+        "<<REQUIRED_CHECKS>>": ", ".join(
             f'{{ "context": "{check}" }}' for check in _ADOPTER_CHECKS
         ),
-        "{{REQUIRE_BRANCHES_UP_TO_DATE}}": json.dumps(block.args["require_branches_up_to_date"]),
+        "<<REQUIRE_BRANCHES_UP_TO_DATE>>": json.dumps(block.args["require_branches_up_to_date"]),
     }
 
 
@@ -421,7 +435,7 @@ def test_the_dispatch_order_is_the_one_the_skill_states() -> None:
     order = [gate for _, gate in sorted(rows, key=lambda row: int(row[0]))]
     assert order[:2] == ["gate-build", "gate-supply-chain"], order
     assert order[-1] == "gate-repo", order
-    declared = set(json.loads((PLUGIN / ".claude-plugin/deploys.json").read_text())["gates"])
+    declared = set(declared_gates())
     assert set(order) == declared, declared.symmetric_difference(order)
 
 
@@ -440,7 +454,7 @@ def test_the_plan_can_name_every_control_in_the_register() -> None:
     satisfied by an absence has to be distinguishable from one nobody has got to.
     """
     register = _register()
-    sidecar = json.loads((PLUGIN / ".claude-plugin/deploys.json").read_text())["gates"]
+    sidecar = declared_gates()
     verified_by = {
         control: gate for gate, entry in sidecar.items() for control in entry["controls"]
     }
@@ -460,7 +474,7 @@ def test_the_plan_can_name_every_control_in_the_register() -> None:
     # `gate-secrets` now writes and stamps one artefact for it. SEC-003 stays,
     # and is the row's only member.
     assert deploy == set(_DEPLOYED) | {"IAC-001"}, deploy
-    assert elsewhere == {"DOC-001"}, elsewhere
+    assert elsewhere == {"DOC-001", "YML-001"}, elsewhere
     assert checked == {"SEC-003"}, checked
     assert not manual, f"controls in no plan row at all: {sorted(manual)}"
     # And the skill names all four rows, so none of this is a category the
@@ -497,9 +511,10 @@ def test_after_adopting_every_local_locus_verifies(
     `SKIPPED (no credentials)` until Phase 3. Reporting it as a clean pass would
     claim two loci no code has touched.
 
-    DOC-001 fails on purpose and is not counted: it is `lint-md`'s, in another
-    plugin, and this adoption plans it as *dispatch elsewhere*. A test that
-    deployed it here would be testing a skill this repository does not ship.
+    DOC-001 and YML-001 fail on purpose and are not counted: they are
+    `lint-md`'s and `lint-yaml`'s, in other plugins, and this adoption plans
+    them as *dispatch elsewhere*. A test that deployed them here would be
+    testing skills this repository does not ship.
     """
     code, out = _verdict(adopted, capsys)
 
@@ -518,7 +533,7 @@ def test_after_adopting_every_local_locus_verifies(
     assert verdict("CI-001") == "SKIPPED (no credentials)"
     assert verdict("IAC-001") == "SKIPPED (predicate)"
     assert "incomplete" in out
-    assert code in (1, 3), out  # 1 only because DOC-001 is another plugin's
+    assert code in (1, 3), out  # 1 only because DOC-001 and YML-001 are other plugins'
 
 
 def test_the_templates_gitignore_is_what_satisfies_sec_001s_ignore_rule(

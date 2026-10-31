@@ -328,7 +328,7 @@ see § What the incubator actually holds rather than a second description here.
 | --- | --- |
 | `LICENSE` | A copy of the repo-root Apache-2.0 file. `check_plugin_license.py` fails without it. |
 | `.claude-plugin/plugin.json` | Name, version, `dependencies`. |
-| `.claude-plugin/deploys.json` | The deployment contract sidecar — see [`02-skill-family.md`](02-skill-family.md). |
+| `skills/<gate>/deploys.json` | Each gate's deployment contract — see [`02-skill-family.md`](02-skill-family.md) and [ADR 0058](adr/0058-a-gate-declares-its-contract-in-its-own-directory.md). Not `.claude-plugin/`, which an amendment never syncs. |
 | `marketplace.json` entry | Category from `categories.json`. |
 | `readme-meta.json` entry | `readme_summary`, `internal`. A sidecar because `claude plugin validate` rejects unknown keys in `marketplace.json`. |
 | README Plugins section | Generated. Never hand-edited between the `BEGIN`/`END` markers — change the source and run `render_readme.py`. |
@@ -532,6 +532,50 @@ All of it went out on 2026-08-29, in the order this document sets.
 | 1. `control-register` | [incubator#657](https://github.com/EqualExperts/ee-skills-incubator/pull/657) — **one PR, not nine. Merged and promoted 2026-08-29**, and `claude plugin install control-register@ee-skills` installs one plugin at 0.1.0 with all nine skills |
 | 2. `skill-update` widening | Not raised. It shipped upstream; see its row above |
 | 8. `gate-quality`: no comment describing the section (#203) | [incubator#1131](https://github.com/EqualExperts/ee-skills-incubator/issues/1131), 2026-09-26. **An issue, because neither submission tool can reach the skill.** `/skill-submit-amend` checks `skills/gate-quality`, gets 404, and `submit-branch.sh` rejects a name containing `/`. `/skill-submit-new` reads the same 404 as *new* and would have added a second, standalone `gate-quality` plugin beside the one inside `control-register`; the incubator's `promote-config.json` already lists it there. **Closed 2026-09-26 and shipped in `control-register@0.1.8`**, whose `gate-quality` differs from this tree only by the incubator's own `docs/skill-relationship-map.md` reference |
+| 9. `lint-yaml`: annotate `in_repo` so the copied hook passes `mypy --strict` | [incubator#1142](https://github.com/EqualExperts/ee-skills-incubator/issues/1142), 2026-10-20, branch `amend/lint-yaml--whome192-20261020` — **through `/skill-submit-amend`**, which reached a skill this repository did not author because `lint-yaml` sits flat at `skills/lint-yaml`. One line. A repository vendoring the hook cannot meet TYP-001, which allows no per-file exemption ([`18-phase-8-review.md`](18-phase-8-review.md) § TYP-001). The tracking issue, [#230](https://github.com/Eaiger-Ent/ee-standard/issues/230), was filed by hand: the submitting shell's token is scoped to EqualExperts and cannot see this repository, so the script said so and `--verify` keeps reporting it missing for the same reason. **Merged 2026-10-20 and shipped in `lint-yaml@0.1.15`** (`796cf48`), whose hook passes `mypy --strict`. Its first promotion PR, ee-skills#1377, failed *Validate* on an unrelated plugin name the validator had started rejecting, `claude-optimise-config`; that was fixed upstream and the amendment promoted the same afternoon |
+| 10. `register-install`: the Conformance step (ADR 0057), `--yes`, and the plugin's shared files | [incubator#1155](https://github.com/EqualExperts/ee-skills-incubator/issues/1155), 2026-10-21, branch `amend/register-install--whome192-20261021`, release set `adr-0057-conformance-step`. **The first amendment to carry files outside its own skill**: `reference/unattended.md`, `reference/plan-limits.md`, `templates/adopt/` and `templates/renovate/` had existed only here, and the per-skill tool could not send them until `ee-skills-contribute` 0.1.55 (incubator #1152) let a nested skill carry its plugin tree's shared files. **Merged 2026-10-21 and shipped in `control-register@0.1.9`.** What shipped differed from what was sent, and the differences were taken back: `register-install/README.md` rewritten for the Conformance step (ours still said *one job, and nothing else*), `templates/adopt/_lib.sh` detecting a container from `REMOTE_CONTAINERS`/`CODESPACES` rather than a `/workspaces` path, shellcheck and portable-shell annotations, and list markers. Tracking issue [#234](https://github.com/Eaiger-Ent/ee-standard/issues/234), filed by hand for the reason row 9 gives |
+| 11. `register-adopt`: step 5a re-runs `register-install` after the gates (ADR 0057), `--yes`, and a README that says so | [incubator#1159](https://github.com/EqualExperts/ee-skills-incubator/issues/1159), 2026-10-21. **Merged 2026-10-21; at `control-register@0.1.13`.** The incubator moved the output blocks to a new `output-templates.md` and added two error rows — an explicit `--register` path wins, and a row-5a failure stops before `gate-repo` — all taken back. Tracking issue [#236](https://github.com/Eaiger-Ent/ee-standard/issues/236) |
+| 12. `gate-repo` | **Not raised: the incubator was ahead.** Incubator #1165 (2026-10-22) had already made it, and `gate-secrets`, read `reference/plan-limits.md`, more thoroughly than this repository had. Submitting ours would have reverted it, so it was taken back instead (#238) |
+| 13. `gate-secrets`: annotate the `setup.sh` version with `# renovate:`, and record the site in `pinned_at` (ADR 0045) | [incubator#1171](https://github.com/EqualExperts/ee-skills-incubator/issues/1171), 2026-10-23 — the two instructions this repository had from 2026-08-31 and #1165 lacked, on top of #1165. **Merged 2026-10-23; at `control-register@0.1.13`.** The incubator unquoted the version line (`TOOL_VERSION=<version>`), which the shipped Renovate rule matches either way and which this repository's own `setup.sh` already wrote, and added the two writes to the README's table; taken back. Tracking issue [#239](https://github.com/Eaiger-Ent/ee-standard/issues/239) |
+| 14. `templates/devcontainer/`: `CLAUDE_CONFIG_DIR`, a `# renovate:` line on the uv pin, and what `check-auth.sh` says a token does | [incubator#1174](https://github.com/EqualExperts/ee-skills-incubator/issues/1174), 2026-10-23, branch `amend/gate-build--whome192-20261023`. **Submitted under `gate-build` as a carrier**: a branch of shared files alone resolves to `control-register`, which no amendment can target, so it went under the skill that owns `.devcontainer/` with that skill unchanged — the submit script warned that *Step 0b* refuses a second skill, and the rationale said why. **Merged 2026-10-23 and shipped in `control-register@0.1.14`**, with one line changed — `~/.claude` for `/home/vscode/.claude` in `check-auth.sh` — taken back. Tracking issue [#241](https://github.com/Eaiger-Ent/ee-standard/issues/241) |
+| 15. `.claude-plugin/deploys.json`: `gate-secrets` at contract 7 | [incubator#1177](https://github.com/EqualExperts/ee-skills-incubator/issues/1177), 2026-10-24, branch `amend/gate-secrets--whome192-20261024`. **The first submission found by `published.json` rather than by reading** (§ What differs from the published copy). Contract 7 is ADR 0045, whose instruction shipped in row 13, but the number did not go with it. The published gate does contract 7's work and stamps `gate-contract: 6`. Carried under `gate-secrets`, unchanged, with the same Step 0b warning as row 14. Tracking issue [#246](https://github.com/Eaiger-Ent/ee-standard/issues/246) |
+| 16. The plugin's root `README.md` | [incubator#1178](https://github.com/EqualExperts/ee-skills-incubator/issues/1178), 2026-10-24, branch `amend/register-install--whome192-20261024`. The other file `published.json` declared `owed-upstream`: upstream is the Phase 2 text, which lists an unbuilt `register-check` skill, omits `register-install`, and reaches the checker off `PATH`. Carried under `register-install`, unchanged. Tracking issue [#247](https://github.com/Eaiger-Ent/ee-standard/issues/247) |
+| 17. ADR 0058: each gate's contract in its own `skills/<gate>/deploys.json` | Eight amendments on 2026-10-26, one per skill: [incubator#1196](https://github.com/EqualExperts/ee-skills-incubator/issues/1196)–[#1201](https://github.com/EqualExperts/ee-skills-incubator/issues/1201) for the six gates, [#1209](https://github.com/EqualExperts/ee-skills-incubator/issues/1209) `register-adopt` and [#1210](https://github.com/EqualExperts/ee-skills-incubator/issues/1210) `register-install`. **Shipped in `control-register@0.1.19`**, README paragraph included, since #1186 had made the amend path sync `README.md`. [#1215](https://github.com/EqualExperts/ee-skills-incubator/issues/1215) and [#1217](https://github.com/EqualExperts/ee-skills-incubator/issues/1217) then deleted `.claude-plugin/deploys.json`, in `0.1.20`. The review added more than it was sent, all taken back: a *What it does* opening, an *Approach* heading and a *References* list in four gate READMEs; SUP-004 named in `gate-supply-chain`, which still said three controls; a **Blocked** outcome in `register-adopt` and a **Partial** one in `register-install`; and stops for an ambiguous remote, missing paths and a second manifest. Closes the § Phase 6 criterion that `published.json` opened |
+
+`templates/devcontainer/` went up as row 14, the one shared file no skill
+amendment had carried.
+
+### What differs from the published copy
+
+This section used to end on a sentence: after rows 9–14, all of
+`control-register` matched the published `control-register@0.1.14`, apart from
+the docs link each `SKILL.md` names. **The sentence was false when written.**
+The plugin's `README.md` and `deploys.json` differed too, and nothing read the
+sentence, so nothing noticed.
+
+The claim is now a record. [`promotion/published.sha256`](promotion/published.sha256)
+holds a digest of every file the marketplace published, in the format
+`sha256sum -c` reads, and [`promotion/published.json`](promotion/published.json)
+holds each difference from this tree. A difference is `owed-upstream` (this repository is ahead) or
+`by-design` (each copy is right where it is), and it says why.
+`tests/test_published_copy.py` fails on a difference the record does not
+declare, and on a declaration that has stopped being true. Where a difference is
+one substitution, as the docs link is, the record names a pattern, and the file
+may differ by that pattern and nothing else.
+
+The test needs only the repository. Whether the record still describes the
+marketplace needs the installed checkout, which CI does not have:
+
+```bash
+uv run python scripts/record_published.py --check   # does the record still hold?
+uv run python scripts/record_published.py           # re-record, after a take-back
+```
+
+Re-record after `claude plugin marketplace update ee-skills`, with the token
+scoped as § The submitting shell does. The script writes everything except
+`differences`, which is the part a person decides. What is `owed-upstream` is
+outstanding work, so `04-build-plan.md` § Phase 6 carries it, not this
+document.
 
 **A submission is not the end of the conversation.** The incubator pushed four
 remediation commits onto submission 1's branch before merging it — descriptions

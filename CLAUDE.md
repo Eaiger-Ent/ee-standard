@@ -8,7 +8,7 @@ deploys the gates, and `register-check` (`src/register_check/`) audits them.
 [`HOW-IT-WORKS.md`](HOW-IT-WORKS.md) is the mechanism in one screen;
 [`docs/14-file-map.md`](docs/14-file-map.md) answers *which file*.
 
-**Every phase is complete.** `uv run python scripts/plan_progress.py` is the
+**Where the work stands.** `uv run python scripts/plan_progress.py` is the
 derived view and `docs/04-build-plan.md` is the only list of outstanding work.
 Never keep a second copy of that status here.
 
@@ -150,13 +150,14 @@ for where anything lives. Both are more current than any list kept here.
 | --- | --- |
 | `HOW-IT-WORKS.md` | The mechanism, one screen |
 | `START-HERE.md` | Adopting the standard, six steps |
+| `UPGRADING.md` | Moving an adopted repository to a new release |
 | `docs/00-concepts.md` | The vocabulary every other document assumes |
 | `docs/01-register-schema.md` | Field-by-field spec of `controls.yaml` |
 | `docs/04-build-plan.md` | The only list of outstanding work |
 | `docs/08-adopting.md` | The adoption reference. Every phase owes it the steps it introduces |
 | `docs/14-file-map.md` | Which file, and why three config files are three |
 | `docs/adr/` | Every decision in force, **except any marked `Proposed`** — open, awaiting a second reader, and not to be implemented as though settled. Today: none. `archive/` holds the retired |
-| `docs/09`–`docs/17` | Phase records and reviews, in order |
+| `docs/09`–`docs/19` | Phase records and reviews, in order |
 | `docs/craft/plan.md` | **Craft** — the coding-standards workstream for Python and React, which the register is deliberately silent about. Its own naming standard and stages; not a phase of the build plan, and it mints no controls |
 | `craft/` | **The Craft register** — `meta.yaml` plus one file per scope. Coding standards, not controls. `tests/test_craft_register.py` checks it; `register-check` deliberately does not (ADR 0053), and `docs/craft/assess.rules.md` is now a stage record rather than a source |
 | `plugins/craft/` | **What an adopter installs** — `craft-install`, and `profiles/`, which is the register above *rendered* into the configuration that skill copies. Written by `uv run python scripts/craft_publish.py`, held to the register by `tests/test_craft_plugin.py`. Change `craft/` and the build fails until you re-publish |
@@ -177,12 +178,12 @@ The ones most likely to catch you out, by what they govern:
 | The register/checker boundary — before adding a rule to Python | **ADR 0018** |
 | The devcontainer, uv, or the interpreter | ADRs 0027, 0028, 0030, 0034, 0037 |
 | The editor locus | ADR 0029 |
-| A gate skill, or shared skill prose | ADRs 0033, 0035, 0036, 0038 |
+| A gate skill, or shared skill prose | ADRs 0033, 0035, 0036, 0038, 0058 |
 | `pinned_at`, or a gate writing the register | **ADR 0045** |
 | Loci, pins, digests, or a bot's config | ADRs 0020, 0039, 0041 |
 | Writing or amending an ADR | ADRs 0024, 0025, 0026 |
-| The adopter's route, or the marketplace | ADRs 0032, 0042, 0043, 0044 |
-| Anything in the Craft workstream | **ADRs 0051, 0052, 0053, 0054, 0055** |
+| The adopter's route, or the marketplace | ADRs 0032, 0042, 0043, 0044, 0057, 0060 |
+| Anything in the Craft workstream | **ADRs 0051, 0052, 0053, 0054, 0055, 0056** |
 
 **Naming (ADR 0031).** The plugin is `control-register`, the checker is
 `register-check`, the non-gate skills are `register-*`. The gates keep their

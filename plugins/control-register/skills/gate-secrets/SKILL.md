@@ -94,17 +94,17 @@ verify block names in `args.tool`:
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
 | `SKILL_VERSION` | the plugin's `.claude-plugin/plugin.json`, `version` |
-| `GATE_CONTRACT` | the plugin's `.claude-plugin/deploys.json`, `gates.gate-secrets.contractVersion` |
+| `GATE_CONTRACT` | this gate's own `deploys.json`, `contractVersion` |
 
-The last two rows are the **plugin's** numbers rather than the register's,
-read from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/`. `GATE_CONTRACT` is what a
-stamp records as `gate-contract`, and it moves only when what this gate writes
-changes, so a documentation release of the plugin recommends nothing
-(ADR 0038). If `${CLAUDE_PLUGIN_ROOT}` is unset, stop and say so.
+The last two rows are the **plugin's** numbers, not the register's: from
+`${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and from this gate's own
+`${CLAUDE_SKILL_DIR}/deploys.json` (ADR 0058). `GATE_CONTRACT` is the stamp's
+`gate-contract`; it moves only when this gate's output does, so a documentation
+release recommends nothing (ADR 0038). If either is unset, stop and say so.
 
 A `tools:` entry with `source: lockfile` carries an `invocation` instead of a
 version: the locus must reach the pinned artefact by that path, not by the bare
-tool name (ADR 0020). Use it verbatim wherever `{{TOOL}}` appears as a command
+tool name (ADR 0020). Use it verbatim wherever `<<TOOL>>` appears as a command
 below.
 
 **If `args.tool` names a tool the `tools:` table does not define**, stop. The
@@ -184,14 +184,14 @@ difference will surface later as a verdict nobody can explain.
 checksum before running anything from it.
 
 ```bash
-curl -sSfL -o "$TOOL.tgz" \
-  "https://github.com/$TOOL_REPO/releases/download/v$TOOL_VERSION/${TOOL}_${TOOL_VERSION}_linux_x64.tar.gz"
-echo "$TOOL_SHA256  $TOOL.tgz" | sha256sum -c -
-tar -xzf "$TOOL.tgz" "$TOOL" && sudo install "$TOOL" /usr/local/bin/"$TOOL"
-rm -f "$TOOL" "$TOOL.tgz"
+bash "${CLAUDE_SKILL_DIR}/scripts/install-scanner.sh" \
+  "$TOOL" "$TOOL_REPO" "$TOOL_VERSION" "$TOOL_SHA256"
 ```
 
-If `sha256sum -c -` fails, **stop**. A downloaded artefact that does not match
+It downloads the pinned release into a temporary directory, never the
+repository, and installs it only when the checksum matches.
+
+If it exits `1`, **stop**. A downloaded artefact that does not match
 the checksum the register records is the one case where continuing is worse than
 failing: an unverified secret scanner is a gate in name only.
 
@@ -200,12 +200,15 @@ failing: an unverified secret scanner is a gate in name only.
 ## Step 2 — Write the local hooks
 
 Read `${CLAUDE_SKILL_DIR}/templates/precommit-hook.yaml` and substitute
-`{{TOOL}}`, `{{CHECKER}}`, `{{CHECKER_INVOCATION}}`, `{{SKILL_VERSION}}`,
-`{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}` from the
+`<<TOOL>>`, `<<CHECKER>>`, `<<CHECKER_INVOCATION>>`, `<<SKILL_VERSION>>`,
+`<<GATE_CONTRACT>>`, `<<REGISTER_VERSION>>` and `<<REGISTER_CONTRACT>>` from the
 values stored in pre-flight. Two blocks: SEC-001's pre-commit hook, and SEC-002's
 pre-push hook where the register gives that control a `pre-push` locus. Keep the
 second block's `stages:` key — without it the hook runs at every stage the
 repository has installed.
+
+Write every YAML template as `${CLAUDE_PLUGIN_ROOT}/reference/template-layout.md`
+says: the payload below its `# ---` marker, indented to the list it joins.
 
 - **`PRECOMMIT_STATE` is `ABSENT`:** create `.pre-commit-config.yaml` with a
   single `repos: - repo: local` entry holding the block.
@@ -224,7 +227,7 @@ naming SEC-001 must not be credited for SEC-002's artefact.
 ## Step 3 — Wire the ci locus
 
 Read `${CLAUDE_SKILL_DIR}/templates/ci-steps.yaml` and substitute the same
-values plus `{{TOOL_VERSION}}`, `{{TOOL_SHA256}}` and `{{TOOL_REPO}}`.
+values plus `<<TOOL_VERSION>>`, `<<TOOL_SHA256>>` and `<<TOOL_REPO>>`.
 
 Write the `Credentials` step only if `AUDIT_STATE` shows no gating step already
 running the checker with no `--control`: a full audit reaches SEC-002 already, a
@@ -272,37 +275,15 @@ claimed it, and a locus with no owner is how a locus gets forgotten.
 Do not stamp the whole file. `gate-build` created it and other gates install
 into it; a stamp at the top would claim their blocks as SEC-001's.
 
-**Write the `# renovate:` annotation directly above the version, exactly as
-`templates/ci-steps.yaml` does for the workflow.** A version literal in a shell
-script is the one case no Dependabot manager covers, so without the annotation
-this pin is not stale — it is unmanaged, and nothing will ever propose moving
-it while SUP-002 stays green over it:
-
-```bash
-# renovate: datasource=github-releases depName=<TOOL_REPO>
-TOOL_VERSION="<version>"
-```
-
-`UPPER_SNAKE_CASE` and the quotes both matter and for different reasons: the
-quotes are what `shellcheck` wants, and the case is what the custom manager
-matches (`[A-Z_]+=`). The checker is blind to both — `tool_versions_match_register`
-is case-insensitive and takes an optional quote — so nothing but this
-instruction holds the spelling the bot needs.
-
-**Then record the site in the register.** If the file you just wrote into is not
-already in `tools.<tool>.pinned_at`, append it — the path you wrote, nothing
-else, and never remove one that is there. Say in the narration which path you
-added and to which tool.
-
-That is the one field of `controls.yaml` this gate may write, and it is
-permitted by [ADR 0045](https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0045-a-gate-records-where-it-installed-a-tool.md):
-`pinned_at` records where a repository keeps a file rather than what conformant
-means, adding a path can only widen what is compared, and you know exactly which
-file you wrote. **Write no other field, and no stamp** — the register is not a
-deployed artefact, so stamping it would claim it as this gate's output. If the
-register cannot be written, say so and name the path you would have added; do
-not fall back to asking the user in a comment, which is the failure that ADR
-replaced.
+**Annotate the version, then record the site.** Write
+`# renovate: datasource=github-releases depName=<TOOL_REPO>` directly above an
+`UPPER_SNAKE_CASE` assignment, `TOOL_VERSION=<version>`, as `templates/ci-steps.yaml`
+does. No Dependabot manager reads a shell literal, so without the annotation the
+pin is unmanaged and never moves, and Renovate's custom manager matches only an
+annotation followed on the next line by that assignment. Then, if the file is not already in `tools.<tool>.pinned_at`, append its
+path: that one field of `controls.yaml`, never a removal, and no stamp (ADR 0045,
+in the `ee-standard` repository). If the register cannot be written, name the
+path you would have added.
 
 ---
 
@@ -389,6 +370,16 @@ blocks can decline, for different reasons, and neither is a failure:
   reports `SKIPPED (no credentials)` with no token, and `UNCLASSIFIED` with one
   that cannot read `security_and_analysis`. Enabling push protection is a
   platform act a human with admin takes (`docs/08-adopting.md` § 1).
+
+  **On a private repository that act can be refused by the plan, not the
+  token.** GitHub sells push protection, and below a paid tier it cannot be
+  enabled at all. A `403` here does not say which kind of refusal it is. Read
+  `${CLAUDE_PLUGIN_ROOT}/reference/plan-limits.md`, and classify the refusal from
+  its body as that file says. When it is the plan, emit **Deployed, remote
+  unavailable on the plan** below. Name upgrading and making the repository
+  public as the operator's decisions, never this skill's. Point at ADR 0047 for
+  how the repository records the limit. This gate writes no file for the remote
+  locus, so there is nothing more to record here.
 - **SEC-003's `remote` block** — the expiry of the credential CI carries —
   reports `UNCLASSIFIED` anywhere that is not a GitHub Actions job, because the
   token in the shell you are running this from is not the one CI carries. It is
@@ -415,6 +406,19 @@ Verified: register-check run --control SEC-001 --control SEC-002 \
   local loci PASS; remote SKIPPED (no credentials), Phase 3.
 ```
 
+**Deployed, remote unavailable on the plan:**
+
+```text
+gate-secrets deployed SEC-001's local loci in <repo>.
+  pre-commit  .pre-commit-config.yaml — hook '<tool>' (stamped)
+  ci          .github/workflows/<file> — install + secret scan (stamped)
+  remote      unavailable — GitHub refuses push protection on this
+              repository's plan (<the refusal's message, verbatim>)
+SEC-001 does not hold at its remote locus. ADR 0047 is how the repository
+records the limit. Upgrading the plan or making the repository public is
+yours to decide, not this skill's.
+```
+
 **Failed verification:**
 
 ```text
@@ -439,6 +443,7 @@ gate-secrets stopped at <phase>: <reason>. Nothing was written.
 | No gating workflow, and the user declines to create one | Write the pre-commit hook, then report SEC-001 as **not deployed** — one locus of two is a partial deployment and is reported as one |
 | Verify exits `1` | Report a failed deployment. Do not retry with a narrower check |
 | Verify exits `3` | Report success at the local loci, naming the skipped block |
+| Push protection refused, and `reference/plan-limits.md` classifies it as the plan | Emit **Deployed, remote unavailable on the plan**. Never offer making the repository public |
 
 ## Idempotency
 
@@ -467,19 +472,29 @@ decides whether it lands (`docs/00-concepts.md` § Notify, never redeploy).
 
 ## Co-update partners
 
-Canonical source for both shared standards below:
+Canonical source for the shared standards below:
 `${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
-`docs/02-skill-family.md`.
+`docs/02-skill-family.md`, whose rows list the skills that read each
+file — generated from the skills, so the row is the authority when this list
+and it disagree.
 
 - **Write narration shape** (`reference/write-narration.md`) — shared with
   `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
-  `gate-supply-chain`, `register-adopt`, `register-install` and
-  `register-variance`. Change the shape there, never here; ADR 0036 is the
-  reason it is one file rather than nine copies.
+  `gate-supply-chain`, `register-install` and `register-variance`. Change the
+  shape there, never here; ADR 0036 is the reason it is one file rather than a
+  copy per skill.
+- **Plan limits** (`reference/plan-limits.md`) — shared with `gate-repo`.
+  How a plan refusal is told from a scope refusal, and what a gate says when
+  the plan wins, are stated there once; change them there, never here.
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
+- **Template layout** (`reference/template-layout.md`) — shared with every
+  skill that writes a YAML template: all the gates but `gate-repo`, and `register-install`.
 - **Provenance stamp and verify contract** — every skill here stamps what it
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;
-  co-update all nine when the contract version changes.
+  co-update all nine when the contract version changes. Canonical source: each
+  gate's `contractVersion` in its own `skills/<gate>/deploys.json` (ADR 0058),
+  and the stamp grammar and exit codes in `register-check`, in the `ee-standard`
+  repository (ADR 0016) — never a skill's restatement of either.

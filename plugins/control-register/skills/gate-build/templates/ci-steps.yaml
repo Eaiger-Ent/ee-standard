@@ -4,14 +4,15 @@
 # a control reachable only that way is declared and unreachable (theme T-3).
 #
 # **Write this only when the repository has no full audit.** A gating step
-# running {{TOOL_INVOCATION}} with no `--control` reaches every applicable
+# running <<TOOL_INVOCATION>> with no `--control` reaches every applicable
 # control, including these two, and a second step would be the same check twice.
 # The skill checks before writing, and says when it did not.
 #
 # One step, two controls, two stamps — the same shape as the pre-commit hook,
 # and for the same reason: the read-back matches on the control being
 # evaluated, so one stamp would leave the other control's ci locus unrecorded.
-      # ee-control: BLD-001  ee-skill: gate-build@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
-      # ee-control: DEV-001  ee-skill: gate-build@{{SKILL_VERSION}}  gate-contract: {{GATE_CONTRACT}}  register: v{{REGISTER_VERSION}}  register-contract: {{REGISTER_CONTRACT}}
-      - name: Build and environment
-        run: {{TOOL_INVOCATION}} run --control BLD-001 --control DEV-001
+# --- the gating workflow: items of the gating job's `steps:` ---
+# ee-control: BLD-001  ee-skill: gate-build@<<SKILL_VERSION>>  gate-contract: <<GATE_CONTRACT>>  register: v<<REGISTER_VERSION>>  register-contract: <<REGISTER_CONTRACT>>
+# ee-control: DEV-001  ee-skill: gate-build@<<SKILL_VERSION>>  gate-contract: <<GATE_CONTRACT>>  register: v<<REGISTER_VERSION>>  register-contract: <<REGISTER_CONTRACT>>
+- name: Build and environment
+  run: <<TOOL_INVOCATION>> run --control BLD-001 --control DEV-001

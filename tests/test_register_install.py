@@ -33,7 +33,6 @@ import subprocess
 from pathlib import Path
 
 import pytest
-import yaml
 
 from conftest import REPO_ROOT, a_register
 from register_check.cli import main
@@ -241,13 +240,14 @@ def test_the_skill_deploys_no_control_and_stamps_nothing() -> None:
     for path in _skill_files():
         stamps = stamps_in(path.read_text(encoding="utf-8", errors="ignore"))
         assert not stamps, f"{path.name} writes a stamp naming {stamps[0].control}"
-    assert not (SKILL / "templates").exists(), "there is no artefact for a template to carry"
+    # From ADR 0057 there is one template — the Conformance step — and it is
+    # unstamped for the same reason: it deploys no control, it computes the
+    # verdict of every control the gates deployed.
+    templates = sorted(path.name for path in (SKILL / "templates").glob("*"))
+    assert templates == ["conformance-step.yaml"], templates
     text = " ".join(SKILL_TEXT.split())
     assert "No control names this" in text
-    sidecar = yaml.safe_load(
-        (REPO_ROOT / "plugins/control-register/.claude-plugin/deploys.json").read_text()
-    )
-    assert "register-install" not in sidecar["gates"], "it is not a gate and deploys nothing"
+    assert not (SKILL / "deploys.json").exists(), "it is not a gate and deploys nothing"
 
 
 def test_the_dispatcher_dispatches_it_first_and_does_not_install_anything_itself() -> None:

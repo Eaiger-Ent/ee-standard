@@ -1110,8 +1110,10 @@ checked.
 ## 3 — The gates
 
 All six gates are built — see § 3.1 to § 3.6, and § 0 for the front door that
-dispatches them in order. DOC-001 is the one control no gate here deploys: it is
-`lint-md`'s, in another plugin.
+dispatches them in order. Two controls are deployed by no gate here. DOC-001 is
+`lint-md`'s and YML-001 is `lint-yaml`'s, each in another plugin. This section is
+DOC-001's route. YML-001's by-hand route is not written yet: it is Phase 9 item
+5 in [`04-build-plan.md`](04-build-plan.md).
 
 **And that plugin is one you may not be able to install.** `lint-md` lives in
 the `EqualExperts/ee-skills` marketplace, which is **private**. If your account
@@ -1124,9 +1126,9 @@ rather than a stopgap
 six steps below are the supported route for an adopter who cannot reach
 `ee-skills`, and `register-check` runs the same two verify blocks over what you
 write as over anything a gate writes, because a control is verified by what your
-repository contains and not by what put it there. DOC-001 is **the one control
-an outside adopter satisfies by hand**, and it is one control's worth of extra
-work, written here rather than discovered.
+repository contains and not by what put it there. DOC-001 was **the one control
+an outside adopter satisfies by hand** until YML-001 joined it (ADR 0059). It is
+one control's worth of extra work, written here rather than discovered.
 
 Two routes were rejected and are worth knowing about, because both look
 reasonable. **Copying `lint-md` into your repository** is what Phase 4 did, and
@@ -1440,6 +1442,19 @@ them.** Each is the check working, not a new rule:
    source. The gate lists every such file and extends the list
    ([ADR 0019](adr/0019-exemptions-cannot-hide-tracked-files.md), applied to an
    allow-list rather than an exemption list).
+
+   **A vendored file is not an exception.** A hook copied from a skill — the
+   `lint-yaml` skill's `yaml-lint.py` under `.claude/hooks/` is the case met
+   in practice — is a tracked Python file, so TYP-001 counts it, and you may
+   not be free to edit it: its skill compares your copy to its own. There is
+   no way to exclude it, by design: an exemption that hides a tracked file is
+   what ADR 0019 forbids, and TYP-001 allows no per-file opt-out. Two routes
+   remain, and both leave the control meaning what it says. **Get it fixed
+   upstream**, so the vendored copy passes strict mode and the allow-list can
+   name its directory — `lint-yaml`'s hook needs one function annotated. Or
+   **stop tracking it**, and have whatever installs it write it at setup. Until
+   one of those, TYP-001 fails, and that failure is accurate: the repository
+   runs a Python file nothing type-checks.
 3. **A suppressed step is not a gate.** Nothing the gate writes may carry
    `continue-on-error` or end in an idiom from the register's `suppression:`
    list. LNT-001 and TST-001 both verify through `no-failure-suppression`, and
@@ -1932,6 +1947,17 @@ the platform rather than trying it.
 
 ### 4.3 — Giving CI a credential, and failing the run when it cannot verify
 
+**From register contract 36 you do not write the Conformance step by hand.**
+`register-install` writes it into the job your `required_checks:` names, as that
+job's last step, in the tolerant form below — a verified violation fails it, and
+exit `3` passes with the report saying what went unverified
+([ADR 0057](adr/0057-register-install-writes-the-conformance-step.md)). GOV-001
+fails a repository with no such step, because the gates' own steps run each
+control's tools and none of them asks the register for its verdict: in the first
+repository adopted outside this one, TYP-001 read FAIL for 27 days under a green
+build. What this section still asks of you is the upgrade — a credential, then
+`--require-complete`.
+
 Two things go together, and doing either alone makes the other worse.
 
 **`--require-complete` turns "could not verify" into a failed check.** Without
@@ -2154,10 +2180,16 @@ whether the artefacts satisfying it are what the gate would write today. Those
 are different questions, and the second has its own command:
 
 ```bash
-uv run register-check deployments
+plugin=$(claude plugin list --json | uv run --no-project python -c "import json,sys; print(next(p['installPath'] for p in json.load(sys.stdin) if p['id'].startswith('control-register@')))")
+uv run register-check deployments --plugin "$plugin"
 ```
 
-It reads the plugin's `.claude-plugin/deploys.json` — which gate writes what, at
+**Name the plugin.** A skill runs with `CLAUDE_PLUGIN_ROOT` set, and a shell does
+not, so a bare `register-check deployments` in your repository exits `2` with
+*no skills/\*/deploys.json found*. The first line asks Claude Code where it
+installed the plugin, whichever marketplace it came from.
+
+It reads each gate's `skills/<gate>/deploys.json` — which gate writes what, at
 which **deployment contract** — and the `ee-control:` stamps in your repository,
 and it gives each gate one of six states:
 

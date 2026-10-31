@@ -28,7 +28,7 @@ from typing import Any
 
 import pytest
 
-from conftest import REPO_ROOT, gate_contract, make_repo
+from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo
 from register_check.cli import main
 from register_check.provenance import Stamp, stamps_in
 from register_check.register import Register, load_register
@@ -90,16 +90,16 @@ def _render(template: str, register: Register) -> str:
     contexts = ", ".join(f'{{ "context": "{check}" }}' for check in _required_checks())
     text = template
     for placeholder, value in {
-        "{{RULESET_NAME}}": "default-branch-protection",
-        "{{REQUIRED_CHECKS}}": contexts,
-        "{{REQUIRE_BRANCHES_UP_TO_DATE}}": json.dumps(args["require_branches_up_to_date"]),
-        "{{SKILL_VERSION}}": SKILL_VERSION,
-        "{{GATE_CONTRACT}}": gate_contract("gate-repo"),
-        "{{REGISTER_VERSION}}": register.version,
-        "{{REGISTER_CONTRACT}}": str(register.register_contract),
+        "<<RULESET_NAME>>": "default-branch-protection",
+        "<<REQUIRED_CHECKS>>": contexts,
+        "<<REQUIRE_BRANCHES_UP_TO_DATE>>": json.dumps(args["require_branches_up_to_date"]),
+        "<<SKILL_VERSION>>": SKILL_VERSION,
+        "<<GATE_CONTRACT>>": gate_contract("gate-repo"),
+        "<<REGISTER_VERSION>>": register.version,
+        "<<REGISTER_CONTRACT>>": str(register.register_contract),
     }.items():
         text = text.replace(placeholder, value)
-    assert "{{" not in text, f"a placeholder was not filled: {text}"
+    assert not UNFILLED.search(text), f"a placeholder was not filled: {text}"
     return text
 
 

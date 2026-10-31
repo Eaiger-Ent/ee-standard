@@ -1,0 +1,42 @@
+{
+  "plugin": "control-register",
+  "marketplace": "EqualExperts/ee-skills",
+  "version": "0.1.20",
+  "commit": "e9f120a067b03d483e5cf8d23be02892e9fd3e85",
+  "differences": {
+    ".claude-plugin/plugin.json": {
+      "stance": "by-design",
+      "why": "Two version lines. This repository's marketplace (ADR 0044) versions the plugin it serves, and the incubator assigns its own on promotion. Everything else in the manifest must match.",
+      "normalise": [
+        "\"version\": \"[^\"]*\""
+      ]
+    },
+    "skills/register-[av]*/SKILL.md": {
+      "stance": "by-design",
+      "why": "Each copy names its own repository's skill map: docs/02-skill-family.md here, docs/skill-relationship-map.md in the incubator, which substitutes it on promotion (docs/05-promotion.md row 8). Nothing else may differ: ADR 0058's SKILL.md changes shipped in 0.1.19, and what the incubator's review added there was taken back here. Narrowed to the two skills ADR 0059 revision 2 did not edit, because a file may match only one difference; it folds back on re-recording.",
+      "normalise": [
+        "docs/(?:02-skill-family|skill-relationship-map)\\.md"
+      ]
+    },
+    "skills/gate-*/SKILL.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0059 revision 2: the gate skills' placeholders are respelled from {{NAME}} to <<NAME>>, so each YAML template parses as shipped and YML-001 can read it. Then, 2026-10-30: each YAML template's payload sits at column 0 below a `# ---` marker, so it also passes yamllint's `default` preset, and the skill indents it to the list it joins on writing (reference/template-layout.md). What a gate renders is byte-identical after both. Not yet submitted; one incubator amendment carries the templates, the prose in each SKILL.md, editor-binding-rules.md and reference/template-layout.md together, because a gate whose SKILL.md and templates disagree about the marker or the layout deploys with placeholders left in, or at the wrong depth."
+    },
+    "skills/register-install/SKILL.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0059 revision 2: the gate skills' placeholders are respelled from {{NAME}} to <<NAME>>, so each YAML template parses as shipped and YML-001 can read it. Then, 2026-10-30: each YAML template's payload sits at column 0 below a `# ---` marker, so it also passes yamllint's `default` preset, and the skill indents it to the list it joins on writing (reference/template-layout.md). What a gate renders is byte-identical after both. Not yet submitted; one incubator amendment carries the templates, the prose in each SKILL.md, editor-binding-rules.md and reference/template-layout.md together, because a gate whose SKILL.md and templates disagree about the marker or the layout deploys with placeholders left in, or at the wrong depth."
+    },
+    "skills/*/templates/*": {
+      "stance": "owed-upstream",
+      "why": "ADR 0059 revision 2: the gate skills' placeholders are respelled from {{NAME}} to <<NAME>>, so each YAML template parses as shipped and YML-001 can read it. Then, 2026-10-30: each YAML template's payload sits at column 0 below a `# ---` marker, so it also passes yamllint's `default` preset, and the skill indents it to the list it joins on writing (reference/template-layout.md). What a gate renders is byte-identical after both. Not yet submitted; one incubator amendment carries the templates, the prose in each SKILL.md, editor-binding-rules.md and reference/template-layout.md together, because a gate whose SKILL.md and templates disagree about the marker or the layout deploys with placeholders left in, or at the wrong depth."
+    },
+    "skills/gate-quality/editor-binding-rules.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0059 revision 2: the gate skills' placeholders are respelled from {{NAME}} to <<NAME>>, so each YAML template parses as shipped and YML-001 can read it. Then, 2026-10-30: each YAML template's payload sits at column 0 below a `# ---` marker, so it also passes yamllint's `default` preset, and the skill indents it to the list it joins on writing (reference/template-layout.md). What a gate renders is byte-identical after both. Not yet submitted; one incubator amendment carries the templates, the prose in each SKILL.md, editor-binding-rules.md and reference/template-layout.md together, because a gate whose SKILL.md and templates disagree about the marker or the layout deploys with placeholders left in, or at the wrong depth."
+    },
+    "reference/template-layout.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0059 revision 2: the gate skills' placeholders are respelled from {{NAME}} to <<NAME>>, so each YAML template parses as shipped and YML-001 can read it. Then, 2026-10-30: each YAML template's payload sits at column 0 below a `# ---` marker, so it also passes yamllint's `default` preset, and the skill indents it to the list it joins on writing (reference/template-layout.md). What a gate renders is byte-identical after both. Not yet submitted; one incubator amendment carries the templates, the prose in each SKILL.md, editor-binding-rules.md and reference/template-layout.md together, because a gate whose SKILL.md and templates disagree about the marker or the layout deploys with placeholders left in, or at the wrong depth."
+    }
+  }
+}

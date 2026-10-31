@@ -148,7 +148,7 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         metavar="DIR",
         help=(
-            "the plugin root whose .claude-plugin/deploys.json declares the gates "
+            "the plugin root whose skills/<gate>/deploys.json declare the gates "
             "(default: $CLAUDE_PLUGIN_ROOT, then <repo>/plugins/control-register)"
         ),
     )

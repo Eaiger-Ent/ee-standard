@@ -188,6 +188,6 @@ def test_the_stamp_names_the_installer_that_wrote_it() -> None:
         for path in (PLUGIN / "profiles").rglob("*")
         if path.is_file() and path.name != "manifest.json"
     ]
-    assert len(stamped) == 14, stamped
+    assert len(stamped) == 15, stamped
     for path in stamped:
         assert f"ee-skill: craft-install@{version}" in path.read_text(encoding="utf-8"), path.name

@@ -83,9 +83,10 @@ the second is worth anything.
 
 ## Deployment contract
 
-`.claude-plugin/deploys.json` records what each gate writes and a
-`contractVersion` **per gate** that changes only when that gate's output
-changes. A redeployment is recommended when a gate's installed contract is ahead
+Each gate's own `skills/<gate>/deploys.json` records what that gate writes and
+its `contractVersion`, which changes only when that gate's output changes. It
+sits in the gate's directory, not `.claude-plugin/`, so that every release of the
+plugin carries it (ADR 0058). A redeployment is recommended when a gate's installed contract is ahead
 of the one stamped in a repository, and stays silent through every release that
 did not change what that gate writes.
 

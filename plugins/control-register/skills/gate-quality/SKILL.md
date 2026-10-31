@@ -120,13 +120,13 @@ And once, not per stack:
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
 | `SKILL_VERSION` | the plugin's `.claude-plugin/plugin.json`, `version` |
-| `GATE_CONTRACT` | the plugin's `.claude-plugin/deploys.json`, `gates.gate-quality.contractVersion` |
+| `GATE_CONTRACT` | this gate's own `deploys.json`, `contractVersion` |
 
-The last two rows are the **plugin's** numbers rather than the register's,
-read from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/`. `GATE_CONTRACT` is what a
-stamp records as `gate-contract`, and it moves only when what this gate writes
-changes, so a documentation release of the plugin recommends nothing
-(ADR 0038). If `${CLAUDE_PLUGIN_ROOT}` is unset, stop and say so.
+The last two rows are the **plugin's** numbers, not the register's: from
+`${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and from this gate's own
+`${CLAUDE_SKILL_DIR}/deploys.json` (ADR 0058). `GATE_CONTRACT` is the stamp's
+`gate-contract`; it moves only when this gate's output does, so a documentation
+release recommends nothing (ADR 0038). If either is unset, stop and say so.
 
 **`SOURCE_PATTERN` is derived, not chosen.** `source_globs` is the set of
 tracked files the stack's gates are claimed to cover; turn those globs into one
@@ -292,8 +292,8 @@ LNT-001 is the only one of the three that declares an `editor` locus, so this
 step writes one stamp and it names LNT-001.
 
 Read `${CLAUDE_SKILL_DIR}/templates/editor-extensions.json` and substitute
-`{{EDITOR_EXTENSION}}`, `{{STACK}}`, `{{SKILL_VERSION}}`,
-`{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`.
+`<<EDITOR_EXTENSION>>`, `<<STACK>>`, `<<SKILL_VERSION>>`,
+`<<GATE_CONTRACT>>`, `<<REGISTER_VERSION>>` and `<<REGISTER_CONTRACT>>`.
 
 - **The repository has a devcontainer:** merge the extension into
   `customizations.vscode.extensions`, preserving every other entry.
@@ -318,6 +318,9 @@ stack's values. One pair of hooks per applicable stack, plus the test hook once
 if TST-001 declares a `pre-push` locus — the template carries its `stages:` key
 and dropping that would run the suite on every commit instead.
 
+Write every YAML template as `${CLAUDE_PLUGIN_ROOT}/reference/template-layout.md`
+says: the payload below its `# ---` marker, indented to the list it joins.
+
 - **`PRECOMMIT_STATE` is `ABSENT`:** create `.pre-commit-config.yaml` with a
   single `repos: - repo: local` entry holding the blocks.
 - **`PRECOMMIT_STATE` is `EXISTS`, `HOOK_STATE` is `ABSENT`:** append the blocks
@@ -334,7 +337,7 @@ The stamps go at the hooks, never at the top of the file.
 ## Step 5 — Wire the ci locus
 
 Read `${CLAUDE_SKILL_DIR}/templates/ci-steps.yaml` and substitute the same
-values plus `{{TEST_COMMAND}}`.
+values plus `<<TEST_COMMAND>>`.
 
 - **A gating workflow exists with a frozen-install step:** add the three steps
   to that job, after the install. They run the tools the lockfile just placed,
@@ -488,6 +491,8 @@ Canonical source for both shared standards below:
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
+- **Template layout** (`reference/template-layout.md`) — shared with every
+  skill that writes a YAML template: all the gates but `gate-repo`, and `register-install`.
 - **Provenance stamp and verify contract** — every skill here stamps what it
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;

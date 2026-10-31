@@ -114,13 +114,13 @@ If this fails, stop and show the error.
 | `REGISTER_VERSION` | top-level `version` |
 | `REGISTER_CONTRACT` | `meta.register_contract` |
 | `SKILL_VERSION` | the plugin's `.claude-plugin/plugin.json`, `version` |
-| `GATE_CONTRACT` | the plugin's `.claude-plugin/deploys.json`, `gates.gate-repo.contractVersion` |
+| `GATE_CONTRACT` | this gate's own `deploys.json`, `contractVersion` |
 
-The last two rows are the **plugin's** numbers rather than the register's,
-read from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/`. `GATE_CONTRACT` is what a
-stamp records as `gate-contract`, and it moves only when what this gate writes
-changes, so a documentation release of the plugin recommends nothing
-(ADR 0038). If `${CLAUDE_PLUGIN_ROOT}` is unset, stop and say so.
+The last two rows are the **plugin's** numbers, not the register's: from
+`${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and from this gate's own
+`${CLAUDE_SKILL_DIR}/deploys.json` (ADR 0058). `GATE_CONTRACT` is the stamp's
+`gate-contract`; it moves only when this gate's output does, so a documentation
+release recommends nothing (ADR 0038). If either is unset, stop and say so.
 
 `REQUIREMENTS` and the `kind: remote` block's `args:` are the **same** values,
 and that is deliberate: two blocks would be two definitions of "protected", free
@@ -148,17 +148,20 @@ gh api "repos/$OWNER/$NAME/branches/$DEFAULT/protection" 2>/dev/null
 | `LEGACY_PROTECTION` | a classic branch-protection rule, if one exists |
 | `RECORDED` | `RULESET_PATH` in the repository, if it exists, and whether this skill wrote it |
 | `TOKEN_SCOPE` | whether the token can write rulesets |
-| `PLAN_LIMIT` | whether the platform refused on the repository's plan rather than on the token |
+| `PLAN_LIMIT` | whether a `403` from the rulesets read is the plan refusing rulesets, not the token |
 
-**If `TOKEN_SCOPE` shows no `administration: write`,** stop before writing
-anything. Say which permission is missing and who grants it. A skill that writes
-the record and cannot apply it leaves a repository looking protected in a diff
-and unprotected in fact — the exact half-state this gate must not create.
+**A `403` from the rulesets read may be the plan, not the token.** Classify it
+as `${CLAUDE_PLUGIN_ROOT}/reference/plan-limits.md` says, and set `PLAN_LIMIT`
+from that, never from the status code.
 
-**A plan limit is the other thing**: a `403` saying *upgrade*, where no token
-reaches what the plan does not sell. **Read
-`${CLAUDE_PLUGIN_ROOT}/reference/plan-limits.md`** — do Step 1, stop before
-Step 2, and report the ruleset as *recorded, not applied*.
+**If `TOKEN_SCOPE` shows no `administration: write` and `PLAN_LIMIT` is not
+set,** stop before writing anything. Say which permission is missing and who
+grants it. A skill that writes the record and cannot apply it leaves a repository
+looking protected in a diff and unprotected in fact — the exact half-state this
+gate must not create.
+
+**If `PLAN_LIMIT` is set,** do not stop: write the record at Step 1, then follow
+§2P. `plan-limits.md` says why the record is owed anyway.
 
 ### 3. Report the plan, and what it will change for everyone
 
@@ -187,12 +190,12 @@ repository.
 ## Step 1 — Record the ruleset
 
 Read `${CLAUDE_SKILL_DIR}/templates/default-branch.json` and substitute
-`{{RULESET_NAME}}`, `{{REQUIRED_CHECKS}}`, `{{REQUIRE_BRANCHES_UP_TO_DATE}}`,
-`{{SKILL_VERSION}}`, `{{GATE_CONTRACT}}`, `{{REGISTER_VERSION}}` and `{{REGISTER_CONTRACT}}`. Write it
+`<<RULESET_NAME>>`, `<<REQUIRED_CHECKS>>`, `<<REQUIRE_BRANCHES_UP_TO_DATE>>`,
+`<<SKILL_VERSION>>`, `<<GATE_CONTRACT>>`, `<<REGISTER_VERSION>>` and `<<REGISTER_CONTRACT>>`. Write it
 to `RULESET_PATH` and **git-add it**; a ruleset git does not carry is not one
 anybody can review.
 
-`{{REQUIRED_CHECKS}}` becomes one `{ "context": "<job id>" }` object per entry
+`<<REQUIRED_CHECKS>>` becomes one `{ "context": "<job id>" }` object per entry
 in `REQUIRED_CHECKS`, comma-separated. Before writing them, check each against
 `CONTEXTS`:
 
@@ -241,6 +244,13 @@ unreachable, and the checker rejects it.
 ---
 
 ## Step 2 — Confirm, then apply
+
+### 2P — The plan refuses rulesets: record, do not call
+
+Only when `PLAN_LIMIT` is set, and instead of 2.0, 2a and 2b: no call is made,
+so none is confirmed and no branch is locked. Follow `plan-limits.md` §What a
+gate does about it and §What a gate never does, emit **Recorded, not applied
+(plan limit)**, then go to Step 4. Step 3 has no ruleset to migrate onto.
 
 ### 2.0 — Land what is already written, first
 
@@ -406,46 +416,31 @@ Say which. The API call's response is evidence that it was applied; it is not
 evidence that it is still applied tomorrow, and it is not this checker's verdict.
 Never report `3` as a clean pass, and never re-run with a flag that hides it.
 
+**After §2P**, a token finds no enforced ruleset: say that is the plan limit,
+the record is sound, and CI-001 does not hold — until ADR 0047's record makes
+the block read `UNAVAILABLE (plan)`.
+
 ---
 
 ## Output
 
-**Deployed:**
+Read `${CLAUDE_SKILL_DIR}/output-templates.md` and emit the block whose trigger matches:
 
-```text
-gate-repo deployed CI-001 in <owner>/<name>.
-  recorded  .github/rulesets/default-branch.json (stamped)
-  applied   POST /repos/<owner>/<name>/rulesets → 201, ruleset id <id>
-            ~DEFAULT_BRANCH: pull request required, checks required,
-            force-push forbidden, enforcement active
-Verified: register-check run --control CI-001 → exit 0
-  the recorded ruleset matches the register, and the ruleset GitHub enforces
-  on <default branch> satisfies it.
-  (Without credentials: exit 3 — the record matches, and whether GitHub
-  enforces it is SKIPPED (no credentials) and is not claimed here.)
-```
-
-**Recorded only:**
-
-```text
-gate-repo recorded CI-001's ruleset and did not apply it.
-Nothing on the platform has changed. The default branch is unprotected.
-CI-001 is not deployed.
-```
-
-**Aborted:**
-
-```text
-gate-repo stopped at <phase>: <reason>. Nothing was written and nothing
-was called.
-```
+| State | Trigger |
+| --- | --- |
+| **Deployed** | Step 2 applied the ruleset and Step 4 verified it |
+| **Recorded only** | **Record only, do not apply** at Step 2 |
+| **Recorded, not applied (plan limit)** | §2P ran |
+| **Aborted** | A pre-flight stop |
 
 ## Error handling
 
 | Condition | Action |
 | ----------- | -------- |
 | No register found or it fails to load | Stop. Emit **Aborted** |
+| `--repo` has no GitHub remote, or more than one naming different `<owner>/<name>` | None: stop, emit **Aborted**. Several: ask which repository to protect; never pick a remote silently |
 | No `administration: write` on the token | Stop **before writing the record**. Say which permission is missing and who grants it |
+| A `403` that `reference/plan-limits.md` classifies as the plan | Write the record, make no call, emit **Recorded, not applied (plan limit)** (§2P) |
 | The user chooses **Record only** | Write the file, report CI-001 as not deployed, and do not soften that |
 | The API call fails | Show the error verbatim. Do not retry with a weaker ruleset |
 | A ruleset of this name already exists | `PUT` it rather than creating a second |
@@ -481,20 +476,25 @@ never redeploy). The API call is the exception, and is why Step 2 exists.
 
 ## Co-update partners
 
-Canonical source for both shared standards below:
-`${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
-`docs/02-skill-family.md`.
+Canonical source for the shared standards below: `${CLAUDE_PLUGIN_ROOT}/reference/`.
+Registered in `docs/02-skill-family.md`, whose generated rows list each
+file's readers and win when this list disagrees.
 
 - **Write narration shape** (`reference/write-narration.md`) — shared with
   `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
-  `gate-supply-chain`, `register-adopt`, `register-install` and
-  `register-variance`. Change the shape there, never here; ADR 0036 is the
-  reason it is one file rather than nine copies.
+  `gate-supply-chain`, `register-install` and `register-variance`. Change the
+  shape there, never here; ADR 0036 is the reason it is one file rather than a
+  copy per skill.
 - **Plan limits** (`reference/plan-limits.md`) — shared with `gate-secrets`.
+  How a plan refusal is told from a scope refusal, and what a gate writes and
+  says when the plan wins, are stated there once; change them there, never here.
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
 - **Provenance stamp and verify contract** — every skill here stamps what it
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;
-  co-update all nine when the contract version changes.
+  co-update all nine when the contract version changes. Canonical source: each
+  gate's `contractVersion` in its own `skills/<gate>/deploys.json` (ADR 0058),
+  and the stamp grammar and exit codes in `register-check`, in the `ee-standard`
+  repository (ADR 0016) — never a skill's restatement of either.

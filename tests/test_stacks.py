@@ -24,6 +24,7 @@ import yaml
 
 from conftest import (
     MINIMAL_REGISTER,
+    REPO_ROOT,
     a_register,
     editor_settings,
     make_repo,
@@ -230,3 +231,53 @@ def test_a_stack_absent_from_the_repo_is_not_a_failure(tmp_path: Path, role: str
     for assert_fn in (linter_wired_at_all_loci, typecheck_strict_and_blocking):
         result = assert_fn(empty, a_register(), {"role": role})
         assert result.passed, result.message
+
+
+_ESLINT_CONFIGS = {
+    # The shapes a real flat config takes. Each is JavaScript, which no reader
+    # in the checker parses, and the second is the one that used to fail: a
+    # parse of it as YAML raises, and the failure was reported as absence.
+    "trivial": ("eslint.config.js", "export default [];\n"),
+    "object-literal": (
+        "eslint.config.mjs",
+        'import js from "@eslint/js";\n\n'
+        'export default [js.configs.recommended, { rules: { semi: "error" } }];\n',
+    ),
+    "commonjs": ("eslint.config.cjs", "module.exports = [{ rules: { eqeqeq: 'error' } }];\n"),
+    "legacy-json": (".eslintrc.json", '{"rules": {"semi": "error"}}\n'),
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_ESLINT_CONFIGS))
+def test_an_eslint_config_counts_by_existing_whatever_it_contains(
+    tmp_path: Path, shape: str
+) -> None:
+    """Phase 8: a flat config was read as YAML, and a parse failure was absence.
+
+    `stacks.typescript.gates.lint.config` names `eslint.config.*` with no
+    section, and a location with no section is configured by existing —
+    `_read_section`'s own rule. JavaScript does not parse as YAML, so a real
+    config was reported as *no eslint configuration* and a trivial one passed
+    only because `export default [];` happens to be a YAML string. Found in the
+    Craft trial repository, `docs/craft/review.trial.md` § The control register.
+    """
+    name, body = _ESLINT_CONFIGS[shape]
+    repo = make_repo(
+        tmp_path,
+        {
+            "tsconfig.json": '{"compilerOptions": {"strict": true}}\n',
+            name: body,
+            ".devcontainer/devcontainer.json": (
+                '{"customizations": {"vscode": {"extensions": ["dbaeumer.vscode-eslint"]}}}\n'
+            ),
+            ".pre-commit-config.yaml": (
+                "repos:\n  - repo: local\n    hooks:\n      - id: eslint\n"
+                "        entry: node_modules/.bin/eslint\n"
+            ),
+            ".github/workflows/ci.yml": _WORKFLOW.format(command="node_modules/.bin/eslint"),
+        },
+    )
+    register, errors = load_register(REPO_ROOT / "controls.yaml")
+    assert register is not None and not errors, errors
+    result = linter_wired_at_all_loci(repo, register, {"role": "lint"})
+    assert result.passed, result.message

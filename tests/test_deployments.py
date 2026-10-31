@@ -24,6 +24,7 @@ import pytest
 from conftest import a_register, make_repo, register_with
 from register_check.cli import main
 from register_check.deployments import (
+    SCHEMA_VERSION,
     NoPlugin,
     Report,
     State,
@@ -37,9 +38,10 @@ from register_check.repo import Repo
 
 REGISTER = a_register()
 
-#: One gate, one control that applies to any repository, one artefact.
+#: One gate, one control that applies to any repository, one artefact. Written
+#: as `{"gates": {<gate>: <entry>}}` for the tests' convenience; `_plugin` lays
+#: it out as the plugin ships it, one `skills/<gate>/deploys.json` per gate.
 _ONE_GATE = {
-    "schemaVersion": 2,
     "gates": {
         "gate-secrets": {
             "contractVersion": 5,
@@ -50,12 +52,14 @@ _ONE_GATE = {
 }
 
 
-def _plugin(root: Path, sidecar: dict[str, object] | None = None) -> Path:
+def _plugin(root: Path, sidecar: dict[str, Any] | None = None) -> Path:
     plugin = root / "plugin"
-    (plugin / ".claude-plugin").mkdir(parents=True, exist_ok=True)
-    (plugin / ".claude-plugin/deploys.json").write_text(
-        json.dumps(sidecar if sidecar is not None else _ONE_GATE), encoding="utf-8"
-    )
+    gates = (sidecar if sidecar is not None else _ONE_GATE)["gates"]
+    for name, entry in gates.items():
+        (plugin / "skills" / name).mkdir(parents=True, exist_ok=True)
+        (plugin / "skills" / name / "deploys.json").write_text(
+            json.dumps({"schemaVersion": SCHEMA_VERSION, **entry}), encoding="utf-8"
+        )
     return plugin
 
 
@@ -70,14 +74,14 @@ def _stamp(gate_contract: int | None = 5, skill_version: str = "0.1.0") -> str:
 
 
 def _report(
-    tmp_path: Path, files: dict[str, str], sidecar: dict[str, object] | None = None
+    tmp_path: Path, files: dict[str, str], sidecar: dict[str, Any] | None = None
 ) -> Report:
     repo = make_repo(tmp_path / "repo", files or {"README.md": "#\n"})
     return build(repo, _plugin(tmp_path, sidecar), REGISTER)
 
 
 def _state(
-    tmp_path: Path, files: dict[str, str], sidecar: dict[str, object] | None = None
+    tmp_path: Path, files: dict[str, str], sidecar: dict[str, Any] | None = None
 ) -> State:
     state: State = _report(tmp_path, files, sidecar).gates[0].state
     return state
@@ -152,8 +156,7 @@ def test_a_gate_whose_controls_do_not_apply_is_owed_nothing(tmp_path: Path) -> N
     other direction.
     """
     sidecar = {
-        "schemaVersion": 2,
-        "gates": {
+            "gates": {
             "gate-iac": {
                 "contractVersion": 3,
                 "controls": ["IAC-001"],
@@ -173,8 +176,7 @@ def test_a_gate_whose_controls_do_not_apply_is_owed_nothing(tmp_path: Path) -> N
 def test_any_applicable_control_makes_the_gate_applicable(tmp_path: Path) -> None:
     """`gate-quality` carries three controls; one applying is enough."""
     sidecar = {
-        "schemaVersion": 2,
-        "gates": {
+            "gates": {
             "gate-quality": {
                 "contractVersion": 5,
                 "controls": ["LNT-001", "TYP-001", "TST-001"],
@@ -217,8 +219,7 @@ def test_the_report_names_every_state_it_gives(tmp_path: Path) -> None:
 
 def _two_gates() -> dict[str, object]:
     return {
-        "schemaVersion": 2,
-        "gates": {
+            "gates": {
             "gate-quality": {
                 "contractVersion": 1,
                 "controls": ["TST-001"],
@@ -268,11 +269,61 @@ def test_a_defect_sorts_above_every_currency_question(tmp_path: Path) -> None:
     assert report.defective
 
 
-def test_an_unknown_sidecar_schema_is_an_error_not_an_empty_report(tmp_path: Path) -> None:
+def test_an_unknown_declaration_schema_is_an_error_not_an_empty_report(tmp_path: Path) -> None:
     """Guessing at an unknown layout would report a deployed repo as bare."""
-    plugin = _plugin(tmp_path, {"schemaVersion": 99, "gates": {}})
-    with pytest.raises(NoPlugin, match="schemaVersion"):
+    plugin = _plugin(tmp_path, {"gates": {"gate-secrets": {"schemaVersion": 99}}})
+    with pytest.raises(NoPlugin, match="schemaVersion 99"):
         load_gates(plugin)
+
+
+def test_the_directory_names_the_gate(tmp_path: Path) -> None:
+    """ADR 0058: the file says nothing about which gate it is; where it sits does."""
+    (gate,) = load_gates(_plugin(tmp_path))
+    assert (gate.name, gate.contract, gate.controls) == ("gate-secrets", 5, ("SEC-001",))
+
+
+def test_a_declaration_without_an_integer_contract_is_an_error(tmp_path: Path) -> None:
+    plugin = _plugin(tmp_path, {"gates": {"gate-secrets": {"contractVersion": "5"}}})
+    with pytest.raises(NoPlugin, match="contractVersion"):
+        load_gates(plugin)
+
+
+def test_a_plugin_with_only_the_old_sidecar_is_refused_not_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ADR 0058: the old location is not a fallback.
+
+    The incubator never syncs `.claude-plugin/` on an amendment, so a published
+    copy keeps a stale `.claude-plugin/deploys.json` indefinitely. Reading it
+    would report *current* over a gate whose contract moved, which is the fault
+    the move removed. The refusal says why, so it reads as a release to install
+    rather than a broken checker.
+    """
+    repo = make_repo(tmp_path / "repo", {"README.md": "#\n"})
+    old = tmp_path / "old-plugin"
+    (old / ".claude-plugin").mkdir(parents=True)
+    (old / ".claude-plugin/deploys.json").write_text(
+        json.dumps({"schemaVersion": 2, **_ONE_GATE}), encoding="utf-8"
+    )
+    monkeypatch.delenv("CLAUDE_PLUGIN_ROOT", raising=False)
+    with pytest.raises(NoPlugin, match="predates ADR 0058"):
+        find_plugin(repo, old)
+    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(old))
+    with pytest.raises(NoPlugin, match="predates ADR 0058"):
+        find_plugin(repo)
+    with pytest.raises(NoPlugin, match="declares no gates"):
+        load_gates(old)
+
+
+def test_the_cli_exits_2_over_a_plugin_that_predates_the_move(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo = make_repo(tmp_path / "repo", {"README.md": "#\n"})
+    old = tmp_path / "old-plugin"
+    (old / ".claude-plugin").mkdir(parents=True)
+    (old / ".claude-plugin/deploys.json").write_text("{}", encoding="utf-8")
+    assert _cli(repo, old) == 2
+    assert "predates ADR 0058" in capsys.readouterr().err
 
 
 def test_the_plugin_is_found_explicitly_then_by_environment(
@@ -332,3 +383,112 @@ def test_no_plugin_is_a_usage_error(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     repo = make_repo(tmp_path / "repo", {"README.md": "#\n"})
     monkeypatch.delenv("CLAUDE_PLUGIN_ROOT", raising=False)
     assert main(["--repo", str(repo.root), "--register", "controls.yaml", "deployments"]) == 2
+
+
+# --- A stack that arrives after the gate ran (Phase 8) ------------------------
+
+#: gate-quality as the plugin declares it, at the contract the stamps below carry.
+_QUALITY = {
+    "gates": {
+        "gate-quality": {
+            "contractVersion": 6,
+            "controls": ["LNT-001", "TYP-001", "TST-001"],
+            "artifacts": [".pre-commit-config.yaml#lint"],
+        }
+    },
+}
+
+
+def _hook(hook: str, *, stamped: bool, gap: bool = False) -> str:
+    stamp = (
+        "      # ee-control: LNT-001  ee-skill: gate-quality@0.2.4  gate-contract: 6  "
+        "register: v0.29.0  register-contract: 35\n"
+        if stamped
+        else "      # hand-deployed, so no stamp\n"
+    )
+    return stamp + ("\n" if gap else "") + f"      - id: {hook}\n        entry: x\n"
+
+
+def _quality_report(tmp_path: Path, hooks: str, *, typescript: bool = True) -> Report:
+    from conftest import REPO_ROOT
+    from register_check.register import load_register
+
+    register, errors = load_register(REPO_ROOT / "controls.yaml")
+    assert register is not None and not errors, errors
+    files = {
+        "pyproject.toml": "[project]\nname = 'x'\n",
+        ".pre-commit-config.yaml": "repos:\n  - repo: local\n    hooks:\n" + hooks,
+    }
+    if typescript:
+        files["tsconfig.json"] = '{"compilerOptions": {"strict": true}}\n'
+    repo = make_repo(tmp_path / "repo", files)
+    return build(repo, _plugin(tmp_path, _QUALITY), register)
+
+
+_PYTHON_HOOKS = _hook("ruff", stamped=True) + _hook("mypy", stamped=True)
+
+
+def test_a_stack_wired_by_hand_is_reported_and_owed(tmp_path: Path) -> None:
+    """The trial repository's state: every stamp current, TypeScript wired by hand.
+
+    The gate keeps its state, because no stamp is behind. It is owed a run all
+    the same, which is what the report said nothing about before.
+    """
+    hooks = _PYTHON_HOOKS + _hook("eslint", stamped=False) + _hook("tsc", stamped=False)
+    report = _quality_report(tmp_path, hooks)
+    gate = report.gates[0]
+    assert gate.state is State.CURRENT
+    assert [line.split(":")[0] for line in gate.stacks_not_covered] == ["typescript"] * 2
+    assert all("no gate-quality stamp" in line for line in gate.stacks_not_covered)
+    assert [g.gate.name for g in report.owed] == ["gate-quality"]
+
+
+def test_a_stack_the_gate_wired_is_not_reported(tmp_path: Path) -> None:
+    hooks = _PYTHON_HOOKS + _hook("eslint", stamped=True) + _hook("tsc", stamped=True)
+    report = _quality_report(tmp_path, hooks)
+    assert report.gates[0].stacks_not_covered == ()
+    assert report.owed == []
+
+
+def test_a_stack_with_no_hook_at_all_is_reported(tmp_path: Path) -> None:
+    report = _quality_report(tmp_path, _PYTHON_HOOKS)
+    assert report.gates[0].stacks_not_covered == (
+        "typescript: no eslint hook — gate-quality has not wired it",
+        "typescript: no tsc hook — gate-quality has not wired it",
+    )
+
+
+def test_a_stack_that_does_not_apply_is_owed_nothing(tmp_path: Path) -> None:
+    """No `tsconfig.json`, so no TypeScript gate is owed — a predicate skip is not a gap."""
+    report = _quality_report(tmp_path, _PYTHON_HOOKS, typescript=False)
+    assert report.gates[0].stacks_not_covered == ()
+
+
+def test_a_stamp_is_credited_only_to_the_hook_directly_below_it(tmp_path: Path) -> None:
+    """A blank line ends a stamp's block, so a stamp near a hook is not its stamp.
+
+    Otherwise a hand-written hook added under a gate's would be credited to the
+    gate by sitting close to it, which is the false CURRENT this exists to end.
+    """
+    hooks = (
+        _PYTHON_HOOKS
+        + _hook("eslint", stamped=True, gap=True)
+        + _hook("tsc", stamped=True)
+    )
+    report = _quality_report(tmp_path, hooks)
+    assert report.gates[0].stacks_not_covered == (
+        "typescript: the eslint hook carries no gate-quality stamp — "
+        "wired by hand, or arrived after gate-quality last ran",
+    )
+
+
+def test_the_report_says_which_stack_and_what_to_do(tmp_path: Path) -> None:
+    from conftest import REPO_ROOT
+    from register_check.register import load_register
+
+    register, _ = load_register(REPO_ROOT / "controls.yaml")
+    assert register is not None
+    report = _quality_report(tmp_path, _PYTHON_HOOKS)
+    text = render(report, register)
+    assert "a stack applies that this gate has not wired — run it again" in text
+    assert "1 owed a deployment" in text

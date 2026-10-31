@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 3,
+  "contractVersion": 4,
+  "controls": [
+    "CI-001"
+  ],
+  "artifacts": [
+    ".github/rulesets/default-branch.json"
+  ]
+}

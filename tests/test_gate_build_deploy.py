@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import REPO_ROOT, gate_contract, make_repo
+from conftest import REPO_ROOT, UNFILLED, gate_contract, make_repo, template_payload
 from register_check.cli import main
 from register_check.provenance import stamps_in
 from register_check.register import Register, load_register
@@ -75,23 +75,23 @@ def _render(template: str, register: Register) -> str:
     """A template with every placeholder filled from the register or the repo.
 
     A placeholder left unfilled is a failure here rather than an artefact
-    deployed with `{{IMAGE_DIGEST}}` in it.
+    deployed with `<<IMAGE_DIGEST>>` in it.
     """
     tool = "register-check"
     text = template
     for placeholder, value in {
-        "{{TOOL}}": tool,
-        "{{TOOL_INVOCATION}}": register.tools[tool].invocation or "",
-        "{{CONTAINER_USER}}": "vscode",
-        "{{IMAGE}}": _IMAGE,
-        "{{IMAGE_DIGEST}}": _DIGEST,
-        "{{SKILL_VERSION}}": SKILL_VERSION,
-        "{{GATE_CONTRACT}}": gate_contract("gate-build"),
-        "{{REGISTER_VERSION}}": register.version,
-        "{{REGISTER_CONTRACT}}": str(register.register_contract),
+        "<<TOOL>>": tool,
+        "<<TOOL_INVOCATION>>": register.tools[tool].invocation or "",
+        "<<CONTAINER_USER>>": "vscode",
+        "<<IMAGE>>": _IMAGE,
+        "<<IMAGE_DIGEST>>": _DIGEST,
+        "<<SKILL_VERSION>>": SKILL_VERSION,
+        "<<GATE_CONTRACT>>": gate_contract("gate-build"),
+        "<<REGISTER_VERSION>>": register.version,
+        "<<REGISTER_CONTRACT>>": str(register.register_contract),
     }.items():
         text = text.replace(placeholder, value)
-    assert "{{" not in text, f"a placeholder was not filled: {text}"
+    assert not UNFILLED.search(text), f"a placeholder was not filled: {text}"
     return text
 
 
@@ -99,7 +99,7 @@ def _body(template: str, comment: str = "#") -> str:
     """The template's payload, without the comment block explaining it.
 
     Dropped before substitution, not after: the comments talk *about* the
-    placeholders, so rendering them first would leave a `{{` behind and the
+    placeholders, so rendering them first would leave a `<<` behind and the
     unfilled-placeholder check would fire on prose.
     """
     lines = template.splitlines(keepends=True)
@@ -127,7 +127,9 @@ def _deploy(root: Path, register: Register) -> None:
     devcontainer.write_text(existing + ",\n" + inner + "\n}\n", encoding="utf-8")
 
     # Step 4 — the pre-commit locus. One hook, two stamps.
-    hook = _render(_body((SKILL / "templates/precommit-hook.yaml").read_text()), register)
+    hook = _render(
+        template_payload((SKILL / "templates/precommit-hook.yaml").read_text(), 6), register
+    )
     (root / ".pre-commit-config.yaml").write_text(
         "repos:\n  - repo: local\n    hooks:\n" + hook, encoding="utf-8"
     )
@@ -135,7 +137,7 @@ def _deploy(root: Path, register: Register) -> None:
     # Step 4 — the ci locus. This adopter's workflow runs no audit at all, so
     # the step is written rather than skipped; the no-op path is exercised
     # separately below.
-    steps = _render(_body((SKILL / "templates/ci-steps.yaml").read_text()), register)
+    steps = _render(template_payload((SKILL / "templates/ci-steps.yaml").read_text(), 6), register)
     workflow = root / ".github/workflows/ci.yml"
     workflow.write_text(workflow.read_text(encoding="utf-8") + steps, encoding="utf-8")
 

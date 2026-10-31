@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "contractVersion": 3,
+  "controls": [
+    "BLD-001",
+    "DEV-001"
+  ],
+  "artifacts": [
+    ".devcontainer/devcontainer.json#remoteUser",
+    ".devcontainer/devcontainer.json#image",
+    ".devcontainer/devcontainer-lock.json",
+    ".pre-commit-config.yaml#build"
+  ]
+}
