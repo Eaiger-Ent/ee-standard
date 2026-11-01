@@ -246,7 +246,7 @@ pins current — **a pin nothing updates rots at a known version**, which is a
 different failure from an unpinned one and not a better one.
 
 **Installing the bot is not this skill's act.** A configuration file is
-necessary and not sufficient: Dependabot needs enabling on the repository, and
+needed but does nothing alone: Dependabot needs enabling on the repository, and
 Renovate needs its app installed and its onboarding pull request left open
 rather than closed. Both are platform acts a human with admin takes
 (`docs/08-adopting.md` § 1.1). Say which one the repository now needs, and that
@@ -423,15 +423,15 @@ decides whether it lands (`docs/00-concepts.md` § Notify, never redeploy).
 
 ## Co-update partners
 
-Canonical source for both shared standards below:
+Canonical source for the shared standards below:
 `${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
 `docs/02-skill-family.md`.
 
 - **Write narration shape** (`reference/write-narration.md`) — shared with
   `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
-  `gate-supply-chain`, `register-adopt`, `register-install` and
-  `register-variance`. Change the shape there, never here; ADR 0036 is the
-  reason it is one file rather than nine copies.
+  `gate-supply-chain`, `register-install` and `register-variance`. Change the
+  shape there, never here; ADR 0036 is the reason it is one file rather than a
+  copy per skill.
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
@@ -440,4 +440,7 @@ Canonical source for both shared standards below:
 - **Provenance stamp and verify contract** — every skill here stamps what it
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;
-  co-update all nine when the contract version changes.
+  co-update all nine when the contract version changes. Canonical source: each
+  gate's `contractVersion` in its own `skills/<gate>/deploys.json` (ADR 0058),
+  and the stamp grammar and exit codes in `register-check`, in the `ee-standard`
+  repository (ADR 0016) — never a skill's restatement of either.

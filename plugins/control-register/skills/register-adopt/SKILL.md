@@ -421,11 +421,6 @@ Canonical source for the shared standards below:
 `${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
 `docs/02-skill-family.md`.
 
-- **Write narration shape** (`reference/write-narration.md`) — shared with
-  `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
-  `gate-supply-chain`, `register-adopt`, `register-install` and
-  `register-variance`. Change the shape there, never here; ADR 0036 is the
-  reason it is one file rather than nine copies.
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
