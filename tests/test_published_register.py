@@ -21,6 +21,7 @@ import yaml
 
 from conftest import REPO_ROOT, declared_gates
 from register_check.publish import (
+    HEADER,
     MARKABLE_FIELDS,
     PUBLISHED,
     derive,
@@ -167,3 +168,12 @@ def test_a_lockfile_failure_names_the_control_that_wants_the_tool() -> None:
     assert _who_needs("not-a-tool-any-control-names", register) == "", (
         "a tool no control names should add nothing rather than guess"
     )
+
+
+def test_the_header_is_true_in_an_adopters_repository() -> None:
+    """The published file becomes an adopter's own `controls.yaml`. A header
+    saying "generated — do not edit" was false there, and a skill obeyed it."""
+    header = HEADER.lower()
+    assert derive(SOURCE_TEXT).startswith(HEADER)
+    assert "do not edit" not in header
+    assert "yours to edit" in header

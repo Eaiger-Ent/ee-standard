@@ -27,6 +27,7 @@ import json
 import re
 
 import pytest
+import yaml
 
 from conftest import REPO_ROOT, a_register
 
@@ -248,3 +249,21 @@ def test_every_plugin_the_guide_installs_is_one_that_marketplace_serves() -> Non
     assert not wrong, (
         f"the guide installs {', '.join(wrong)}, which {marketplace['name']} does not serve"
     )
+
+
+def test_the_upgrade_route_names_every_skill_outside_control_register() -> None:
+    """A control deployed by a skill `control-register` does not ship never
+    appears in `register-check deployments`, so an adopter following
+    `UPGRADING.md` meets it first as a failure. YML-001 arrived that way in
+    v0.10.0, through an upgrade route that never named `lint-yaml`. Derived from
+    the register, so the next such control fails here until the route names it.
+    """
+    register = yaml.safe_load((REPO_ROOT / "controls.yaml").read_text(encoding="utf-8"))
+    shipped = {p.name for p in (REPO_ROOT / "plugins/control-register/skills").iterdir()}
+    outside = sorted(
+        {c["deployed_by"] for c in register["controls"] if c.get("deployed_by")} - shipped
+    )
+    assert outside, "no control is deployed outside control-register; is the derivation right?"
+    upgrading = (REPO_ROOT / "UPGRADING.md").read_text(encoding="utf-8")
+    missing = [skill for skill in outside if f"`{skill}`" not in upgrading]
+    assert not missing, f"UPGRADING.md never names {missing}, which deploy controls no gate does"
