@@ -479,21 +479,20 @@ decides whether it lands (`docs/00-concepts.md` § Notify, never redeploy).
 
 ## Co-update partners
 
-Canonical source for both shared standards below:
-`${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
-`docs/02-skill-family.md`.
+Canonical source for the shared standards below: `${CLAUDE_PLUGIN_ROOT}/reference/`.
+Registered in `docs/02-skill-family.md`.
 
-- **Write narration shape** (`reference/write-narration.md`) — shared with
-  `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
-  `gate-supply-chain`, `register-adopt`, `register-install` and
-  `register-variance`. Change the shape there, never here; ADR 0036 is the
-  reason it is one file rather than nine copies.
-- **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
-  shared with every gate skill that writes a pre-commit hook: `gate-build`,
-  `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
+- **Write narration shape** (`reference/write-narration.md`) — shared with every gate,
+  `register-install` and `register-variance`. Change the shape there, never here;
+  ADR 0036 is the reason it is one file rather than a copy per skill.
+- **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) — shared
+  with every gate that writes a pre-commit hook: all of them but `gate-repo`.
 - **Template layout** (`reference/template-layout.md`) — shared with every
   skill that writes a YAML template: all the gates but `gate-repo`, and `register-install`.
 - **Provenance stamp and verify contract** — every skill here stamps what it
   writes and verifies through `register-check`. The stamp fields and the
   checker's exit codes are the register's contract, not any one skill's;
-  co-update all nine when the contract version changes.
+  co-update all nine when the contract version changes. Canonical source: each
+  gate's `contractVersion` in its own `skills/<gate>/deploys.json` (ADR 0058),
+  and the stamp grammar and exit codes in `register-check`, in the `ee-standard`
+  repository (ADR 0016) — never a skill's restatement of either.

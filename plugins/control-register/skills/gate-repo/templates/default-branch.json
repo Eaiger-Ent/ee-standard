@@ -1,5 +1,5 @@
 // Written to `.github/rulesets/default-branch.json` in the target repository,
-// then applied through the GitHub API. Double-brace placeholders are
+// then applied through the GitHub API. Angle-bracket placeholders are
 // substituted from the register before the file is written; none of them is a
 // value this file is allowed to decide.
 //

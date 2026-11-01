@@ -146,7 +146,7 @@ gh api "repos/$OWNER/$NAME/branches/$DEFAULT/protection" 2>/dev/null
 | `RULESETS` | every existing ruleset, with its id, name and enforcement |
 | `CONTEXTS` | the job ids of every workflow that runs on `push` or `pull_request`, and whether each carries `continue-on-error` |
 | `LEGACY_PROTECTION` | a classic branch-protection rule, if one exists |
-| `RECORDED` | `RULESET_PATH` in the repository, if it exists, and whether this skill wrote it |
+| `RECORDED` | `RULESET_PATH` in the repository, if it exists, and whether this skill wrote it. A zero-byte or truncated file — from an interrupted prior run — is treated as absent |
 | `TOKEN_SCOPE` | whether the token can write rulesets |
 | `PLAN_LIMIT` | whether a `403` from the rulesets read is the plan refusing rulesets, not the token |
 
@@ -281,9 +281,6 @@ proceed with the plan" — name the change. Which of the two questions below to
 ask is decided by `RULESETS`: whether the platform already carries a ruleset of
 this name. Ask exactly one of them, and ask it even on a re-run that would
 change nothing.
-
-Neither is waivable by an earlier approval. `register-adopt`'s plan step covers
-what will be written to files; neither of these calls is a file.
 
 ### 2a. No ruleset of this name exists — create
 
@@ -438,7 +435,7 @@ Read `${CLAUDE_SKILL_DIR}/output-templates.md` and emit the block whose trigger 
 | Condition | Action |
 | ----------- | -------- |
 | No register found or it fails to load | Stop. Emit **Aborted** |
-| `--repo` has no GitHub remote, or more than one naming different `<owner>/<name>` | None: stop, emit **Aborted**. Several: ask which repository to protect; never pick a remote silently |
+| `--repo` has no GitHub remote, or more than one naming different `<owner>/<name>` | None: stop, emit **Aborted**. Two or more: ask which repository to protect; never pick a remote silently |
 | No `administration: write` on the token | Stop **before writing the record**. Say which permission is missing and who grants it |
 | A `403` that `reference/plan-limits.md` classifies as the plan | Write the record, make no call, emit **Recorded, not applied (plan limit)** (§2P) |
 | The user chooses **Record only** | Write the file, report CI-001 as not deployed, and do not soften that |
