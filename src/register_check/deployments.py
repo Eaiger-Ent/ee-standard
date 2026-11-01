@@ -788,17 +788,20 @@ def render(report: Report, register: Register) -> str:
         f"register v{register.version} (contract {register.register_contract})",
         "",
     ]
+    owed_names = {g.gate.name for g in report.owed}
     for gate in sorted(report.gates, key=lambda g: _loudness(g, register)):
         lines.append(
-            f"  {gate.gate.name:<20} {gate.state!s:<15} "
+            f"  {gate.gate.name:<20} {_label(gate)!s:<15} "
             f"contract {gate.gate.contract}   {', '.join(gate.gate.controls)}"
         )
         lines.append(f"           {_explain(gate)}")
         if gate.absent_paths:
             lines.append(f"           artefacts absent: {', '.join(gate.absent_paths)}")
         if gate.stacks_not_covered:
-            lines.append("           a stack applies that this gate has not wired — run it again:")
-            lines.extend(f"             ! {finding}" for finding in gate.stacks_not_covered)
+            lines.append("           a stack applies that this gate has not wired:")
+            lines.extend(f"             - {finding}" for finding in gate.stacks_not_covered)
+        if gate.gate.name in owed_names:
+            lines.append(f"           → {_run_line(gate.gate.name)}")
     if report.foreign:
         lines.append("")
         lines.append("  Deployed by a skill this plugin does not ship:")
@@ -830,7 +833,7 @@ def render(report: Report, register: Register) -> str:
     if report.unmanaged_pins:
         lines.append("")
         lines.append("  Pinned, and no bot will ever propose moving it:")
-        lines.extend(f"    ! {finding}" for finding in report.unmanaged_pins)
+        lines.extend(f"    · {finding}" for finding in report.unmanaged_pins)
         lines.append(
             "    An unmanaged pin does not drift — it never moves, and the "
             "supply-chain controls stay green over it. Reported, not enforced."
@@ -844,10 +847,29 @@ def render(report: Report, register: Register) -> str:
     ]
     if owed:
         lines.append(
-            "Staleness is reported, never enforced — a gate above is a "
-            "recommendation to re-run it, not a failure."
+            "Staleness is reported, never enforced — each gate marked → above "
+            "is a recommendation to run it, not a failure."
         )
     return "\n".join(lines)
+
+
+def _label(gate: GateReport) -> str:
+    """The state as the row shows it.
+
+    A `CURRENT` gate short of a stack keeps its state — its stamps are not
+    behind — but a row reading plain `CURRENT` above a summary that counts it
+    as owed contradicts itself, so the row says what is short instead.
+    """
+    if gate.state is State.CURRENT and gate.stacks_not_covered:
+        return "STACK UNWIRED"
+    return str(gate.state)
+
+
+def _run_line(gate: str) -> str:
+    """How to discharge an owed gate. A gate is a skill, and a reader in a shell
+    has no route from its name to the command that runs it unless this says so.
+    """
+    return f"owed a run — in a Claude Code session in this repository: /{gate}"
 
 
 def _explain(gate: GateReport) -> str:

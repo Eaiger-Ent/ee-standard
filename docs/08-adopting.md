@@ -2259,7 +2259,8 @@ installed the plugin, whichever marketplace it came from.
 
 It reads each gate's `skills/<gate>/deploys.json` — which gate writes what, at
 which **deployment contract** — and the `ee-control:` stamps in your repository,
-and it gives each gate one of six states:
+and it gives each gate one of six states, shown in the row with one refinement
+(`STACK UNWIRED`, below):
 
 | State | What it means | What you owe |
 | --- | --- | --- |
@@ -2268,7 +2269,14 @@ and it gives each gate one of six states:
 | `UNRECORDED` | deployed before the stamp carried a `gate-contract` | re-run the gate; whether it is current cannot be known |
 | `STALE` | the gate's stamps are behind the installed contract | re-run the gate |
 | `CURRENT` | stamped at the installed contract | nothing |
+| `STACK UNWIRED` | `CURRENT`, but a stack that applies has a tool this gate has not wired — added by hand, or arrived after the gate last ran | re-run the gate; the summary counts it as owed |
 | `AHEAD` | a stamp claims a contract the installed gate has not reached | investigate — that is a defect, not staleness |
+
+**Every owed gate names its command.** A gate is a skill, so the report gives
+each one you owe a line beginning `→` with the command to type in a Claude Code
+session in your repository — `→ owed a run — in a Claude Code session in this
+repository: /gate-quality`. Those lines and the summary's *owed* count are the
+same set; nothing without one is asking anything of you.
 
 **A gate's version is not in that list.** The plugin's version moves for
 documentation fixes and trigger-phrase releases, and all eight skills share it,
