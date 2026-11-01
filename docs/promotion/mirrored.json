@@ -7,7 +7,7 @@
       "differences": {
         ".claude-plugin/plugin.json": {
           "stance": "by-design",
-          "why": "Published, it lists \"dependencies\": [\"ee-skills-contribute\"], a plugin this marketplace does not serve, so an adopter installing from here would be asked for one they cannot get. No file in the skill refers to it. Removed here and nothing else (ADR 0060 rule 3); asked of upstream, and this goes when upstream drops it.",
+          "why": "Published, it lists \"dependencies\": [\"ee-skills-contribute\"], a plugin this marketplace does not serve, so an adopter installing from here would be asked for one they cannot get. No file in the skill refers to it. Removed here and nothing else (ADR 0060 rule 3). The key is the marketplace's convention, added by its promotion pipeline, so it is not asked of upstream (revision 2); this goes stale, and is removed, only if upstream drops it.",
           "remove": [
             "\\n\\s*\"dependencies\": \\[[^\\]]*\\],"
           ]
@@ -91,7 +91,7 @@
       "differences": {
         ".claude-plugin/plugin.json": {
           "stance": "by-design",
-          "why": "Published, it lists \"dependencies\": [\"ee-skills-contribute\"], a plugin this marketplace does not serve, so an adopter installing from here would be asked for one they cannot get. No file in the skill refers to it. Removed here and nothing else (ADR 0060 rule 3); asked of upstream, and this goes when upstream drops it.",
+          "why": "Published, it lists \"dependencies\": [\"ee-skills-contribute\"], a plugin this marketplace does not serve, so an adopter installing from here would be asked for one they cannot get. No file in the skill refers to it. Removed here and nothing else (ADR 0060 rule 3). The key is the marketplace's convention, added by its promotion pipeline, so it is not asked of upstream (revision 2); this goes stale, and is removed, only if upstream drops it.",
           "remove": [
             "\\n\\s*\"dependencies\": \\[[^\\]]*\\],"
           ]
