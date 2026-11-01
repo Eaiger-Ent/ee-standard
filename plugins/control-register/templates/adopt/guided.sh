@@ -390,10 +390,13 @@ You are in when \`pwd\` prints a path beginning /workspaces. VS Code's
 
 2. Install the plugin again, inside. This is not a mistake in § 1 and not a
 mistake here: the container's ~/.claude is a named volume, not your Mac's home
-directory, so what you installed on the host is not in it.
+directory, so what you installed on the host is not in it. The last two lines
+install the skills that deploy DOC-001 and YML-001.
 
   claude plugin marketplace add Eaiger-Ent/ee-standard
   claude plugin install control-register@ee-standard
+  claude plugin install lint-md@ee-standard
+  claude plugin install lint-yaml@ee-standard
 
 3. The route is on your Mac, and this is a different machine. ~/.cache is
 not mounted into the container, so fetch the bootstrap again in there:

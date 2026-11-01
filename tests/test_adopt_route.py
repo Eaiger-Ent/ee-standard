@@ -346,6 +346,8 @@ HANDOVER_COMMANDS = (
     "devcontainer exec --workspace-folder . bash",
     "claude plugin marketplace add Eaiger-Ent/ee-standard",
     "claude plugin install control-register@ee-standard",
+    "claude plugin install lint-md@ee-standard",
+    "claude plugin install lint-yaml@ee-standard",
     "claude --permission-mode acceptEdits",
     "/tui default",
     "/register-adopt --repo . --register ./controls.yaml",

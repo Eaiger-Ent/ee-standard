@@ -40,7 +40,7 @@
     },
     "templates/adopt/guided.sh": {
       "stance": "owed-upstream",
-      "why": "Python 3.15 (Renovate #213): the guided route's `uv init --python` names the interpreter this repository pins in .python-version, which moved from 3.14 to 3.15. tests/test_toolchain_pin.py holds START-HERE.md and 08-adopting.md to that pin, and this script runs the same step as START-HERE's block. Not yet submitted."
+      "why": "Python 3.15 (Renovate #213): the guided route's `uv init --python` names the interpreter this repository pins in .python-version, which moved from 3.14 to 3.15. tests/test_toolchain_pin.py holds START-HERE.md and 08-adopting.md to that pin, and this script runs the same step as START-HERE's block. Then, 2026-11-01: its handover installs lint-md and lint-yaml from this marketplace inside the container, as START-HERE step 5 does, because ADR 0060 serves both here and tests/test_adopt_route.py holds the handover to START-HERE's commands. Not yet submitted; the two go up together."
     }
   }
 }
