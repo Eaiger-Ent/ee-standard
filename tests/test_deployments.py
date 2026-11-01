@@ -490,5 +490,28 @@ def test_the_report_says_which_stack_and_what_to_do(tmp_path: Path) -> None:
     assert register is not None
     report = _quality_report(tmp_path, _PYTHON_HOOKS)
     text = render(report, register)
-    assert "a stack applies that this gate has not wired — run it again" in text
+    assert "a stack applies that this gate has not wired:" in text
     assert "1 owed a deployment" in text
+
+
+def test_an_owed_gate_names_the_command_that_discharges_it(tmp_path: Path) -> None:
+    """A gate is a skill. A reader in a shell has no route from `gate-quality`
+    to `/gate-quality` unless the report gives it, and a `CURRENT` row above a
+    summary counting it as owed reads as nothing to do.
+    """
+    from conftest import REPO_ROOT
+    from register_check.register import load_register
+
+    register, _ = load_register(REPO_ROOT / "controls.yaml")
+    assert register is not None
+    text = render(_quality_report(tmp_path, _PYTHON_HOOKS), register)
+    row = next(line for line in text.splitlines() if line.startswith("  gate-quality"))
+    assert "STACK UNWIRED" in row
+    assert "→ owed a run — in a Claude Code session in this repository: /gate-quality" in text
+    # `!` is Claude Code's shell-escape prefix; a finding must not look like one.
+    assert not any(line.lstrip().startswith("! ") for line in text.splitlines())
+
+
+def test_a_gate_owed_nothing_names_no_command(tmp_path: Path) -> None:
+    report = _report(tmp_path, {".pre-commit-config.yaml": _stamp(5)})
+    assert "owed a run" not in render(report, REGISTER)

@@ -135,9 +135,14 @@ plugin=$(claude plugin list --json | uv run --no-project python -c "import json,
 uv run register-check deployments --plugin "$plugin"
 ```
 
-Re-run each gate it names as `STALE`, `UNRECORDED` or `NEVER DEPLOYED` with that
-gate's own command, such as `/gate-secrets`. The table of states, and what
-each one asks of you, is [`docs/08-adopting.md`](docs/08-adopting.md) § 4.4.
+Every gate you owe a run carries a line beginning `→` that names its command,
+such as `/gate-secrets`. A gate is a Claude Code skill, so run that command in a
+Claude Code session in this repository, not in the shell. Go by the `→` lines
+rather than the state column: a gate reading `STACK UNWIRED` has current stamps
+but has not wired a stack that now applies, and it is owed a run all the same.
+Lines under *Pinned, and no bot will ever propose moving it* are information,
+not actions. The table of states, and what each one asks of you, is
+[`docs/08-adopting.md`](docs/08-adopting.md) § 4.4.
 
 **Done when** the summary line reads `0 owed a deployment`. A release whose notes
 say no contract moved should already read that after step 4. If it does not,
