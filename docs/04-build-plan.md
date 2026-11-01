@@ -1730,9 +1730,14 @@ republication on the same day.
       and names what neither skill writes, § 3.A is the fallback with YML-001's
       by-hand route added, and START-HERE step 5 and `guided.sh`'s handover
       install both.
-- [ ] Upstream is asked to drop the unused `dependencies` key from both
+- [x] Upstream is asked to drop the unused `dependencies` key from both
       plugins, so the mirrors can become byte-identical. Filing it is an act in
-      another organisation's repository and needs its own yes.
+      another organisation's repository and needs its own yes. Closed
+      2026-11-01 **without filing**, by decision: 42 of the 45 `ee-skills`
+      plugins carry the key, which the promotion pipeline adds, so it is the
+      marketplace's convention and not an oversight to report. The difference
+      stays declared and permanent, and the record reports it stale if
+      upstream ever drops the key. ADR 0060 revision 2.
 
 ## What is deliberately not in scope
 
