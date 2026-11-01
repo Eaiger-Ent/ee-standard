@@ -1,0 +1,9 @@
+{
+  "name": "lint-md",
+  "description": "Set up markdownlint-cli2 Markdown linting: installs markdownlint-cli2, writes a config file, wires a PostToolUse Claude Code hook, a pre-commit hook, and a GitHub Actions CI step. Migrates from pymarkdownlnt if present.",
+  "author": {
+    "name": "Equal Experts",
+    "email": "nathan.carney@equalexperts.com"
+  },
+  "version": "1.0.23"
+}

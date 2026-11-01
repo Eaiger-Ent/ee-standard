@@ -816,11 +816,20 @@ and this one is needed to run the skills.
 ```bash
 claude plugin marketplace add Eaiger-Ent/ee-standard
 claude plugin install control-register@ee-standard
+claude plugin install lint-md@ee-standard
+claude plugin install lint-yaml@ee-standard
 ```
 
-**Done when** `claude plugin list | grep control-register` prints a row. The
-volume survives rebuilds, so this is once per project rather than once per
-container.
+The last two deploy DOC-001 and YML-001, the two controls no gate in
+`control-register` deploys. They are mirrors of the skills Equal Experts
+publishes in its private `ee-skills` marketplace, served from this one so you
+can install them
+([ADR 0060](docs/adr/0060-this-marketplace-mirrors-the-lint-skills.md)). You run
+them after the adoption, at § Your first full report.
+
+**Done when** `claude plugin list | grep -E 'control-register|lint-(md|yaml)'`
+prints three rows. The volume survives rebuilds, so this is once per project
+rather than once per container.
 
 Then, in that same container shell:
 
@@ -1018,24 +1027,24 @@ predictable set, and the order you clear them in matters.
 
 | The report says | What it means | What clears it |
 | --- | --- | --- |
-| `DOC-001 FAIL` — *no tracked markdownlint configuration file* | One of the two controls no gate in this plugin deploys — it is `lint-md`'s, in another marketplace, as YML-001 is `lint-yaml`'s. **Tracked** is the operative word: a file git does not carry is not wired | `/lint-md` if you can reach it, else the seven steps in [`docs/08-adopting.md`](docs/08-adopting.md) § 3 — see below |
+| `DOC-001 FAIL` — *no tracked markdownlint configuration file* | One of the two controls no gate in `control-register` deploys. It is `lint-md`'s, as YML-001 is `lint-yaml`'s. **Tracked** is the operative word: a file git does not carry is not wired | `/lint-md`, installed at step 5 — see below |
+| `YML-001 FAIL` — *no tracked yamllint configuration (.yamllint, .yamllint.yaml, .yamllint.yml)* | The other one, and it fails for the same reason | `/lint-yaml`, after `/lint-md` |
 | `SUP-001 FAIL` — *markdownlint-cli2 is sourced from package-lock.json, which is not tracked* | **The same cause**, not a second one. The register pins that tool from a lockfile you do not have yet | Committing `package-lock.json` in the step above |
 | `SEC-001 FAIL` — *push protection is 'disabled'* | The local blocks pass — the scanner runs at every locus. This is the server-side stop, and only GitHub can turn it on | Settings → Code security → enable push protection. Admin, and one click |
 | `CI-001 FAIL` — *not protected as the register requires* | Note its file block **passed**: you have *recorded* the ruleset. Recording is intent; this block asks what GitHub enforces, and the answer is nothing | `/gate-repo`, which applies the recorded ruleset through the API |
 | `GOV-001 FAIL` — *a merge waits for no check at all* | Not a separate problem. Every blocking control is credited to a CI job nothing requires, which is CI-001's failure seen from the other end | Clearing CI-001 clears this |
 | `SEC-003 UNCLASSIFIED` | Permanent, and correct. Those blocks answer only inside a GitHub Actions job; your own token settles nothing about what CI carries | Nothing. This is why a local run cannot exit `0` |
 
-**DOC-001 has a skill, and it may not be yours to run.** It is deployed by
-`/lint-md`, which lives in the **private** `EqualExperts/ee-skills` marketplace.
-If your account reaches that marketplace, install it and run the skill: one
-command rather than seven steps, and it stamps what it writes. If it does not,
-[`docs/08-adopting.md`](docs/08-adopting.md) § 3 has the seven steps, and they
-are a decision rather than a stopgap
-([ADR 0044](docs/adr/0044-the-adopter-installs-from-the-public-marketplace.md)) —
-`register-check` runs the same two verify blocks over what you write as over
-anything a gate writes, because a control is verified by what your repository
-contains and not by what put it there. Either way you get the control; only one
-of them costs an afternoon.
+**Two skills, and you run both yourself.** `/register-adopt` plans DOC-001 and
+YML-001 as *dispatch elsewhere*: it names each skill and does not run it. So at
+the same prompt, run `/lint-md`, then `/lint-yaml`, then `/gate-supply-chain`
+again. `lint-md` gave your repository a `package.json`, which is a node
+ecosystem, and SUP-002 needs an update channel for it. Then run the checker.
+DOC-001 still fails until you add its editor extension and `node_modules/` to
+your root `.gitignore`. [`docs/08-adopting.md`](docs/08-adopting.md) § 3 has
+both, and how you know each step worked. If you will not install a plugin, its
+§ 3.A wires both controls by hand, and `register-check` verifies what you write
+the same way.
 
 **Clear them in that order, and there is a reason.** DOC-001 needs commits, and
 committing is easiest while you can still push to the default branch. CI-001 is
