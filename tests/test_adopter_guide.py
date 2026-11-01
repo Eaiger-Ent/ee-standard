@@ -23,6 +23,7 @@ here rather than derived, and named for that reason rather than as an oversight.
 
 from __future__ import annotations
 
+import json
 import re
 
 import pytest
@@ -220,4 +221,30 @@ def test_the_guide_installs_the_plugin_from_the_repository_the_register_names() 
     wrong = sorted({named for named in adds if named != slug})
     assert not wrong, (
         f"§ 0.0 installs from {', '.join(wrong)}; the register names {slug} (ADR 0044)"
+    )
+
+
+_INSTALL = re.compile(r"claude plugin install ([\w-]+)@([\w-]+)")
+
+
+def test_every_plugin_the_guide_installs_is_one_that_marketplace_serves() -> None:
+    """`lint-md@ee-standard` resolves only because this marketplace now serves it.
+
+    [ADR 0060](../docs/adr/0060-this-marketplace-mirrors-the-lint-skills.md)
+    adds two plugins to the address the register names, so the guide installs
+    three from it rather than one. Each `@marketplace` must be the name that
+    address's `marketplace.json` declares, and each plugin one it lists. A
+    plugin named here and served nowhere is an install that fails on the
+    adopter's machine and nowhere else. One served from `ee-skills` works
+    perfectly for whoever wrote it, which is how it would get written.
+    """
+    marketplace = json.loads((REPO_ROOT / ".claude-plugin/marketplace.json").read_text())
+    served = {plugin["name"] for plugin in marketplace["plugins"]}
+    installs = set(_INSTALL.findall(GUIDE_TEXT))
+    assert {"control-register", "lint-md", "lint-yaml"} <= {name for name, _ in installs}, (
+        "§ 0.0 and § 3 no longer install all three plugins an adopter needs"
+    )
+    wrong = sorted(f"{n}@{m}" for n, m in installs if m != marketplace["name"] or n not in served)
+    assert not wrong, (
+        f"the guide installs {', '.join(wrong)}, which {marketplace['name']} does not serve"
     )

@@ -624,3 +624,38 @@ issue filed against it**, which raises what "asked for" has to cover: a
 submission that goes wrong leaves a branch and an open pull request in someone
 else's repository, not a comment. Nothing about the rule changes; what changes is
 that a mistaken submission is now something a maintainer has to clean up.
+
+## What is mirrored from ee-skills
+
+The record above runs one way: from this tree to `ee-skills`. From
+[ADR 0060](adr/0060-this-marketplace-mirrors-the-lint-skills.md) a second record
+runs the other way. `lint-md` and `lint-yaml` deploy DOC-001 and YML-001, they
+are published only in `ee-skills`, and this repository's public marketplace
+serves a mirror of each, so an adopter outside Equal Experts can install them.
+
+[`promotion/mirrored.json`](promotion/mirrored.json) holds, per plugin, the
+version and commit mirrored and a digest of every published file.
+`tests/test_mirrored_plugins.py` fails on a file in `plugins/lint-md/` or
+`plugins/lint-yaml/` that differs from it, or that is on one side only. The
+record allows one difference, and declares it: each `plugin.json` loses its
+`dependencies` key, which names `ee-skills-contribute`, a plugin this
+marketplace does not serve. The record keeps both digests of that file, the
+published one and the mirrored one, so the file may differ by that key and
+nothing else.
+
+**A mirror is never edited here.** It has no `owed-upstream` stance, because a
+mirror ahead of its source is a fork. A change goes up as an incubator
+amendment, and comes back by re-mirroring the release that shipped it.
+Incubator #1235 and #1236 were the first, and `lint-md` 1.0.23 and `lint-yaml`
+0.1.20 are the first mirrors because they shipped them.
+
+```bash
+uv run python scripts/mirror_plugin.py --check   # is a mirror behind?
+uv run python scripts/mirror_plugin.py           # re-mirror both, after a release
+```
+
+`--check` exits `0` over a mirror that is behind. CI cannot run it, since
+`ee-skills` is private, so a mirror that falls behind is reported, never
+enforced, as ADR 0038 treats a stale gate. Re-mirror after
+`claude plugin marketplace update ee-skills`, with the token scoped as
+§ The submitting shell does.

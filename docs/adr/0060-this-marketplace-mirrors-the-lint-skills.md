@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-10-31
-**Revision:** 1
+**Revision:** 2
 
 ## Background
 
@@ -119,9 +119,13 @@ when accepting this ADR.
 3. **One difference is allowed, and it is declared.** The mirror's `plugin.json`
    drops the `dependencies` key, which names a plugin this marketplace does not
    serve. The record declares that difference with its reason, as `by-design`,
-   and the file may differ by nothing else. It is also asked of upstream: if
-   `ee-skills` drops the unused key, the mirror becomes byte-identical and the
-   declaration is removed.
+   and the file may differ by nothing else. **Amended 2026-11-01 (revision 2):
+   it is not asked of upstream.** The key is the marketplace's convention rather than an
+   oversight in two manifests: 42 of the 45 plugins in `ee-skills` carry
+   `ee-skills-contribute`, measured 2026-11-01, and `promote-config.json`
+   sets it for none of them, so the promotion pipeline adds it. So the
+   difference is permanent while the convention stands. If `ee-skills` ever
+   drops the key, the record reports the declaration stale and it is removed.
 4. **Re-mirroring is a script, run by hand.** It copies a plugin from the
    installed `ee-skills` marketplace checkout and rewrites the record, and with
    `--check` it reports whether the mirror is behind. CI cannot run it, because
@@ -179,3 +183,10 @@ too.
   `marketplace.json` and a plugin's `source`
 - [`docs/05-promotion.md`](../05-promotion.md) § What differs from the
   published copy: the record this mirrors
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-10-31 | Original decision: this marketplace mirrors `lint-md` and `lint-yaml`, held to the published copy by a record and a test. | Nathan Carney |
+| 2 | 2026-11-01 | Rule 3: the `dependencies` removal is not asked of upstream, because the key is a marketplace-wide convention the promotion pipeline applies. The decision is unchanged. | Nathan Carney |

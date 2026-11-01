@@ -1677,11 +1677,12 @@ the same four weeks; the evidence for each tick is
 - [x] `uv run register-check run --control YML-001` passes here, and fails when
       a duplicate key is added to `controls.yaml`. Closed 2026-10-29, over a
       hand-wired deployment, [`19-phase-9-review.md`](19-phase-9-review.md).
-- [ ] `08-adopting.md` tells an adopter how to deploy YML-001, with how you
+- [x] `08-adopting.md` tells an adopter how to deploy YML-001, with how you
       know each step worked. Until 2026-10-31 this read *the by-hand route*.
       [ADR 0060](adr/0060-this-marketplace-mirrors-the-lint-skills.md) makes
       the route installing `lint-yaml` from this marketplace, so this closes
-      with Phase 10's guide item.
+      with Phase 10's guide item. Closed 2026-11-01 with it: § 3, and § 3.A
+      for the by-hand route.
 - [x] The two asks of `lint-yaml` are filed upstream: a pinned install outside a
       uv project, and the floor's three rules at `level: error` in its config.
       Item 3 found three more, recorded in
@@ -1699,25 +1700,44 @@ the same four weeks; the evidence for each tick is
 the copies published in `ee-skills`. An `ee-skills` maintainer agreed to the
 republication on the same day.
 
-- [ ] `plugins/lint-md/` and `plugins/lint-yaml/` hold the published trees at a
+- [x] `plugins/lint-md/` and `plugins/lint-yaml/` hold the published trees at a
       recorded version and commit. `docs/promotion/mirrored.json` holds a
       digest per file, and a test fails on any file that differs from the
-      record, or is present on one side only.
-- [ ] The one declared difference holds and nothing else does: each mirror's
+      record, or is present on one side only. Closed 2026-11-01:
+      `lint-md` 1.0.23 and `lint-yaml` 0.1.20 at `ee-skills` `8bb57bc`, the
+      first releases with incubator #1235 and #1236, held by
+      `tests/test_mirrored_plugins.py`. Both pass ruff, mypy, markdownlint,
+      yamllint and `test_toolchain_pin.py` unedited.
+- [x] The one declared difference holds and nothing else does: each mirror's
       `plugin.json` drops `dependencies`, and may differ by nothing more.
-- [ ] A script re-mirrors a plugin from the installed `ee-skills` checkout and
+      Closed 2026-11-01: the record keeps the published and the mirrored
+      digest of that file, and fails a declaration upstream has made stale.
+- [x] A script re-mirrors a plugin from the installed `ee-skills` checkout and
       rewrites the record. With `--check` it reports a mirror that is behind,
       and exits `0` over one, because a mirror behind is reported, never
-      enforced.
-- [ ] `marketplace.json` lists both plugins, and `tests/test_adopter_guide.py`
+      enforced. Closed 2026-11-01: `scripts/mirror_plugin.py`, which wrote both
+      mirrors and the record; a test re-mirrors a checkout it builds and reads
+      `BEHIND` from `--check` with exit `0`.
+- [x] `marketplace.json` lists both plugins, and `tests/test_adopter_guide.py`
       accepts `lint-md@ee-standard` and `lint-yaml@ee-standard` from the
-      register's address.
-- [ ] `08-adopting.md` and `START-HERE.md` install both skills from this
+      register's address. Closed 2026-11-01: `claude plugin validate` passes,
+      and both installed from this checkout into an empty `CLAUDE_CONFIG_DIR`
+      at 1.0.23 and 0.1.20, byte-identical to `plugins/`. The install from
+      `Eaiger-Ent/ee-standard` itself needs the merge.
+- [x] `08-adopting.md` and `START-HERE.md` install both skills from this
       marketplace. § 3's by-hand route becomes the fallback, for an adopter who
-      will not install a plugin.
-- [ ] Upstream is asked to drop the unused `dependencies` key from both
+      will not install a plugin. Closed 2026-11-01: § 3 installs and runs both
+      and names what neither skill writes, § 3.A is the fallback with YML-001's
+      by-hand route added, and START-HERE step 5 and `guided.sh`'s handover
+      install both.
+- [x] Upstream is asked to drop the unused `dependencies` key from both
       plugins, so the mirrors can become byte-identical. Filing it is an act in
-      another organisation's repository and needs its own yes.
+      another organisation's repository and needs its own yes. Closed
+      2026-11-01 **without filing**, by decision: 42 of the 45 `ee-skills`
+      plugins carry the key, which the promotion pipeline adds, so it is the
+      marketplace's convention and not an oversight to report. The difference
+      stays declared and permanent, and the record reports it stale if
+      upstream ever drops the key. ADR 0060 revision 2.
 
 ## What is deliberately not in scope
 

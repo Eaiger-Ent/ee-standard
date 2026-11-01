@@ -29,13 +29,15 @@ prevent, so the gaps are stated rather than glossed.
 | The other four `gate-*` skills | **Exists** | `plugins/control-register/skills/` |
 | `register-install` — puts the checker in your repository | **Exists** | `plugins/control-register/skills/register-install/`, and § 2.3 |
 | `register-adopt` — one command to deploy everything | **Exists** | `plugins/control-register/skills/register-adopt/` |
+| `lint-md` and `lint-yaml` — deploy DOC-001 and YML-001 | **Exists**, mirrored from `ee-skills` (ADR 0060) | `claude plugin install lint-md@ee-standard`, the same for `lint-yaml`, and § 3 |
 | `kind: remote` verification of platform state | **Exists**, needs a token | § 4.1 below |
 | Reading the chain from a control to a blocked merge | **Exists**, needs a token | § 4.2 below |
 | A CI run that **fails** when a control cannot be verified | **Exists**; give CI a credential first | § 4.3 below |
 
 So today, adoption is: install the plugin (§ 0.0), do § 1 by hand, copy the
 devcontainer, install the
-checker (§ 2.3 — `/register-adopt` does it for you), run `/register-adopt`, and
+checker (§ 2.3 — `/register-adopt` does it for you), run `/register-adopt`,
+install and run the two lint skills (§ 3), and
 run the checker with a token in the environment so the
 remote blocks can be answered rather than skipped (§ 4.1). Then, in this order:
 confirm your conformance run is a check a merge actually waits for (§ 4.2), give
@@ -1111,46 +1113,83 @@ checked.
 
 All six gates are built — see § 3.1 to § 3.6, and § 0 for the front door that
 dispatches them in order. Two controls are deployed by no gate here. DOC-001 is
-`lint-md`'s and YML-001 is `lint-yaml`'s, each in another plugin. This section is
-DOC-001's route. YML-001's by-hand route is not written yet: it is Phase 9 item
-5 in [`04-build-plan.md`](04-build-plan.md).
+`lint-md`'s and YML-001 is `lint-yaml`'s, each a plugin of its own. This section
+is their route.
 
-**And that plugin is one you may not be able to install.** `lint-md` lives in
-the `EqualExperts/ee-skills` marketplace, which is **private**. If your account
-cannot reach it, no skill deploys DOC-001 for you — the plan names it *dispatch
-elsewhere*, and elsewhere is somewhere you cannot go.
+**Both come from the marketplace you added in § 0.0.** Equal Experts publishes
+them in `EqualExperts/ee-skills`, which is private, and this repository's
+marketplace serves a mirror of each
+([ADR 0060](adr/0060-this-marketplace-mirrors-the-lint-skills.md)). A mirror is
+the published files at the published version, never edited here, less the one
+manifest line that names a plugin this marketplace does not serve.
+`docs/promotion/mirrored.json` records the version and commit each mirror
+holds, and a test fails the build on any other difference. So
+`lint-md@ee-standard` at 1.0.23 is the same skill as `lint-md@ee-skills` at
+1.0.23, and a stamp naming either means the same thing.
 
-**So you deploy it by hand, and the checker verifies it.** That is a decision
-rather than a stopgap
-([ADR 0044](adr/0044-the-adopter-installs-from-the-public-marketplace.md)): the
-six steps below are the supported route for an adopter who cannot reach
-`ee-skills`, and `register-check` runs the same two verify blocks over what you
-write as over anything a gate writes, because a control is verified by what your
-repository contains and not by what put it there. DOC-001 was **the one control
-an outside adopter satisfies by hand** until YML-001 joined it (ADR 0059). It is
-one control's worth of extra work, written here rather than discovered.
+Install both **inside the container**, where § 0.0's second install went:
 
-Two routes were rejected and are worth knowing about, because both look
-reasonable. **Copying `lint-md` into your repository** is what Phase 4 did, and
-it is recorded as what happened rather than as a recommendation: a copy of
-someone else's skill, in your repository, going stale with no line to read on
-the day it stops matching upstream — and `register-check deployments` cannot
-reconcile it, because a copied directory is not an installed plugin. **A DOC-001
-gate in this plugin** would fork one lifecycle into two implementations free to
-drift, which is the duplication this standard exists to prevent, one level up.
+```bash
+claude plugin install lint-md@ee-standard
+claude plugin install lint-yaml@ee-standard
+```
 
-The good news, which is not obvious: **DOC-001 asks for no provenance stamp.**
-Its verify blocks are the tool itself and `markdown_gate_wired_at_all_loci` —
-there is no `provenance_stamp_present`, so a hand-wired deployment passes the
-control completely rather than passing it in part. `deployed_by: lint-md` only
-matters where a stamp is read, and here nothing reads one. **Do not write a
-stamp naming `lint-md`**: a stamp names the skill that deployed the artefact, and
-recording a deployment that did not happen is worse than recording none.
+Then, in a session in your repository, run `/lint-md`, then `/lint-yaml`.
+`/register-adopt` plans both controls as *dispatch elsewhere*: it names the
+skill and does not run it, so these are two commands you run yourself. Each
+skill writes its tool's configuration, a PostToolUse hook script and its
+`.claude/settings.json` entry, a pre-commit hook and a CI step. `lint-md`
+pins `markdownlint-cli2` in `package-lock.json`, and `lint-yaml` adds
+`yamllint` to your `uv.lock`, which are where the register pins each tool.
 
-Seven steps. Six were done in Phase 4's consumer repository; the seventh — the
-editor locus — was missing from this list until an adopter deployed the other six
-and the gate said so, and all seven are now verified together in a repository
-that had none of them. The lockfile is the pin:
+**How you know it worked:**
+
+```bash
+claude plugin list | grep -E 'lint-(md|yaml)'
+uv run register-check run --control DOC-001 --control YML-001
+```
+
+The first prints two rows. The second passes both controls, or names what is
+missing. Three things are left for you, and the checker reports the first two:
+
+1. **DOC-001's editor extension.** `lint-md` does not write it. Add the id the
+   register names, `editor_extension:` in DOC-001's `args:`, to
+   `.devcontainer/devcontainer.json` under `customizations.vscode.extensions`.
+   That is step 7 of the by-hand route below. YML-001 has no extension, since
+   none runs yamllint, so its hook is its whole editor locus.
+2. **A root `.gitignore` containing `node_modules/`.** That is step 4 below,
+   and the reason is the same: without it DOC-001 lints somebody else's
+   markdown.
+3. **Re-run `/gate-supply-chain`.** `lint-md` gave the repository a
+   `package.json`, which is a node ecosystem, and SUP-002 needs an update
+   channel for it. § 3.A says why the gate adds it rather than you.
+
+**If you will not install a plugin**, § 3.A is DOC-001 by hand, and YML-001's
+by-hand route is listed after it. It is the fallback, and nothing in it is
+better than the skills.
+
+### 3.A — The lint controls by hand
+
+This route was the supported one until ADR 0060, when `ee-skills` was the only
+place `lint-md` could be installed from.
+[ADR 0044](adr/0044-the-adopter-installs-from-the-public-marketplace.md)'s
+reasoning still holds for anyone who takes it: `register-check` runs the same
+verify blocks over what you write as over anything a skill writes, because a
+control is verified by what your repository contains and not by what put it
+there.
+
+**Neither control asks for a provenance stamp.** DOC-001's verify blocks are the
+tool itself and `markdown_gate_wired_at_all_loci`, and YML-001's are the tool and
+`yaml_gate_wired_at_all_loci`. Neither runs `provenance_stamp_present`, so a
+hand-wired deployment passes the control completely. **Do not write a stamp
+naming `lint-md` or `lint-yaml`**: a stamp names the skill that deployed the
+artefact, and recording a deployment that did not happen is worse than
+recording none.
+
+**DOC-001, in seven steps.** Six were done in Phase 4's consumer repository; the
+seventh, the editor locus, was missing from this list until an adopter deployed
+the other six and the gate said so, and all seven are now verified together in
+a repository that had none of them. The lockfile is the pin:
 
 ```bash
 npm init -y && npm install --save-dev markdownlint-cli2
@@ -1209,6 +1248,34 @@ adding the entry by hand would leave a stamp claiming work the gate did not do.
 
 Found by the first adopter to deploy DOC-001 into a Python-only repository, which
 is what every adopter following this guide has.
+
+**YML-001, in five artefacts.** Each is one `lint-yaml` writes, and the mirror
+in `plugins/lint-yaml/` is where to read them, at the version
+`docs/promotion/mirrored.json` records. The lockfile is the pin:
+
+```bash
+uv add --dev yamllint
+```
+
+1. `uv.lock` — commit it. Every locus runs `uv run yamllint`, which is the
+   register's `tools.yamllint.invocation`, so there is no version to write
+   anywhere else.
+2. `.yamllint.yml` — `extends: default`, with the floor stated at
+   `level: error` rather than inherited: `key-duplicates`, and `truthy` with
+   `allowed-values: ['true', 'false']` and `check-keys: false`.
+   `ignore-from-file: .gitignore` scopes it, and nothing tracked may be ignored.
+   Step 2 of `plugins/lint-yaml/skills/lint-yaml/SKILL.md` has the whole file.
+3. `.claude/hooks/yaml-lint.py`, and its PostToolUse entry in
+   `.claude/settings.json`. This is the editor locus, and YML-001's only one, so
+   its absence fails the control. Copy
+   `plugins/lint-yaml/skills/lint-yaml/scripts/yaml-lint-hook.py`, and say in
+   the commit which version the record named. That copy is the one ADR 0060
+   was written to spare you, which is the best argument for the skill. Step
+   2.5b of the same file has the settings entry.
+4. A `pre-commit` hook, `repo: local`, whose `entry` is `uv run yamllint`.
+5. A CI step running `uv run yamllint .`, after `astral-sh/setup-uv`.
+
+Then `uv run register-check run --control YML-001`.
 
 What follows describes this repository's own artefacts, which are the reference
 implementation:
@@ -1451,7 +1518,8 @@ them.** Each is the check working, not a new rule:
    what ADR 0019 forbids, and TYP-001 allows no per-file opt-out. Two routes
    remain, and both leave the control meaning what it says. **Get it fixed
    upstream**, so the vendored copy passes strict mode and the allow-list can
-   name its directory — `lint-yaml`'s hook needs one function annotated. Or
+   name its directory. `lint-yaml`'s hook needed one function annotated, and
+   has passed strict mode since `lint-yaml` 0.1.16. Or
    **stop tracking it**, and have whatever installs it write it at setup. Until
    one of those, TYP-001 fails, and that failure is accurate: the repository
    runs a Python file nothing type-checks.

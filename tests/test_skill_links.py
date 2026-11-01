@@ -23,6 +23,7 @@ this repository would notice their absence.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -37,10 +38,17 @@ LINKS_DIR = REPO_ROOT / ".claude/skills"
 #: Craft installer and a test that knew about one plugin would have passed while
 #: the new skill was unreachable — which is the exact failure this file exists
 #: to catch, one directory up from where it was looking.
+#:
+#: A mirrored plugin is not this repository's to submit, and is excluded by the
+#: record that names it (ADR 0060). Its skills go up from the incubator, and a
+#: project-scope link would shadow the copy a session here has installed. It
+#: keeps upstream's `LICENSE`, which `tests/test_mirrored_plugins.py` holds to
+#: what was published, so the licence test below would demand an edit to it.
+MIRRORED = set(json.loads((REPO_ROOT / "docs/promotion/mirrored.json").read_text())["plugins"])
 SKILL_OWNER = {
     skill.name: plugin.name
     for plugin in sorted(PLUGINS_DIR.iterdir())
-    if (plugin / "skills").is_dir()
+    if (plugin / "skills").is_dir() and plugin.name not in MIRRORED
     for skill in sorted((plugin / "skills").iterdir())
     if skill.is_dir()
 }
