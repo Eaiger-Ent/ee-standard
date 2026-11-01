@@ -29,6 +29,28 @@
       },
       "homepage": "https://github.com/Eaiger-Ent/ee-standard/tree/main/plugins/craft",
       "source": "./plugins/craft"
+    },
+    {
+      "name": "lint-md",
+      "description": "Lint Markdown with one pinned markdownlint-cli2 while you write, before you commit and before you merge. Mirrored from the copy Equal Experts publishes in ee-skills, so a repository outside it can deploy DOC-001.",
+      "category": "quality",
+      "author": {
+        "name": "Equal Experts",
+        "email": "nathan.carney@equalexperts.com"
+      },
+      "homepage": "https://github.com/Eaiger-Ent/ee-standard/tree/main/plugins/lint-md",
+      "source": "./plugins/lint-md"
+    },
+    {
+      "name": "lint-yaml",
+      "description": "Lint YAML with one pinned yamllint while you write, before you commit and before you merge, so a duplicate key fails rather than silently replacing a value. Mirrored from the copy Equal Experts publishes in ee-skills, so a repository outside it can deploy YML-001.",
+      "category": "quality",
+      "author": {
+        "name": "Equal Experts",
+        "email": "nathan.carney@equalexperts.com"
+      },
+      "homepage": "https://github.com/Eaiger-Ent/ee-standard/tree/main/plugins/lint-yaml",
+      "source": "./plugins/lint-yaml"
     }
   ]
 }

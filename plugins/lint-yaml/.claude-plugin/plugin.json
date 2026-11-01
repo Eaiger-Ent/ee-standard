@@ -1,0 +1,9 @@
+{
+  "name": "lint-yaml",
+  "description": "Set up yamllint YAML linting: installs yamllint, drops a config file, wires a pre-commit hook, and adds a GitHub Actions CI step.",
+  "author": {
+    "name": "Equal Experts",
+    "email": "nathan.carney@equalexperts.com"
+  },
+  "version": "0.1.20"
+}
