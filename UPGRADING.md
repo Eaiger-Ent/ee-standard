@@ -144,9 +144,30 @@ Lines under *Pinned, and no bot will ever propose moving it* are information,
 not actions. The table of states, and what each one asks of you, is
 [`docs/08-adopting.md`](docs/08-adopting.md) § 4.4.
 
-**Done when** the summary line reads `0 owed a deployment`. A release whose notes
-say no contract moved should already read that after step 4. If it does not,
-the gate was already owed before this upgrade.
+**Then deploy the controls no gate in `control-register` deploys.** The report
+above covers only `control-register`'s own gates. A control whose `deployed_by`
+names a skill that plugin does not ship never appears in it, so `0 owed` says
+nothing about it. List those skills from the register you moved in step 3:
+
+```bash
+grep -h '^    deployed_by:' controls.yaml | awk '{print $2}' | sort -u | while read -r s; do test -d "$plugin/skills/$s" || echo "$s"; done
+```
+
+Each name it prints is a plugin of its own: `lint-md` deploys DOC-001 and
+`lint-yaml` deploys YML-001. For each one, `claude plugin list` shows whether it
+is installed, and from which marketplace.
+
+Install any that are missing, with `claude plugin install <name>@ee-standard`
+(or `@ee-skills`), and update any that are present, as step 1 did for
+`control-register`. Then run each one in Claude Code as `/<name>`, whether it is
+new or was there before: a release that adds a control to the register adds
+work for that skill to do. [`docs/08-adopting.md`](docs/08-adopting.md) § 3 is
+the full route, including what each skill leaves for you.
+
+**Done when** the summary line reads `0 owed a deployment`, and
+`uv run register-check run --control <ID>` passes for each control those skills
+deploy. A release whose notes say no contract moved should already read that
+after step 4. If it does not, the gate was already owed before this upgrade.
 
 ## 6 — Run the whole register, and land it
 
