@@ -20,10 +20,11 @@ LINT_INVOCATION = "yamllint"
 LINT = shlex.split(LINT_INVOCATION)
 
 # What to call the thing in the hook's own output. A configured invocation need not be
-# yamllint at all, and a line that says "yamllint" over the output of something else sends
-# the reader to the wrong tool's documentation.
-# The tool is the first token that names yamllint, not the first token: in `uv run yamllint`
-# or `uvx --from yamllint==1.38.0 yamllint` the first token is the runner.
+# yamllint at all, and a line that says "yamllint" over the output of something else
+# sends the reader to the wrong tool's documentation.
+# The tool is the first token that names yamllint, not the first token: in
+# `uv run yamllint` or `uvx --from yamllint==1.38.0 yamllint` the first token is the
+# runner.
 TOOL = next(
     (Path(token).name for token in LINT if Path(token).name == 'yamllint'),
     Path(LINT[0]).name if LINT else 'yaml-lint',
