@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run python
-"""PostToolUse hook: auto-fix Markdown files with markdownlint-cli2, block on the rest."""
+"""PostToolUse hook: auto-fix Markdown with markdownlint-cli2, block on the rest."""
 
 import json
 import shlex
@@ -84,7 +84,8 @@ def main() -> int:
         print(
             f"\n\n⚠ STOP: markdownlint [{target.name}] has unfixable errors — "
             f"do not proceed until resolved.\n"
-            f"Fix each issue listed below by editing {target}, then re-save:\n\n{findings}\n"
+            f"Fix each issue listed below by editing {target}, then re-save:\n\n"
+            f"{findings}\n"
         )
         return 1
 

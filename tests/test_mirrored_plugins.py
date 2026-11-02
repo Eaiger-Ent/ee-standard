@@ -11,6 +11,7 @@ installed checkout that `_no_ambient_plugin_inventory` keeps from every test.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -178,3 +179,53 @@ def test_a_mirror_is_written_reconciled_and_reported_behind_without_failing(
     assert main(["--check", "--checkout", str(newer), *common]) == 0
     assert "BEHIND: lint-x: published 0.1.1, mirrored 0.1.0" in capsys.readouterr().out
     assert read_upstream(newer, "lint-x", entry)[0]["version"] == "0.1.1"
+
+
+#: The skill step that copies a script into the adopter's repository.
+_HOOK_COPY = re.compile(r'cp "\$\{CLAUDE_SKILL_DIR\}/scripts/([\w.-]+)" \.claude/hooks/')
+
+
+def _deployed_hooks() -> list[Path]:
+    return [
+        skill.parent / "scripts" / script
+        for name in MIRRORS
+        for skill in sorted((REPO_ROOT / "plugins" / name / "skills").glob("*/SKILL.md"))
+        for script in _HOOK_COPY.findall(skill.read_text(encoding="utf-8"))
+    ]
+
+
+def _strictest_craft_line_length() -> int:
+    regions = (REPO_ROOT / "plugins/craft/profiles").glob("*/pyproject-region.toml")
+    limits = [
+        int(found)
+        for region in regions
+        for found in re.findall(r"^line-length = (\d+)", region.read_text(), re.MULTILINE)
+    ]
+    assert limits, "no Craft profile sets line-length — this test is now vacuous"
+    return min(limits)
+
+
+def test_the_skills_still_say_which_hooks_they_deploy() -> None:
+    """Checked separately so a reworded copy step fails here, not by emptying the test below."""
+    assert {hook.name for hook in _deployed_hooks()} == {"md-lint-hook.py", "yaml-lint-hook.py"}
+
+
+@pytest.mark.parametrize("hook", _deployed_hooks(), ids=lambda hook: hook.name)
+def test_a_deployed_hook_fits_every_craft_profile(hook: Path) -> None:
+    """An adopter can neither fix a deployed hook's lint failures nor exempt the file.
+
+    A deployed copy may differ from upstream only by `LINT_INVOCATION`, so
+    rewrapping it locally makes it read as tampered with, and the next
+    redeploy undoes the edit. An `extend-exclude` or `per-file-ignores` entry
+    weakens LNT-001, which admits no exemptions. So a hook wider than a Craft
+    profile fails every adopter who installs both, and only upstream can fix it.
+    lint-md 1.0.23 and lint-yaml 0.1.20 did exactly that (#285). This
+    repository's own limit is 100, so nothing here noticed.
+    """
+    limit = _strictest_craft_line_length()
+    long = [
+        f"{number}: {len(line)}"
+        for number, line in enumerate(hook.read_text(encoding="utf-8").splitlines(), 1)
+        if len(line) > limit
+    ]
+    assert not long, f"{hook.name} has lines over {limit} (line: width): {long}"
