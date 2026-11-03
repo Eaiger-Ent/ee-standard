@@ -162,6 +162,32 @@ def test_missing_repo_path_is_an_error(tmp_path: Path, capsys: pytest.CaptureFix
     assert "nope" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize(
+    "command", [[], ["schema"], ["run", "--tier", "1"], ["explain", "SEC-001"]]
+)
+def test_a_repository_with_no_register_is_a_usage_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], command: list[str]
+) -> None:
+    """No `controls.yaml` and no `--register` is `2`, not a verified violation.
+
+    Phase 11: this exited `1`, which a pipeline reads as *something is wrong
+    with this repository*, when the run had found nothing at all.
+    """
+    make_repo(tmp_path, {"README.md": "# probe\n"})
+    code = main(["--repo", str(tmp_path), *command])
+    err = capsys.readouterr().err
+    assert code == 2
+    assert "--register" in err
+
+
+def test_a_register_that_does_not_validate_is_still_a_violation(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    make_repo(tmp_path, {"README.md": "# probe\n", "controls.yaml": "meta: {}\n"})
+    assert main(["--repo", str(tmp_path), "schema"]) == 1
+    assert "is not a valid register" in capsys.readouterr().err
+
+
 def test_repo_helper_reports_non_git_directories(tmp_path: Path) -> None:
     assert Repo(tmp_path).is_git_repo() is False
     assert make_repo(tmp_path / "r", {"a.txt": "x"}).is_git_repo() is True

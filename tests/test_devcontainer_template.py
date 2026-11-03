@@ -312,6 +312,45 @@ def test_a_copied_template_does_not_track_the_secrets_files(tmp_path: Path) -> N
     assert ".devcontainer/.env.docker" not in tracked
 
 
+@pytest.mark.parametrize(
+    "script",
+    [TEMPLATE / "fetch-secrets.sh", REPO_ROOT / ".devcontainer/fetch-secrets.sh"],
+    ids=["template", "this-repo"],
+)
+def test_the_secrets_files_are_readable_by_their_owner_only(script: Path, tmp_path: Path) -> None:
+    """Both files hold a live OAuth token and PATs, so both end at `0600`.
+
+    Phase 11 found `.env` left at whatever mode the umask gave it, `0644` here,
+    while the docs present it as the credential boundary. The run starts from a
+    `.env` an earlier run left world-readable, because truncating a file keeps
+    its mode and that is the case a fresh-file test would miss. A stub stands in
+    for macOS's `security`, so the script runs on the host that ships it and in
+    this container alike.
+    """
+    stubs = tmp_path / "bin"
+    stubs.mkdir()
+    security = stubs / "security"
+    security.write_text("#!/usr/bin/env bash\necho sk-not-a-real-secret\n", encoding="utf-8")
+    security.chmod(0o755)
+    work = tmp_path / "probe-app"
+    (work / ".devcontainer").mkdir(parents=True)
+    stale = work / ".devcontainer/.env"
+    stale.write_text("STALE=1\n", encoding="utf-8")
+    stale.chmod(0o644)
+    result = subprocess.run(
+        ["bash", str(script)],
+        cwd=work,
+        env={"PATH": f"{stubs}:/usr/bin:/bin", "USER": "probe", "HOME": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    for name in (".env", ".env.docker"):
+        mode = (work / ".devcontainer" / name).stat().st_mode & 0o777
+        assert mode == 0o600, f"{name} is {mode:o}"
+
+
 def test_the_template_carries_no_value_the_register_pins() -> None:
     """The same rule `tests/test_plugin.py` holds over the skills.
 

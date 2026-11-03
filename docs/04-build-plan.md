@@ -1772,11 +1772,16 @@ crediting `run --tier 1`, also fixed in Phase 8. What is still true is below.
    § What is deliberately not in scope gated it on Phase 4, which is met, so
    starting it is now a scope decision rather than outstanding work.
 
-- [ ] `fetch-secrets.sh` leaves `.devcontainer/.env` at mode `0600`, here and in
+- [x] `fetch-secrets.sh` leaves `.devcontainer/.env` at mode `0600`, here and in
       `plugins/control-register/templates/devcontainer/`, and a test fails a
-      copy that does not.
-- [ ] A `--repo` target with no `controls.yaml` and no `--register` exits `2`,
-      as ADR 0016 reserves for a usage error, rather than `1`.
+      copy that does not. Closed 2026-11-03: `umask 077`, and each file is set
+      to `0600` before any value is written. The test runs both copies from a
+      stale `0644` `.env` and failed before the fix. The template change is
+      declared `owed-upstream` in `published.json`.
+- [x] A `--repo` target with no `controls.yaml` and no `--register` exits `2`,
+      as ADR 0016 reserves for a usage error, rather than `1`. Closed
+      2026-11-03: an unreadable register exits `2` and names `--register`, and
+      one that reads but does not validate stays `1`. `test_robustness.py`.
 - [ ] DEV-001's and SUP-002's titles say what their verify blocks assert:
       DEV-001 also covers the image digest, and SUP-002 passes over the npm and
       curl pins that Dependabot cannot propose.
