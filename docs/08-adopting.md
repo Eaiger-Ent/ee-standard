@@ -808,6 +808,23 @@ Both files must stay gitignored. That is not housekeeping either: the
 `.gitignore` that came with the copy names them, and **SEC-001 reads exactly
 those lines**.
 
+**And both are readable by you alone, mode `0600`.** They hold a live OAuth
+token and your PATs. The shipped script sets each file's mode before it writes
+a value, so a replacement owes the same. A template copied before 2026-11-03
+left `.env` at your umask's mode, usually `0644`, and running the newer script
+fixes a file the older one wrote. Until you take that change, set the modes on
+your Mac yourself:
+
+```bash
+chmod 600 .devcontainer/.env .devcontainer/.env.docker
+```
+
+**How you know it worked:** `stat -f '%Lp %N' .devcontainer/.env*` prints
+`600` for both files. Run it again after the next `devcontainer up`. The older
+script truncates `.env` rather than replacing it, and truncation keeps the
+mode, so the fix holds until the file is deleted. Take the script change so
+that a deleted file comes back private as well.
+
 **Adding a feature means rebuilding, not restarting.** `devcontainer up` reuses
 an existing container and the lock file is regenerated only on a build, so the
 lock ends up covering the features you had rather than the ones you declared —
@@ -1941,6 +1958,7 @@ Read the exit code, not just the report
 | --- | --- |
 | `0` | Every applicable control was verified and none failed |
 | `1` | A verified violation |
+| `2` | A usage error: no repository at `--repo`, or no `controls.yaml` there and no `--register` naming one. Nothing was checked |
 | `3` | No violation found, but something could not be verified |
 | — | `--require-complete` promotes `3` to `1` |
 

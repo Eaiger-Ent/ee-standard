@@ -1793,9 +1793,10 @@ crediting `run --tier 1`, also fixed in Phase 8. What is still true is below.
       README's SUP-003 row says *third-party*. `06-devcontainer-setup.md`
       names every job `setup.sh` does. Closed 2026-11-03, each corrected in
       place.
-- [ ] Any step this phase gives an adopter is in [`08-adopting.md`](08-adopting.md),
+- [x] Any step this phase gives an adopter is in [`08-adopting.md`](08-adopting.md),
       with how they know it worked. The `.env` mode applies to an adopter who
-      has already copied the template.
+      has already copied the template. Closed 2026-11-03: § 2's secrets
+      contract states `0600` with a `stat` check, and the exit-code table gains `2`.
 
 ## What is deliberately not in scope
 
