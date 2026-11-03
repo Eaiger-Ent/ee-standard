@@ -177,9 +177,23 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _load(repo_path: Path, register_path: Path | None) -> tuple[Register | None, int]:
+    """The register, or the exit code for why there is none.
+
+    A register that cannot be read is a usage error, `2` under ADR 0016: the run
+    was pointed at nothing, so nothing was found to be wrong. Phase 11 found it
+    exiting `1`, which a pipeline reads as a verified violation. A register that
+    reads but does not validate stays `1`, because that is a real failure, and
+    it is the one `register-check schema` exists to fail.
+    """
     path = register_path or repo_path / "controls.yaml"
     register, errors = load_register(path)
     if register is None:
+        if any(error.field == "(file)" for error in errors):
+            print(f"register-check: cannot read a register at {path}", file=sys.stderr)
+            for error in errors:
+                print(f"  {error}", file=sys.stderr)
+            print("  name one with --register PATH", file=sys.stderr)
+            return None, 2
         print(f"schema: {path} is not a valid register:", file=sys.stderr)
         for error in errors:
             print(f"  {error}", file=sys.stderr)

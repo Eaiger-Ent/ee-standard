@@ -1778,8 +1778,10 @@ crediting `run --tier 1`, also fixed in Phase 8. What is still true is below.
       to `0600` before any value is written. The test runs both copies from a
       stale `0644` `.env` and failed before the fix. The template change is
       declared `owed-upstream` in `published.json`.
-- [ ] A `--repo` target with no `controls.yaml` and no `--register` exits `2`,
-      as ADR 0016 reserves for a usage error, rather than `1`.
+- [x] A `--repo` target with no `controls.yaml` and no `--register` exits `2`,
+      as ADR 0016 reserves for a usage error, rather than `1`. Closed
+      2026-11-03: an unreadable register exits `2` and names `--register`, and
+      one that reads but does not validate stays `1`. `test_robustness.py`.
 - [ ] DEV-001's and SUP-002's titles say what their verify blocks assert:
       DEV-001 also covers the image digest, and SUP-002 passes over the npm and
       curl pins that Dependabot cannot propose.
