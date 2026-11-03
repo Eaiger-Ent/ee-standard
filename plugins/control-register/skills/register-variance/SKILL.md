@@ -215,7 +215,9 @@ classification, and it is why the `Fixable:` line names the entry to add.
 
 Canonical source for the shared standards below:
 `${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
-`docs/02-skill-family.md`.
+`docs/02-skill-family.md`, whose rows list the skills that read each
+file — generated from the skills, so the row is the authority when this list
+and it disagree.
 
 - **Write narration shape** (`reference/write-narration.md`) — shared with
   `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,

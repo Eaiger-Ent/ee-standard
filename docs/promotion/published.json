@@ -1,8 +1,8 @@
 {
   "plugin": "control-register",
   "marketplace": "EqualExperts/ee-skills",
-  "version": "0.1.21",
-  "commit": "1e716ef41c7f44073bf72672a201a23e4a012dad",
+  "version": "0.1.22",
+  "commit": "e43db989010d0c2e2af0cd48a376ff15a5f6f18b",
   "differences": {
     ".claude-plugin/plugin.json": {
       "stance": "by-design",
@@ -13,21 +13,17 @@
     },
     "skills/gate-*/SKILL.md": {
       "stance": "by-design",
-      "why": "Each copy names its own repository's skill map: docs/02-skill-family.md here, docs/skill-relationship-map.md in the incubator, which substitutes it on promotion (docs/05-promotion.md row 8). Nothing else may differ. Widened to the gates and register-install on re-recording at 0.1.21, once ADR 0059 revision 2 shipped (incubator#1247 to #1253) and the incubator's review fixes were taken back. register-adopt and register-variance carry the same pattern in their own owed-upstream entry, because a file may match only one difference; fold them back here once #1258's change ships.",
+      "why": "Each copy names its own repository's skill map: docs/02-skill-family.md here, docs/skill-relationship-map.md in the incubator, which substitutes it on promotion (docs/05-promotion.md row 8). Nothing else may differ. Widened to the gates and register-install on re-recording at 0.1.21, once ADR 0059 revision 2 shipped (incubator#1247 to #1253) and the incubator's review fixes were taken back. register-adopt and register-variance folded in on re-recording at 0.1.22, once #1258 shipped and the incubator's 'whose rows list the skills' sentence was taken back.",
       "normalise": [
         "docs/(?:02-skill-family|skill-relationship-map)\\.md"
       ]
     },
-    "skills/register-install/SKILL.md": {
+    "skills/register-*/SKILL.md": {
       "stance": "by-design",
-      "why": "Each copy names its own repository's skill map: docs/02-skill-family.md here, docs/skill-relationship-map.md in the incubator, which substitutes it on promotion (docs/05-promotion.md row 8). Nothing else may differ. Widened to the gates and register-install on re-recording at 0.1.21, once ADR 0059 revision 2 shipped (incubator#1247 to #1253) and the incubator's review fixes were taken back. register-adopt and register-variance carry the same pattern in their own owed-upstream entry, because a file may match only one difference; fold them back here once #1258's change ships.",
+      "why": "Each copy names its own repository's skill map: docs/02-skill-family.md here, docs/skill-relationship-map.md in the incubator, which substitutes it on promotion (docs/05-promotion.md row 8). Nothing else may differ. Widened to the gates and register-install on re-recording at 0.1.21, once ADR 0059 revision 2 shipped (incubator#1247 to #1253) and the incubator's review fixes were taken back. register-adopt and register-variance folded in on re-recording at 0.1.22, once #1258 shipped and the incubator's 'whose rows list the skills' sentence was taken back.",
       "normalise": [
         "docs/(?:02-skill-family|skill-relationship-map)\\.md"
       ]
-    },
-    "skills/register-[av]*/SKILL.md": {
-      "stance": "owed-upstream",
-      "why": "Incubator #1258, from the ADR 0059 revision 2 review: register-adopt and register-variance restated the write-narration sharers, naming register-adopt, which never reads reference/write-narration.md. register-adopt drops that bullet; register-variance says 'the shared standards' and 'a copy per skill', as the gates already do at 0.1.21. Neither could change in release set adr-0059-template-layout, because a release changes only skills its members submitted. Each SKILL.md also differs by the docs link, as every skill does."
     },
     "templates/devcontainer/fetch-secrets.sh": {
       "stance": "owed-upstream",
