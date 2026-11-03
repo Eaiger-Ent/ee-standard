@@ -239,9 +239,9 @@ growing. A repository that does serve something declares it in `forwardPorts`,
 where it is reviewable.
 
 The `.devcontainer/` directory carries `fetch-secrets.sh`, `setup.sh`,
-`check-auth.sh`, `devcontainer.json`, `devcontainer-lock.json`, and
-`claude-user-settings.json` — the same file set as the existing template, with
-project-specific content stripped.
+`check-auth.sh`, `devcontainer.json` and `devcontainer-lock.json`, which is the
+shipped template's file set with project-specific content stripped. This
+repository adds `bin/`, the two wrappers for the second organisation's token.
 
 ## Who owns which step
 

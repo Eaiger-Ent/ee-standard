@@ -1301,7 +1301,15 @@ controls:
     rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0003-frozen-dependency-resolution.md
 
   - id: SUP-002
-    title: Dependency updates are proposed automatically
+    # Retitled 2026-11-03 (Phase 11). It read *Dependency updates are proposed
+    # automatically*, which is wider than the assert below: it checks that a bot
+    # covers every package ecosystem present, and it does not check a version
+    # literal outside one, such as a tool `setup.sh` fetches with curl. This
+    # repository's Renovate custom managers propose those, but
+    # `tests/test_renovate_managers.py` holds them and no control does, so an
+    # adopter with Dependabot alone passes. Widening the control was weighed and
+    # not taken. The title now says what passes.
+    title: Updates are proposed automatically for every package ecosystem present
     enforces: >
       A Dependabot or Renovate configuration exists and covers every ecosystem
       present in the repo, including GitHub Actions.
@@ -1500,7 +1508,10 @@ controls:
     rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0006-containers-run-unprivileged.md
 
   - id: DEV-001
-    title: Devcontainer features are version-pinned
+    # Retitled 2026-11-03 (Phase 11). It read *Devcontainer features are
+    # version-pinned*, and the image digest, the half the enforcement text calls
+    # the more dangerous to miss, was absent from it.
+    title: The devcontainer image and every feature are pinned by digest
     enforces: >
       `.devcontainer/devcontainer-lock.json` exists and pins every feature
       referenced by `devcontainer.json` to a resolved digest, and the `image`
