@@ -269,6 +269,10 @@ phase's forensics live there.
 
 ### Carried debt — recorded, not gating
 
+**Superseded 2026-11-03 by § Phase 11**, which re-checked each entry against
+the code and holds every one still true as a criterion. The entries below are
+the record as it was written. Phase 11 is where the work is.
+
 - ADR 0013's unsupported line-length passage — **closed**: git history shows
   DOC-001 was introduced already at 250, the commit message said "from the
   previous 80", and the ADR said 120. Three numbers for one event, cited as the
@@ -1738,6 +1742,52 @@ republication on the same day.
       marketplace's convention and not an oversight to report. The difference
       stays declared and permanent, and the record reports it stale if
       upstream ever drops the key. ADR 0060 revision 2.
+
+## Phase 11 — The carried debt, closed in order
+
+On 2026-11-03 every criterion above was met, and the only remaining work was
+the debt Phase 1.5 recorded as not gating, plus the Craft workstream's own list.
+That debt was checked against the code before being moved here. Three entries
+had already been closed by later phases: the arm64 digests, now in the register
+and compared; LNT-001's and TYP-001's titles, fixed in Phase 8; and GOV-001
+crediting `run --tier 1`, also fixed in Phase 8. What is still true is below.
+
+**The order, and why.** Run the criteria in the order written, for these reasons:
+
+1. **The credential file first.** It is the only item that leaves something
+   exposed, and the shipped template has the same gap, so every adopter
+   inherits it.
+2. **The exit code second.** It is the only item that changes behaviour an
+   adopter's pipeline reads, and the contract it breaks is ADR 0016's.
+3. **Titles third, then the doc sweep.** Neither changes behaviour, and the
+   titles are the register itself, while the sweep is prose about it.
+4. **Then the adopter guide**, which is this plan's standing criterion and can
+   only be judged once the first two have landed.
+5. **After this phase, in Craft's list:** the one open box in
+   [`craft/todo.md`](craft/todo.md), a stack that arrives after the install is
+   reported. It is design work and has a home of its own. The items
+   [`review.trial.md`](craft/review.trial.md) marks *carried, not felt* wait for
+   a repository that feels them.
+6. **Last, and not a criterion:** whether to start Tier 2 with AGT-001.
+   § What is deliberately not in scope gated it on Phase 4, which is met, so
+   starting it is now a scope decision rather than outstanding work.
+
+- [ ] `fetch-secrets.sh` leaves `.devcontainer/.env` at mode `0600`, here and in
+      `plugins/control-register/templates/devcontainer/`, and a test fails a
+      copy that does not.
+- [ ] A `--repo` target with no `controls.yaml` and no `--register` exits `2`,
+      as ADR 0016 reserves for a usage error, rather than `1`.
+- [ ] DEV-001's and SUP-002's titles say what their verify blocks assert:
+      DEV-001 also covers the image digest, and SUP-002 passes over the npm and
+      curl pins that Dependabot cannot propose.
+- [ ] The Phase 1.5 doc sweep is closed. The schema doc's `rung` row includes
+      `blocking (baselined)`. Its "on every commit" says which commits.
+      `03-devcontainer.md` stops listing `claude-user-settings.json`. The
+      README's SUP-003 row says *third-party*. `06-devcontainer-setup.md`
+      names every job `setup.sh` does.
+- [ ] Any step this phase gives an adopter is in [`08-adopting.md`](08-adopting.md),
+      with how they know it worked. The `.env` mode applies to an adopter who
+      has already copied the template.
 
 ## What is deliberately not in scope
 
