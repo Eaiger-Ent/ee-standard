@@ -124,7 +124,7 @@ baselined:
 | SEC-003 | CI carries no platform credential the register does not name |
 | SUP-001 | Dependencies resolve from a frozen lockfile |
 | SUP-002 | Every package ecosystem gets its updates as reviewable proposals |
-| SUP-003 | CI actions are pinned to an immutable SHA |
+| SUP-003 | Third-party CI actions are pinned to an immutable SHA |
 | SUP-004 | A pinned release digest is the one the project published |
 | BLD-001 | The container's final user is not root |
 | DEV-001 | The devcontainer's image and features are pinned |

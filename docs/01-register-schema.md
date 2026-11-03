@@ -3,9 +3,11 @@
 Field-by-field specification for `controls.yaml`. Concepts behind these fields
 are in [`00-concepts.md`](00-concepts.md).
 
-The register is validated by `register-check schema` on every commit. A malformed
-register is a build failure, not a warning — everything downstream derives from
-it, so an unparseable register means no control is enforced.
+The register is validated by `register-check schema` at pre-commit, on every
+commit that touches `controls.yaml`, and loaded and validated again by every CI
+run of `register-check`. A malformed register is a build failure, not a
+warning — everything downstream derives from it, so an unparseable register
+means no control is enforced.
 
 ## Top level
 
@@ -56,7 +58,7 @@ ignore the recommendation, which costs more than the edit saved.
 | `standard` | yes | object | `name` + `url` of the external standard. |
 | `also_see` | no | list | Further `name`/`url` pairs — tool docs, internal playbooks. |
 | `tier` | yes | 1-3 | See § Tiering in concepts. |
-| `rung` | yes | enum | `advisory` / `warn` / `blocking`. |
+| `rung` | yes | enum | `advisory` / `warn` / `blocking` / `blocking (baselined)`. The last is blocking for new code with a recorded set of existing violations tolerated, and a Tier-1 control may not use it. |
 | `locus` | yes | list | `editor` / `pre-commit` / `pre-push` / `ci` / `remote`. |
 | `applies_to` | yes | list | Predicate names. Unsatisfied predicate → control is **skipped**, not failed. |
 | `deployed_by` | no | string | The gate skill that writes this control's artefacts. |

@@ -1787,11 +1787,12 @@ crediting `run --tier 1`, also fixed in Phase 8. What is still true is below.
       curl pins that Dependabot cannot propose. Closed 2026-11-03 by narrowing
       both titles. Widening SUP-002 to the literal pins was weighed and not
       taken, as the comment above its title records.
-- [ ] The Phase 1.5 doc sweep is closed. The schema doc's `rung` row includes
+- [x] The Phase 1.5 doc sweep is closed. The schema doc's `rung` row includes
       `blocking (baselined)`. Its "on every commit" says which commits.
       `03-devcontainer.md` stops listing `claude-user-settings.json`. The
       README's SUP-003 row says *third-party*. `06-devcontainer-setup.md`
-      names every job `setup.sh` does.
+      names every job `setup.sh` does. Closed 2026-11-03, each corrected in
+      place.
 - [ ] Any step this phase gives an adopter is in [`08-adopting.md`](08-adopting.md),
       with how they know it worked. The `.env` mode applies to an adopter who
       has already copied the template.

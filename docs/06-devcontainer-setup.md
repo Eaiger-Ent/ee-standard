@@ -199,7 +199,7 @@ Four files, plus the lock file you generate in step 4.
 | --- | --- | --- |
 | [`devcontainer.json`](../.devcontainer/devcontainer.json) | — | Digest-pinned image, four pinned features, `remoteUser: vscode`, one persistent volume |
 | [`fetch-secrets.sh`](../.devcontainer/fetch-secrets.sh) | Host, before start | Keychain → `.devcontainer/.env`, then → `.env.docker` |
-| [`setup.sh`](../.devcontainer/setup.sh) | Container, on create | Volume ownership, `markdownlint-cli2` pin, git credential helper |
+| [`setup.sh`](../.devcontainer/setup.sh) | Container, on create | Volume ownership, workspace `safe.directory`, the Claude Code package handed to `vscode`, `npm ci`, uv and gitleaks from pinned releases against their checksums, `uv sync --frozen`, the pre-commit and pre-push hooks, the gh credential helper, the `bin/` wrappers, and the ee-skills plugins |
 | [`check-auth.sh`](../.devcontainer/check-auth.sh) | Container, every start | Re-sources `.env`, prints the auth banner |
 
 Three things differ from the target file sketched in
