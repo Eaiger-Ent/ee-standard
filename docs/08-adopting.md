@@ -2278,6 +2278,16 @@ session in your repository — `→ owed a run — in a Claude Code session in t
 repository: /gate-quality`. Those lines and the summary's *owed* count are the
 same set; nothing without one is asking anything of you.
 
+**Controls another plugin deploys are listed below the gates**, under *Deployed
+by a skill this plugin does not ship*. DOC-001 is `lint-md`'s and YML-001 is
+`lint-yaml`'s. The list comes from each control's `deployed_by` in your
+register, so a control appears whether or not anything deployed it, and the
+summary's *owed* count never includes it. Each row gives the skill version its
+stamps record and the version Claude Code has installed. When the installed one
+is newer, a `→` line names the command. `UNRECORDED` means no stamp names the
+control. That is expected, because neither skill writes a stamp, so this report
+cannot tell whether one has run. `uv run register-check run --control <ID>` can.
+
 **A gate's version is not in that list.** The plugin's version moves for
 documentation fixes and trigger-phrase releases, and all eight skills share it,
 so nothing here reads it. What moves is the per-gate `contractVersion`, and it

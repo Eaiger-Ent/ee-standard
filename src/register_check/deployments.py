@@ -32,7 +32,7 @@ from pathlib import Path
 import yaml
 
 from register_check.predicates import compile_predicate
-from register_check.provenance import stamps_by_file, stamps_in
+from register_check.provenance import Stamp, stamps_by_file, stamps_in
 from register_check.register import Control, Register
 from register_check.repo import Repo
 from register_check.runner import applies
@@ -399,14 +399,45 @@ class GateReport:
 
 
 @dataclass(frozen=True)
+class Outside:
+    """A control the register says a skill outside this plugin deploys.
+
+    Read from `deployed_by`, not from stamps. Built from stamps alone, the list
+    showed only what had already been stamped, and the outside skills write no
+    stamp of their own: YML-001 was missing from the report altogether, and
+    DOC-001 stood there with no version beside it, so a deployment stuck at
+    `lint-md@1.0.9` while 1.0.24 was published looked no different from a
+    current one. Reported, never enforced (ADR 0038), like everything above it.
+    """
+
+    skill: str
+    control: str
+    #: Every skill version a stamp for this control records. Empty is
+    #: UNRECORDED: nothing says which release wrote the artefacts, or whether
+    #: one ever did.
+    stamped: tuple[str, ...]
+    #: The release the harness has installed, or `None` when the inventory does
+    #: not list it or could not be read. `Report.inventory_note` says which.
+    installed: str | None
+
+    @property
+    def behind(self) -> bool:
+        """Installed is newer than every stamp. Never true when either side is unknown."""
+        if self.installed is None or not self.stamped:
+            return False
+        newest = max((_version_key(v) for v in self.stamped), default=())
+        return _version_key(self.installed) > newest > ()
+
+
+@dataclass(frozen=True)
 class Report:
     plugin: Path
     gates: tuple[GateReport, ...]
-    #: Stamps naming a skill this plugin does not ship — DOC-001's `lint-md` is
-    #: the standing example. Not a defect and not this plugin's business, but
-    #: silently dropping them would report a repository as less deployed than
-    #: it is.
-    foreign: tuple[tuple[str, str], ...]
+    #: Controls deployed by a skill this plugin does not ship — DOC-001's
+    #: `lint-md` and YML-001's `lint-yaml`. Not this plugin's to deploy, but
+    #: leaving them out would report a repository as less deployed than it is,
+    #: and reporting them without versions hides the one thing worth knowing.
+    outside: tuple[Outside, ...]
     #: What this repository has decided not to deploy, and why. Read from
     #: `deployment-decisions.yaml` (ADR 0042 rev 2). An empty tuple means the
     #: file is absent — never that it could not be read, which raises.
@@ -426,6 +457,9 @@ class Report:
     #: parser, and a Tier-1 `blocking` control is a hard place to put one before
     #: anybody knows how often it fires.
     unmanaged_pins: tuple[str, ...] = ()
+    #: Why no installed version is shown for an outside skill, when the
+    #: inventory could not be read at all. CI has none.
+    inventory_note: str | None = None
 
     @property
     def owed(self) -> list[GateReport]:
@@ -724,34 +758,64 @@ def build(
                 ),
             )
         )
-    foreign = tuple(
-        sorted(
-            {
-                (stamp.skill, stamp.control)
-                for in_file in stamps.values()
-                for stamp in in_file
-                if stamp.skill not in known
-            }
-        )
-    )
+    inventory = installed if installed is not None else read_inventory()
+    outside = _outside(register, repo, stamps, known, inventory)
     # The skill version each skill was last deployed at, for the one comparison
     # a declination admits: whether the repository has already moved past the
     # release it declines.
     deployed_versions = {
         stamp.skill: stamp.skill_version for in_file in stamps.values() for stamp in in_file
     }
-    inventory = installed if installed is not None else read_inventory()
     problems = decision_problems(
         declined, deployed_versions, today or datetime.date.today(), inventory
     )
     return Report(
         plugin=plugin,
         gates=tuple(reports),
-        foreign=foreign,
+        outside=outside,
         declined=declined,
         stale_decisions=tuple(problems),
         unreconciled=tuple(unreconciled(declined, inventory)),
         unmanaged_pins=unmanaged,
+        inventory_note=inventory.unreadable,
+    )
+
+
+def _outside(
+    register: Register,
+    repo: Repo,
+    stamps: dict[str, list[Stamp]],
+    known: set[str],
+    inventory: Inventory,
+) -> tuple[Outside, ...]:
+    """Each applicable control deployed outside this plugin, with what records it.
+
+    The register's `deployed_by` is the list, so a control nothing has stamped
+    is still named. A stamp for an outside skill the register does not name is
+    kept too: dropping it would hide a deployment the register has not caught
+    up with.
+    """
+    pairs = {
+        (c.deployed_by, c.id)
+        for c in register.controls
+        if isinstance(c, Control)
+        and c.deployed_by
+        and c.deployed_by not in known
+        and applies(c, register, repo)[0]
+    }
+    found: dict[tuple[str, str], set[str]] = {}
+    for in_file in stamps.values():
+        for stamp in in_file:
+            if stamp.skill not in known:
+                found.setdefault((stamp.skill, stamp.control), set()).add(stamp.skill_version)
+    return tuple(
+        Outside(
+            skill=skill,
+            control=control,
+            stamped=tuple(sorted(found.get((skill, control), set()), key=_version_key)),
+            installed=inventory.version_of(skill),
+        )
+        for skill, control in sorted(pairs | set(found))
     )
 
 
@@ -802,10 +866,17 @@ def render(report: Report, register: Register) -> str:
             lines.extend(f"             - {finding}" for finding in gate.stacks_not_covered)
         if gate.gate.name in owed_names:
             lines.append(f"           → {_run_line(gate.gate.name)}")
-    if report.foreign:
+    if report.outside:
         lines.append("")
         lines.append("  Deployed by a skill this plugin does not ship:")
-        lines.extend(f"    {skill:<20} {control}" for skill, control in report.foreign)
+        for outside in report.outside:
+            lines.append(f"    {outside.skill:<20} {outside.control:<9} {_outside_line(outside)}")
+            # Only when a stamp is behind. UNRECORDED is not owed a run: the
+            # outside skills write no stamp, so the line would outlive the run.
+            if outside.behind:
+                lines.append(f"           → {_run_line(outside.skill)}")
+        if report.inventory_note:
+            lines.append(f"    Installed versions not shown: {report.inventory_note}.")
     if report.declined:
         lines.append("")
         lines.append("  Deliberately not deployed:")
@@ -863,6 +934,17 @@ def _label(gate: GateReport) -> str:
     if gate.state is State.CURRENT and gate.stacks_not_covered:
         return "STACK UNWIRED"
     return str(gate.state)
+
+
+def _outside_line(entry: Outside) -> str:
+    stamped = (
+        "stamped " + ", ".join(f"{entry.skill}@{v}" for v in entry.stamped)
+        if entry.stamped
+        else "UNRECORDED — no stamp names this control"
+    )
+    if entry.installed is None:
+        return stamped
+    return f"{stamped}; installed {entry.installed}" + (" (newer)" if entry.behind else "")
 
 
 def _run_line(gate: str) -> str:
