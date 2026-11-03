@@ -31,7 +31,7 @@
     },
     "templates/devcontainer/fetch-secrets.sh": {
       "stance": "owed-upstream",
-      "why": "Phase 11: .env held a live OAuth token and PATs at the umask's mode, 0644, and .env.docker was chmodded only after its secrets were written. Both are now created under umask 077 and set to 0600 before any value is written. tests/test_devcontainer_template.py runs the script from a stale world-readable .env. Not yet submitted."
+      "why": "Phase 11: .env held a live OAuth token and PATs at the umask's mode, 0644, and .env.docker was chmodded only after its secrets were written. Both are now created under umask 077 and set to 0600 before any value is written. tests/test_devcontainer_template.py runs the script from a stale world-readable .env. Submitted 2026-11-03 as incubator#1271."
     }
   }
 }
