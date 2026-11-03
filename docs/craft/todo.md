@@ -907,10 +907,15 @@ every ADR the stage names is Accepted — is met, and `design.profiles.md`'s own
       `python.no-flaky-tests` and `python.branch-coverage-floor`.
       [`review.trial.md`](review.trial.md) § The guards, installed, 2026-10-19
       is the measurement
-- [ ] A stack that arrives after the install is reported, by something that
+- [x] A stack that arrives after the install is reported, by something that
       runs without being asked. The
       trial repository's React row has held since 2026-10-10, with no profile
-      and nothing saying so
+      and nothing saying so. Done 2026-11-03 in `craft@0.3.0`: a SessionStart
+      hook, `plugins/craft/hooks/stack-notice.sh`, carries the pin into every
+      session and asks the assistant to apply `craft-install`'s own stack
+      table. It evaluates no condition itself, so the table stays the only
+      copy. Held by `tests/test_craft_stack_notice.py`. It reaches only a
+      repository worked in with Claude Code, which the trial's was
 - [x] Write `review.trial.md`. Done 2026-10-18, § The review, 2026-10-17 and
       § The owner's account, 2026-10-18
 
