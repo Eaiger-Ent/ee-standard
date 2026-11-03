@@ -144,16 +144,17 @@ Lines under *Pinned, and no bot will ever propose moving it* are information,
 not actions. The table of states, and what each one asks of you, is
 [`docs/08-adopting.md`](docs/08-adopting.md) § 4.4.
 
-**Then deploy the controls no gate in `control-register` deploys.** The report
-above covers only `control-register`'s own gates. A control whose `deployed_by`
-names a skill that plugin does not ship never appears in it, so `0 owed` says
-nothing about it. List those skills from the register you moved in step 3:
+**Then deploy the controls no gate in `control-register` deploys.** They are
+listed under *Deployed by a skill this plugin does not ship*. The list comes from
+`deployed_by` in the register you moved in step 3, not from what has been
+deployed, so a control appears there even if nothing ever deployed it. `0 owed`
+in the summary line does not include them. Each row shows the skill version its
+stamps record and the version you have installed, and a `→` line when the
+installed version is newer. `UNRECORDED` means no stamp names the control, and
+that is normal: neither skill writes a stamp, so the report cannot tell whether
+it has run.
 
-```bash
-grep -h '^    deployed_by:' controls.yaml | awk '{print $2}' | sort -u | while read -r s; do test -d "$plugin/skills/$s" || echo "$s"; done
-```
-
-Each name it prints is a plugin of its own: `lint-md` deploys DOC-001 and
+Each skill named there is a plugin of its own: `lint-md` deploys DOC-001 and
 `lint-yaml` deploys YML-001. For each one, `claude plugin list` shows whether it
 is installed, and from which marketplace.
 

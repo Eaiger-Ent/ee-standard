@@ -25,6 +25,7 @@ from conftest import a_register, make_repo, register_with
 from register_check.cli import main
 from register_check.deployments import (
     SCHEMA_VERSION,
+    Inventory,
     NoPlugin,
     Report,
     State,
@@ -195,17 +196,69 @@ def test_a_missing_artefact_is_reported(tmp_path: Path) -> None:
     assert report.gates[0].absent_paths == (".pre-commit-config.yaml",)
 
 
+_LINT_MD_STAMP = (
+    "# ee-control: DOC-001  ee-skill: lint-md@1.0.9  register: v0.29.0  register-contract: 35\n"
+)
+
+
+def _outside(tmp_path: Path, files: dict[str, str], inventory: Inventory) -> Report:
+    repo = make_repo(tmp_path / "repo", files)
+    return build(repo, _plugin(tmp_path), REGISTER, installed=inventory)
+
+
 def test_a_stamp_from_another_plugin_is_reported_and_not_a_defect(tmp_path: Path) -> None:
     """DOC-001 is `lint-md`'s. Dropping it would understate the deployment."""
-    files = {
-        ".markdownlint.yaml": (
-            "# ee-control: DOC-001  ee-skill: lint-md@1.0.6  "
-            "register: v0.5.0  register-contract: 5\n"
-        )
-    }
-    report = _report(tmp_path, files)
-    assert report.foreign == (("lint-md", "DOC-001"),)
+    report = _outside(tmp_path, {".markdownlint.yaml": _LINT_MD_STAMP}, Inventory({}))
+    entry = next(e for e in report.outside if e.control == "DOC-001")
+    assert (entry.skill, entry.stamped) == ("lint-md", ("1.0.9",))
     assert report.defective == []
+
+
+def test_an_outside_control_nothing_stamped_is_still_named(tmp_path: Path) -> None:
+    """YML-001 was missing from the report, because `lint-yaml` writes no stamp.
+
+    The list comes from the register's `deployed_by`, so a control is named
+    whether or not anything recorded its deployment — and named UNRECORDED,
+    never owed a run, because a run would not change what the report sees.
+    """
+    report = _outside(tmp_path, {"README.md": "#\n"}, Inventory({"lint-yaml": "0.1.21"}))
+    entry = next(e for e in report.outside if e.control == "YML-001")
+    assert (entry.skill, entry.stamped, entry.installed) == ("lint-yaml", (), "0.1.21")
+    assert not entry.behind
+    text = render(report, REGISTER)
+    assert "YML-001   UNRECORDED — no stamp names this control; installed 0.1.21" in text
+    assert "/lint-yaml" not in text
+
+
+def test_an_outside_stamp_behind_the_installed_release_names_the_command(
+    tmp_path: Path,
+) -> None:
+    """The case that went unseen: stamped 1.0.9, with 1.0.24 installed."""
+    report = _outside(
+        tmp_path, {".markdownlint.yaml": _LINT_MD_STAMP}, Inventory({"lint-md": "1.0.24"})
+    )
+    entry = next(e for e in report.outside if e.control == "DOC-001")
+    assert entry.behind
+    text = render(report, REGISTER)
+    assert "stamped lint-md@1.0.9; installed 1.0.24 (newer)" in text
+    assert "/lint-md" in text
+    assert "lint-md" not in {g.gate.name for g in report.owed}, "reported, never owed (ADR 0038)"
+
+
+def test_an_unknown_installed_version_is_not_reported_as_current(tmp_path: Path) -> None:
+    """CI has no inventory, and the report says so rather than showing nothing."""
+    report = _outside(
+        tmp_path, {".markdownlint.yaml": _LINT_MD_STAMP}, Inventory({}, "no plugin inventory")
+    )
+    assert not any(e.behind for e in report.outside)
+    assert "Installed versions not shown: no plugin inventory." in render(report, REGISTER)
+
+
+def test_a_stamp_for_a_skill_the_register_does_not_name_is_kept(tmp_path: Path) -> None:
+    """The register lagging a deployment is no reason to hide the deployment."""
+    stamp = _LINT_MD_STAMP.replace("lint-md@1.0.9", "lint-docs@2.0.0")
+    report = _outside(tmp_path, {".markdownlint.yaml": stamp}, Inventory({}))
+    assert ("lint-docs", "DOC-001") in {(e.skill, e.control) for e in report.outside}
 
 
 def test_the_report_names_every_state_it_gives(tmp_path: Path) -> None:
