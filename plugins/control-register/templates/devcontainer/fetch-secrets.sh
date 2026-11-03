@@ -21,7 +21,13 @@
 set -euo pipefail
 
 echo "==> Fetching secrets from Keychain..."
+# Both files hold live credentials, so neither is ever readable by anyone else,
+# not even for the moment between writing a value and fixing the mode. `umask`
+# covers a file this run creates. The `chmod` covers one an earlier run left at
+# another mode, because truncating a file keeps the mode it already had.
+umask 077
 : > .devcontainer/.env
+chmod 600 .devcontainer/.env
 
 PROJECT_PREFIX=$(basename "$PWD" | tr '[:lower:]-' '[:upper:]_')
 
@@ -90,8 +96,9 @@ fi
 # Derived rather than written twice, so the Keychain lookups above stay the one
 # source of both files. A template that fetches only tokens will not notice the
 # difference; one that fetches a person's name will.
+: > .devcontainer/.env.docker
+chmod 600 .devcontainer/.env.docker
 sed -E 's/^([A-Za-z_][A-Za-z0-9_]*)="(.*)"$/\1=\2/' \
   .devcontainer/.env > .devcontainer/.env.docker
-chmod 600 .devcontainer/.env.docker
 
 echo "  ✓ Written to .devcontainer/.env (sourced) and .env.docker (--env-file)"

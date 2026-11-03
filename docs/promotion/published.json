@@ -28,6 +28,10 @@
     "skills/register-[av]*/SKILL.md": {
       "stance": "owed-upstream",
       "why": "Incubator #1258, from the ADR 0059 revision 2 review: register-adopt and register-variance restated the write-narration sharers, naming register-adopt, which never reads reference/write-narration.md. register-adopt drops that bullet; register-variance says 'the shared standards' and 'a copy per skill', as the gates already do at 0.1.21. Neither could change in release set adr-0059-template-layout, because a release changes only skills its members submitted. Each SKILL.md also differs by the docs link, as every skill does."
+    },
+    "templates/devcontainer/fetch-secrets.sh": {
+      "stance": "owed-upstream",
+      "why": "Phase 11: .env held a live OAuth token and PATs at the umask's mode, 0644, and .env.docker was chmodded only after its secrets were written. Both are now created under umask 077 and set to 0600 before any value is written. tests/test_devcontainer_template.py runs the script from a stale world-readable .env. Not yet submitted."
     }
   }
 }
