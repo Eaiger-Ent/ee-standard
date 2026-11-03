@@ -419,7 +419,10 @@ which is the point of re-running after a register bump.
 
 Canonical source for the shared standards below:
 `${CLAUDE_PLUGIN_ROOT}/reference/`. Registered in
-`docs/02-skill-family.md`.
+`docs/02-skill-family.md`, whose rows list the skills that read each
+file — generated from the skills, so the row is the authority when this list
+and it disagree. This skill writes no gate configuration itself, so it does
+not follow the write-narration shape the gates share.
 
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
