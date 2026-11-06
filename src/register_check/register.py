@@ -71,6 +71,7 @@ _DOCUMENT_ALLOWED = (
     "variance",
     "cloud_credentials",
     "platform_credentials",
+    "agent_models",
     "predicates",
     "controls",
     "meta_controls",
@@ -139,6 +140,17 @@ _GATE_ROLES = ("lint", "typecheck")
 _METADATA_ALLOWED = ("owner", "register_contract")
 _STANDARD_ALLOWED = ("name", "url")
 _PLATFORM_CREDENTIAL_ALLOWED = ("name", "triggers", "max_lifetime_hours")
+_AGENT_MODELS_REQUIRED = (
+    "ladder",
+    "classes",
+    "default_class",
+    "authoring_class",
+    "authoring_tools",
+    "forbidden_env",
+    "members",
+)
+_AGENT_CLASS_REQUIRED = ("does", "floor")
+_AGENT_CLASS_ALLOWED = (*_AGENT_CLASS_REQUIRED, "ceiling")
 _BLOCK_ALLOWED = ("kind", "run", "assert", "args", "partial", "applies_to")
 _PARTIAL_ALLOWED = ("unverified", "expires")
 
@@ -508,6 +520,44 @@ class PlatformCredential:
 
 
 @dataclass(frozen=True)
+class AgentClass:
+    """One of ADR 0023's classes: what its work does, and the models it may use.
+
+    `floor` and `ceiling` are positions on `AgentModels.ladder`. A class with no
+    ceiling may use any model at or above its floor.
+    """
+
+    name: str
+    does: str
+    floor: str
+    ceiling: str | None
+
+
+@dataclass(frozen=True)
+class AgentModels:
+    """ADR 0023's register fact: the model floor for each class of agent work.
+
+    Every value is a register fact by ADR 0018's test. A data-science repository
+    could need different floors, and the variable names Claude Code reads change
+    between its releases — `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` arrived in
+    v2.1.257 — so neither belongs in the checker.
+    """
+
+    ladder: tuple[str, ...]
+    classes: dict[str, AgentClass]
+    default_class: str
+    authoring_class: str
+    authoring_tools: tuple[str, ...]
+    forbidden_env: tuple[str, ...]
+    members: dict[str, str]
+
+    def rank(self, model: str) -> int | None:
+        """The model's position on the ladder, or None for a model the register
+        has not placed. Guessing a rank is the failure ADR 0023 names."""
+        return self.ladder.index(model) if model in self.ladder else None
+
+
+@dataclass(frozen=True)
 class MetaControl:
     id: str
     title: str
@@ -547,6 +597,10 @@ class Register:
     # passes; this is an allow-list, so a name it has not heard of fails. An
     # empty tuple therefore permits nothing rather than checking nothing.
     platform_credentials: tuple[PlatformCredential, ...] = ()
+    # ADR 0023's classes and floors, from contract 38. None when the register
+    # has no block, and AGT-001's assert then has nothing to hold a definition
+    # file to, which it reports rather than passing.
+    agent_models: AgentModels | None = None
 
     def gates(self, role: str) -> dict[str, Gate]:
         """Every stack's gate for `role`, keyed by stack name."""
@@ -1254,6 +1308,9 @@ class _Validator:
             if "platform_credentials" in raw
             else ()
         )
+        agent_models = (
+            self._agent_models(raw["agent_models"]) if "agent_models" in raw else None
+        )
         controls_raw = raw.get("controls")
         controls: list[Control] = []
         if not isinstance(controls_raw, list) or not controls_raw:
@@ -1296,6 +1353,7 @@ class _Validator:
             variance_polarity=variance_polarity,
             cloud_credentials=cloud_credentials,
             platform_credentials=platform_credentials,
+            agent_models=agent_models,
         )
 
     def _config_locations(self, raw: object, at: str) -> tuple[ConfigLocation, ...]:
@@ -1648,6 +1706,101 @@ class _Validator:
                 return None
             sites.append(entry.strip())
         return tuple(sites)
+
+    def _names(self, raw: object, here: str) -> tuple[str, ...] | None:
+        """A non-empty list of distinct non-empty strings, or None after an error."""
+        if (
+            not isinstance(raw, list)
+            or not raw
+            or any(not isinstance(item, str) or not item.strip() for item in raw)
+        ):
+            self.error(here, "must be a non-empty list of non-empty strings")
+            return None
+        names = tuple(item.strip() for item in raw)
+        if len(set(names)) != len(names):
+            self.error(here, "lists a name twice")
+            return None
+        return names
+
+    def _agent_models(self, raw: object) -> AgentModels | None:
+        """ADR 0023's classes, floors and members (contract 38)."""
+        here = "agent_models"
+        if not isinstance(raw, dict):
+            self.error(here, "must be a mapping")
+            return None
+        unknown = sorted(set(raw) - set(_AGENT_MODELS_REQUIRED))
+        missing = sorted(set(_AGENT_MODELS_REQUIRED) - set(raw))
+        if unknown:
+            self.error(here, f"unknown key(s): {', '.join(unknown)}")
+        if missing:
+            self.error(here, f"missing required key(s): {', '.join(missing)}")
+        if unknown or missing:
+            return None
+        ladder = self._names(raw["ladder"], f"{here}.ladder")
+        authoring_tools = self._names(raw["authoring_tools"], f"{here}.authoring_tools")
+        forbidden_env = self._names(raw["forbidden_env"], f"{here}.forbidden_env")
+        if ladder is None or authoring_tools is None or forbidden_env is None:
+            return None
+        classes_raw = raw["classes"]
+        if not isinstance(classes_raw, dict) or not classes_raw:
+            self.error(f"{here}.classes", "must be a non-empty mapping of class name to class")
+            return None
+        classes: dict[str, AgentClass] = {}
+        for name, entry in classes_raw.items():
+            at = f"{here}.classes.{name}"
+            if not isinstance(entry, dict):
+                self.error(at, "must be a mapping")
+                continue
+            bad = sorted(set(entry) - set(_AGENT_CLASS_ALLOWED))
+            absent = sorted(set(_AGENT_CLASS_REQUIRED) - set(entry))
+            if bad or absent:
+                self.error(
+                    at,
+                    f"unknown key(s): {', '.join(bad) or 'none'}; "
+                    f"missing: {', '.join(absent) or 'none'}",
+                )
+                continue
+            floor, ceiling = entry["floor"], entry.get("ceiling")
+            if floor not in ladder:
+                self.error(f"{at}.floor", f"{floor!r} is not on the ladder")
+                continue
+            if ceiling is not None and (
+                ceiling not in ladder or ladder.index(ceiling) < ladder.index(floor)
+            ):
+                self.error(
+                    f"{at}.ceiling", f"{ceiling!r} is not on the ladder at or above the floor"
+                )
+                continue
+            does = entry["does"]
+            if not isinstance(does, str) or not does.strip():
+                self.error(f"{at}.does", "must say what the class's work does")
+                continue
+            classes[str(name)] = AgentClass(str(name), does.strip(), floor, ceiling)
+        if len(classes) != len(classes_raw):
+            return None
+        for key in ("default_class", "authoring_class"):
+            if raw[key] not in classes:
+                self.error(f"{here}.{key}", f"{raw[key]!r} is not a class")
+                return None
+        members_raw = raw["members"]
+        if not isinstance(members_raw, dict):
+            self.error(f"{here}.members", "must be a mapping of agent or skill name to class")
+            return None
+        members: dict[str, str] = {}
+        for member, cls in members_raw.items():
+            if cls not in classes:
+                self.error(f"{here}.members.{member}", f"{cls!r} is not a class")
+                return None
+            members[str(member)] = cls
+        return AgentModels(
+            ladder=ladder,
+            classes=classes,
+            default_class=raw["default_class"],
+            authoring_class=raw["authoring_class"],
+            authoring_tools=authoring_tools,
+            forbidden_env=forbidden_env,
+            members=members,
+        )
 
     def _cloud_credentials(self, raw: object) -> tuple[str, ...]:
         """Secret names SEC-002 forbids a workflow from referencing."""
