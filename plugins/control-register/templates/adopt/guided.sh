@@ -112,7 +112,7 @@ fi
 
 banner "Where the project lives (§ C)"
 
-base_directory=$(ask "Base directory — where you keep projects" "$HOME/git")
+base_directory=$(ask "Base directory — where you keep projects" "$PWD")
 base_directory=${base_directory/#\~/$HOME}
 
 if [ ! -d "$base_directory" ]; then
