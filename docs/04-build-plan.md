@@ -1798,11 +1798,63 @@ crediting `run --tier 1`, also fixed in Phase 8. What is still true is below.
       has already copied the template. Closed 2026-11-03: § 2's secrets
       contract states `0600` with a `stat` check, and the exit-code table gains `2`.
 
+## Phase 12 — The first Tier-2 control
+
+[ADR 0023](adr/0023-smallest-model-a-task-can-be-trusted-to.md) decided
+`AGT-001` on 2026-08-23 and held it until Phase 4 had proven Tier 1. Phase 4
+is met, so this phase builds it. ADR 0023 § What the register must gain lists
+six steps in order, and the criteria below keep that order.
+
+**What reading it again on 2026-11-06 found.** Two things the ADR assumed are
+not true, and a third it left open:
+
+- **`warn` does not do what it says.** The checker never reads `rung`, so a
+  failing `warn` control exits `1`. Worse, AGT-001's `partial:` would make every
+  run exit `3`, and this repository's CI turns `3` into `1`. AGT-001 as written
+  would fail the required check on every pull request from the day it lands.
+  [ADR 0061](adr/0061-a-rung-below-blocking-never-sets-the-exit-code.md)
+  decides what a rung below `blocking` does to the exit code, and AGT-001
+  cannot land at `warn` until it is Accepted and implemented.
+- **ADR 0023's membership table is a snapshot.** It names
+  `plugins/ee-standard/skills/`, the name before ADR 0031, and the skill set
+  of 2026-08-23. It says *as of this ADR*,
+  so it is not false and needs no revision. But the register block is filled
+  from what exists on the day, not copied from that table.
+- **No gate deploys AGT-001 in this phase.** ADR 0023 names a control and an
+  assert, not a gate. The control carries no `deployed_by`, so nothing under
+  `plugins/` changes, and the promotion record is not touched. Whether a gate
+  should write definition files for an adopter is a later decision.
+
+- [ ] ADR 0061 is Accepted, and the checker implements it. A `FAIL`, a partial
+      or an unverified block in a control below `blocking` changes no exit
+      code, and the report prints it. A test fails a `warn` control that sets one.
+- [ ] `controls.yaml` gains an `agent_models:` block before any
+      `.claude/agents/*.md` file exists. It holds the three classes, the
+      ladder, each class's floor, and each known member's class, taken from
+      what is installed on the day.
+- [ ] `agent_definitions_declare_model_floor` is in the closed set and checks
+      ADR 0023's four properties. It reads floors from `agent_models:` and holds
+      none itself. A test mutates each property and sees the assert fail.
+- [ ] `AGT-001` is in the register at Tier 2, `rung: warn`,
+      `variance: narrowing-only`, `baseline: null`, citing a resolving
+      standard. Its `review_by` is the date its promotion to `blocking` is
+      decided, as ADR 0023 § Consequences asks.
+- [ ] AGT-001's verify block declares the runtime half as `partial:`, expiring
+      no later than 2027-02-28, and the required check stays green.
+- [ ] `meta.register_contract` moves to the next contract, read from the
+      register when the change lands.
+- [ ] This repository's `.claude/agents/` holds a definition for each class it
+      spawns, and AGT-001 passes over them. `CLAUDE.md` points at the register
+      block and the directory, and restates no floor.
+- [ ] Any step this phase gives an adopter is in [`08-adopting.md`](08-adopting.md),
+      with how they know it worked. That includes the one ADR 0023 names that is
+      not about floors: do not set `CLAUDE_CODE_SUBAGENT_MODEL`.
+
 ## What is deliberately not in scope
 
 | Excluded | Why |
 | --- | --- |
-| Tier 2 and Tier 3 controls | Tier 1 must be proven end to end first. Adding controls is cheap once the machinery works and expensive before. **[ADR 0023](adr/0023-smallest-model-a-task-can-be-trusted-to.md)'s `AGT-001` is the first Tier-2 control queued behind this** — Accepted 2026-08-23, and deliberately unimplemented until Phase 4 has proven Tier 1. |
+| Tier 2 and Tier 3 controls | Tier 1 must be proven end to end first. Adding controls is cheap once the machinery works and expensive before. **[ADR 0023](adr/0023-smallest-model-a-task-can-be-trusted-to.md)'s `AGT-001` is the first Tier-2 control queued behind this** — Accepted 2026-08-23, and deliberately unimplemented until Phase 4 had proven Tier 1. Phase 4 is met, and § Phase 12 builds it. Every other Tier-2 and Tier-3 control stays out of scope. |
 | Auto-fix | Notify, never redeploy. Proposed fixes are a Phase 5+ conversation, and only ever as a PR. |
 | Non-GitHub platforms | `remote` verification is GitHub-shaped. Another platform means another assert set, which is a real project, not a flag. |
 | Replacing `lint-md` or `devcontainer-check` | They work. The standard composes with them. `project-init` was in this row until 2026-08-26 and is not replaced either — it is simply not on the route ([ADR 0037](adr/0037-the-template-is-the-whole-devcontainer-step.md)). |
