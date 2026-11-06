@@ -58,7 +58,7 @@ ignore the recommendation, which costs more than the edit saved.
 | `standard` | yes | object | `name` + `url` of the external standard. |
 | `also_see` | no | list | Further `name`/`url` pairs — tool docs, internal playbooks. |
 | `tier` | yes | 1-3 | See § Tiering in concepts. |
-| `rung` | yes | enum | `advisory` / `warn` / `blocking` / `blocking (baselined)`. The last is blocking for new code with a recorded set of existing violations tolerated, and a Tier-1 control may not use it. |
+| `rung` | yes | enum | `advisory` / `warn` / `blocking` / `blocking (baselined)`. The last is blocking for new code with a recorded set of existing violations tolerated, and a Tier-1 control may not use it. Only the two blocking rungs set the exit code (ADR 0061). |
 | `locus` | yes | list | `editor` / `pre-commit` / `pre-push` / `ci` / `remote`. |
 | `applies_to` | yes | list | Predicate names. Unsatisfied predicate → control is **skipped**, not failed. |
 | `deployed_by` | no | string | The gate skill that writes this control's artefacts. |
@@ -252,9 +252,12 @@ The control still renders the verdict it can compute, followed by a `partial:`
 line naming what it cannot see. Both fields are required: without `unverified`
 the gap is unnamed, and without `expires` "partial" becomes permanent. GOV-003
 fails a declaration past its expiry, exactly as it fails a control past
-`review_by`. A run containing any partial block is incomplete in the sense of
+`review_by`. A run containing any partial block in a `blocking` control is
+incomplete in the sense of
 [ADR 0016](adr/0016-exit-codes-for-unverifiable-controls.md), so it cannot exit
-`0`.
+`0`. A partial in a `warn` or `advisory` control is printed on every run and sets
+no exit code ([ADR 0061](adr/0061-a-rung-below-blocking-never-sets-the-exit-code.md)).
+GOV-003 still fails it once it expires.
 
 #### The one exception
 

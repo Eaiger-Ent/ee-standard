@@ -80,6 +80,19 @@ _UNVERIFIED = (
 )
 
 
+#: The rungs whose results set the exit code (ADR 0061). Below these, a control
+#: is run and reported in full and changes nothing: neither `1` for a FAIL nor
+#: `3` for a partial or unverified block. `docs/00-concepts.md` § The
+#: enforcement ladder defines the rungs; this is the one place the checker
+#: reads them. Meta-controls carry no rung and always set it, so GOV-003 still
+#: fails an expired partial whatever the rung of the control that declared it.
+EXIT_SETTING_RUNGS = ("blocking", "blocking (baselined)")
+
+
+def sets_exit_code(control: Control | MetaControl) -> bool:
+    return isinstance(control, MetaControl) or control.rung in EXIT_SETTING_RUNGS
+
+
 def exit_code(
     verdicts: list[Verdict], *, require_complete: bool = False, partial: bool = False
 ) -> int:

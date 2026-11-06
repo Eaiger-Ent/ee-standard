@@ -257,6 +257,15 @@ maximum and the same token changes verdict**, with no checker change, which is
 the test the third pass introduced for `stacks:` and the fourth for
 `cloud_credentials:`.
 
+### Still staying in the checker — what a rung does to the exit code
+
+[ADR 0061](0061-a-rung-below-blocking-never-sets-the-exit-code.md), accepted
+2026-11-06, made the checker read `rung` for the first time.
+
+| Rule | Why it is not a register fact |
+| --- | --- |
+| Only `blocking` and `blocking (baselined)` controls, and meta-controls, set the exit code (`runner.EXIT_SETTING_RUNGS`) | What a rung means is part of the register *format*, defined in `docs/00-concepts.md` § The enforcement ladder. A repository chooses each control's rung, which is a register fact. It cannot choose what `warn` means and still be using this standard |
+
 ### Applied — fifth pass, register contract 12
 
 One rule, and it moves *into* the checker rather than out of it — the direction

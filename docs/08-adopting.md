@@ -1956,11 +1956,20 @@ Read the exit code, not just the report
 
 | Code | Meaning |
 | --- | --- |
-| `0` | Every applicable control was verified and none failed |
+| `0` | Every applicable blocking control was verified and none failed |
 | `1` | A verified violation |
 | `2` | A usage error: no repository at `--repo`, or no `controls.yaml` there and no `--register` naming one. Nothing was checked |
 | `3` | No violation found, but something could not be verified |
 | — | `--require-complete` promotes `3` to `1` |
+
+**Only blocking controls set the code**
+([ADR 0061](adr/0061-a-rung-below-blocking-never-sets-the-exit-code.md)). A
+control at `warn` or `advisory` is run and reported, and its result changes no
+exit code, whether it fails, is partial, or could not be verified. A `warn`
+result is printed first, under *Warn — reported, does not set the exit code*,
+and the summary ends with a *Below blocking* line naming any that did not hold.
+So a run can exit `0` with "1 failed" in its summary. Read that line to see
+which.
 
 **`3` is the code that matters.** It is the difference between "clean" and
 "nothing looked". A run with no credentials for the remote checks exits `3`, and

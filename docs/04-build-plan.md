@@ -1812,9 +1812,9 @@ not true, and a third it left open:
   failing `warn` control exits `1`. Worse, AGT-001's `partial:` would make every
   run exit `3`, and this repository's CI turns `3` into `1`. AGT-001 as written
   would fail the required check on every pull request from the day it lands.
-  [ADR 0061](adr/0061-a-rung-below-blocking-never-sets-the-exit-code.md)
-  decides what a rung below `blocking` does to the exit code, and AGT-001
-  cannot land at `warn` until it is Accepted and implemented.
+  [ADR 0061](adr/0061-a-rung-below-blocking-never-sets-the-exit-code.md),
+  accepted 2026-11-06, decides that a rung below `blocking` sets no exit code.
+  AGT-001 could not land at `warn` until it was implemented.
 - **ADR 0023's membership table is a snapshot.** It names
   `plugins/ee-standard/skills/`, the name before ADR 0031, and the skill set
   of 2026-08-23. It says *as of this ADR*,
@@ -1825,9 +1825,12 @@ not true, and a third it left open:
   `plugins/` changes, and the promotion record is not touched. Whether a gate
   should write definition files for an adopter is a later decision.
 
-- [ ] ADR 0061 is Accepted, and the checker implements it. A `FAIL`, a partial
+- [x] ADR 0061 is Accepted, and the checker implements it. A `FAIL`, a partial
       or an unverified block in a control below `blocking` changes no exit
       code, and the report prints it. A test fails a `warn` control that sets one.
+      Closed 2026-11-06: `tests/test_rung_exit_code.py`, whose five exit-code
+      cases fail with the rung filter removed. GOV-003 still fails an expired
+      `warn` partial.
 - [ ] `controls.yaml` gains an `agent_models:` block before any
       `.claude/agents/*.md` file exists. It holds the three classes, the
       ladder, each class's floor, and each known member's class, taken from
