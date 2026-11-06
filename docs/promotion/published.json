@@ -24,6 +24,10 @@
       "normalise": [
         "docs/(?:02-skill-family|skill-relationship-map)\\.md"
       ]
+    },
+    "templates/adopt/guided.sh": {
+      "stance": "owed-upstream",
+      "why": "§ C's base-directory prompt defaulted to $HOME/git, a directory most adopters do not keep projects in, while START-HERE.md § C tells them to run from wherever they do. It now defaults to $PWD, the directory adopt.sh was run from, which adopt.sh never changes before handing over. Not yet submitted."
     }
   }
 }
