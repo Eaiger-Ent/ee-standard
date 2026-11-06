@@ -1831,21 +1831,29 @@ not true, and a third it left open:
       Closed 2026-11-06: `tests/test_rung_exit_code.py`, whose five exit-code
       cases fail with the rung filter removed. GOV-003 still fails an expired
       `warn` partial.
-- [ ] `controls.yaml` gains an `agent_models:` block before any
+- [x] `controls.yaml` gains an `agent_models:` block before any
       `.claude/agents/*.md` file exists. It holds the three classes, the
       ladder, each class's floor, and each known member's class, taken from
-      what is installed on the day.
-- [ ] `agent_definitions_declare_model_floor` is in the closed set and checks
+      what is installed on the day. Closed 2026-11-06: 32 members, and the
+      variables now forbidden are two, since Claude Code v2.1.257 added
+      `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`.
+- [x] `agent_definitions_declare_model_floor` is in the closed set and checks
       ADR 0023's four properties. It reads floors from `agent_models:` and holds
       none itself. A test mutates each property and sees the assert fail.
-- [ ] `AGT-001` is in the register at Tier 2, `rung: warn`,
+      Closed 2026-11-06: `tests/test_agent_models.py`. Removing the authoring
+      raise, the env scan, the unplaced-model rule or the empty-directory
+      failure each fails it.
+- [x] `AGT-001` is in the register at Tier 2, `rung: warn`,
       `variance: narrowing-only`, `baseline: null`, citing a resolving
       standard. Its `review_by` is the date its promotion to `blocking` is
-      decided, as ADR 0023 § Consequences asks.
-- [ ] AGT-001's verify block declares the runtime half as `partial:`, expiring
-      no later than 2027-02-28, and the required check stays green.
-- [ ] `meta.register_contract` moves to the next contract, read from the
-      register when the change lands.
+      decided, as ADR 0023 § Consequences asks. Closed 2026-11-06: NIST AI RMF,
+      `review_by: 2027-02-28`.
+- [x] AGT-001's verify block declares the runtime half as `partial:`, expiring
+      no later than 2027-02-28, and the required check stays green. Closed
+      2026-11-06: it expires 2027-02-28, and AGT-001 reports FAIL with no
+      definitions while the run's exit code is unchanged.
+- [x] `meta.register_contract` moves to the next contract, read from the
+      register when the change lands. Closed 2026-11-06: 37 to 38.
 - [ ] This repository's `.claude/agents/` holds a definition for each class it
       spawns, and AGT-001 passes over them. `CLAUDE.md` points at the register
       block and the directory, and restates no floor.

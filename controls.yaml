@@ -371,7 +371,13 @@ meta:
   #     floor, at the editor, pre-commit and CI loci (ADR 0059). A new Tier 1
   #     control and a new assert, `yaml_gate_wired_at_all_loci`, so a skill
   #     reading the register has a control to deploy that did not exist.
-  register_contract: 37
+  # 38: AGT-001 — every sub-agent definition runs at or above its class's model
+  #     floor (ADR 0023), the first Tier-2 control and the first below
+  #     `blocking`. The register gains `agent_models:`, which a skill reading it
+  #     must understand, and a new assert, `agent_definitions_declare_model_floor`.
+  #     It is at `warn`, which sets no exit code (ADR 0061), so no adopter's
+  #     build changes on the day it lands.
+  register_contract: 38
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -1005,6 +1011,96 @@ platform_credentials:
 # Short by design. These are the settings this repository can demonstrate a
 # direction for; an adopter names their own, and the report says which keys it
 # declined on so the gap is visible rather than silent.
+# ---------------------------------------------------------------------------
+# Which model each class of agent work may run on. ADR 0023: a sub-agent with
+# no `model:` inherits the session's, so a repository that writes nothing down
+# is already running a policy — always the session model — that nobody chose.
+#
+# Every value here is a register fact by ADR 0018's test. A data-science
+# repository could need other floors, and the variable names Claude Code reads
+# change between its releases, so the checker holds none of them.
+#
+# - `ladder` orders the models, smallest first. A model not on it — `inherit`,
+#   `fable`, a full model ID — has no rank, and satisfies only `default_class`.
+#   Guessing a rank is the failure ADR 0023 names.
+# - A definition's class is its `members` entry, else `default_class`. It is
+#   raised to `authoring_class` when the definition can use any of
+#   `authoring_tools`, because ADR 0023's boundary is mechanical: work that ends
+#   with a tracked file changed is authoring, whatever it was called. A
+#   definition with no `tools:` can use every tool, so it can write.
+# - `forbidden_env` names the variables that defeat the floors from outside
+#   the definitions. Since Claude Code v2.1.251 `CLAUDE_CODE_SUBAGENT_MODEL` is
+#   a default, below a definition's `model:`, but it still sets the model of
+#   every agent with no definition — the built-in `general-purpose` among them,
+#   which can write. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` (v2.1.257) puts it above
+#   every definition, which is what ADR 0023 forbade the first one for.
+# - `members` is what is installed here on 2026-11-06, re-derived rather than
+#   copied from ADR 0023's table of 2026-08-23. Only a definition file is
+#   checked. A skill's model cannot be pinned from a file, so for a skill the
+#   class is guidance to whoever invokes it, and AGT-001's partial says so.
+# ---------------------------------------------------------------------------
+agent_models:
+  ladder: [haiku, sonnet, opus]
+  classes:
+    R:
+      does: Reads work already done and tries to find it wrong
+      floor: opus
+      ceiling: opus
+    C:
+      does: Writes or edits a tracked file
+      floor: sonnet
+    S:
+      does: >-
+        Writes no tracked file and makes no judgement a later agent will not
+        re-derive
+      floor: haiku
+  default_class: S
+  authoring_class: C
+  authoring_tools: [Write, Edit, NotebookEdit]
+  forbidden_env:
+    - CLAUDE_CODE_SUBAGENT_MODEL
+    - CLAUDE_CODE_SUBAGENT_MODEL_FORCE
+  members:
+    # Review and diagnosis. `simplify` applies fixes but sits here, as ADR 0023
+    # placed it: its value is the judgement, and the edit transcribes it.
+    # `register-variance` says whether a change loosened a gate, which is the
+    # judgement a false green comes from. `Plan` writes nothing, and the agent
+    # that implements its plan acts on it rather than re-deriving it.
+    code-review: R
+    simplify: R
+    security-review: R
+    skill-preflight: R
+    adr-review: R
+    adr-consistency: R
+    register-variance: R
+    Plan: R
+    # Authoring.
+    gate-build: C
+    gate-iac: C
+    gate-quality: C
+    gate-repo: C
+    gate-secrets: C
+    gate-supply-chain: C
+    register-adopt: C
+    register-install: C
+    craft-install: C
+    lint-md: C
+    lint-yaml: C
+    adr-new: C
+    adr-refine: C
+    adr-approve: C
+    adr-status: C
+    skill-submit-new: C
+    general-purpose: C
+    claude: C
+    # Retrieval and mechanics.
+    Explore: S
+    web-fetch: S
+    claude-code-guide: S
+    statusline-setup: S
+    devcontainer-check: S
+    adr-check: S
+
 # ---------------------------------------------------------------------------
 variance:
   polarity:
@@ -1895,6 +1991,58 @@ controls:
     baseline: null
     review_by: 2027-10-28
     rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0059-yaml-is-linted-before-anything-reads-it.md
+
+  # --- How work is produced ------------------------------------------------
+
+  - id: AGT-001
+    title: Every sub-agent definition runs at or above its class's model floor
+    enforces: >
+      Each tracked sub-agent definition declares a model at or above the floor,
+      and within the ceiling, of the class its work falls in, as
+      `agent_models:` sets them, and no tracked file sets a variable that
+      overrides the definitions.
+    standard:
+      name: NIST AI Risk Management Framework
+      url: https://www.nist.gov/itl/ai-risk-management-framework
+    also_see:
+      - name: Claude Code subagents — choose a model
+        url: https://code.claude.com/docs/en/sub-agents
+    # Tier 2: no Tier-1 control concerns how work is produced, only what the
+    # repository contains (ADR 0023). `warn` sets no exit code (ADR 0061), so a
+    # repository with no definitions yet is told, not blocked. `review_by` is
+    # the date promotion to `blocking` is decided, as ADR 0023 § Consequences
+    # asks, rather than whenever someone notices.
+    tier: 2
+    rung: warn
+    locus: [ci]
+    applies_to: [always]
+    verify:
+      - kind: file
+        assert: agent_definitions_declare_model_floor
+        args:
+          # Where Claude Code reads project sub-agent definitions.
+          definitions: .claude/agents
+          # The tracked files that can set an environment variable for a
+          # session or a container. A repository that sets one elsewhere names
+          # that file here.
+          env_surfaces:
+            - .claude/settings.json
+            - .devcontainer/devcontainer.json
+            - .devcontainer/*.sh
+            - .devcontainer/Dockerfile
+            - Dockerfile
+            - .github/workflows/*.yml
+        partial:
+          unverified: >-
+            the model a sub-agent actually runs on: a per-invocation model
+            argument, a workflow agent's model, a fork's inherited model, a
+            skill's model, and anything a cloud review runs
+          expires: 2027-02-28
+    owner: platform-engineering
+    variance: narrowing-only
+    baseline: null
+    review_by: 2027-02-28
+    rationale_adr: https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0023-smallest-model-a-task-can-be-trusted-to.md
 
 # ---------------------------------------------------------------------------
 # Meta-controls. These do not check the code — they check the register and its

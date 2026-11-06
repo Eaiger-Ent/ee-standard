@@ -23,6 +23,7 @@ means no control is enforced.
 | `suppression` | no | list | Regular expressions that count as swallowing a failure. |
 | `cloud_credentials` | no | list | Static cloud credential names SEC-002 forbids — see [`cloud_credentials`](#cloud_credentials). |
 | `platform_credentials` | no | list | Secrets SEC-003 permits a workflow to reference — see [`platform_credentials`](#platform_credentials). |
+| `agent_models` | no | map | The model floor for each class of agent work, which AGT-001 reads — see [`agent_models`](#agent_models). |
 | `controls` | yes | list | The controls. |
 | `meta_controls` | yes | list | Controls that check the register itself. |
 
@@ -594,6 +595,44 @@ different credential — and is UNCLASSIFIED everywhere else.
 That a workflow spells the platform token `${{ github.token }}` as often as
 `${{ secrets.GITHUB_TOKEN }}` is detection and stays in the checker, as
 `cloud_credentials:` spelling equivalence does.
+
+### `agent_models`
+
+The classes of agent work, the model floor of each, and the variables that
+would override them ([ADR 0023](adr/0023-smallest-model-a-task-can-be-trusted-to.md)).
+AGT-001's `agent_definitions_declare_model_floor` reads it. From contract 38.
+
+```yaml
+agent_models:
+  ladder: [haiku, sonnet, opus]      # smallest first
+  classes:
+    R: {does: Reads work already done and tries to find it wrong, floor: opus, ceiling: opus}
+    C: {does: Writes or edits a tracked file, floor: sonnet}
+    S: {does: Writes no tracked file, floor: haiku}
+  default_class: S                   # a definition no member names
+  authoring_class: C                 # what a definition that can write is raised to
+  authoring_tools: [Write, Edit, NotebookEdit]
+  forbidden_env: [CLAUDE_CODE_SUBAGENT_MODEL, CLAUDE_CODE_SUBAGENT_MODEL_FORCE]
+  members: {code-review: R, gate-build: C, Explore: S}
+```
+
+All seven keys are required, and `floor` and `ceiling` must be on `ladder`.
+
+A definition's class is its `members` entry, else `default_class`. It is
+**raised** to `authoring_class` when the definition can use any of
+`authoring_tools`, because the boundary is mechanical: work that ends with a
+tracked file changed is authoring, whatever it was called. A definition with no
+`tools:` can use every tool. Raising never lowers, so a class above authoring's
+floor stays where `members` put it.
+
+A model not on `ladder` (`inherit`, `fable`, a full model ID) has no rank, and
+satisfies only `default_class`. The register places a model; the checker does
+not guess one.
+
+Every value is a register fact. A repository could need other floors, and
+Claude Code renames and adds the variables in `forbidden_env` between releases.
+`CLAUDE_CODE_SUBAGENT_MODEL_FORCE` arrived in v2.1.257, and is the one that now
+outranks every definition.
 
 ### `stacks`
 

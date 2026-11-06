@@ -476,7 +476,12 @@ def test_the_plan_can_name_every_control_in_the_register() -> None:
     assert deploy == set(_DEPLOYED) | {"IAC-001"}, deploy
     assert elsewhere == {"DOC-001", "YML-001"}, elsewhere
     assert checked == {"SEC-003"}, checked
-    assert not manual, f"controls in no plan row at all: {sorted(manual)}"
+    # AGT-001 is the row's first member, at register contract 38. No gate
+    # deploys it (docs/04-build-plan.md § Phase 12), so the plan points the
+    # adopter at `08-adopting.md`, which is what the row is for. A control in
+    # none of the four rows is still the failure this test exists to catch:
+    # every control is in exactly one of the sets above.
+    assert manual == {"AGT-001"}, f"planned as manual: {sorted(manual)}"
     # And the skill names all four rows, so none of this is a category the
     # implementation invented.
     text = (SKILL / "SKILL.md").read_text(encoding="utf-8")

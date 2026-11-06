@@ -7,6 +7,7 @@ rather than a private copy (docs/02-skill-family.md § The gates).
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import re
 from collections.abc import Callable, Mapping
@@ -850,6 +851,119 @@ def secret_files_are_gitignored(
     return _ok("ignored by a rule git carries: " + ", ".join(covered))
 
 
+_FRONTMATTER = re.compile(r"\A---\s*\n(?P<body>.*?)\n---\s*(\n|\Z)", re.DOTALL)
+
+
+def _tool_names(value: object) -> set[str] | None:
+    """A definition's `tools` or `disallowedTools`: a list, or a comma-separated
+    string. None when absent, which for `tools` means every tool."""
+    if value is None:
+        return None
+    items = value if isinstance(value, list) else str(value).split(",")
+    # `Bash(git *)` grants Bash, scoped; the scope does not change the tool.
+    return {str(item).split("(")[0].strip() for item in items if str(item).strip()}
+
+
+def agent_definitions_declare_model_floor(
+    repo: Repo,
+    register: Register,
+    args: Mapping[str, object],
+) -> AssertResult:
+    """AGT-001 (ADR 0023): every sub-agent definition runs at or above its
+    class's floor, and nothing tracked overrides the definitions from outside.
+
+    Four properties, each read against `agent_models:` — the checker holds no
+    floor, no class and no variable name. A definition's class is its entry
+    in `members`, else `default_class`, and is raised to `authoring_class` when
+    the definition can write: ADR 0023's boundary is mechanical, and a name in
+    a list is not. A model the ladder does not place — `inherit`, `fable`, a
+    full model ID — satisfies only `default_class`.
+    """
+    models = register.agent_models
+    if models is None:
+        return _fail("the register has no agent_models: block to hold definitions to")
+    directory = str(args.get("definitions", "")).strip().rstrip("/")
+    surfaces = args.get("env_surfaces")
+    if not directory or not isinstance(surfaces, list) or not surfaces:
+        return _fail("assert requires 'definitions' and a non-empty 'env_surfaces' list")
+    problems: list[str] = []
+
+    definitions = sorted(
+        path
+        for path in repo.tracked
+        if path.startswith(f"{directory}/")
+        and path.endswith(".md")
+        and "/" not in path[len(directory) + 1 :]
+    )
+    if not definitions:
+        problems.append(
+            f"no tracked definition under {directory}/ — every sub-agent resolves to the "
+            "session model, a policy nobody wrote down"
+        )
+    authoring_floor = models.rank(models.classes[models.authoring_class].floor) or 0
+    for path in definitions:
+        match = _FRONTMATTER.match(repo.read(path))
+        try:
+            front = yaml.safe_load(match.group("body")) if match else None
+        except yaml.YAMLError:
+            front = None
+        if not isinstance(front, dict):
+            problems.append(f"{path}: no YAML frontmatter")
+            continue
+        name = str(front.get("name") or path.rsplit("/", 1)[-1].removesuffix(".md"))
+        cls = models.members.get(name, models.default_class)
+        granted = _tool_names(front.get("tools"))
+        denied = _tool_names(front.get("disallowedTools")) or set()
+        writes = {
+            tool
+            for tool in models.authoring_tools
+            if (granted is None or tool in granted) and tool not in denied
+        }
+        if writes and (models.rank(models.classes[cls].floor) or 0) < authoring_floor:
+            cls = models.authoring_class
+        floor = models.classes[cls].floor
+        ceiling = models.classes[cls].ceiling
+        model = front.get("model")
+        if model is None:
+            problems.append(f"{path}: {name} declares no model: (class {cls}, floor {floor})")
+            continue
+        model = str(model).strip()
+        rank = models.rank(model)
+        if rank is None:
+            if cls != models.default_class:
+                problems.append(
+                    f"{path}: {name} is class {cls} and declares {model!r}, which the "
+                    f"ladder ({', '.join(models.ladder)}) does not place"
+                )
+            continue
+        if rank < models.ladder.index(floor):
+            problems.append(f"{path}: {name} is class {cls} and declares {model}, below {floor}")
+        elif ceiling is not None and rank > models.ladder.index(ceiling):
+            problems.append(f"{path}: {name} is class {cls} and declares {model}, above {ceiling}")
+
+    patterns = [
+        (name, re.compile(rf"(?<![\w]){re.escape(name)}(?![\w])[\"']?\s*[:=]"))
+        for name in models.forbidden_env
+    ]
+    globs = [str(glob) for glob in surfaces]
+    for path in sorted(repo.tracked):
+        if not any(fnmatch.fnmatch(path, glob) for glob in globs) or not repo.exists(path):
+            continue
+        text = repo.read(path)
+        problems.extend(
+            f"{path}: sets {name}, which overrides every definition's floor"
+            for name, pattern in patterns
+            if pattern.search(text)
+        )
+
+    if problems:
+        return _fail("; ".join(problems))
+    return _ok(
+        f"{len(definitions)} definition(s) under {directory}/ at or above their class "
+        f"floors, and no tracked env surface sets {' or '.join(models.forbidden_env)}"
+    )
+
+
 FILE_ASSERTS: dict[str, AssertFn] = {
     "tool_versions_match_register": tool_versions_match_register,
     "precommit_hook_present": precommit_hook_present,
@@ -862,6 +976,7 @@ FILE_ASSERTS: dict[str, AssertFn] = {
     "dockerfile_final_user_is_non_root": dockerfile_final_user_is_non_root,
     "devcontainer_user_is_non_root": devcontainer_user_is_non_root,
     "provenance_stamp_present": provenance_stamp_present,
+    "agent_definitions_declare_model_floor": agent_definitions_declare_model_floor,
     "stack_tool_pinned_in_lockfile": stack_tool_pinned_in_lockfile,
     "secret_files_are_gitignored": secret_files_are_gitignored,
 }
