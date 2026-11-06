@@ -1,8 +1,8 @@
 {
   "plugin": "control-register",
   "marketplace": "EqualExperts/ee-skills",
-  "version": "0.1.22",
-  "commit": "e43db989010d0c2e2af0cd48a376ff15a5f6f18b",
+  "version": "0.1.24",
+  "commit": "125a5af0468d3bda7a928048d49a37cc0245a870",
   "differences": {
     ".claude-plugin/plugin.json": {
       "stance": "by-design",
@@ -24,10 +24,6 @@
       "normalise": [
         "docs/(?:02-skill-family|skill-relationship-map)\\.md"
       ]
-    },
-    "templates/devcontainer/fetch-secrets.sh": {
-      "stance": "owed-upstream",
-      "why": "Phase 11: .env held a live OAuth token and PATs at the umask's mode, 0644, and .env.docker was chmodded only after its secrets were written. Both are now created under umask 077 and set to 0600 before any value is written. tests/test_devcontainer_template.py runs the script from a stale world-readable .env. Submitted 2026-11-03 as incubator#1271."
     }
   }
 }

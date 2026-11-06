@@ -20,7 +20,7 @@ cd "$(repository_root)" || exit 1
 # --------------------------------------------------------------- the plugin
 
 section "The plugin, again, in here (§ 5)"
-if claude plugin list 2>/dev/null | grep -q control-register; then
+if grep -q control-register < <(claude plugin list 2>/dev/null); then
   pass "control-register is installed in this container"
 else
   fail "not installed — the container's ~/.claude is a volume, not your Mac's home" "5"

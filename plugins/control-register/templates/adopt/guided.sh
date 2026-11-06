@@ -90,7 +90,7 @@ esac
 # --------------------------------------------------------------------- § 1
 
 banner "The plugin (§ 1)"
-if claude plugin list 2>/dev/null | grep -q "control-register@ee-standard"; then
+if grep -q "control-register@ee-standard" < <(claude plugin list 2>/dev/null); then
   detail "control-register is already installed."
 elif confirm "Install the control-register plugin? It touches no project"; then
   claude plugin marketplace add Eaiger-Ent/ee-standard

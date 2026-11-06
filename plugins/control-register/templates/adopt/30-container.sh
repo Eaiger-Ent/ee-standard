@@ -62,7 +62,7 @@ fi
 section "Built (§ 4)"
 if ! installed docker || ! docker info >/dev/null 2>&1; then
   detail "Docker is not answering, so whether the container exists cannot be read from here."
-elif docker ps --format '{{.Labels}}' 2>/dev/null | grep -q "devcontainer.local_folder=$PWD"; then
+elif grep -q "devcontainer.local_folder=$PWD" < <(docker ps --format '{{.Labels}}' 2>/dev/null); then
   pass "a devcontainer for this folder is running"
 else
   manual "no running container for this folder" "4"
