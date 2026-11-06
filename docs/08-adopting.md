@@ -29,6 +29,7 @@ prevent, so the gaps are stated rather than glossed.
 | The other four `gate-*` skills | **Exists** | `plugins/control-register/skills/` |
 | `register-install` — puts the checker in your repository | **Exists** | `plugins/control-register/skills/register-install/`, and § 2.3 |
 | `register-adopt` — one command to deploy everything | **Exists** | `plugins/control-register/skills/register-adopt/` |
+| AGT-001 — sub-agent model floors | **Exists**, manual: no gate deploys it | § 3.8 below |
 | `lint-md` and `lint-yaml` — deploy DOC-001 and YML-001 | **Exists**, mirrored from `ee-skills` (ADR 0060) | `claude plugin install lint-md@ee-standard`, the same for `lint-yaml`, and § 3 |
 | `kind: remote` verification of platform state | **Exists**, needs a token | § 4.1 below |
 | Reading the chain from a control to a blocked merge | **Exists**, needs a token | § 4.2 below |
@@ -1847,6 +1848,70 @@ Files this repository's gates deploy carry a provenance stamp naming the control
 the deploying skill and the register contract; see
 [`00-concepts.md`](00-concepts.md) § The provenance stamp.
 
+### 3.8 — AGT-001, the one control no gate deploys
+
+AGT-001 holds each sub-agent to a model floor for the kind of work it does
+([ADR 0023](adr/0023-smallest-model-a-task-can-be-trusted-to.md)). It is
+Tier 2 and at `warn`, so it **never fails your build**
+([ADR 0061](adr/0061-a-rung-below-blocking-never-sets-the-exit-code.md)).
+No gate writes anything for it, so `/register-adopt` plans it as **manual** and
+points here.
+
+**Why it is worth doing anyway.** A sub-agent with no definition runs on
+whatever model your session runs on. A repository that writes nothing down is
+already running a policy, *always the session model*, that nobody chose.
+
+1. **Leave the floors as the register sets them, or raise them.** They are in
+   your copy of `controls.yaml`, under `agent_models:`. AGT-001 is
+   `narrowing-only`: you may require `opus` where the register asks for
+   `sonnet`, never the reverse.
+2. **Write one definition per class of work you delegate**, under
+   `.claude/agents/`, and commit it. AGT-001 reads only tracked files. Each
+   needs a `model:`:
+
+   ```markdown
+   ---
+   name: reviewer
+   description: Adversarial review of work already done.
+   tools: Read, Grep, Glob, Bash
+   model: opus
+   ---
+
+   # Reviewer
+   ```
+
+   The register's `members` already names `reviewer` (class R), `author`
+   (class C) and `searcher` (class S), which is what this repository uses. Any
+   other name is class S unless you add it to `members`, and is raised to
+   class C if it can write. A definition with no `tools:` line can write.
+   Do not name a file after a built-in agent such as `Explore` or
+   `general-purpose` unless you mean to replace that agent's own instructions.
+3. **Set neither `CLAUDE_CODE_SUBAGENT_MODEL` nor
+   `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`** in any tracked file. The second
+   overrides every definition you wrote. The first sets the model of every
+   agent you did not define, the built-in `general-purpose` among them, and
+   that agent can write. AGT-001 reads the files listed in its `env_surfaces:`.
+   If your repository sets environment variables somewhere else, add that file
+   to the list.
+
+**How you know it worked.** Read the verdict, not the exit code, because a
+`warn` control exits `0` whether it passes or fails:
+
+```bash
+uv run register-check run --control AGT-001
+```
+
+It shows AGT-001 under *Warn — reported, does not set the exit code*, as `PASS`,
+with *N definition(s) under .claude/agents/ at or above their class floors*. A
+`FAIL` names the file and what is wrong with it.
+
+**What it cannot see.** The `partial:` line on every run says so: the model a
+sub-agent actually ran on. A model passed for one call, a workflow agent's
+model, a fork (which always runs on its parent's model), a skill's model, and
+a cloud review are all chosen at run time, and no file records them. Treat the
+classes as guidance for those. AGT-001's `review_by` is the date its promotion to
+`blocking` is decided.
+
 ## 4 — Run the checker
 
 If `register-check` is not there, it is not installed — § 2.3 is the step that
@@ -2470,6 +2535,7 @@ Each row is done when its evidence exists, not when the step has been performed.
 | 7b | Quality gates wired at every locus **and** stamped | `uv run register-check run --control LNT-001 --control TYP-001 --control TST-001` exits `0` — every block ✓, nothing skipped |
 | 7a | Secrets gate wired at pre-commit **and** CI, and stamped | `uv run register-check run --control SEC-001` shows both local blocks ✓; with an admin-scoped token the remote block is ✓ too and it exits `0` |
 | 7e | SEC-002 is wired, not merely passing | `uv run register-check run --control SEC-002` exits `0` with its locus block ✓ — a repository with no workflow naming a cloud key passes the *property* whether or not anything enforces it (§ 3.1) |
+| 7f | Each sub-agent you delegate to has a definition at its class's floor | `uv run register-check run --control AGT-001` shows AGT-001 `PASS`. It exits `0` either way, because it is at `warn` (§ 3.8) |
 | 7c | The branch protection you recorded is the one GitHub enforces | `uv run register-check run --control CI-001` with a token — the remote block reports the rules in effect, not the file |
 | 8 | The conformance run is a required status check | `uv run register-check` with a token reports GOV-001 `PASS` — from register contract 26 it reads which checks GitHub actually enforces on your default branch, and fails one your register requires and the platform does not. Without a token it reports `SKIPPED (no credentials)` and says which half it did verify |
 | 8a | A merge has actually been refused | A pull request whose required check fails cannot be merged. Four green links and a merge that goes through anyway is what no report can rule out (§ 4.2) |
