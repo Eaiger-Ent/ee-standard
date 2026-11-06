@@ -195,9 +195,10 @@ prefix means the repository. Outside `docs/adr/`,
 **Enforcement is never Claude.** Gates are pinned binaries reading pinned
 configs. A skill may install or explain a gate; it cannot be one.
 
-**Model selection** is ADR 0023's: three classes, a floor per class, and
-`CLAUDE_CODE_SUBAGENT_MODEL` forbidden. Do not restate the floors here —
-`.claude/agents/*.md` frontmatter is the only copy the harness reads.
+**Model selection** is ADR 0023's, enforced by AGT-001. The classes, their
+floors and the forbidden variables are in `controls.yaml` `agent_models:`. The
+`model:` in `.claude/agents/*.md` (`reviewer`, `author` and `searcher`) is the
+only copy the harness reads. Do not restate either here.
 
 ## One thing this repository does not do
 

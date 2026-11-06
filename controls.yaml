@@ -1035,7 +1035,8 @@ platform_credentials:
 #   which can write. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` (v2.1.257) puts it above
 #   every definition, which is what ADR 0023 forbade the first one for.
 # - `members` is what is installed here on 2026-11-06, re-derived rather than
-#   copied from ADR 0023's table of 2026-08-23. Only a definition file is
+#   copied from ADR 0023's table of 2026-08-23, plus this repository's own
+#   `reviewer`, `author` and `searcher`. Only a definition file is
 #   checked. A skill's model cannot be pinned from a file, so for a skill the
 #   class is guidance to whoever invokes it, and AGT-001's partial says so.
 # ---------------------------------------------------------------------------
@@ -1074,6 +1075,7 @@ agent_models:
     adr-consistency: R
     register-variance: R
     Plan: R
+    reviewer: R
     # Authoring.
     gate-build: C
     gate-iac: C
@@ -1093,6 +1095,7 @@ agent_models:
     skill-submit-new: C
     general-purpose: C
     claude: C
+    author: C
     # Retrieval and mechanics.
     Explore: S
     web-fetch: S
@@ -1100,6 +1103,7 @@ agent_models:
     statusline-setup: S
     devcontainer-check: S
     adr-check: S
+    searcher: S
 
 # ---------------------------------------------------------------------------
 variance:
