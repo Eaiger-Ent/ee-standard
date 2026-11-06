@@ -1854,9 +1854,12 @@ not true, and a third it left open:
       definitions while the run's exit code is unchanged.
 - [x] `meta.register_contract` moves to the next contract, read from the
       register when the change lands. Closed 2026-11-06: 37 to 38.
-- [ ] This repository's `.claude/agents/` holds a definition for each class it
+- [x] This repository's `.claude/agents/` holds a definition for each class it
       spawns, and AGT-001 passes over them. `CLAUDE.md` points at the register
-      block and the directory, and restates no floor.
+      block and the directory, and restates no floor. Closed 2026-11-06:
+      `reviewer` (R), `author` (C) and `searcher` (S), each named in
+      `members`. They are new names, not `Explore.md` or `general-purpose.md`:
+      a project definition with a built-in's name replaces its system prompt.
 - [ ] Any step this phase gives an adopter is in [`08-adopting.md`](08-adopting.md),
       with how they know it worked. That includes the one ADR 0023 names that is
       not about floors: do not set `CLAUDE_CODE_SUBAGENT_MODEL`.
