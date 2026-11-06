@@ -1,6 +1,6 @@
 # ADR 0061: A Rung Below Blocking Never Sets the Exit Code
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-11-06
 **Revision:** 1
 
@@ -104,6 +104,9 @@ Three rules come with it:
    each rung means is defined by the schema, so it belongs in the checker, by
    [ADR 0018](0018-register-checker-boundary.md)'s test. ADR 0018's list of what
    the checker may hold gains this rule when it is implemented.
+
+Ratified on 2026-11-06 by Nathan Carney, choosing Option 1 over Options 2 to 5
+as set out above.
 
 ## Consequences
 

@@ -44,7 +44,13 @@ from register_check.register import Control, Register, load_register
 from register_check.remote import resolve as resolve_remote
 from register_check.repo import NotAGitRepository, Repo, git, require_git_repo
 from register_check.report import render
-from register_check.runner import Verdict, exit_code, run_command_assert, run_control
+from register_check.runner import (
+    Verdict,
+    exit_code,
+    run_command_assert,
+    run_control,
+    sets_exit_code,
+)
 from register_check.variance import (
     Direction,
     build_variance,
@@ -263,13 +269,17 @@ def _cmd_run(
         else [run_meta_control(meta, register, repo, remote) for meta in register.meta_controls]
     )
     print(render(register, results, meta_results))
-    verdicts = [r.verdict for r in results] + [m[2] for m in meta_results]
+    # ADR 0061: a control below `blocking` is reported above and sets nothing.
+    # Its FAIL is not a 1 and its partial is not a 3, so `--require-complete`
+    # cannot promote a `warn` control by the back door either.
+    counted = [r for r in results if sets_exit_code(r.control)]
+    verdicts = [r.verdict for r in counted] + [m[2] for m in meta_results]
     # A predicate-skipped control ran nothing, so its partial declarations say
     # nothing about this run — counting them would make exit 3 fire for controls
     # that legitimately do not apply.
     partial = any(
         block.block.partial is not None
-        for result in results
+        for result in counted
         if result.verdict is not Verdict.SKIPPED_PREDICATE
         for block in result.blocks
     ) or any(
