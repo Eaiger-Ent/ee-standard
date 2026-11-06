@@ -1860,9 +1860,11 @@ not true, and a third it left open:
       `reviewer` (R), `author` (C) and `searcher` (S), each named in
       `members`. They are new names, not `Explore.md` or `general-purpose.md`:
       a project definition with a built-in's name replaces its system prompt.
-- [ ] Any step this phase gives an adopter is in [`08-adopting.md`](08-adopting.md),
+- [x] Any step this phase gives an adopter is in [`08-adopting.md`](08-adopting.md),
       with how they know it worked. That includes the one ADR 0023 names that is
-      not about floors: do not set `CLAUDE_CODE_SUBAGENT_MODEL`.
+      not about floors: do not set `CLAUDE_CODE_SUBAGENT_MODEL`. Closed
+      2026-11-06: § 3.8, checklist row 7f, and the exit-code table's note on
+      rungs below `blocking`, which landed with ADR 0061.
 
 ## What is deliberately not in scope
 
