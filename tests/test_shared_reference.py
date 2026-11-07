@@ -37,6 +37,7 @@ SKILLS = sorted(p for p in (PLUGIN / "skills").iterdir() if p.is_dir())
 #: has taken the copy back.
 SHARED_HEADINGS = {
     "plan-limits.md": "When the platform refuses on the plan, not the token",
+    "pre-answered.md": "A question the adoption plan showed is answered by the plan",
     "pre-commit-runner.md": "Before you write a pre-commit hook, make sure something runs it",
     "template-layout.md": "A template is written below its marker, indented to where it goes",
     "unattended.md": "Running without being asked the same question again",

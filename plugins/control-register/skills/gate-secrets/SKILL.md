@@ -5,7 +5,7 @@ description: >
   writes, verify through register-check — deploys SEC-001, checks SEC-002
   and SEC-003.
   Triggers: 'deploy gate-secrets', 'wire secret scanning', '/gate-secrets'.
-argument-hint: "[--repo <path>] [--register <path>]"
+argument-hint: "[--repo <path>] [--register <path>] [--plan] [--answers <path>]"
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 
@@ -43,9 +43,9 @@ further part in enforcement.
 | ------- | ---------- | --------- | ------------- |
 | `--repo <path>` | No | current directory | The repository to deploy into |
 | `--register <path>` | No | `<repo>/controls.yaml` | The register to read pins from |
+| `--plan`, `--answers <path>` | No | off | ADR 0062, read `${CLAUDE_PLUGIN_ROOT}/reference/pre-answered.md`. `--plan`: run to the end of § 3, *Report the plan before writing*, print the `QUESTIONS` block, write nothing, stop. `--answers`: a question the file names is not asked again; any other is |
 
-Both flags mirror `register-check`'s own, so a deployment and its audit can
-never be pointed at different things by accident.
+`--repo` and `--register` mirror `register-check`'s own, so a deployment and its audit can never be pointed at different things.
 
 ## Success criteria
 
@@ -136,7 +136,7 @@ gates nothing.
 Show a table of what will be written, to which file, and what already exists
 there. If any artefact exists and this skill did not write it — no `ee-control:`
 stamp naming `gate-secrets` — ask via **AskUserQuestion** whether to take it
-over. Options: Adopt and stamp / Leave and abort.
+over. Options: Adopt and stamp / Leave and abort. *Answerable from the plan: `takeover`, one per file.*
 
 Adopting is the honest option, not the polite one: hand-wired artefacts are the
 normal starting state, and a stamp that records what was already there is how
@@ -327,7 +327,7 @@ in particular, and a whole-file stamp would claim them for SEC-001. Same rule as
 - **`LEGACY_STATE` is `LEGACY`:** a hand-written `.git/hooks/pre-commit` runs
   only for whoever has that clone and is invisible to review. Show its contents,
   and offer via **AskUserQuestion** to remove it now that the pre-commit
-  framework covers the same ground. Options: Remove / Keep.
+  framework covers the same ground. Options: Remove / Keep. *Answerable from the plan: `removal`, subject `.git/hooks/pre-commit`.*
 - **`IGNORE_STATE` is `EXISTS`:** read every entry. An entry that suppresses a
   finding in a file **git tracks** hides authored content from a control whose
   `baseline` is `null` and whose `variance` is `forbidden` — it must go, and

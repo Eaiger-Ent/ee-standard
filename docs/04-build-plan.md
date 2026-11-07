@@ -1886,23 +1886,33 @@ still confirmed by an answer naming that exact call, and that answer may now
 come from the plan. The criterion is annotated where it stands rather than
 re-opened.
 
-- [ ] `reference/pre-answered.md` states the rule once: `--plan`, `--answers`,
+- [x] `reference/pre-answered.md` states the rule once: `--plan`, `--answers`,
       the matching table, and that an unlisted question is still asked. Every
-      gate and `register-adopt` points at it, and none restates it.
-- [ ] Every gate's `argument-hint` offers `--plan` and `--answers`, and no gate
+      gate and `register-adopt` points at it, and none restates it. Closed
+      2026-11-07: `tests/test_shared_reference.py` registers it, and
+      `tests/test_unattended_flag.py` fails a gate that does not point at it.
+- [x] Every gate's `argument-hint` offers `--plan` and `--answers`, and no gate
       takes `--yes`. Each takeover, removal, choice and platform question site
-      says it can be answered from the plan.
-- [ ] `register-adopt` dispatches each gate with `--plan` in pre-flight, prints
+      says it can be answered from the plan. Closed 2026-11-07: a takeover or
+      removal site with no *Answerable from the plan* marker fails the build.
+- [x] `register-adopt` dispatches each gate with `--plan` in pre-flight, prints
       **What will change** in plain English, offers **Deploy all** / **Change
       an answer** / **Choose gates** / **Cancel**, and passes `--answers` to
-      every gate.
-- [ ] `reference/unattended.md` matches ADR 0062's `--yes` table: `--yes` does
-      not answer a plan that lists a platform call.
-- [ ] `tests/test_gate_repo_confirmation.py` holds the new rule: every mutating
+      every gate. Closed 2026-11-07: Steps 1 to 4 of its `SKILL.md`. No test can
+      prove a model follows them (ADR 0062 § Consequences).
+- [x] `reference/unattended.md` matches ADR 0062's `--yes` table: `--yes` does
+      not answer a plan that lists a platform call. Closed 2026-11-07, held by
+      `test_yes_never_answers_a_plan_with_a_platform_call`.
+- [x] `tests/test_gate_repo_confirmation.py` holds the new rule: every mutating
       call has its own question, and a pre-answer counts only when it names the
-      same method, route and request-body digest.
-- [ ] `docs/08-adopting.md` says what the adopter now sees, and the promotion
-      record names every changed plugin file as owed upstream.
+      same method, route and request-body digest. Closed 2026-11-07: the waiver
+      test now requires that exception, and each `POST`, `PUT` and `DELETE`
+      question names its subject.
+- [x] `docs/08-adopting.md` says what the adopter now sees, and the promotion
+      record names every changed plugin file as owed upstream. Closed 2026-11-07:
+      § 2's *Every change listed, and one answer*, with how you know it worked,
+      START-HERE.md step 5, and six new `owed-upstream` entries in
+      `published.json`.
 
 ## What is deliberately not in scope
 

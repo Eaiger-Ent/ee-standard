@@ -4,7 +4,7 @@ description: >
   Deploy CI-001: record the default-branch ruleset the register requires, then
   apply it through the GitHub API after an explicit confirmation.
   Triggers: 'deploy gate-repo', 'protect the default branch', '/gate-repo'.
-argument-hint: "[--repo <path>] [--register <path>]"
+argument-hint: "[--repo <path>] [--register <path>] [--plan] [--answers <path>]"
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 
@@ -33,11 +33,13 @@ a mutation that inherits another's approval is one nobody agreed to.
 | `PUT /repos/{owner}/{name}/rulesets/{id}` | 2 | Replaces an existing ruleset entire — including anything it carries that the record does not | Step 2's **update** question, which names what the call drops |
 | `DELETE /repos/{owner}/{name}/branches/{branch}/protection` | 3 | Removes the classic branch-protection rule, reducing what protects the branch until the ruleset is confirmed active | Step 3's own question, asked after the ruleset is active and never in the same breath |
 
-**No confirmation here is waivable by an earlier approval**, including a plan
-approved in `register-adopt`. That plan covers what will be written to files;
-none of these is a file. Never treat one of these questions as redundant, never
-pass a flag that suppresses it, and never ask them as one question with one
-answer.
+**No confirmation here is waivable by an earlier approval**, with one exception:
+an adoption plan that listed **this exact call** (ADR 0062), on its own row with
+its method, route, body digest and effect. It is matched as `${CLAUDE_PLUGIN_ROOT}/reference/pre-answered.md`
+says: same method, same route, same body digest. Anything else, including a
+`POST` that has become a `PUT`, is asked here. Never treat one of these questions
+as redundant, never pass a flag that suppresses it, and never ask them as one
+question with one answer.
 
 A call that is not in this table is a call this skill does not make. If one
 turns out to be needed, it needs its own row and its own confirmation before it
@@ -72,9 +74,9 @@ enforcement.
 | ------- | ---------- | --------- | ------------- |
 | `--repo <path>` | No | current directory | The repository to deploy into |
 | `--register <path>` | No | `<repo>/controls.yaml` | The register to read requirements from |
+| `--plan`, `--answers <path>` | No | off | ADR 0062, read `${CLAUDE_PLUGIN_ROOT}/reference/pre-answered.md`. `--plan`: run to the end of § 3, *Report the plan, and what it will change for everyone*, print the `QUESTIONS` block, write nothing, stop. `--answers`: a question the file names is not asked again; any other is |
 
-Both flags mirror `register-check`'s own, so a deployment and its audit can
-never be pointed at different things by accident.
+`--repo` and `--register` mirror `register-check`'s own, so a deployment and its audit can never be pointed at different things.
 
 ## Success criteria
 
@@ -289,7 +291,7 @@ change nothing.
 > merge requires a pull request with a passing check, and history cannot be
 > rewritten. It affects every collaborator, not only you. Apply it?
 
-Options: **Apply now** / **Record only, do not apply**.
+Options: **Apply now** / **Record only, do not apply**. *Answerable from the plan: `platform`, subject `POST /repos/{owner}/{name}/rulesets`.*
 
 **On Apply now:**
 
@@ -318,7 +320,7 @@ words. Read `GET repos/$OWNER/$NAME/rulesets/$ID` first and name the difference:
 > drops `<anything the live ruleset carries and the record does not — or
 > "nothing">`. It affects every collaborator, not only you. Apply it?
 
-Options: **Apply now** / **Record only, do not apply**.
+Options: **Apply now** / **Record only, do not apply**. *Answerable from the plan: `platform`, subject `PUT /repos/{owner}/{name}/rulesets/{id}`; its sentence names what the call drops.*
 
 **If the diff is empty, ask anyway**, and say the diff is empty. A call whose
 effect is invisible until it is wrong is not one to make silently, and "nothing
@@ -361,7 +363,7 @@ Show what the classic rule requires, show what the ruleset requires, and ask via
 > after this, only ruleset `<id>` protects the branch. Anything the classic rule
 > required and the ruleset does not stops being required. Remove it?
 
-Options: **Remove** / **Keep**.
+Options: **Remove** / **Keep**. *Answerable from the plan: `platform`, subject `DELETE /repos/{owner}/{name}/branches/{branch}/protection`, used only once the ruleset reads back active.*
 
 This is a third confirmation, not a continuation of Step 2's. Step 2 asked about
 adding protection; this asks about taking some away, and an approval to apply a

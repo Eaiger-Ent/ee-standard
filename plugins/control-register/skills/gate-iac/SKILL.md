@@ -4,7 +4,7 @@ description: >
   Deploy IAC-001: run the register's infrastructure analysers over all
   Terraform at pre-commit and in CI, where their exit codes block the merge.
   Triggers: 'deploy gate-iac', 'wire terraform analysis', '/gate-iac'.
-argument-hint: "[--repo <path>] [--register <path>]"
+argument-hint: "[--repo <path>] [--register <path>] [--plan] [--answers <path>]"
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 
@@ -42,9 +42,9 @@ skill wires them and then has no further part in enforcement.
 | ------- | ---------- | --------- | ------------- |
 | `--repo <path>` | No | current directory | The repository to deploy into |
 | `--register <path>` | No | `<repo>/controls.yaml` | The register to read the analysers from |
+| `--plan`, `--answers <path>` | No | off | ADR 0062, read `${CLAUDE_PLUGIN_ROOT}/reference/pre-answered.md`. `--plan`: run to the end of § 3, *Report the plan before writing*, print the `QUESTIONS` block, write nothing, stop. `--answers`: a question the file names is not asked again; any other is |
 
-Both flags mirror `register-check`'s own, so a deployment and its audit can
-never be pointed at different things by accident.
+`--repo` and `--register` mirror `register-check`'s own, so a deployment and its audit can never be pointed at different things.
 
 ## Success criteria
 
@@ -126,7 +126,7 @@ have is a hook that can only ever be noise.
 Show a table of what will be written, to which file, and what already exists
 there. If any artefact exists and this skill did not write it — no `ee-control:`
 stamp naming `gate-iac` — ask via **AskUserQuestion** whether to take it over.
-Options: Adopt and stamp / Leave and abort.
+Options: Adopt and stamp / Leave and abort. *Answerable from the plan: `takeover`, one per file.*
 
 **Report `ANALYSER_STATE` and `PINNED_STATE` here, before writing anything.**
 This is the state most likely to make the deployment report something other than
@@ -231,7 +231,7 @@ control at all, and the verify step below will not credit it.
   predecessor, it is a different check.
 - **`LEGACY_STATE` shows `tfsec` or `terrascan`:** these overlap with `checkov`
   and the register does not name them. Show what each is configured to do, and
-  ask via **AskUserQuestion** whether to remove it. Options: Remove / Keep. A
+  ask via **AskUserQuestion** whether to remove it. *Answerable from the plan: `removal`, one per analyser's configuration.* Options: Remove / Keep. A
   second analyser is not a violation — but two analysers with two suppression
   files is two places a finding can be hidden, and only one of them is a place
   this standard checks (ADR 0019).

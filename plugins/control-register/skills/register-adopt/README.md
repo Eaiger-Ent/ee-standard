@@ -45,10 +45,10 @@ it, before `gate-repo` protects the branch.
 
 An adoption is re-run — after a failure, after a token arrives, after a control
 is added — and each run asked the same two questions. `--yes` pre-answers the plan
-as **Deploy all** and passes the same to `/register-install`, and answers nothing
-else: a gate still asks before a call that changes what a colleague can push, or
-before taking over a file somebody wrote by hand. `reference/unattended.md` holds
-the rule once.
+as **Deploy all** and passes the same to `/register-install`. That covers every
+takeover, removal and choice the plan listed. It does not answer a plan that
+lists a call changing what a colleague can push: that plan is asked once,
+whatever the flag. `reference/unattended.md` holds the rule once.
 
 ### Why the dispatch order is what it is
 
@@ -66,12 +66,21 @@ Not alphabetical, and not the order the gates were built.
 
 The first two positions are load-bearing. Everything else is preference.
 
-### One confirmation, and one exception to it
+### Every change listed in plain English, and one answer
 
-Step 3 asks once, covering the whole plan. `gate-repo` asks **again** on its own,
-and that is right rather than redundant: this plan covers what will be written to
-files, and a GitHub API call is not a file. Its ruleset is in force the moment
-the call returns, for everyone with access.
+Before anything is written, every gate is run with `--plan`. Each reports the
+questions it would ask — a file to take over, a tool to remove, a choice such as
+the test command, a GitHub API call — without asking them. Step 2 lists them
+all, numbered, one plain-English sentence each, with the answer proposed. Step 3
+asks once: **Deploy all** / **Change an answer** / **Choose gates** / **Cancel**.
+The gates are then run with `--answers`, and a question the plan listed is not
+asked again.
+
+A question the plan did not list is still asked: the repository changed since
+the plan, or a gate met an error. A `gate-repo` call is matched on its method,
+route and body digest, so a call that changed since the plan is asked too
+([ADR 0062](https://github.com/Eaiger-Ent/ee-standard/blob/main/docs/adr/0062-an-adoption-is-answered-once-from-its-plan.md),
+`reference/pre-answered.md`).
 
 ### Predicates are evaluated, never asked
 

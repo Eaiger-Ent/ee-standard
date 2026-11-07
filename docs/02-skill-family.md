@@ -322,11 +322,13 @@ fixes were written as a section pasted into every skill they governed — twelve
 copies of two rules — and the count reached 510 before anything noticed. So
 **prose more than one skill must follow is shipped once**, under
 `plugins/control-register/reference/`, and read at runtime through
-`${CLAUDE_PLUGIN_ROOT}`; the skill carries a pointer and nothing more. Five
+`${CLAUDE_PLUGIN_ROOT}`; the skill carries a pointer and nothing more. Six
 files exist: `pre-commit-runner.md`, `write-narration.md`, `unattended.md`,
-`template-layout.md` and `plan-limits.md` — the last for the two gates whose
-controls verify platform state a plan can withhold, `gate-repo` and
-`gate-secrets`. `template-layout.md` says how a YAML template's payload, shipped
+`pre-answered.md`, `template-layout.md` and `plan-limits.md`. `plan-limits.md`
+is for the two gates whose controls verify platform state a plan can withhold,
+`gate-repo` and `gate-secrets`. `pre-answered.md` is ADR 0062's: how every gate
+reports its questions to `register-adopt`'s plan, and reads back the plan's
+answers. `template-layout.md` says how a YAML template's payload, shipped
 at column 0, is indented to the list it joins.
 `tests/test_shared_reference.py` fails a pointer to a file the plugin does not
 ship, and a skill that takes the section back.

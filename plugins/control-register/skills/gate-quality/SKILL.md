@@ -4,7 +4,7 @@ description: >
   Deploy LNT-001, TYP-001 and TST-001: wire the register's linter, type checker
   and test command at every locus they declare, stamp what it writes, verify
   through register-check. Triggers: 'deploy gate-quality', '/gate-quality'.
-argument-hint: "[--repo <path>] [--register <path>]"
+argument-hint: "[--repo <path>] [--register <path>] [--plan] [--answers <path>]"
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 
@@ -50,9 +50,9 @@ has no further part in enforcement.
 | ------- | ---------- | --------- | ------------- |
 | `--repo <path>` | No | current directory | The repository to deploy into |
 | `--register <path>` | No | `<repo>/controls.yaml` | The register to read pins from |
+| `--plan`, `--answers <path>` | No | off | ADR 0062, read `${CLAUDE_PLUGIN_ROOT}/reference/pre-answered.md`. `--plan`: run to the end of § 3, *Report the plan before writing*, and Step 1's choice of test command, print the `QUESTIONS` block, write nothing, stop. `--answers`: a question the file names is not asked again; any other is |
 
-Both flags mirror `register-check`'s own, so a deployment and its audit can
-never be pointed at different things by accident.
+`--repo` and `--register` mirror `register-check`'s own, so a deployment and its audit can never be pointed at different things.
 
 ## Success criteria
 
@@ -169,7 +169,7 @@ nothing.
 Show a table of what will be written, to which file, for which control, and what
 already exists there. If any artefact exists and this skill did not write it —
 no `ee-control:` stamp naming `gate-quality` — ask via **AskUserQuestion**
-whether to take it over. Options: Adopt and stamp / Leave and abort.
+whether to take it over. Options: Adopt and stamp / Leave and abort. *Answerable from the plan: `takeover`, one per file.*
 
 Adopting is the honest option, not the polite one: hand-wired quality gates are
 the normal starting state of a repository that has any at all. Say so in the
@@ -220,7 +220,7 @@ say both when you ask:
 - It reaches the artefact the lockfile pins, the way `LINT_INVOCATION` does. A
   bare test runner resolves from `PATH` (ADR 0020).
 
-Store the answer as `TEST_COMMAND`.
+Store the answer as `TEST_COMMAND`. *Answerable from the plan: `choice`, subject `test command`.*
 
 ---
 
@@ -254,7 +254,7 @@ lockfile for `STACK_ECOSYSTEM`, stop: SUP-001 owns that, `gate-supply-chain`
 deploys it, and adding a dependency to a project with no lockfile creates one
 whose contents nobody reviewed. If it has more than one, ask via
 **AskUserQuestion** which package manager governs — two lockfiles is a fact
-about the repository, not a thing to guess.
+about the repository, not a thing to guess. *Answerable from the plan: `choice`, subject `package manager`.*
 
 Report every dependency added, by name. A tool the repository did not previously
 depend on is a change to what it builds, not a change to how it is checked.
@@ -366,7 +366,7 @@ than blocks.
   second rule set — two tools disagreeing about the same file, with no recorded
   decision about which wins. Show what is configured, and offer via
   **AskUserQuestion** to remove its configuration and its hooks. Options:
-  Remove / Keep. Keeping is a variance, so say what it is a variance from.
+  Remove / Keep. Keeping is a variance, so say what it is a variance from. *Answerable from the plan: `removal`, one per configuration file.*
 - **A per-file opt-out exists in the type checker's configuration** — a blanket
   override that ignores errors for every module, or a suppression comment
   regime — read every one. TYP-001's `enforces` says *no per-file opt-out beyond

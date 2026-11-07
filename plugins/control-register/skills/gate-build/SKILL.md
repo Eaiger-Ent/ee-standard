@@ -4,7 +4,7 @@ description: >
   Deploy BLD-001 and DEV-001: a non-root container user, a digest-pinned image
   and a complete devcontainer lock file, enforced at both declared loci.
   Triggers: 'deploy gate-build', 'pin the devcontainer', '/gate-build'.
-argument-hint: "[--repo <path>] [--register <path>]"
+argument-hint: "[--repo <path>] [--register <path>] [--plan] [--answers <path>]"
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 
@@ -52,9 +52,9 @@ start.
 | ------- | ---------- | --------- | ------------- |
 | `--repo <path>` | No | current directory | The repository to deploy into |
 | `--register <path>` | No | `<repo>/controls.yaml` | The register to read pins from |
+| `--plan`, `--answers <path>` | No | off | ADR 0062, read `${CLAUDE_PLUGIN_ROOT}/reference/pre-answered.md`. `--plan`: run to the end of § 3, *Report the plan before writing*, print the `QUESTIONS` block, write nothing, stop. `--answers`: a question the file names is not asked again; any other is |
 
-Both flags mirror `register-check`'s own, so a deployment and its audit can
-never be pointed at different things by accident.
+`--repo` and `--register` mirror `register-check`'s own, so a deployment and its audit can never be pointed at different things.
 
 ## Success criteria
 
@@ -130,7 +130,7 @@ produces a config the tooling ignores.
 Show a table of what will be written, to which file, for which control, and what
 already exists there. If any artefact exists and this skill did not write it —
 no `ee-control:` stamp naming `gate-build` — ask via **AskUserQuestion** whether
-to take it over. Options: Adopt and stamp / Leave and abort.
+to take it over. Options: Adopt and stamp / Leave and abort. *Answerable from the plan: `takeover`, one per file.*
 
 Adopting is the honest option, not the polite one: a repository with a
 devcontainer at all usually has a user and an image already. Say so in the
@@ -176,7 +176,7 @@ actually provides and write it as `remoteUser`:
 docker run --rm "$IMAGE" id -un
 ```
 
-Ask via **AskUserQuestion** before writing a user the image does not define.
+Ask via **AskUserQuestion** before writing a user the image does not define. *Answerable from the plan: `choice`, subject `container user`.*
 Inventing one produces a container that does not start, which is a worse
 failure than the one being fixed.
 

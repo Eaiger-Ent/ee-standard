@@ -638,9 +638,10 @@ does it: **enable secret-scanning push protection**, in the repository's
 Settings → Code security. It is the only stop that is not on a contributor's
 machine.
 
-**You do not create the ruleset here.** Step 5 does, through `gate-repo`, which
-asks its own confirmation before the call — the ruleset is in force for everyone
-the moment it returns, so it is not something to do twice or by accident.
+**You do not create the ruleset here.** Step 5 does, through `gate-repo`. The
+adoption plan shows the exact call before anything runs, and your answer to the
+plan is the confirmation — the ruleset is in force for everyone the moment it
+returns, so it is not something to do twice or by accident.
 
 **Done when:** the last command prints `enabled`. The rest are a baseline to
 compare against after step 5 — expect the ruleset list to be empty and
@@ -879,10 +880,13 @@ press through the ones that matter:
 /register-adopt --repo . --register ./controls.yaml --yes
 ```
 
-**It answers those two and nothing else.** The plan still prints. `gate-repo`
-still asks before every call that changes what your colleagues can push, a gate
-still asks before taking over a file you wrote by hand, and nothing is removed
-without asking. Those are not proceed questions, and no flag answers them.
+**What the plan asks you, and what `--yes` answers.** Before anything is
+written, the plan lists every change in plain English, numbered: each file a
+gate would take over, each tool it would remove, each choice such as the test
+command, and each GitHub API call. One answer covers them all. `--yes` gives that
+answer for you, **unless the plan lists a GitHub API call** — a change to what
+your colleagues can push is always answered by you, once, with the call on
+screen. Anything the plan did not list is still asked.
 
 **Done when:** it reports every control planned and verified, and commits.
 
