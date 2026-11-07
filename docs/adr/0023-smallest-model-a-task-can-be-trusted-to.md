@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-23
-**Revision:** 1
+**Revision:** 2
 
 Nothing in this repository says which model an agent or sub-agent runs on. That
 is not a gap between two rules — it is the absence of any rule, and the absence
@@ -52,6 +52,29 @@ environment variable, every sub-agent this repository has ever spawned resolved
 at step 4. The repository is therefore already running a policy — *always use
 the session model* — that no one wrote down and no one can see.
 
+**Amended 2026-11-07: the resolution order above stopped being true, and the
+forbidden set is now two variables. The decision is unchanged.**
+
+The order quoted above was the documented one on 2026-08-23. Two Claude Code
+releases have since moved the environment variable:
+
+- **v2.1.251** made `CLAUDE_CODE_SUBAGENT_MODEL` a default. It now sits *below*
+  a definition's `model:` frontmatter, so it no longer outranks a floor. It
+  still sets the model of every sub-agent that has no definition, and that
+  includes the built-in `general-purpose`, which can write.
+- **v2.1.257** added `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`, which outranks every
+  definition. That is the property this ADR forbade the first variable for, and
+  it now belongs to the second one.
+
+Both can still defeat the decision from outside it: one by demoting every
+agent the definitions do not name, the other by demoting every agent. So both
+are forbidden. The names are register data, in `agent_models.forbidden_env`,
+not text in the checker, because the next release may add a third (ADR 0018).
+Where this ADR says `CLAUDE_CODE_SUBAGENT_MODEL` below — the bullet that
+follows, Option 4, § What is verified and § 6 — read it as both variables. The
+original text is left as it was written, per
+[ADR 0025](0025-an-amendment-is-a-recorded-revision.md).
+
 ### What can select a model, and what that means for verification
 
 The mechanisms are not equally visible to a checker, and the difference decides
@@ -70,7 +93,8 @@ Four consequences follow, and each is a constraint on the decision below:
   `CLAUDE.md` asking for a smaller model is read by an assistant that may or
   may not act on it, and by nothing else. The frontmatter field is read by the
   harness whether or not anyone is paying attention.
-- **`CLAUDE_CODE_SUBAGENT_MODEL` outranks every per-agent floor.** Setting it
+- **`CLAUDE_CODE_SUBAGENT_MODEL` outranks every per-agent floor** (true as
+  of 2026-08-23; since v2.1.257 that is `_FORCE` — see the amendment above). Setting it
   to a small model in the devcontainer would silently demote the reviewers this
   decision exists to keep large. It is the one lever that can defeat the
   decision from outside it.
@@ -126,6 +150,10 @@ that different sub-agents should differ. It is one number where three are
 needed.
 
 ### Option 4: Set `CLAUDE_CODE_SUBAGENT_MODEL` in the devcontainer
+
+*Revision 2: the precedence below is the 2026-08-23 order. Since v2.1.257 it
+belongs to `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`, and both remain forbidden — see
+the amendment in § Background.*
 
 Rejected, and forbidden. It is the simplest way to make most sub-agents small,
 and it is precedence 1: it would override every per-agent floor including the
@@ -203,7 +231,8 @@ Verifiable from files, and therefore the control's content:
 - every file in `.claude/agents/` declares a `model:`,
 - the declared model is at or above its class floor, and equals `opus` for R,
 - no class R or C definition declares `inherit`, and
-- no tracked file sets `CLAUDE_CODE_SUBAGENT_MODEL`.
+- no tracked file sets `CLAUDE_CODE_SUBAGENT_MODEL` — from revision 2, any
+  variable in `agent_models.forbidden_env`.
 
 Not verifiable from this repository, and therefore declared rather than
 claimed: a per-invocation `model` argument, a `Workflow` script's `opts.model`,
@@ -269,7 +298,8 @@ together they share one bump.
 
 `docs/08-adopting.md` owes a section, per the standing requirement in
 `docs/04-build-plan.md` — including the one instruction that is not about
-floors at all: do not set `CLAUDE_CODE_SUBAGENT_MODEL`.
+floors at all: do not set `CLAUDE_CODE_SUBAGENT_MODEL` (from revision 2,
+nor `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`).
 
 ## Consequences
 
@@ -306,6 +336,13 @@ floors at all: do not set `CLAUDE_CODE_SUBAGENT_MODEL`.
   also how a control quietly stays advisory for a year. The promotion decision
   should be dated when this is accepted, not deferred to whenever someone
   notices.
+
+## Revision History
+
+| Rev | Date | What changed | Ratified by |
+| --- | --- | --- | --- |
+| 1 | 2026-08-23 | Original decision: three classes, floors in `agent_models:`, AGT-001 at Tier 2 / `warn`, and `CLAUDE_CODE_SUBAGENT_MODEL` forbidden. | Nathan Carney |
+| 2 | 2026-11-07 | Precedence facts corrected: since v2.1.251 the variable sits below a definition, and v2.1.257's `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` outranks every one. Both are forbidden, named in `agent_models.forbidden_env`. Decision unchanged. | Nathan Carney |
 
 ## Related ADRs
 
