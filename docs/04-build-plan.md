@@ -746,6 +746,10 @@ unreachable — and only a remote check catches it.
       between it and the call before it, so a fourth mutation fails the build
       until it has both ([`11-phase-3-review.md`](11-phase-3-review.md)
       § The tenth slice)
+      **Annotated 2026-11-07 by
+      [ADR 0062](adr/0062-an-adoption-is-answered-once-from-its-plan.md):**
+      a call is still confirmed by an answer naming that exact call, and since
+      Phase 13 that answer may come from the adoption plan.
 
 ### What moved to Phase 5, and why
 
@@ -1865,6 +1869,40 @@ not true, and a third it left open:
       not about floors: do not set `CLAUDE_CODE_SUBAGENT_MODEL`. Closed
       2026-11-06: § 3.8, checklist row 7f, and the exit-code table's note on
       rungs below `blocking`, which landed with ADR 0061.
+
+## Phase 13 — An adoption is answered once
+
+An adopter asked on 2026-11-07, from a real run, for `/register-adopt` to list
+every change in plain English, take one answer, and then make them all. On a
+first deployment every gate question is answered *yes*, so asking each one
+mid-run adds time and no value.
+[ADR 0062](adr/0062-an-adoption-is-answered-once-from-its-plan.md), accepted
+the same day, decides how. Each gate reports its questions in a `--plan` mode,
+the plan lists them, and one answer covers every question the plan showed.
+
+**This changes a ticked Phase 3 criterion**, *gate-repo confirms before every
+remote mutation, independently of the plan-level confirmation*. Each call is
+still confirmed by an answer naming that exact call, and that answer may now
+come from the plan. The criterion is annotated where it stands rather than
+re-opened.
+
+- [ ] `reference/pre-answered.md` states the rule once: `--plan`, `--answers`,
+      the matching table, and that an unlisted question is still asked. Every
+      gate and `register-adopt` points at it, and none restates it.
+- [ ] Every gate's `argument-hint` offers `--plan` and `--answers`, and no gate
+      takes `--yes`. Each takeover, removal, choice and platform question site
+      says it can be answered from the plan.
+- [ ] `register-adopt` dispatches each gate with `--plan` in pre-flight, prints
+      **What will change** in plain English, offers **Deploy all** / **Change
+      an answer** / **Choose gates** / **Cancel**, and passes `--answers` to
+      every gate.
+- [ ] `reference/unattended.md` matches ADR 0062's `--yes` table: `--yes` does
+      not answer a plan that lists a platform call.
+- [ ] `tests/test_gate_repo_confirmation.py` holds the new rule: every mutating
+      call has its own question, and a pre-answer counts only when it names the
+      same method, route and request-body digest.
+- [ ] `docs/08-adopting.md` says what the adopter now sees, and the promotion
+      record names every changed plugin file as owed upstream.
 
 ## What is deliberately not in scope
 
