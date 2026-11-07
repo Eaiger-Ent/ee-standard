@@ -27,7 +27,15 @@
     },
     "templates/adopt/guided.sh": {
       "stance": "owed-upstream",
-      "why": "§ C's base-directory prompt defaulted to $HOME/git, a directory most adopters do not keep projects in, while START-HERE.md § C tells them to run from wherever they do. It now defaults to $PWD, the directory adopt.sh was run from, which adopt.sh never changes before handing over. Submitted 2026-11-07 as incubator#1320 (branch amend/register-install--whome192-20261107), tracked by #304."
+      "why": "§ C's base-directory prompt defaulted to $HOME/git, a directory most adopters do not keep projects in, while START-HERE.md § C tells them to run from wherever they do. It now defaults to $PWD, the directory adopt.sh was run from, which adopt.sh never changes before handing over. Submitted 2026-11-07 as incubator#1320 (branch amend/register-install--whome192-20261107), tracked by #304. Since then, § E: when 25-credentials.sh reports no GitHub PAT, it prints START-HERE.md § E's fields and permissions from the guide beside it, the command that stores the token under the project-scoped name, and offers to store a pasted one. Not yet submitted."
+    },
+    "templates/adopt/_lib.sh": {
+      "stance": "owed-upstream",
+      "why": "Gains project_prefix, the project-scoped Keychain name 25-credentials.sh reads and guided.sh writes, and PAT_MISSING, the words guided.sh reads back from 25-credentials.sh's report; ADOPT_COLOUR keeps colours through the tee guided.sh reads it with. Rides with templates/adopt/guided.sh. Not yet submitted."
+    },
+    "templates/adopt/25-credentials.sh": {
+      "stance": "owed-upstream",
+      "why": "Reads its project prefix and its missing-PAT message from _lib.sh, so guided.sh can recognise the report. Rides with templates/adopt/guided.sh. Not yet submitted."
     }
   }
 }

@@ -21,6 +21,7 @@ nothing more, and this file holds the scripts to that:
 
 from __future__ import annotations
 
+import os
 import re
 import stat
 import subprocess
@@ -372,3 +373,87 @@ def test_the_handover_gives_the_command_the_guide_gives(command: str) -> None:
         f"guided.sh prints {command!r} and START-HERE.md does not carry it. "
         "One of the two has drifted, and the reader follows whichever they met first."
     )
+
+
+# --- § E: a missing PAT is met with what to make, and an offer to store it --
+
+
+def _fake_security(tmp_path: Path) -> dict[str, str]:
+    """A `security` that holds nothing, so the Keychain reads empty off macOS."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake = bin_dir / "security"
+    fake.write_text("#!/bin/sh\nexit 44\n")
+    fake.chmod(0o755)
+
+    return {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"}
+
+
+@pytest.mark.parametrize("colour", ["", "1"], ids=["plain", "coloured"])
+def test_guided_recognises_the_report_of_a_missing_pat(tmp_path: Path, colour: str) -> None:
+    """guided.sh offers to store a PAT when 25-credentials.sh's report carries
+    `$PAT_MISSING`. Both read the one string from `_lib.sh`; this holds that the
+    stage still prints it whole, colours included, where `grep -F` will find it."""
+    project = tmp_path / "my-app"
+    project.mkdir()
+    subprocess.run(["git", "init", "-q", "-b", "main", "."], cwd=project, check=True)
+    env = {**_fake_security(tmp_path), "ADOPT_COLOUR": colour}
+
+    result = subprocess.run(
+        [str(ADOPT / "25-credentials.sh")],
+        cwd=project, env=env, capture_output=True, text=True, check=False,
+    )
+    missing = _run_against_lib('printf %s "$PAT_MISSING"').stdout
+    assert missing, "_lib.sh no longer defines PAT_MISSING"
+    assert missing in result.stdout, (
+        f"25-credentials.sh did not report {missing!r} whole, so guided.sh would never "
+        f"offer to store a token:\n{result.stdout}"
+    )
+    assert "$PAT_MISSING" in (ADOPT / "guided.sh").read_text(encoding="utf-8")
+
+
+def test_the_project_prefix_is_the_one_fetch_secrets_looks_up(tmp_path: Path) -> None:
+    """guided.sh stores the token under the name; fetch-secrets.sh finds it by it."""
+    project = tmp_path / "my-app"
+    project.mkdir()
+    result = subprocess.run(
+        ["bash", "-c", f'. "{ADOPT}/_lib.sh"; project_prefix'],
+        cwd=project, capture_output=True, text=True, check=True,
+    )
+    assert result.stdout.strip() == "MY_APP"
+    fetch = REPO_ROOT / "plugins/control-register/templates/devcontainer/fetch-secrets.sh"
+    lib = (ADOPT / "_lib.sh").read_text(encoding="utf-8")
+    transform = "tr '[:lower:]-' '[:upper:]_'"
+    assert transform in fetch.read_text(encoding="utf-8") and transform in lib
+
+
+def test_the_permissions_guided_prints_are_read_from_the_guide() -> None:
+    """No copy of the permissions lives in guided.sh. It prints a span of
+    START-HERE.md, and this runs the very `sed` it runs, so a renamed heading
+    or a moved paragraph fails here rather than printing nothing to an adopter."""
+    guided = (ADOPT / "guided.sh").read_text(encoding="utf-8")
+    extract = re.search(r"(sed -n '[^']+') \"\$GUIDE\" \\\n\s*\| (sed '[^']+')", guided)
+    assert extract, "guided.sh no longer extracts § E's token section from the guide"
+    assert (ADOPT / "../../../../START-HERE.md").resolve() == GUIDE, (
+        "guided.sh finds the guide four levels up, which is no longer where it is"
+    )
+    printed = subprocess.run(
+        ["bash", "-c", f'{extract.group(1)} "{GUIDE}" | {extract.group(2)}'],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    guide = GUIDE.read_text(encoding="utf-8")
+    table = guide[guide.index("| Permission | Level | What it lets you do |"):]
+    table = table[: table.index("\n\n")]
+    assert table in printed, f"the permissions table is not in what guided.sh prints:\n{printed}"
+    assert "| Token name |" in printed
+    assert "security add-generic-password" not in printed, "the span ran past § E's token section"
+
+
+def test_the_store_command_guided_gives_is_the_guides() -> None:
+    """guided.sh both prints and runs the command that stores the token, so it
+    is a second copy, held to START-HERE.md as the § 5 handover commands are."""
+    guided = (ADOPT / "guided.sh").read_text(encoding="utf-8")
+    command = 'security add-generic-password -a "$USER" -s "'
+    assert command in guided
+    assert command in GUIDE.read_text(encoding="utf-8")
+    assert 'security add-generic-password -a "$USER" -s "$name" -w "$token"' in guided

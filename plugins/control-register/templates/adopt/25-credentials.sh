@@ -38,7 +38,7 @@ section "The GitHub PAT (§ E)"
 
 # fetch-secrets.sh looks the project-scoped name up first, so this checks in the
 # same order: a token named for this project wins wherever both exist.
-project_prefix=$(basename "$PWD" | tr '[:lower:]-' '[:upper:]_')
+project_prefix=$(project_prefix)
 
 if keychain_has "${project_prefix}_GITHUB_TOKEN"; then
   pass "${project_prefix}_GITHUB_TOKEN — project-scoped, and it wins over the plain name"
@@ -47,7 +47,7 @@ elif keychain_has GITHUB_TOKEN; then
   pass "GITHUB_TOKEN — shared across every project on this machine"
   token_present=yes
 else
-  manual "no GitHub PAT in the Keychain" "E"
+  manual "$PAT_MISSING" "E"
   token_present=no
 fi
 

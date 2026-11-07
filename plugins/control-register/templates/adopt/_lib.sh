@@ -21,7 +21,9 @@
 
 # ---------------------------------------------------------------- presentation
 
-if [ -t 1 ]; then
+# ADOPT_COLOUR keeps the colours when guided.sh reads a stage's report through
+# `tee`, which makes stdout a pipe rather than the terminal it ends up on.
+if [ -t 1 ] || [ -n "${ADOPT_COLOUR:-}" ]; then
   GREEN=$'\033[32m'
   RED=$'\033[31m'
   AMBER=$'\033[33m'
@@ -120,6 +122,19 @@ inside_container() {
 repository_root() {
   git rev-parse --show-toplevel 2>/dev/null || printf '%s' "$PWD"
 }
+
+# The prefix of the project-scoped Keychain name, by the transformation
+# fetch-secrets.sh looks it up with: `my-app` becomes `MY_APP`. One copy for
+# the route, because 25-credentials.sh reads the name and guided.sh writes it.
+project_prefix() {
+  basename "$(repository_root)" | tr '[:lower:]-' '[:upper:]_'
+}
+
+# The words 25-credentials.sh reports a missing PAT with. guided.sh reads them
+# back to decide whether to offer to store one, so they are one string here
+# rather than two that could stop matching.
+# shellcheck disable=SC2034  # read by the scripts that source this file
+PAT_MISSING="no GitHub PAT in the Keychain"
 
 # A stage reads the repository you are standing in, so the command to re-run it
 # is two lines, not one. Printing only the second sent a reader to
