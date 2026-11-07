@@ -482,7 +482,7 @@ decides whether it lands (`docs/00-concepts.md` § Notify, never redeploy).
 Canonical source for the shared standards below: `${CLAUDE_PLUGIN_ROOT}/reference/`.
 Registered in `docs/02-skill-family.md`.
 
-- **Answered from the plan** (`reference/pre-answered.md`) — shared with every gate and `register-adopt` (ADR 0062). What `--plan` reports and how `--answers` matches are stated there once; change them there, never here.
+- **Answered from the plan** (`reference/pre-answered.md`) — shared with every gate and with register-adopt (ADR 0062). What `--plan` reports and how `--answers` matches are stated there once; change them there, never here.
 - **Write narration shape** (`reference/write-narration.md`) — shared with every gate,
   `register-install` and `register-variance`. Change the shape there, never here;
   ADR 0036 is the reason it is one file rather than a copy per skill.
