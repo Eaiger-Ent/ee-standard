@@ -265,9 +265,11 @@ MSG
 
 # The guide sits at the root of the checkout adopt.sh fetched, at the same tag
 # as this script. Printing from it rather than from here keeps one copy of the
-# permissions. A plugin-cache copy of the route has no guide beside it, so it
+# permissions. The root is asked of git rather than climbed to with `..`: a
+# plugin-cache copy of the route is not a git checkout, so it finds no guide and
 # names the section instead.
-GUIDE="$HERE/../../../../START-HERE.md"
+guide_root=$(git -C "$HERE" rev-parse --show-toplevel 2>/dev/null || true)
+GUIDE="${guide_root:+$guide_root/START-HERE.md}"
 credentials_report=$(mktemp)
 trap 'rm -f "$credentials_report"' EXIT
 
@@ -286,7 +288,7 @@ offer_pat() {
   name="$(project_prefix)_GITHUB_TOKEN"
 
   banner "The GitHub PAT to make (§ E)"
-  if [ -f "$GUIDE" ]; then
+  if [ -n "$GUIDE" ] && [ -f "$GUIDE" ]; then
     echo
     sed -n '/^#### Creating the GitHub token$/,/^\*\*Store it in the Keychain\*\*/p' "$GUIDE" \
       | sed '1d;$d'

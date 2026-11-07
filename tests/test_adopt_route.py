@@ -434,8 +434,15 @@ def test_the_permissions_guided_prints_are_read_from_the_guide() -> None:
     guided = (ADOPT / "guided.sh").read_text(encoding="utf-8")
     extract = re.search(r"(sed -n '[^']+') \"\$GUIDE\" \\\n\s*\| (sed '[^']+')", guided)
     assert extract, "guided.sh no longer extracts § E's token section from the guide"
-    assert (ADOPT / "../../../../START-HERE.md").resolve() == GUIDE, (
-        "guided.sh finds the guide four levels up, which is no longer where it is"
+    root = subprocess.run(
+        ["git", "-C", str(ADOPT), "rev-parse", "--show-toplevel"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    assert Path(root) / "START-HERE.md" == GUIDE, (
+        "guided.sh finds the guide at the checkout's git root, which is no longer where it is"
+    )
+    assert 'rev-parse --show-toplevel' in guided and "../" not in guided, (
+        "guided.sh climbs to the guide with `..`, which the incubator's path-hygiene gate fails"
     )
     printed = subprocess.run(
         ["bash", "-c", f'{extract.group(1)} "{GUIDE}" | {extract.group(2)}'],
