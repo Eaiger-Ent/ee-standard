@@ -27,7 +27,7 @@
     },
     "templates/adopt/guided.sh": {
       "stance": "owed-upstream",
-      "why": "§ C's base-directory prompt defaulted to $HOME/git, a directory most adopters do not keep projects in, while START-HERE.md § C tells them to run from wherever they do. It now defaults to $PWD, the directory adopt.sh was run from, which adopt.sh never changes before handing over. Not yet submitted."
+      "why": "§ C's base-directory prompt defaulted to $HOME/git, a directory most adopters do not keep projects in, while START-HERE.md § C tells them to run from wherever they do. It now defaults to $PWD, the directory adopt.sh was run from, which adopt.sh never changes before handing over. Submitted 2026-11-07 as incubator#1320 (branch amend/register-install--whome192-20261107), tracked by #304."
     }
   }
 }
