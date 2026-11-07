@@ -475,6 +475,7 @@ file — generated from the skills, so the row is the authority when this list
 and it disagree. This skill writes no gate configuration itself, so it does
 not follow the write-narration shape the gates share.
 
+- **Answered from the plan** (`reference/pre-answered.md`) — shared with every gate and `register-adopt` (ADR 0062). What `--plan` reports and how `--answers` matches are stated there once; change them there, never here.
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
