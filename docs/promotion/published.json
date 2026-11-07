@@ -12,22 +12,23 @@
       ]
     },
     "skills/gate-*/SKILL.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0062: every gate takes `--plan` and `--answers <path>`, and marks each takeover, removal, choice and platform question as answerable from the adoption plan. Before that, the only difference was the skill-map link, by design (docs/05-promotion.md row 8). Not yet submitted. Once it ships and is taken back, this returns to by-design with the skill-map `normalise` pattern."
+    },
+    "skills/register-[iv]*/SKILL.md": {
       "stance": "by-design",
       "why": "Each copy names its own repository's skill map: docs/02-skill-family.md here, docs/skill-relationship-map.md in the incubator, which substitutes it on promotion (docs/05-promotion.md row 8). Nothing else may differ. Widened to the gates and register-install on re-recording at 0.1.21, once ADR 0059 revision 2 shipped (incubator#1247 to #1253) and the incubator's review fixes were taken back. register-adopt and register-variance folded in on re-recording at 0.1.22, once #1258 shipped and the incubator's 'whose rows list the skills' sentence was taken back.",
       "normalise": [
         "docs/(?:02-skill-family|skill-relationship-map)\\.md"
       ]
     },
-    "skills/register-*/SKILL.md": {
-      "stance": "by-design",
-      "why": "Each copy names its own repository's skill map: docs/02-skill-family.md here, docs/skill-relationship-map.md in the incubator, which substitutes it on promotion (docs/05-promotion.md row 8). Nothing else may differ. Widened to the gates and register-install on re-recording at 0.1.21, once ADR 0059 revision 2 shipped (incubator#1247 to #1253) and the incubator's review fixes were taken back. register-adopt and register-variance folded in on re-recording at 0.1.22, once #1258 shipped and the incubator's 'whose rows list the skills' sentence was taken back.",
-      "normalise": [
-        "docs/(?:02-skill-family|skill-relationship-map)\\.md"
-      ]
+    "skills/register-adopt/SKILL.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0062: pre-flight dispatches every gate with `--plan`, Step 2 lists every change in plain English, Step 3 offers Deploy all / Change an answer / Choose gates / Cancel and writes the answers file, and `--yes` does not answer a plan that lists a platform call. Before that, the only difference was the skill-map link, by design. Not yet submitted. Once it ships and is taken back, this returns to by-design with the skill-map `normalise` pattern."
     },
     "templates/adopt/guided.sh": {
       "stance": "owed-upstream",
-      "why": "§ C's base-directory prompt defaulted to $HOME/git, a directory most adopters do not keep projects in, while START-HERE.md § C tells them to run from wherever they do. It now defaults to $PWD, the directory adopt.sh was run from, which adopt.sh never changes before handing over. Submitted 2026-11-07 as incubator#1320 (branch amend/register-install--whome192-20261107), tracked by #304. Since then, § E: when 25-credentials.sh reports no GitHub PAT, it prints START-HERE.md § E's fields and permissions from the guide beside it, the command that stores the token under the project-scoped name, and offers to store a pasted one. Not yet submitted."
+      "why": "\u00a7 C's base-directory prompt defaulted to $HOME/git, a directory most adopters do not keep projects in, while START-HERE.md \u00a7 C tells them to run from wherever they do. It now defaults to $PWD, the directory adopt.sh was run from, which adopt.sh never changes before handing over. Submitted 2026-11-07 as incubator#1320 (branch amend/register-install--whome192-20261107), tracked by #304. Since then, \u00a7 E: when 25-credentials.sh reports no GitHub PAT, it prints START-HERE.md \u00a7 E's fields and permissions from the guide beside it, the command that stores the token under the project-scoped name, and offers to store a pasted one. Not yet submitted."
     },
     "templates/adopt/_lib.sh": {
       "stance": "owed-upstream",
@@ -36,6 +37,18 @@
     "templates/adopt/25-credentials.sh": {
       "stance": "owed-upstream",
       "why": "Reads its project prefix and its missing-PAT message from _lib.sh, so guided.sh can recognise the report. Rides with templates/adopt/guided.sh. Not yet submitted."
+    },
+    "skills/register-adopt/README.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0062: describes the plain-English change list and the one answer, and what `--yes` now answers. Not yet submitted."
+    },
+    "reference/pre-answered.md": {
+      "stance": "owed-upstream",
+      "why": "New with ADR 0062: the one home of the `--plan` / `--answers` rule every gate and register-adopt read. Not yet submitted."
+    },
+    "reference/unattended.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0062: the three kinds of question `--yes` never answers may be answered by the plan when it lists them, and `--yes` does not answer a plan that lists a platform call. Not yet submitted."
     }
   }
 }

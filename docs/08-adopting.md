@@ -404,11 +404,16 @@ control, the step, what the write does, why it is needed now and what will
 verify it. Nothing has failed or passed at that moment — a gate deploys first
 and verifies last — so that line is the whole of the reason you are being given.
 
-**One confirmation, and one exception.** It asks once, covering the whole plan.
-`gate-repo` asks **again** on its own, and that is right rather than redundant:
-the plan covers what will be written to files, and a GitHub API call is not a
-file. Its ruleset is in force the moment the call returns, for everyone with
-access.
+**Every change listed, and one answer** ([ADR 0062](adr/0062-an-adoption-is-answered-once-from-its-plan.md)).
+Before anything is written, each gate reports the questions it would ask, and
+the plan lists them all, numbered, in plain English, with the proposed answer:
+each file a gate would take over, each tool it would remove, each choice such as
+the test command, and each GitHub API call, with its method, route and body
+digest. You answer once: **Deploy all**, **Change an answer**, **Choose gates**
+or **Cancel**. A gate then prints `Answered in the adoption plan:` where it
+would have asked. **You know it worked** when the only questions after the plan
+are ones it did not list — which means the repository changed since, or a gate
+met an error, and each says which.
 
 **A control is never silently absent from the plan.** Four rows cover every
 control in the register — *deploy*, *dispatch elsewhere* (DOC-001 is `lint-md`'s,
@@ -1721,11 +1726,13 @@ passing check*). It is the only gate whose effect is not a file you review
 before it takes effect: it calls the GitHub API, and **the ruleset is in force
 the moment the call returns**, for everyone with access.
 
-So it confirms explicitly before acting, on every run, regardless of any plan
-already approved — including one approved in `register-adopt`. That plan covers
-what will be written to files; this call is not a file. A re-run that would
-change nothing still asks, because a call whose effect is invisible until it is
-wrong is not one to make silently.
+So it confirms explicitly before acting, on every run. Since
+[ADR 0062](adr/0062-an-adoption-is-answered-once-from-its-plan.md) that
+confirmation may be `register-adopt`'s plan, but only for a call the plan
+listed on its own row, with its method, route and body digest on screen. A call
+that differs from the row in any of the three is asked here. A re-run that would
+change nothing still asks, or still shows the call in the plan, because a call
+whose effect is invisible until it is wrong is not one to make silently.
 
 **Three calls, three questions.** Creating a ruleset, replacing one that already
 exists, and removing classic branch protection are asked separately and in their

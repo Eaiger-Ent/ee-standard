@@ -682,4 +682,4 @@ def test_the_skill_will_not_commit_on_a_failed_verify() -> None:
     assert "Only after Step 5, and only if it did not exit `1` or `2`" in text
     assert "Never report `3` as a clean pass" in text
     # And the one confirmation this plan does not cover.
-    assert "This confirmation does not cover `gate-repo`" in text
+    assert "This confirmation covers `gate-repo` only call by call" in text

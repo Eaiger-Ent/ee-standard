@@ -111,3 +111,54 @@ def test_the_front_door_does_not_pass_the_flag_to_the_gates() -> None:
         "must say plainly that --yes is not passed with them. Without that sentence "
         "the natural reading is that every flag travels together."
     )
+
+
+# --- ADR 0062: the gates take --plan and --answers instead -------------------
+
+_GATES = tuple(n for n in _REFUSES if n.startswith("gate-"))
+_PRE_ANSWERED = REPO_ROOT / "plugins" / "control-register" / "reference" / "pre-answered.md"
+
+
+@pytest.mark.parametrize("name", _GATES)
+def test_every_gate_offers_plan_and_answers(name: str) -> None:
+    """register-adopt can only list a gate's questions if the gate can report
+    them, and can only pass the answers back if the gate reads them."""
+    text = _skill(name)
+    hint = re.search(r"^argument-hint: \"(.*)\"$", text, re.M)
+    assert hint is not None
+    assert "--plan" in hint.group(1) and "--answers <path>" in hint.group(1), name
+    assert "reference/pre-answered.md" in text, (
+        f"{name} takes --plan and --answers without reading the rule that says "
+        "what they mean, which is the copy ADR 0036 exists to prevent"
+    )
+
+
+@pytest.mark.parametrize("name", _GATES)
+def test_every_takeover_and_removal_question_says_it_is_answerable(name: str) -> None:
+    """A question site with no marker is one the plan will never list, so the
+    adopter is asked it mid-run: the state ADR 0062 was written to end."""
+    text = _skill(name)
+    for options, kind in (
+        ("Adopt and stamp / Leave and abort", "takeover"),
+        ("Remove / Keep", "removal"),
+    ):
+        for match in re.finditer(re.escape(options), text):
+            window = text[max(0, match.start() - 400) : match.end() + 400]
+            assert f"*Answerable from the plan: `{kind}`" in window, (
+                f"{name}: a {kind} question is not marked answerable from the plan"
+            )
+
+
+def test_the_plan_rule_keeps_the_unlisted_question() -> None:
+    """The one sentence the whole rule depends on."""
+    rule = " ".join(_PRE_ANSWERED.read_text(encoding="utf-8").split())
+    assert "A question the plan did not show is still asked." in rule
+    assert "An entry is never stretched." in rule
+    assert "`body_sha256`" in rule
+
+
+def test_yes_never_answers_a_plan_with_a_platform_call() -> None:
+    rule = " ".join(REFERENCE.read_text(encoding="utf-8").split())
+    assert "`--yes` does not answer a plan that lists one of these calls" in rule
+    adopt = " ".join(_skill("register-adopt").split())
+    assert "With `--yes` and a plan that lists a platform call:** ask anyway" in adopt

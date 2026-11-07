@@ -175,21 +175,37 @@ def test_each_question_names_its_own_blast_radius(phrase: str, why: str) -> None
 
 
 def test_no_confirmation_is_waivable_by_an_earlier_approval() -> None:
-    """Including `register-adopt`'s plan.
+    """Except an adoption plan that listed that exact call (ADR 0062).
 
-    That is the approval most likely to be read as covering these, because it is
-    the one a person actually gave a few minutes earlier.
+    The plan is the approval most likely to be read as covering these, because
+    it is the one a person actually gave a few minutes earlier. Since ADR 0062 it
+    may, but only call by call, with the call on screen, and matched on method,
+    route and body digest. A `POST` that became a `PUT` is a different call.
     """
     text = " ".join(SKILL_TEXT.split())
     assert "No confirmation here is waivable by an earlier approval" in text
+    assert "an adoption plan that listed **this exact call**" in text
+    assert "same method, same route, same body digest" in text
+    assert "a `POST` that has become a `PUT`, is asked here" in text
     assert "never ask them as one question with one answer" in text
     adopt = " ".join(
         (REPO_ROOT / "plugins/control-register/skills/register-adopt/SKILL.md").read_text(
             encoding="utf-8"
         ).split()
     )
-    assert "This confirmation does not cover `gate-repo`" in adopt
+    assert "This confirmation covers `gate-repo` only call by call" in adopt
     assert "once for each call that changes platform state, not once for the gate" in adopt
+    assert "matched on method, route and body digest" in adopt
+
+
+@pytest.mark.parametrize("method", ["POST", "PUT", "DELETE"])
+def test_each_mutation_says_how_the_plan_may_answer_it(method: str) -> None:
+    """A question the plan can answer says so where it is asked, naming its
+    subject, so the lookup has something exact to match."""
+    text = " ".join(SKILL_TEXT.split())
+    assert f"*Answerable from the plan: `platform`, subject `{method} /repos/" in text, (
+        f"the {method} question does not say how the adoption plan may answer it"
+    )
 
 
 def test_the_delete_is_asked_after_the_ruleset_is_known_active() -> None:

@@ -5,7 +5,7 @@ description: >
   ecosystem, CI actions pinned to a SHA, and pinned digests checked against
   what was published.
   Triggers: 'deploy gate-supply-chain', 'pin CI actions', '/gate-supply-chain'.
-argument-hint: "[--repo <path>] [--register <path>]"
+argument-hint: "[--repo <path>] [--register <path>] [--plan] [--answers <path>]"
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 
@@ -56,9 +56,9 @@ enforcement.
 | ------- | ---------- | --------- | ------------- |
 | `--repo <path>` | No | current directory | The repository to deploy into |
 | `--register <path>` | No | `<repo>/controls.yaml` | The register to read commands from |
+| `--plan`, `--answers <path>` | No | off | ADR 0062, read `${CLAUDE_PLUGIN_ROOT}/reference/pre-answered.md`. `--plan`: run to the end of § 3, *Report the plan before writing*, print the `QUESTIONS` block, write nothing, stop. `--answers`: a question the file names is not asked again; any other is |
 
-Both flags mirror `register-check`'s own, so a deployment and its audit can
-never be pointed at different things by accident.
+`--repo` and `--register` mirror `register-check`'s own, so a deployment and its audit can never be pointed at different things.
 
 ## Success criteria
 
@@ -119,7 +119,7 @@ release recommends nothing (ADR 0038). If either is unset, stop and say so.
 and `poetry install --sync` are both python; which one is right is a fact about
 this repository. If the repository has more than one of `LOCKFILES`, ask via
 **AskUserQuestion** which package manager governs — two lockfiles is a fact to
-establish, not to guess.
+establish, not to guess. *Answerable from the plan: `choice`, subject `package manager`.*
 
 **If `tools.<TOOL>` has no `invocation`**, stop. SUP-003's pre-commit gate would
 have to run a bare tool name, which resolves from `PATH` — and what answered
@@ -148,7 +148,7 @@ their job ids, and the position of any existing install step.
 Show a table of what will be written, to which file, for which control, and what
 already exists there. If any artefact exists and this skill did not write it —
 no `ee-control:` stamp naming `gate-supply-chain` — ask via **AskUserQuestion**
-whether to take it over. Options: Adopt and stamp / Leave and abort.
+whether to take it over. Options: Adopt and stamp / Leave and abort. *Answerable from the plan: `takeover`, one per file.*
 
 Adopting is the honest option, not the polite one: a repository with CI at all
 usually has an install step and often a bot config. Say so in the stamp's

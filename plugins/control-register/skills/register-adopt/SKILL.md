@@ -1,8 +1,8 @@
 ---
 name: register-adopt
 description: >
-  Adopt the Equal Experts control standard: plan every applicable control,
-  confirm once, dispatch the gates, verify through the checker, commit.
+  Adopt the Equal Experts control standard: list every change in plain
+  English, confirm once, dispatch the gates, verify through the checker, commit.
   Triggers: 'adopt the standard', 'deploy the control register', '/register-adopt'.
 argument-hint: "[--repo <path>] [--register <path>] [--yes]"
 disable-model-invocation: true
@@ -61,13 +61,17 @@ things.
 `--yes` is passed to `/register-install` and to nothing else. **The gates never
 receive it**, because none of their questions is a proceed question: they ask
 before taking over a file the gate did not write, before removing something, and
-— in `gate-repo` — before every call that changes platform state.
+— in `gate-repo` — before every call that changes platform state. What the gates
+receive instead is `--plan`, then `--answers`: the questions they would ask are
+shown in the plan, and the plan's one answer is passed back to them (ADR 0062,
+`${CLAUDE_PLUGIN_ROOT}/reference/pre-answered.md`).
 
 ## Success criteria
 
 1. Every applicable control appears in the plan, and every one that does not
    appear is reported with the predicate it failed.
-2. Nothing was written before the plan was shown and confirmed.
+2. Nothing was written before the plan was shown and confirmed, and the plan
+   listed, in plain English, every change a gate would ask about.
 3. Every gate the plan names was dispatched, in dependency order.
 4. `register-check` was run afterwards over the whole register, its output shown,
    and its verdict reported as given — including a failure.
@@ -164,6 +168,16 @@ A gate's *version* moving is not any of these. The plugin's version moves for
 documentation and trigger-phrase releases, and eight skills share it, so nothing
 here reads it.
 
+### Ask the gates what they would ask
+
+Read `${CLAUDE_PLUGIN_ROOT}/reference/pre-answered.md`. Then dispatch every gate the plan will select with `--plan`, plus
+`--repo` and `--register`, in Step 4's order. Each one reads, writes nothing and
+asks nothing, and ends with a `QUESTIONS` block. Keep every row.
+
+A gate that cannot produce its block — it stopped on an error in its pre-flight
+— is a gate that would stop at Step 4 too. Plan it as the error it reported,
+not as a deployment.
+
 ### The controls that are not simply "deploy"
 
 Four plan rows, and only the first is the ordinary case. None of the other three
@@ -213,7 +227,27 @@ IAC-001  no       SKIPPED (terraform) —                 not applicable
 DOC-001  yes      FAIL               lint-md            dispatch elsewhere
 ```
 
-Then, below it, three things the table cannot hold:
+Then, below it, four things the table cannot hold:
+
+**What will change, in plain English.** Every row from every gate's
+`QUESTIONS` block, grouped by gate in dispatch order, one numbered sentence
+each — the row's `says`, then its answer. For example:
+
+```text
+What will change
+gate-build
+  1. Rewrites .devcontainer/Dockerfile's image line to a digest pin, and stamps it   → Adopt and stamp
+gate-quality
+  2. Wires `uv run pytest` as the test command, at pre-push and in CI                 → uv run pytest
+gate-repo
+  3. Protects main for every collaborator: PRs only, a passing check, no force-push   → Apply now
+     POST /repos/acme/my-app/rulesets  (body sha256 3f9a…)
+lint-md, lint-yaml
+     Another plugin's skills. They ask their own questions when they run.
+```
+
+A platform row keeps its method, route and digest on screen, because that is
+what its answer is matched on.
 
 **What will be written**, by file rather than by control — the union of every
 selected gate's `ARTIFACTS`. A reader wants to know which files in their
@@ -242,9 +276,18 @@ disclosure: a reader who passes it sees the same plan go by and can still stop
 the run.
 
 **Without `--yes`:** one **AskUserQuestion** covering the whole plan. Options:
-**Deploy all** / **Choose gates** / **Cancel**.
+**Deploy all** / **Change an answer** / **Choose gates** / **Cancel**.
+**Deploy all** accepts every numbered change as listed.
 
-**With `--yes`:** do not ask. Proceed as though **Deploy all** had been chosen,
+On **Change an answer**, ask which numbers to change, then ask each of those as
+the gate would have asked it, with the gate's own options. Every other number
+keeps the answer listed.
+
+**With `--yes` and a plan that lists a platform call:** ask anyway. `--yes`
+never answers a change to platform state (`reference/unattended.md`). Say so in
+one line, then ask the one plan question above.
+
+**With `--yes` and no platform call in the plan:** do not ask. Proceed as though **Deploy all** had been chosen,
 and say so in one line — `--yes: proceeding as Deploy all` — so the output
 records that a question was answered rather than never posed. Read
 `${CLAUDE_PLUGIN_ROOT}/reference/unattended.md` and follow it; it also states
@@ -256,13 +299,18 @@ plan selected. A partial adoption is a legitimate answer — and say what it
 costs: the controls left out keep failing, and `register-check` will exit
 non-zero until they are deployed or the register says they do not apply.
 
-**This confirmation does not cover `gate-repo`.** That gate calls the GitHub API
-and its ruleset is in force the moment the call returns, for everyone with
-access. It confirms again on its own — once for each call that changes platform
-state, not once for the gate — and it is right to: this plan covers what will be
-written to files, and none of those calls is a file. Do not describe any of them
-as redundant, never pass a flag that suppresses one, and do not offer to answer
-them here on the user's behalf.
+**This confirmation covers `gate-repo` only call by call.** That gate calls the
+GitHub API and its ruleset is in force the moment the call returns, for everyone
+with access. It confirms once for each call that changes platform state, not
+once for the gate. Since ADR 0062 that confirmation can be this plan's answer,
+but only for a call the plan listed on its own row, matched on method, route and
+body digest. A call the plan did not list, or whose body has changed since, is
+asked by the gate. Never pass a flag that suppresses one.
+
+**Then write the answers.** After the answer, and before Step 4, write every
+accepted row to `$(git rev-parse --git-dir)/register-adopt/answers.json`, in
+the shape `${CLAUDE_PLUGIN_ROOT}/reference/pre-answered.md` gives. It sits inside `.git`, so it is never tracked or
+committed. On **Cancel**, write nothing.
 
 ---
 
@@ -298,14 +346,17 @@ the right shape: the branch is protected against everything *after* the
 adoption, not against the adoption. Phase 4 landed its work twenty-one seconds
 before the ruleset applied, and only because the operator was told to.
 
-Pass `--repo` and `--register` through to each. **Do not batch them**: run one,
+Pass `--repo`, `--register` and `--answers <the file Step 3 wrote>` through to
+each. **Do not batch them**: run one,
 read its output, and stop the sequence if it reports a failed deployment. A gate
 that failed and a gate that ran after it are two problems reported as one.
 
-If a gate stops and asks something — which package manager governs, whether to
-adopt a hand-wired artefact, whether to remove a predecessor tool — that is the
-gate doing its job. Answer it, or pass it to the user. Do not re-invoke the gate
-with a flag that skips the question.
+A question the plan listed is answered from `--answers`, and the gate prints
+one `Answered in the adoption plan:` line in its place. If a gate still stops
+and asks something, the plan did not list it — the repository changed since, or
+the gate met an error. That is the gate doing its job. Pass it to the user. Do
+not answer it from the plan, and do not re-invoke the gate with a flag that
+skips the question.
 
 ---
 
