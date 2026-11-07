@@ -479,6 +479,7 @@ Canonical source for the shared standards below: `${CLAUDE_PLUGIN_ROOT}/referenc
 Registered in `docs/02-skill-family.md`, whose generated rows list each
 file's readers and win when this list disagrees.
 
+- **Answered from the plan** (`reference/pre-answered.md`) — shared with every gate and `register-adopt` (ADR 0062). What `--plan` reports and how `--answers` matches are stated there once; change them there, never here.
 - **Write narration shape** (`reference/write-narration.md`) — shared with
   `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
   `gate-supply-chain`, `register-install` and `register-variance`. Change the

@@ -167,3 +167,28 @@ def test_the_runner_rule_still_gives_the_two_checks() -> None:
     text = (REFERENCE / "pre-commit-runner.md").read_text(encoding="utf-8")
     assert "add_dev_dependency" in text, "the runner rule does not say how to add pre-commit"
     assert ".git/hooks/pre-commit" in text, "the runner rule does not check the installed hook"
+
+
+@pytest.mark.parametrize("skill", SKILLS, ids=lambda p: p.name)
+def test_every_shared_file_a_skill_reads_is_a_co_update_partner(skill: Path) -> None:
+    """The incubator's `shared file registration` gate, held here too.
+
+    A change to a shared file reaches every skill that reads it, and the
+    reader's `## Co-update partners` is the only record a person editing the
+    skill sees. ADR 0062's `pre-answered.md` reached seven skills without one,
+    and only the incubator's light gates noticed, at submission time.
+    """
+    text = _skill_text(skill)
+    heading = re.search(r"^#{1,6} [^\n]*Co-update partners[^\n]*$", text, re.M)
+    reads = sorted(set(REF_PATTERN.findall(text)))
+    if not reads:
+        return
+    assert heading, f"{skill.name} reads {reads} and has no Co-update partners section"
+    rest = text[heading.end():]
+    following = re.search(r"^#{1,2} ", rest, re.M)
+    section = rest[: following.start()] if following else rest
+    unnamed = [name for name in reads if f"reference/{name}" not in section]
+    assert not unnamed, (
+        f"{skill.name} reads {unnamed} but its Co-update partners section does not "
+        "name them, so whoever edits the shared file cannot see this skill depends on it"
+    )

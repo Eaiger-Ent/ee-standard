@@ -478,14 +478,14 @@ Canonical source for the shared standards below:
 file — generated from the skills, so the row is the authority when this list
 and it disagree.
 
+- **Answered from the plan** (`reference/pre-answered.md`) — shared with every gate and `register-adopt` (ADR 0062). What `--plan` reports and how `--answers` matches are stated there once; change them there, never here.
 - **Write narration shape** (`reference/write-narration.md`) — shared with
   `gate-build`, `gate-iac`, `gate-quality`, `gate-repo`, `gate-secrets`,
   `gate-supply-chain`, `register-install` and `register-variance`. Change the
   shape there, never here; ADR 0036 is the reason it is one file rather than a
   copy per skill.
-- **Plan limits** (`reference/plan-limits.md`) — shared with `gate-repo`.
-  How a plan refusal is told from a scope refusal, and what a gate says when
-  the plan wins, are stated there once; change them there, never here.
+- **Plan limits** (`reference/plan-limits.md`) — shared with `gate-repo`. How a plan refusal is told from a scope refusal,
+  and what a gate says when the plan wins, are stated there once; change them there, never here.
 - **Pre-commit runner precondition** (`reference/pre-commit-runner.md`) —
   shared with every gate skill that writes a pre-commit hook: `gate-build`,
   `gate-iac`, `gate-quality`, `gate-secrets` and `gate-supply-chain`.
