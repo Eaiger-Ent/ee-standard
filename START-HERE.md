@@ -28,7 +28,9 @@ reads whether it already exists locally and on GitHub, and does the one thing
 that follows — creating, cloning or publishing, private by default. It offers
 § C2's project skeleton, runs § D, and then **stops at § E**, because the tokens
 are made in a browser by you. Come back to it and it checks what the Keychain
-holds and tells you where you are.
+holds and tells you where you are. If the GitHub PAT is not there, it prints
+§ E's fields and permissions from this document, gives the command that stores
+the token under this project's name, and offers to store one you paste.
 
 ```bash
 bash adopt.sh status
@@ -345,8 +347,6 @@ there is no reason to keep two habits.
 | Resource owner | The account or organisation that owns the repository |
 | Repository access | **Only select repositories** → the one you are adopting |
 | Expiration | 90 days or less. You will be asked to rotate it; that is the point |
-
-Then under **Repository permissions**, set exactly these and nothing else:
 
 Under **Repository permissions**, set these. The first four are needed to
 finish the adoption; the rest are what you need to work in the repository

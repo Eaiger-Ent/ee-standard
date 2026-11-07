@@ -258,11 +258,74 @@ fields and permissions, and the command that puts the result in the Keychain.
 
 You only need the first one today. The second is CI's, it is not a Keychain
 entry, and nothing before § 6 asks for it.
+
+If the GitHub PAT is not there yet, the check below shows you what to make —
+the fields and permissions, read from that section — and can store it for you.
 MSG
 
+# The guide sits at the root of the checkout adopt.sh fetched, at the same tag
+# as this script. Printing from it rather than from here keeps one copy of the
+# permissions. A plugin-cache copy of the route has no guide beside it, so it
+# names the section instead.
+GUIDE="$HERE/../../../../START-HERE.md"
+credentials_report=$(mktemp)
+trap 'rm -f "$credentials_report"' EXIT
+
+# 25-credentials.sh is the check; this only reads back what it reported.
+run_credentials() {
+  local colour=""
+  if [ -t 1 ]; then
+    colour=1
+  fi
+  ADOPT_COLOUR="$colour" "$HERE/25-credentials.sh" | tee "$credentials_report"
+  return "${PIPESTATUS[0]}"
+}
+
+offer_pat() {
+  local name token=""
+  name="$(project_prefix)_GITHUB_TOKEN"
+
+  banner "The GitHub PAT to make (§ E)"
+  if [ -f "$GUIDE" ]; then
+    echo
+    sed -n '/^#### Creating the GitHub token$/,/^\*\*Store it in the Keychain\*\*/p' "$GUIDE" \
+      | sed '1d;$d'
+  else
+    detail "START-HERE.md § E has the fields and the exact permissions."
+  fi
+
+  echo
+  echo "To store it yourself, scoped to this project, from $(repository_root):"
+  echo
+  # The "$USER" is for the reader's shell to expand, so it is printed as written.
+  # shellcheck disable=SC2016
+  printf '    security add-generic-password -a "$USER" -s "%s" -w "<paste the token>"\n' "$name"
+  echo
+  printf 'Or paste the token here and it is stored as %s (Enter to skip): ' "$name" > /dev/tty
+  IFS= read -rs token < /dev/tty || token=""
+  printf '\n' > /dev/tty
+
+  if [ -z "$token" ]; then
+    detail "Skipped. When you have stored it, run:"
+    run_hint 25-credentials.sh
+    return
+  fi
+  if security add-generic-password -a "$USER" -s "$name" -w "$token"; then
+    unset token
+    echo "  Stored as $name. Checking again:"
+    run_credentials || true
+  else
+    unset token
+    detail "security did not store it, and said why above."
+  fi
+}
+
 echo
-if confirm "Done that — check what the Keychain holds now?"; then
-  "$HERE/25-credentials.sh" || true
+if confirm "Check what the Keychain holds now?"; then
+  run_credentials || true
+  if grep -qF "$PAT_MISSING" "$credentials_report"; then
+    offer_pat
+  fi
 else
   echo "  When you have, run:"
   run_hint 25-credentials.sh
