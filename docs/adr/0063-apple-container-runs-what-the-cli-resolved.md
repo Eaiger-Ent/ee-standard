@@ -1,6 +1,6 @@
 # ADR 0063: Apple `container` Runs What the `devcontainer` CLI Resolved
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-11-08
 **Revision:** 1
 
@@ -200,6 +200,11 @@ without the rest falling:
   file alone.
 - **`nproc` reports 9 for `--cpus 8`** (S4). It is unexplained, and harmless
   for this workload.
+
+**Accepted 2026-11-08** by Nathan Carney, as written. The two open choices stand
+as the Decision makes them: the parent mount over `safe.directory`, and the CLI
+pin in the lock file alone, not in `tools:`. Either may still be reversed by a
+later ADR without the rest falling. The `nproc` reading remains unexplained.
 
 ## Consequences
 

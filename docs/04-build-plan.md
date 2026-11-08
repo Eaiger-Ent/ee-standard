@@ -1940,7 +1940,7 @@ result.
       complete within them, and peak memory is recorded.
 - [x] S5: inside the Apple container, `uv run pytest` passes,
       `uv run register-check` exits `3`, and the pre-push hook runs.
-- [ ] An ADR accepts or rejects the host launcher and the second runtime, from
+- [x] An ADR accepts or rejects the host launcher and the second runtime, from
       the spike record. If it rejects them, this phase closes here.
 - [ ] If accepted: the launcher refuses any merged key it does not handle, a
       test holds that, and the `devcontainer` CLI version is pinned by a lock

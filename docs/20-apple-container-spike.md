@@ -4,7 +4,7 @@ The brief and the record for [`04-build-plan.md`](04-build-plan.md) § Phase 14.
 The commands below are the brief. Each result goes under its spike, with the
 versions it ran on. Nothing here is decided until an ADR decides it.
 [ADR 0063](adr/0063-apple-container-runs-what-the-cli-resolved.md) is that ADR,
-**Proposed** 2026-11-08 and awaiting review.
+**Accepted** 2026-11-08.
 
 ## The question
 
