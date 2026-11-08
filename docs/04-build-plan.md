@@ -1930,15 +1930,15 @@ commands and the results.
 `devcontainer.json`. If a criterion below finds otherwise, that finding is the
 result.
 
-- [ ] S1: an image built by `container build` from the CLI's generated context
+- [x] S1: an image built by `container build` from the CLI's generated context
       runs `gh`, `node` and `claude` as `vscode`, with the lock file unchanged.
-- [ ] S3: `vscode` can write the workspace, either a bind mount or a named
+- [x] S3: `vscode` can write the workspace, either a bind mount or a named
       volume, without running as root.
-- [ ] S2: the lifecycle steps, run by hand from `read-configuration` output,
-      reach a `claude` session where `check-auth.sh` passes.
-- [ ] S4: the container runs with 8 GiB and 8 CPUs, `npm ci` and `pytest`
+- [x] S2: the lifecycle steps, run by hand from the CLI's output
+      (`read-configuration` and the image label), reach a `claude` session where `check-auth.sh` passes.
+- [x] S4: the container runs with 8 GiB and 8 CPUs, `npm ci` and `pytest`
       complete within them, and peak memory is recorded.
-- [ ] S5: inside the Apple container, `uv run pytest` passes,
+- [x] S5: inside the Apple container, `uv run pytest` passes,
       `uv run register-check` exits `3`, and the pre-push hook runs.
 - [ ] An ADR accepts or rejects the host launcher and the second runtime, from
       the spike record. If it rejects them, this phase closes here.
