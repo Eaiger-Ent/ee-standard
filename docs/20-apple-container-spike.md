@@ -42,16 +42,45 @@ The one Docker-specific step: the second build's `FROM` names
 
 ## Where to run it
 
-On an Apple silicon Mac running macOS 26, with Docker Desktop quit. This is a
-deliberate exception to *work in the container, not on the host*. The spike is
-about the host runtime, so it can only run on the host. Use the host session
-for `container` and `devcontainer` commands and for recording results here.
-Run every quality gate inside the Apple container, which is what S5 tests.
+On an Apple silicon Mac running macOS 26 or later, with Docker Desktop quit.
+This is a deliberate exception to *work in the container, not on the host*. The
+spike is about the host runtime, so it can only run on the host. Use the host
+session for `container` and `devcontainer` commands and for recording results
+here. Run every quality gate inside the Apple container, which is what S5 tests.
 
-Record first:
+**Ground rules, settled 2026-11-08:**
+
+- `container` is Apple's signed `.pkg` from its GitHub releases. The operator
+  runs the installer, because it needs `sudo`.
+- The `devcontainer` CLI is whatever the host has (0.88.0 on the first run),
+  not upgraded to the 0.90.0 shown in the Docker-less container. The version
+  goes in the record.
+- The spike runs in a **separate clone**, so the working checkout's
+  `.git/hooks` and `.devcontainer/.env` are never touched. Results are written
+  here, in the working checkout. The clone's directory must be named
+  `ee-standard`, because `fetch-secrets.sh` derives its Keychain prefix
+  (`EE_STANDARD_`) from the directory name.
+- Every `container run` takes `$RES` (8 GiB, 8 CPUs), the floor
+  `06-devcontainer-setup.md` asks for. It is never run at the 1 GiB default.
+- Each result records the versions it ran on and the image digests it used.
+- A failed spike stops the spike. No fallback is tried until a fix has been
+  agreed.
+- `fetch-secrets.sh` is unchanged. It runs on the Mac and needs no Docker. An
+  Apple container is a Linux VM with no route to the Keychain, so the split
+  between host secrets and the container stays as it is.
+- Steps that need a person: running the installer, Keychain prompts, the
+  interactive `claude`, and Activity Monitor readings.
+
+Set up and record first, from the working checkout:
 
 ```bash
-sw_vers -productVersion; uname -m
+SRC=$PWD
+git clone "$SRC" "$HOME/spike/ee-standard"      # the basename must stay ee-standard
+cd "$HOME/spike/ee-standard"
+git remote set-url origin "$(git -C "$SRC" remote get-url origin)"
+RES="--cpus 8 --memory 8g"
+
+sw_vers -productVersion; uname -m; sysctl -n hw.ncpu hw.memsize
 container system start && container --version
 devcontainer --version
 command -v jq plutil
@@ -81,14 +110,16 @@ exactly as logged. Copy them from the log rather than retyping them, so the
 base image digest has one source. Then:
 
 ```bash
-container run --rm -u vscode ee-standard-dev:local \
+container run --rm $RES -u vscode ee-standard-dev:local \
   bash -lc 'gh --version; node --version; claude --version; echo "$PATH"'
+container image inspect ee-standard-dev:local    # record the digest
 ```
 
 **If the second build cannot find `dev_container_feature_content_temp`**, the
-builder cannot see local images. Fallback G1-b: replace that `FROM` line with a
-`FROM scratch` stage that `COPY`s the feature directory, and build once with
-the feature directory as the context. Record which variant passed.
+builder cannot see local images. Stop and record it. G1-b is the candidate fix,
+for agreement before it is tried: replace that `FROM` line with a `FROM scratch`
+stage that `COPY`s the feature directory, and build once with the feature
+directory as the context.
 
 Result: *not yet run.*
 
@@ -100,14 +131,15 @@ root instead would make BLD-001's `remoteUser` declared but unreachable. Pass
 when the write succeeds and the file appears on the Mac owned by you.
 
 ```bash
-container run --rm -u vscode -v "$PWD":/w -w /w ee-standard-dev:local \
+container run --rm $RES -u vscode -v "$PWD":/w -w /w ee-standard-dev:local \
   bash -c 'id; stat -c "%U:%G %a" . .git; touch .s3 && rm .s3 && echo WRITE-OK
            git -c safe.directory=/w status --short | head -3'
 ```
 
-If it fails, try G3-b next: the workspace in a named volume
-(`container volume create`, then clone inside). Try G3-c last: run as the host
-uid.
+If it fails, the spike stops here. Without a writable workspace there is
+nothing for S2 to S5 to run on, and the fix needs agreeing first. Candidates to
+record: G3-b, the workspace in a named volume (`container volume create`, then
+clone inside), and G3-c, running as the host uid.
 
 Result: *not yet run.*
 
@@ -126,16 +158,20 @@ jq '.mergedConfiguration | {initializeCommand, runArgs, mounts, remoteUser,
   postCreateCommands, postStartCommands, init, privileged}' "$SPIKE/merged.json"
 ```
 
-Then, in order: run `initializeCommand` on the host. Start the container
-detached with the `runArgs`, the volume mount
+Then, in order: run `initializeCommand` on the host, in the clone. It needs no
+Docker and may show Keychain prompts. The clone has no `.env` yet, so this run
+creates it. Start the container detached with `$RES`, the `runArgs`, the volume
+mount
 (`--mount type=volume,source=…,target=…`), the workspace from S3 and a
 keep-alive entrypoint. Run `postCreateCommands`, then `postStartCommands`, with
 `container exec -u vscode`. Finally `container exec -it -u vscode … claude`.
 
 Pass when `setup.sh` completes, `check-auth.sh` reports Claude and `gh` as
 authenticated, `claude` starts as `vscode`, and `GIT_AUTHOR_NAME` (a value with
-a space) arrives intact through `--env-file`. Record any step that needed a
-flag not named here.
+a space) arrives intact through `--env-file`. `ee-standard-claude-home` is a new
+Apple volume, empty of Docker's state, so expect to re-authenticate the first
+interactive `claude`. That is not a failure. Record any step that needed a flag
+not named here.
 
 Result: *not yet run.*
 
@@ -145,11 +181,12 @@ Result: *not yet run.*
 (`resource-usage.md`). `06-devcontainer-setup.md` asks for 8 GB. Memory the
 guest frees is not returned to macOS until the container restarts.
 
-Run `npm ci --no-audit --no-fund` and `uv run pytest` at the default, then
-with `--memory 8g`. Record peak usage from `container stats --no-stream` and
-Activity Monitor, and whether host memory drops after the run. Pass is a
-measurement, not a threshold. It decides whether `--memory 8g` belongs in
-`runArgs`.
+Run `npm ci --no-audit --no-fund` and `uv run pytest` with `$RES`. Do not run
+them at the default. First confirm the guest sees 8 GiB and 8 CPUs (`free -g`,
+`nproc`). Record peak usage from `container stats --no-stream` and Activity
+Monitor, and whether host memory drops after the run. If the container cannot
+be given 8 GiB and more CPUs than the default, or either command fails within
+them, the spike stops. A pass puts the resource flags in `runArgs`.
 
 Result: *not yet run.*
 

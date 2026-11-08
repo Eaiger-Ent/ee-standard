@@ -1922,7 +1922,7 @@ Code stays on Docker. The approach keeps the `devcontainer` CLI as the only
 reader of `devcontainer.json`. Apple `container` builds the image the CLI
 generates and runs it, and a host launcher maps the CLI's resolved config to
 `container` flags. The CLI half was shown on 2026-11-08 in this Docker-less
-container. Everything else needs an Apple silicon Mac on macOS 26.
+container. Everything else needs an Apple silicon Mac on macOS 26 or later.
 [`20-apple-container-spike.md`](20-apple-container-spike.md) holds the
 commands and the results.
 
@@ -1936,8 +1936,8 @@ result.
       volume, without running as root.
 - [ ] S2: the lifecycle steps, run by hand from `read-configuration` output,
       reach a `claude` session where `check-auth.sh` passes.
-- [ ] S4: peak memory with the default and with `--memory 8g` is recorded, and
-      so is whether `runArgs` needs the flag.
+- [ ] S4: the container runs with 8 GiB and 8 CPUs, `npm ci` and `pytest`
+      complete within them, and peak memory is recorded.
 - [ ] S5: inside the Apple container, `uv run pytest` passes,
       `uv run register-check` exits `3`, and the pre-push hook runs.
 - [ ] An ADR accepts or rejects the host launcher and the second runtime, from
