@@ -463,7 +463,22 @@ git push --dry-run                        # pre-push hook runs, nothing sent
 Pass when `pytest` passes, `register-check` exits `3`, and the pre-push hook
 runs.
 
-Result: *not yet run.*
+Result, 2026-11-08: **pass.** It ran in `ee-s2` (S2), on the S3 workspace
+(`$HOME/spike/ws` mounted at `/workspaces`), with
+`container exec -u vscode -e USER=vscode -e LOGNAME=vscode` (S4).
+
+| Check | Result |
+| --- | --- |
+| `uv sync --frozen` | exit `0` |
+| `uv run pytest` | **2009 passed**, 8 skipped, 51.8 s, exit `0`. The S4 failures are gone with `USER` set. |
+| `uv run register-check` | **exit `3`**: 15 passed, 0 failed, 1 skipped (predicate), 1 unclassified. Meta-controls 3/3. As on Docker. |
+| `git push --dry-run`, first try | The hook was invoked (`GIT_TRACE`: `run_command: .git/hooks/pre-push origin https://github.com/Eaiger-Ent/ee-standard.git`). It ran nothing in 0.7 s, because the clone's `origin/*` refs came from the local checkout and already held every commit. |
+| `git push --dry-run`, after a throwaway `--allow-empty` commit in the clone | `uv run pytest (TST-001)` Passed, `register-check (SEC-002)` Passed, `register-check (SUP-001, SUP-002)` Passed. Then `* [new branch] spike/apple-container`, exit `0`, 53 s. Nothing was sent. The commit exists only in the clone. |
+
+The push reached GitHub over HTTPS from inside the Apple container, using the
+credentials `check-auth.sh` reported. The brief's bare `git push --dry-run` is
+only a real test of the hook when there is something to push. A clone made from
+a local checkout needs a commit first.
 
 ## Found along the way
 
