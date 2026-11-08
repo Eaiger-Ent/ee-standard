@@ -52,9 +52,9 @@ here. Run every quality gate inside the Apple container, which is what S5 tests.
 
 - `container` is Apple's signed `.pkg` from its GitHub releases. The operator
   runs the installer, because it needs `sudo`.
-- The `devcontainer` CLI is whatever the host has (0.88.0 on the first run),
-  not upgraded to the 0.90.0 shown in the Docker-less container. The version
-  goes in the record.
+- The `devcontainer` CLI started as the host's 0.88.0. It was moved to 0.90.0,
+  pinned exactly, when 0.88.0 stopped S1 (see S1). The version goes in the
+  record.
 - The spike runs in a **separate clone**, so the working checkout's
   `.git/hooks` and `.devcontainer/.env` are never touched. Results are written
   here, in the working checkout. The clone's directory must be named
@@ -159,7 +159,7 @@ for agreement before it is tried: replace that `FROM` line with a `FROM scratch`
 stage that `COPY`s the feature directory, and build once with the feature
 directory as the context.
 
-Result, 2026-11-08: **stopped before any build.** It ran on `container` 1.7.1
+Result, 2026-11-08. First run: **stopped before any build.** It ran on `container` 1.7.1
 (`a15b460`), started with `container system start --enable-kernel-install`
 because the session has no TTY to answer the kernel prompt, and on
 `devcontainer` 0.88.0. Docker Desktop had quit, and no `docker` process was
@@ -180,10 +180,73 @@ SyntaxError: Unexpected end of JSON input
 0.88.0 cannot parse a reference that carries both a tag and a digest, which is
 the form DEV-001's pin takes. So it never reads the base image's config from
 the registry. It falls back to `docker pull` and `docker inspect`, and needs
-real image JSON that a stub cannot give. On 0.90.0 in the Docker-less
-container, the same command made no `inspect` call and exited `0`. So the
-"Docker-free" half of the approach depends on the CLI version, which supports
-the Phase 14 criterion that pins the CLI by a lock file.
+real image JSON that a stub cannot give.
+
+**Rerun on 0.90.0 (agreed): the same failure, for a second reason.** Upgraded
+with `npm i -g @devcontainers/cli@0.90.0`, which needed no `sudo`. 0.90.0
+parses the reference and fetches the image index from `mcr.microsoft.com`
+anonymously. It then reports `No manifest found` and falls back to the stub
+again. The cause is in the CLI: with no `--platform`, the target platform is
+the *host's* `process.platform`/`process.arch`, here `darwin/arm64`, and the
+index holds only `linux/amd64` and `linux/arm64`. It worked in the Docker-less
+devcontainer only because that host was Linux. So the 0.88.0 parse bug was
+real, but upgrading alone does not fix it on a Mac.
+
+**Rerun with `--platform linux/arm64`: pass.** The flag is the CLI's own. It
+names the target platform, so the CLI finds the arm64 manifest and reads the
+image config from the registry without Docker. `devcontainer build` exits `0`,
+and `devcontainer-lock.json` is unchanged. It makes exactly two build calls:
+
+```text
+build -t dev_container_feature_content_temp -f <ctx>/Dockerfile.buildContent <ctx>
+buildx build --platform linux/arm64 --load --build-arg BUILDKIT_INLINE_CACHE=1
+  --build-arg _DEV_CONTAINERS_BASE_IMAGE=mcr.microsoft.com/devcontainers/base:trixie@sha256:025b74bb…
+  --build-arg _DEV_CONTAINERS_IMAGE_USER=root
+  --build-arg _DEV_CONTAINERS_FEATURE_CONTENT_SOURCE=dev_container_feature_content_temp
+  --target dev_containers_target_stage -f <ctx>/Dockerfile.extended -t ee-standard-dev:local <empty-folder>
+```
+
+They were replayed with `container build -c 8 -m 8g --progress plain`, every
+other flag kept as logged. Two flags were dropped because they are Docker's
+own: the `buildx` subcommand and `--load`. `container build` writes to the
+local image store by default, which is what `--load` asks for.
+
+**G1-b was not needed.** The builder resolved the first build's output from the
+local store (`oci-layout://docker.io/library/dev_container_feature_content_temp@sha256:1877035a…`)
+and fetched nothing for it from a registry.
+
+| Image | Index digest | Manifest digest |
+| --- | --- | --- |
+| `dev_container_feature_content_temp` | `sha256:1877035af1c4daa17f1fa87822ab29d58d7708b0e54fa110730328d8512f7498` | `sha256:ba921b119c3fffa3b6e265f4546adda54dbe7e293ad4f9375b9fd1f3478f2422` |
+| `ee-standard-dev:local` (linux/arm64, 891.7 MB) | `sha256:e836b7311444da27f0e775f86b300992a02ecf640da105eafee45b99b74020f7` | `sha256:a4b69f94809e77f103f5f06332cd7bd8005c2ae0dc14d7cf058211160a8d1730` |
+| base, as pinned by DEV-001 | `sha256:025b74bb5f7ac53edd77e01aa7188c359aab100e23a2f6220bde50bbb9fd31dd` | — |
+
+Smoke test, `container run --rm --cpus 8 --memory 8g -u vscode`:
+
+```text
+uid=1000(vscode) gid=1000(vscode) groups=1000(vscode),999(nvm)
+gh version 2.103.3 (2026-10-26)
+v26.13.0
+2.1.319 (Claude Code)
+/usr/local/share/nvm/current/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+NVM_DIR=/usr/local/share/nvm
+```
+
+**S1 passes on `devcontainer` 0.90.0 with `--platform linux/arm64`.** Three
+things for the ADR:
+
+- The minimum CLI version is 0.90.0, and the platform has to be passed
+  explicitly. The launcher must supply `--platform linux/<arch>`, because the
+  CLI's default is wrong on any Mac.
+- The CLI still tried Docker Desktop's credential helper:
+  `Failed to query for 'ghcr.io' credential from 'docker-credential-desktop': write EPIPE`.
+  It read `~/.docker/config.json`, which Docker Desktop left behind. The
+  anonymous fetch succeeded, so this did not matter here. On a Mac that never
+  had Docker, the file would not exist. A private feature or image would need
+  credentials from somewhere else.
+- The versions inside the image (`node` v26.13.0, `gh` 2.103.3, `claude`
+  2.1.319) are whatever "latest" meant today, as recorded under
+  *The lock file pins installers, not binaries*.
 
 ## S3 — The workspace is writable by `vscode`
 
