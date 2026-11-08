@@ -86,6 +86,44 @@ devcontainer --version
 command -v jq plutil
 ```
 
+### Pre-flight record, 2026-11-08
+
+**Host.** macOS 27.2, arm64, 12 CPUs, 32 GiB. `devcontainer` 0.88.0
+(Homebrew). `jq` from Homebrew and `plutil` from `/usr/bin` are both present.
+
+**Install.** `container-1.7.1-installer-signed.pkg` came from the `apple/container`
+1.7.1 release, downloaded with `gh release download`. The release also ships
+`container-installer-unsigned.pkg`. A `*.pkg` glob matched both, and
+`installer` refused two arguments, so the package has to be named. Signature
+check before install:
+
+```text
+Status: signed by a developer certificate issued by Apple for distribution
+Notarization: trusted by the Apple notary service
+Signed with a trusted timestamp on: 2026-11-07 00:10:04 +0000
+1. Developer ID Installer: Apple Inc. - Containerization (UPBK2H6LZM)
+   SHA256 45 19 B4 3D 00 F5 5E C6 31 38 D4 03 DE 1F 3C 54 23 90 EA E3 D8 2E
+          59 C1 84 38 46 FB DF E1 4F 5B
+2. Developer ID Certification Authority
+3. Apple Root CA
+```
+
+The install was run as an admin account, because the developer account has no
+`sudo`. That is the only step that needed admin. The receipt is
+`com.apple.container-installer`, and `/usr/local/bin/container` reports
+`container CLI version 1.7.1 (build: release, commit: a15b460)` to the
+developer account. A second install run reported "Upgrading" over the first,
+after an unrelated `su` password failure. There was no earlier version.
+
+**Docker at pre-flight.** Docker Desktop was still running, from an
+`AppTranslocation` path, so it was launched from a quarantined location. Its
+processes: `com.docker.backend` (×3), `com.docker.build`,
+`com.docker.virtualization` (VM at `--cpus 10 --memoryMiB 24576`, `--rosetta`,
+virtiofs shares of `/Users`, `/tmp` and `/var/folders`), `Docker Desktop` and
+its helpers. There were also two `docker exec -u vscode` processes from a VS
+Code Dev Containers session in another repository. One of them carried the
+container's whole environment as `-e` arguments, which is the finding below.
+
 ## S1 — The features become an image
 
 **Gap.** Apple `container` has no notion of a feature. Pass when the image
@@ -168,7 +206,11 @@ keep-alive entrypoint. Run `postCreateCommands`, then `postStartCommands`, with
 
 Pass when `setup.sh` completes, `check-auth.sh` reports Claude and `gh` as
 authenticated, `claude` starts as `vscode`, and `GIT_AUTHOR_NAME` (a value with
-a space) arrives intact through `--env-file`. `ee-standard-claude-home` is a new
+a space) arrives intact through `--env-file`, and no secret's value appears in
+the host's process list while the session is open. Check with
+`ps -axww -o args | grep -c "$(head -c 12 <<<"$GITHUB_TOKEN")"` after sourcing
+the clone's `.env` into a subshell, which counts matches and never prints a
+value. `ee-standard-claude-home` is a new
 Apple volume, empty of Docker's state, so expect to re-authenticate the first
 interactive `claude`. That is not a failure. Record any step that needed a flag
 not named here.
@@ -206,6 +248,32 @@ runs.
 Result: *not yet run.*
 
 ## Found along the way
+
+### VS Code puts the container's secrets in the host process list
+
+Not specific to this path, and more serious than anything above. At
+pre-flight, `pgrep -lf docker` on the Mac printed a VS Code Dev Containers
+`docker exec -i -t -u vscode … zsh` whose arguments included
+`-e GITHUB_TOKEN=…`, `-e EE_SKILLS_GITHUB_TOKEN=…` and
+`-e CLAUDE_CODE_OAUTH_TOKEN=…` in clear text, along with every other variable
+of the container's environment. Any process on the Mac that can list processes
+can read them, and so can a tool transcript that prints them. That is how they
+reached this session's output. All three are treated as exposed and are to be
+rotated. The values are not recorded here.
+
+`runArgs` uses `--env-file` precisely to keep secrets off a command line
+(`fetch-secrets.sh`). That protects `docker run`. The editor's `docker exec`
+for each terminal re-sends the resolved environment as arguments, which
+bypasses it. So SEC-001's file-level controls hold, and the host still leaks
+the values at runtime.
+
+Two consequences for this phase. First, a host launcher for Apple `container`
+must never pass a secret as an argument. That means `--env-file` on `run`, and
+nothing secret on `exec`. S2 should check `ps` on the host while a session is
+open. Second, no tool in a spike session should print full host command lines
+(`pgrep -l`, not `pgrep -lf`).
+
+### The lock file pins installers, not binaries
 
 Not specific to this path. The lock file pins each feature's *installer*, not
 what it installs. The resolved options show `github-cli` at `version: latest`,
