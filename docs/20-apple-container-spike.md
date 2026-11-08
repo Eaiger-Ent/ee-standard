@@ -414,7 +414,41 @@ Monitor, and whether host memory drops after the run. If the container cannot
 be given 8 GiB and more CPUs than the default, or either command fails within
 them, the spike stops. A pass puts the resource flags in `runArgs`.
 
-Result: *not yet run.*
+Result, 2026-11-08: **pass.** It ran in the S2 container `ee-s2`
+(`--cpus 8 --memory 8g`). The S1 `buildkit` builder was stopped first
+(`container builder stop`), because it had been holding its own 8 CPUs and
+8192 MB.
+
+| Reading | Value |
+| --- | --- |
+| Guest `free -m` total | 8070 MB |
+| Guest `nproc` | **9**, for `--cpus 8`. Recorded as observed, not explained. |
+| `npm ci --no-audit --no-fund` | exit `0`, 89 packages in 1 s |
+| `uv run pytest` | 2007 passed, 8 skipped, **2 failed**, 53 s. The 2 failures are not memory; see below. |
+| cgroup `memory.peak`, since container start | 1506717696 B (1.40 GiB). This includes `setup.sh`. |
+| Guest used (`MemTotal − MemAvailable`), peak of 2 s samples | 497 MB |
+| `container stats`, before → after | 1.11 GiB → 1.33 GiB of 8.00 GiB |
+| Host VM process RSS, before → peak → idle after | 603 MB → 1435 MB → 1473 MB |
+| Host VM footprint (`top` MEM, as Activity Monitor shows), idle after | 2102 MB |
+
+**Memory is not a constraint.** The workload peaks at about 1.4 GiB of the
+8 GiB given. **Host memory does not drop after the run.** The VM process stays
+at its high-water mark while the guest sits at about 390 MB used, as
+`resource-usage.md` says. The cost of `--memory 8g` is therefore whatever the
+guest has touched, not 8 GiB up front. It is reclaimed only by
+`container stop`. The resource flags belong in `runArgs`, as the decision
+above says: 8 GiB is ample, and the default 1 GiB would have been below this
+workload's 1.4 GiB peak.
+
+**The two pytest failures are an environment gap, found here and fixed in
+S5.** Both are `test_guided_recognises_the_report_of_a_missing_pat`. The adopt
+template `25-credentials.sh` runs under `set -u` and reads `$USER`.
+`container exec -u vscode` sets `HOME` and `SHELL` but leaves `USER` and
+`LOGNAME` unset, even in a login shell. On Docker, VS Code passes
+`-e USER=vscode` explicitly; it appeared in the argv recorded under *Found
+along the way*. With `-e USER=vscode -e LOGNAME=vscode` on the `exec`, all 53
+tests in that file pass. The launcher must set both on every `exec`. They are
+not secrets, so passing them as arguments is safe.
 
 ## S5 — A full session
 
