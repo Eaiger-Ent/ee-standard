@@ -341,7 +341,65 @@ Apple volume, empty of Docker's state, so expect to re-authenticate the first
 interactive `claude`. That is not a failure. Record any step that needed a flag
 not named here.
 
-Result: *not yet run.*
+Result, 2026-11-08: **pass.** `container` 1.7.1, `devcontainer` 0.90.0, image
+`sha256:e836b731…` from S1, clone at `$HOME/spike/ws/ee-standard`.
+
+**The values did not come from `--include-merged-configuration`.** On a Mac it
+fails the same way S1 first did (`Unexpected end of JSON input`). The CLI looks
+up the base image for the host platform, `darwin/arm64`, and
+`read-configuration` has no `--platform` flag. Every value still came from the
+CLI's own output, from two sources:
+
+- Plain `read-configuration` (exit `0`, no runtime calls). It supplies
+  `initializeCommand`, `runArgs` and the workspace
+  (`workspaceFolder: /workspaces/ee-standard`).
+- The `devcontainer.metadata` label the CLI wrote into the S1 image. It supplies
+  `postCreateCommand`, `postStartCommand`, `mounts`, `containerEnv` and
+  `remoteUser`. Its keys, across all six entries, are `containerEnv`,
+  `customizations`, `id`, `mounts`, `postCreateCommand`, `postStartCommand` and
+  `remoteUser`. No feature contributes `init`, `privileged`, `capAdd` or an
+  entrypoint.
+
+The CLI's `workspaceMount` binds the checkout itself at
+`/workspaces/ee-standard`. Per S3 that breaks git, so the parent was mounted at
+`/workspaces` instead.
+
+The steps as run:
+
+```bash
+cd "$HOME/spike/ws/ee-standard"
+bash .devcontainer/fetch-secrets.sh            # initializeCommand, on the Mac
+container run -d --name ee-s2 --cpus 8 --memory 8g \
+  --env-file .devcontainer/.env.docker \
+  --mount type=volume,source=ee-standard-claude-home,target=/home/vscode/.claude \
+  -v "$HOME/spike/ws":/workspaces -w /workspaces/ee-standard \
+  --entrypoint /bin/sh ee-standard-dev:local \
+  -c 'echo Container started; trap "exit 0" TERM; sleep infinity & wait'
+container exec -u vscode -w /workspaces/ee-standard ee-s2 bash .devcontainer/setup.sh
+container exec -u vscode -w /workspaces/ee-standard ee-s2 bash .devcontainer/check-auth.sh
+container exec -it -u vscode -w /workspaces/ee-standard ee-s2 claude   # operator
+```
+
+| Check | Result |
+| --- | --- |
+| `initializeCommand` | Exit `0` on the Mac, with Docker not running and no Keychain prompt. Keys: `CLAUDE_OAUTH_TOKEN`, `EE_STANDARD_GITHUB_TOKEN`, `EE_SKILLS_GITHUB_TOKEN`, `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`. Both files are mode `600` and gitignored. |
+| Volume | `--mount type=volume` auto-created `ee-standard-claude-home`, a new Apple volume. |
+| Container | 8 CPUs, 8192 MB, as requested |
+| `--env-file` | `GIT_AUTHOR_NAME=[Nathan Carney]` intact. All three tokens have their expected length and no stray quote, so Apple's `--env-file` parses the `.docker` form exactly as Docker does. |
+| `containerEnv` | `UV_PROJECT_ENVIRONMENT` and `CLAUDE_CONFIG_DIR` present, from the image's `ENV` lines, with no `-e` needed |
+| `setup.sh` | Exit `0`. pre-commit and pre-push hooks installed. `ee-skills` plugins installed. |
+| `check-auth.sh` | Exit `0`, all ✓. `gh` on Eaiger-Ent via `GITHUB_TOKEN`, `gh-ee-skills` on EqualExperts, marketplace added, OAuth token present, Python 3.15.2 via `uv run`, uv 0.13.6 aarch64, both hooks installed. |
+| Interactive `claude` | Started as `uid=1000(vscode)` in `/workspaces/ee-standard`. `/status` showed `Auth token: CLAUDE_CODE_OAUTH_TOKEN`. **No login menu appeared**, despite the empty volume. The token alone authenticated the interactive session. |
+| Secrets in the Mac's process list | **0 matches** for each of the three tokens, both with the container detached and with `container exec -it … claude` live. Counted by a 16-character substring, never printed. The leak recorded under *Found along the way* does not happen on this path. |
+
+Flags not named in the brief: `-d` and `--name` (detached and addressable),
+`-w` (the CLI's `workspaceFolder`), and `--entrypoint /bin/sh -c '…'`, the same
+keep-alive `devcontainer up` uses on Docker. All are documented
+`container run` options. Nothing needed `sudo`.
+
+For S4: the `buildkit` builder container from S1 was still running at 8 CPUs
+and 8192 MB while S2 ran. It holds host memory until it is stopped
+(`container builder stop`).
 
 ## S4 — Memory
 
