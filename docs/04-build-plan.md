@@ -1914,6 +1914,40 @@ re-opened.
       START-HERE.md step 5, and six new `owed-upstream` entries in
       `published.json`.
 
+## Phase 14 — Apple `container` as a second runtime
+
+Proposed 2026-11-08: run the devcontainer on Apple's `container` instead of
+Docker, for a terminal and Claude CLI session, with no third-party tools. VS
+Code stays on Docker. The approach keeps the `devcontainer` CLI as the only
+reader of `devcontainer.json`. Apple `container` builds the image the CLI
+generates and runs it, and a host launcher maps the CLI's resolved config to
+`container` flags. The CLI half was shown on 2026-11-08 in this Docker-less
+container. Everything else needs an Apple silicon Mac on macOS 26.
+[`20-apple-container-spike.md`](20-apple-container-spike.md) holds the
+commands and the results.
+
+**No control changes.** DEV-001 and BLD-001 read files, and CI never reads
+`devcontainer.json`. If a criterion below finds otherwise, that finding is the
+result.
+
+- [ ] S1: an image built by `container build` from the CLI's generated context
+      runs `gh`, `node` and `claude` as `vscode`, with the lock file unchanged.
+- [ ] S3: `vscode` can write the workspace, either a bind mount or a named
+      volume, without running as root.
+- [ ] S2: the lifecycle steps, run by hand from `read-configuration` output,
+      reach a `claude` session where `check-auth.sh` passes.
+- [ ] S4: peak memory with the default and with `--memory 8g` is recorded, and
+      so is whether `runArgs` needs the flag.
+- [ ] S5: inside the Apple container, `uv run pytest` passes,
+      `uv run register-check` exits `3`, and the pre-push hook runs.
+- [ ] An ADR accepts or rejects the host launcher and the second runtime, from
+      the spike record. If it rejects them, this phase closes here.
+- [ ] If accepted: the launcher refuses any merged key it does not handle, a
+      test holds that, and the `devcontainer` CLI version is pinned by a lock
+      file.
+- [ ] If accepted: `06-devcontainer-setup.md` § 1 and `08-adopting.md` § 2.0a
+      name the runtime, its host limits and how you know it worked.
+
 ## What is deliberately not in scope
 
 | Excluded | Why |
