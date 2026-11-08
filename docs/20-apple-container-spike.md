@@ -258,8 +258,12 @@ pre-flight, `pgrep -lf docker` on the Mac printed a VS Code Dev Containers
 `-e CLAUDE_CODE_OAUTH_TOKEN=…` in clear text, along with every other variable
 of the container's environment. Any process on the Mac that can list processes
 can read them, and so can a tool transcript that prints them. That is how they
-reached this session's output. All three are treated as exposed and are to be
-rotated. The values are not recorded here.
+reached this session's output. The session belonged to another repository, so
+its `GITHUB_TOKEN` came from that repository's prefixed Keychain entry.
+`EE_STANDARD_GITHUB_TOKEN` was not exposed. The two unprefixed entries,
+`EE_SKILLS_GITHUB_TOKEN` and `CLAUDE_OAUTH_TOKEN`, are shared by every
+repository and were exposed. All three exposed tokens were rotated on
+2026-11-08. The values are not recorded here.
 
 `runArgs` uses `--env-file` precisely to keep secrets off a command line
 (`fetch-secrets.sh`). That protects `docker run`. The editor's `docker exec`
