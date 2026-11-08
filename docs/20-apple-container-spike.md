@@ -159,7 +159,31 @@ for agreement before it is tried: replace that `FROM` line with a `FROM scratch`
 stage that `COPY`s the feature directory, and build once with the feature
 directory as the context.
 
-Result: *not yet run.*
+Result, 2026-11-08: **stopped before any build.** It ran on `container` 1.7.1
+(`a15b460`), started with `container system start --enable-kernel-install`
+because the session has no TTY to answer the kernel prompt, and on
+`devcontainer` 0.88.0. Docker Desktop had quit, and no `docker` process was
+running. `devcontainer build` exits `1` with
+`{"outcome":"error","message":"Unexpected end of JSON input"}`. It leaves
+`.devcontainer` unchanged and writes no `Dockerfile.extended`. The trace shows
+why:
+
+```text
+Path 'devcontainers/base:trixie' for input 'mcr.microsoft.com/devcontainers/base:trixie@sha256:025b74bb…'
+failed validation.  Expected path to match regex '/^[a-z0-9]+([._-][a-z0-9]+)*(\/[a-z0-9]+([._-][a-z0-9]+)*)*$/'
+Error fetching image details: Could not parse image name '…:trixie@sha256:025b74bb…'
+Run: stub/docker pull …            -> exit 0, no output
+Run: stub/docker inspect --type image …   -> exit 0, empty stdout
+SyntaxError: Unexpected end of JSON input
+```
+
+0.88.0 cannot parse a reference that carries both a tag and a digest, which is
+the form DEV-001's pin takes. So it never reads the base image's config from
+the registry. It falls back to `docker pull` and `docker inspect`, and needs
+real image JSON that a stub cannot give. On 0.90.0 in the Docker-less
+container, the same command made no `inspect` call and exited `0`. So the
+"Docker-free" half of the approach depends on the CLI version, which supports
+the Phase 14 criterion that pins the CLI by a lock file.
 
 ## S3 — The workspace is writable by `vscode`
 
