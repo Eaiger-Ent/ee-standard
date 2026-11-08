@@ -75,8 +75,8 @@ Set up and record first, from the working checkout:
 
 ```bash
 SRC=$PWD
-git clone "$SRC" "$HOME/spike/ee-standard"      # the basename must stay ee-standard
-cd "$HOME/spike/ee-standard"
+git clone "$SRC" "$HOME/spike/ws/ee-standard"   # the basename must stay ee-standard (S3: under ws/)
+cd "$HOME/spike/ws/ee-standard"
 git remote set-url origin "$(git -C "$SRC" remote get-url origin)"
 RES="--cpus 8 --memory 8g"
 
@@ -266,7 +266,46 @@ nothing for S2 to S5 to run on, and the fix needs agreeing first. Candidates to
 record: G3-b, the workspace in a named volume (`container volume create`, then
 clone inside), and G3-c, running as the host uid.
 
-Result: *not yet run.*
+Result, 2026-11-08: **pass, with the workspace one level below the mount.**
+`container` 1.7.1, image `sha256:e836b731…` from S1.
+
+The command as written passes: `id` is `uid=1000(vscode)`, `touch` succeeds
+(`WRITE-OK`), and the file appears on the Mac as `nathan staff`. Inside, it is
+uid `1000`. The ownership translation is the virtiofs share's. Neither side
+needed a uid flag.
+
+It passes only because the command carries `-c safe.directory=/w`. **The mount
+point itself is reported as `root:root 755`**, while everything under it is
+`vscode:vscode`, so a bare `git status` fails:
+
+```text
+fatal: detected dubious ownership in repository at '/w'
+```
+
+`vscode` could still create files in that "root-owned 755" directory. The
+reported mode is not what is enforced, so this is a reporting artefact of
+the share, not a permission problem. But git trusts the report. Mounting the
+clone's **parent** puts the repository one level below the mount point, where
+ownership reads correctly, and needs no git configuration:
+
+```bash
+container run --rm -u vscode -v "$HOME/spike/ws":/workspaces \
+  -w /workspaces/ee-standard ee-standard-dev:local \
+  bash -c 'stat -c "%U:%G %a %n" /workspaces /workspaces/ee-standard
+           git status --short >/dev/null && echo GIT-OK; touch .s3 && rm .s3 && echo WRITE-OK'
+# root:root 755 /workspaces
+# vscode:vscode 755 /workspaces/ee-standard
+# GIT-OK
+# WRITE-OK
+```
+
+So the clone moved to `$HOME/spike/ws/ee-standard`. Its basename is unchanged,
+as `fetch-secrets.sh` needs. S2 and S5 mount `$HOME/spike/ws` at
+`/workspaces`, which is also the path `devcontainer up` uses on Docker. A
+consequence for the launcher: it mounts the workspace's parent, so every
+sibling directory of the checkout is visible inside. The ADR should weigh that
+against a `safe.directory` entry written into the container. That is a second
+place git trust is configured, but it exposes nothing.
 
 ## S2 — The lifecycle, by hand
 
