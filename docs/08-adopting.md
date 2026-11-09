@@ -558,6 +558,16 @@ declared.
 **Everything after that goes inside**: `uv`, `register-check`, every gate,
 `pre-commit`, the tests, and your commits.
 
+**Apple `container` is not an adopter's runtime yet.** This standard's own
+repository can run its devcontainer on Apple `container` for a terminal and
+Claude CLI session ([ADR 0063](adr/0063-apple-container-runs-what-the-cli-resolved.md)).
+The adopter template does not ship that launcher, so for an adopted repository
+the table above is complete. In the standard's repository the split is the same,
+with two more host steps: `npm ci`, which installs the pinned `devcontainer`
+CLI, and the launcher, which takes the place of `devcontainer up`.
+[`06-devcontainer-setup.md`](06-devcontainer-setup.md) § 1 covers its host
+limits and how you know it worked.
+
 Phase 4 ran the adoption on the host and it cost three things, none of which the
 report showed. The host's uv was **0.8.13** where the register pins **0.12.5**,
 so the run was green about a version it was not using. The `.venv` is
