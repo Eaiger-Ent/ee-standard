@@ -222,6 +222,49 @@ def test_no_build_call_is_refused(tmp_path: Path) -> None:
     _refused(_check(tmp_path, _config(), calls=_CALLS[:4]), "no build call")
 
 
+def test_the_base_image_is_pulled_first_by_the_digest_the_cli_logged(tmp_path: Path) -> None:
+    """A pull inside a build stalls silently, so the launcher pulls the base
+    image beforehand, where a stall shows and can be retried. It is the
+    reference the CLI logged, so DEV-001's digest still has one source."""
+    result = _check(tmp_path, _config(), calls=_CALLS)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["pulls"] == [_BASE]
+
+
+def _marks(*lines: str) -> list[str | None]:
+    assert NODE, "node is not on PATH; every locus that runs pytest installs it"
+    script = (
+        f"import {{ progressMark }} from {json.dumps(LAUNCHER.as_uri())};"
+        f"process.stdout.write(JSON.stringify({json.dumps(list(lines))}.map(progressMark)));"
+    )
+    result = subprocess.run(
+        [NODE, "--input-type=module", "-e", script], capture_output=True, text=True, check=True
+    )
+    marks: list[str | None] = json.loads(result.stdout)
+    return marks
+
+
+def test_a_pull_that_only_counts_time_is_stalled() -> None:
+    """The stall seen on 2026-11-09: bytes and blobs frozen, the elapsed-time
+    counter still moving. Progress must be read from what was fetched, or a
+    stalled pull looks alive forever."""
+    a, b = _marks(
+        "[1/2] Fetching image 3% (6 of 16 blobs, 3.6/108.7 MB, Zero KB/s) [10m 4s]",
+        "[1/2] Fetching image 3% (6 of 16 blobs, 3.6/108.7 MB, Zero KB/s) [10m 5s]",
+    )
+    assert a is not None and a == b
+
+
+def test_a_pull_that_fetches_bytes_or_moves_phase_is_progressing() -> None:
+    base, more_bytes, more_blobs, next_phase = _marks(
+        "[1/2] Fetching image 3% (6 of 16 blobs, 3.6/108.7 MB, 1.2 MB/s) [4s]",
+        "[1/2] Fetching image 5% (6 of 16 blobs, 5.8/108.7 MB, 1.2 MB/s) [6s]",
+        "[1/2] Fetching image 5% (7 of 16 blobs, 3.6/108.7 MB, 1.2 MB/s) [6s]",
+        "[2/2] Unpacking image for platform linux/arm64 [7s]",
+    )
+    assert len({base, more_bytes, more_blobs, next_phase}) == 4
+
+
 def test_this_repositorys_devcontainer_is_within_the_handled_set(tmp_path: Path) -> None:
     """The refusals above are only half the property. The other half is that
     the configuration this repository actually ships passes, read by the pinned

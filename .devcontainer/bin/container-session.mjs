@@ -20,7 +20,7 @@
 // Node rather than bash: every input is JSON, macOS ships bash 3.2 and no jq,
 // and Node is already on the host to run the CLI.
 
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
@@ -55,6 +55,15 @@ const BUILD_DROPPED_FLAGS = new Set(["--load"]);
 // The keys whose build-time snapshot (the label's last entry) must still match
 // devcontainer.json, or the image is stale.
 const SNAPSHOT_KEYS = ["remoteUser", "mounts", "containerEnv", "postCreateCommand", "postStartCommand"];
+// `container`'s downloads stall without recovering on a network that drops
+// connections, and inside a build they stall silently (spike record, "The
+// launcher, end to end"). So images are pulled first, where progress shows and
+// a stall can be ended: no advance in blobs or bytes for this long is a stall.
+const STALL_SECONDS = 120;
+const PULL_ATTEMPTS = 3;
+// The build argument that carries the base image, as the CLI logs it. The
+// build reads the pulled image from the local store (`oci-layout://`).
+const BASE_IMAGE_ARG = "_DEV_CONTAINERS_BASE_IMAGE=";
 
 class Refusal extends Error {}
 
@@ -212,6 +221,28 @@ export function planBuilds(calls) {
   return { builds, errors };
 }
 
+export function imagesToPull(builds) {
+  const images = [];
+  for (const argv of builds) {
+    argv.forEach((token, i) => {
+      if (argv[i - 1] === "--build-arg" && token.startsWith(BASE_IMAGE_ARG)) images.push(token.slice(BASE_IMAGE_ARG.length));
+    });
+  }
+  return [...new Set(images)];
+}
+
+// What a `container image pull --progress plain` line says has been done: the
+// phase, the blobs fetched and the bytes fetched. The elapsed-time counter is
+// deliberately not part of it, because a stalled pull keeps counting.
+export function progressMark(line) {
+  const phase = line.match(/^\[(\d+)\/\d+\]/);
+  const blobs = line.match(/(\d+) of \d+ blobs/);
+  // "3.6/108.7 MB": the unit is written once, after the total.
+  const bytes = line.match(/([\d.]+)(?: ?[KMGT]?B)?\/[\d.]+ ?[KMGT]?B/);
+  if (!phase && !blobs && !bytes) return undefined;
+  return [phase?.[1], blobs?.[1], bytes?.[1]].join("|");
+}
+
 export function merge(output, entries) {
   const config = output.configuration;
   const merged = { remoteUser: config.remoteUser, mounts: [], containerEnv: {}, postCreate: [], postStart: [] };
@@ -266,7 +297,7 @@ function preflight() {
   if (status.status !== 0) throw new Refusal("`container` services are not running; run `container system start`");
 }
 
-function withStub(fn) {
+function makeStub() {
   const dir = mkdtempSync(join(tmpdir(), "container-session-"));
   const log = join(dir, "calls");
   const stub = join(dir, "docker");
@@ -274,10 +305,24 @@ function withStub(fn) {
   // argument can be mistaken for a boundary.
   writeFileSync(stub, `#!/bin/sh\nprintf '%s\\0' "$@" >> '${log}'\nprintf '\\036\\0' >> '${log}'\nexit 0\n`);
   chmodSync(stub, 0o755);
+  return { dir, stub, calls: () => readCalls(log) };
+}
+
+function withStub(fn) {
+  const context = makeStub();
   try {
-    return fn({ dir, stub, calls: () => readCalls(log) });
+    return fn(context);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(context.dir, { recursive: true, force: true });
+  }
+}
+
+async function withStubAsync(fn) {
+  const context = makeStub();
+  try {
+    return await fn(context);
+  } finally {
+    rmSync(context.dir, { recursive: true, force: true });
   }
 }
 
@@ -322,8 +367,70 @@ function refuseAll(errors) {
   if (errors.length) throw new Refusal(errors.join("\n  "));
 }
 
-function build(resources) {
-  withStub(({ dir, stub, calls }) => {
+function builderImage() {
+  const result = capture("container", ["system", "property", "list"]);
+  if (result.status !== 0) return undefined;
+  const section = result.stdout.split(/^\[build\]\s*$/m)[1]?.split(/^\[/m)[0] ?? "";
+  return section.match(/^image\s*=\s*"([^"]+)"/m)?.[1];
+}
+
+function pullOnce(image) {
+  return new Promise((done) => {
+    const child = spawn("container", ["image", "pull", "--progress", "plain", "--platform", `linux/${arch()}`, image], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let mark;
+    let advanced = Date.now();
+    let tail = "";
+    let shown = "";
+    let stalled = false;
+    const read = (chunk) => {
+      for (const line of chunk.toString().split(/[\r\n]+/)) {
+        if (!line.trim()) continue;
+        tail = line.trim();
+        const next = progressMark(line);
+        if (next !== undefined && next !== mark) {
+          mark = next;
+          advanced = Date.now();
+        }
+      }
+    };
+    child.stdout.on("data", read);
+    child.stderr.on("data", read);
+    const timer = setInterval(() => {
+      if (tail && tail !== shown) {
+        process.stderr.write(`  ${tail}\n`);
+        shown = tail;
+      }
+      if (Date.now() - advanced > STALL_SECONDS * 1000) {
+        stalled = true;
+        child.kill("SIGTERM");
+      }
+    }, 10000);
+    child.on("close", (code) => {
+      clearInterval(timer);
+      done({ ok: code === 0 && !stalled, stalled, tail });
+    });
+  });
+}
+
+async function ensureImage(image) {
+  if (capture("container", ["image", "inspect", image]).status === 0) return;
+  let last = {};
+  for (let attempt = 1; attempt <= PULL_ATTEMPTS; attempt += 1) {
+    process.stderr.write(`container-session: pulling ${image} (attempt ${attempt} of ${PULL_ATTEMPTS})\n`);
+    last = await pullOnce(image);
+    if (last.ok) return;
+    process.stderr.write(last.stalled
+      ? `container-session: no progress for ${STALL_SECONDS}s; stopping that pull\n`
+      : `container-session: pull failed: ${last.tail}\n`);
+  }
+  throw new Error(`could not pull ${image} after ${PULL_ATTEMPTS} attempts (last: ${last.tail}). `
+    + "The network is dropping or stalling connections; run `up` again later.");
+}
+
+async function build(resources) {
+  await withStubAsync(async ({ dir, stub, calls }) => {
     const result = run(CLI, [
       "build", "--workspace-folder", ROOT, "--frozen-lockfile",
       "--platform", `linux/${arch()}`, "--image-name", IMAGE, "--docker-path", stub,
@@ -331,6 +438,7 @@ function build(resources) {
     if (result.status !== 0) throw new Error(`devcontainer build exited ${result.status}`);
     const { builds, errors } = planBuilds(calls());
     refuseAll(errors);
+    for (const image of [builderImage(), ...imagesToPull(builds)].filter(Boolean)) await ensureImage(image);
     const sizing = [];
     if (resources["--cpus"]) sizing.push("--cpus", resources["--cpus"]);
     if (resources["--memory"]) sizing.push("--memory", resources["--memory"]);
@@ -364,14 +472,14 @@ function execArgs(merged, folder, interactive) {
   return args;
 }
 
-function up({ rebuild = false } = {}) {
+async function up({ rebuild = false } = {}) {
   preflight();
   const output = readConfiguration();
   refuseAll(validateConfig(output));
   const config = output.configuration;
   const resources = parseRunArgs(config.runArgs);
   if (rebuild && containerState() !== "missing") down();
-  if (rebuild || readLabel() === undefined) build(resources);
+  if (rebuild || readLabel() === undefined) await build(resources);
   const entries = readLabel();
   refuseAll(validateLabel(entries, output));
   const merged = merge(output, entries);
@@ -417,8 +525,8 @@ function down() {
   run("container", ["delete", CONTAINER], { stdio: "ignore" });
 }
 
-function attach(command) {
-  const { merged, folder } = up();
+async function attach(command) {
+  const { merged, folder } = await up();
   const result = run("container", [...execArgs(merged, folder, true), ...command]);
   return result.status ?? 1;
 }
@@ -437,14 +545,14 @@ function check(argv) {
     builds = plan.builds;
   }
   refuseAll(errors);
-  process.stdout.write(`${JSON.stringify({ builds })}\n`);
+  process.stdout.write(`${JSON.stringify({ builds, pulls: imagesToPull(builds) })}\n`);
   return 0;
 }
 
-function main(argv) {
+async function main(argv) {
   const [command, ...rest] = argv;
   switch (command) {
-    case "up": up({ rebuild: rest.includes("--rebuild") }); return 0;
+    case "up": await up({ rebuild: rest.includes("--rebuild") }); return 0;
     case "claude": return attach(["claude", ...rest]);
     case "shell": return attach(["bash", "-l"]);
     case "exec": return attach(rest[0] === "--" ? rest.slice(1) : rest);
@@ -458,9 +566,9 @@ function main(argv) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try {
-    process.exitCode = main(process.argv.slice(2));
-  } catch (error) {
+  main(process.argv.slice(2)).then((code) => {
+    process.exitCode = code;
+  }, (error) => {
     if (error instanceof Refusal) {
       process.stderr.write(`container-session: refused:\n  ${error.message}\n`);
       process.exitCode = 2;
@@ -468,5 +576,5 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       process.stderr.write(`container-session: ${error.message}\n`);
       process.exitCode = 1;
     }
-  }
+  });
 }
