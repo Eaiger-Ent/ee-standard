@@ -43,6 +43,25 @@ not defects to fix during the run:
 `node_modules/.bin/devcontainer --version`, and the Mac's model. A run without
 its versions is not evidence.
 
+## Before any run: a checkout of the standard
+
+Runs A, C and D copy the launcher, the CLI pin and `adopt.sh` from a checkout of
+this repository. That path is named by `PATH_TO_EE_STANDARD_CHECKOUT`, and
+**nothing sets it for you**. Clone `main`, which carries everything the runs
+copy, beside the repository the runs work in:
+
+```bash
+mkdir -p "$HOME/phase15" && cd "$HOME/phase15"
+gh repo clone Eaiger-Ent/ee-standard
+export PATH_TO_EE_STANDARD_CHECKOUT="$HOME/phase15/ee-standard"
+ls "$PATH_TO_EE_STANDARD_CHECKOUT/.devcontainer/bin/container-session.mjs"
+```
+
+The `ls` must print the path. An `export` lasts only for the terminal it was
+typed in, so **repeat it in every new terminal** before a command that names the
+variable. Check it with `echo "$PATH_TO_EE_STANDARD_CHECKOUT"`, which must not
+print an empty line.
+
 ## Run A — Criterion 1: an adopted repository, not this one
 
 **Question:** does the launcher, copied into a repository adopted from the
@@ -53,6 +72,7 @@ adoption, with a `devcontainer.json` the template produced and an adopter edited
 Work in a **fresh clone**, not a checkout you use.
 
 ```bash
+: "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first: see Before any run}"
 mkdir -p "$HOME/phase15" && cd "$HOME/phase15"
 gh repo clone Eaiger-Ent/ee-standard-consumer
 cd ee-standard-consumer
@@ -162,6 +182,12 @@ document. The result table is Run A's, with these two lines added:
 A second Mac on the **same** account and network is a weaker run than a second
 person on their own. Say which this was.
 
+### Run B — questions asked so far
+
+1. 2026-11-09: Run A's `cp "$PATH_TO_EE_STANDARD_CHECKOUT/..."` failed, because
+   the document used the variable and never said to set it. The answer is now
+   § Before any run, and Runs A and D stop with a message when it is unset.
+
 ## Run C — Criterion 3: the refusal rule against an adopter-shaped file
 
 **Question:** when an adopter's `devcontainer.json` holds a key the launcher does
@@ -221,6 +247,7 @@ a measurable before and after, and then it is repeated once the scripts are
 changed.
 
 ```bash
+: "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first: see Before any run}"
 command -v docker || echo "no docker on PATH"       # must print the second
 cd "$HOME/phase15" && mkdir -p adopt-baseline && cd adopt-baseline
 git init -q . && bash "$PATH_TO_EE_STANDARD_CHECKOUT/adopt.sh" status
