@@ -89,8 +89,8 @@ npm ci --no-audit --no-fund
 # renovate: datasource=pypi depName=uv
 UV_VERSION=0.13.7
 case "$(uname -m)" in
-  aarch64|arm64) UV_ARCH=aarch64 UV_SHA=229e194255c7958d86d56e8790d969a6f74736592133f0dfd0076f754c642c1d ;;
-  *)             UV_ARCH=x86_64  UV_SHA=f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645 ;;
+  aarch64|arm64) UV_ARCH=aarch64 UV_SHA=71279f8d3c67241e807b9d8db872d1bf541579fb9f08b7d1eb1682196d1e57dc ;;
+  *)             UV_ARCH=x86_64  UV_SHA=c5221ff41b7892bfc223543883600125f6a47fe845093e0f5bdff4f359196d83 ;;
 esac
 UV_DIR="uv-${UV_ARCH}-unknown-linux-gnu"
 curl -sSfL -o /tmp/uv.tgz \
