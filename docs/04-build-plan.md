@@ -1965,9 +1965,9 @@ result.
 - [ ] The launcher runs a repository adopted from the template, not this one, to
       a `claude` session where `check-auth.sh` passes.
 - [ ] The same, on a second Mac, by someone other than the author.
-- [ ] The refusal rule is shown against an adopter-shaped `devcontainer.json`
+- [x] The refusal rule is shown against an adopter-shaped `devcontainer.json`
       with at least one key the launcher does not handle, and the refusal names
-      it.
+      it. Three keys, three refusals by name, no container: [`21-phase-15-runbook.md`](21-phase-15-runbook.md) § Run C.
 - [ ] `adopt.sh` stages 0 and 3 pass on a host with `container` and no Docker,
       and `inside_container()` is checked against an Apple container.
 - [ ] The migration step in `UPGRADING.md`, followed literally on a repository
