@@ -83,15 +83,22 @@ mkdir -p .devcontainer/bin
 cp "$PATH_TO_EE_STANDARD_CHECKOUT/.devcontainer/bin/container-session.mjs" .devcontainer/bin/
 ```
 
-Put the CLI pin where the launcher looks. The version comes from
-`package.json` in the standard's checkout, never from memory:
+Put the CLI pin where the launcher looks. The version is read from
+`package.json` in the standard's checkout, never typed from memory. The block
+pastes whole, with nothing to fill in:
 
 ```bash
-grep '"@devcontainers/cli"' "$PATH_TO_EE_STANDARD_CHECKOUT/package.json"
-npm init -y >/dev/null          # only if the repository has no package.json
-npm install --save-exact --no-audit --no-fund @devcontainers/cli@<that version>
+CLI_VERSION=$(node -p 'require(process.env.PATH_TO_EE_STANDARD_CHECKOUT + "/package.json").devDependencies["@devcontainers/cli"]')
+echo "devcontainer CLI pin: $CLI_VERSION"
+[ -f package.json ] || npm init -y >/dev/null
+npm install --save-exact --no-audit --no-fund "@devcontainers/cli@$CLI_VERSION"
 node_modules/.bin/devcontainer --version
 ```
+
+The `echo` and the last line must print the same version. `ee-standard-consumer`
+already has a `package.json`, so `npm init` is skipped, and the install modifies
+that file and its `package-lock.json`. That is the stand-in's known side effect
+(§ What these runs cannot yet test), not a mistake in the run.
 
 Then start the services and open a session:
 
@@ -187,6 +194,10 @@ person on their own. Say which this was.
 1. 2026-11-09: Run A's `cp "$PATH_TO_EE_STANDARD_CHECKOUT/..."` failed, because
    the document used the variable and never said to set it. The answer is now
    § Before any run, and Runs A and D stop with a message when it is unset.
+1. 2026-11-09: in the CLI-pin block, should `<that version>` be the first
+   line's output? Yes, but a block pasted whole cannot carry a placeholder. The
+   block now reads the version itself, and runs `npm init` only when no
+   `package.json` exists.
 
 ## Run C — Criterion 3: the refusal rule against an adopter-shaped file
 
