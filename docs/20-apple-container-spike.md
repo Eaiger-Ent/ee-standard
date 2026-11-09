@@ -482,6 +482,56 @@ credentials `check-auth.sh` reported. The brief's bare `git push --dry-run` is
 only a real test of the hook when there is something to push. A clone made from
 a local checkout needs a commit first.
 
+## The launcher, end to end
+
+After ADR 0063 was accepted, `.devcontainer/bin/container-session.mjs` was
+built to do the S1–S5 steps itself. `tests/test_container_session.py` holds its
+refusals. It was run on 2026-11-09 against a fresh clone of `b83e169`, with
+`container` 1.7.1 and `@devcontainers/cli` 0.90.0 from `node_modules/.bin`,
+installed by `npm ci` on the Mac:
+
+```bash
+git clone <working checkout> "$HOME/spike/ws/ee-standard" && cd "$HOME/spike/ws/ee-standard"
+npm ci --no-audit --no-fund
+node .devcontainer/bin/container-session.mjs up
+node .devcontainer/bin/container-session.mjs claude      # operator
+```
+
+Result: **pass.**
+
+| Check | Result |
+| --- | --- |
+| `up` from nothing | exit `0` in 2 min 30 s. CLI build against the stub, both builds replayed, builder stopped afterwards, `initializeCommand` on the Mac, container `ee-standard-dev` at 8 CPUs and 8192 MB, `setup.sh` complete, `check-auth.sh` all ✓. |
+| `exec` | `USER=vscode LOGNAME=vscode PWD=/workspaces/ee-standard`. The 53 tests in `tests/test_adopt_route.py`, which failed in S4 without `USER`, pass. |
+| `up` while running | No-op, 0.8 s. Neither lifecycle command reruns. |
+| `stop`, then `up` | Restarts. `postStartCommand` runs and `postCreateCommand` does not. |
+| `claude` (operator) | `initializeCommand` reran, as it does on every Docker `up`. Then `claude` opened as `uid=1000(vscode)`, `USER=vscode`, `/status` showed `Auth token: CLAUDE_CODE_OAUTH_TOKEN`, and there was no login menu. |
+| Secrets in the host process list | 0 matches for each token, after `up` and again during the live `claude` session (one `container exec -i -t` process) |
+
+**Two failed attempts came before the pass. Both were network problems, not the
+launcher.** The S1–S5 clean-up had run `container image prune -a`, which also
+removes the builder's own image (`ghcr.io/apple/container-builder-shim/builder:0.13.3`,
+109 MB), so the first build had to fetch it again.
+
+- The first `up` failed after 18 minutes with
+  `HTTPClientError.remoteConnectionClosed`. A direct
+  `container image pull` reported `failed to resolve either repository hostname ghcr.io`.
+  A retry stalled at 3.6 of 108.7 MB at `Zero KB/s` for 10 minutes. Meanwhile
+  `curl` fetched the same blob at about 1.4 MB/s, and the host resolver
+  answered for `ghcr.io` between failures. The next pull succeeded.
+- The second `up` replayed the first build, then sat at
+  `[resolver] fetching image...` on the base image for three hours before it
+  was stopped.
+- The third `up` succeeded in 2 min 30 s, the result above.
+
+So on a network that drops connections, `container`'s downloads stall without
+recovering and print nothing, and `up` waits indefinitely. Users should be told
+this, and the launcher could make it visible.
+
+**`nproc` reports 9 for `--cpus 8`, which is now explained.** A container's
+`container list --format json` record carries `"resources": {"cpuOverhead": 1,
+"cpus": …}`, so `container` adds one CPU to whatever is asked for.
+
 ## Found along the way
 
 ### VS Code puts the container's secrets in the host process list
