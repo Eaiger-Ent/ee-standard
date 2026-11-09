@@ -33,7 +33,7 @@ not defects to fix during the run:
 | Requirement | Verify with |
 | --- | --- |
 | Apple silicon Mac, macOS 26 or later | `sw_vers -productVersion` and `uname -m` |
-| Apple `container` 1.7.1 or later, **installed before Run A** | `container --version`. Not installed? Follow [`06-devcontainer-setup.md`](06-devcontainer-setup.md) § 1: Apple's signed `.pkg` from the [releases page](https://github.com/apple/container/releases), once, with an admin account. Download the file named `-installer-signed.pkg`, not the unsigned one |
+| Apple `container` 1.7.1 or later, **installed before Run A** | `container --version`. Not installed? Paste the block in [`06-devcontainer-setup.md`](06-devcontainer-setup.md) § Installing Apple `container`. It downloads, checks the signature and installs, and needs an admin password once |
 | Its services running | `container system status` reads `running`. If not, `container system start`, **once per login**. The first start offers to download a kernel: accept it |
 | **Docker Desktop quit, and not installed for Run D** | `docker info` fails or `docker` is not on `PATH`. A run with Docker answering proves nothing |
 | Node.js | `node --version` |
@@ -200,9 +200,13 @@ person on their own. Say which this was.
    block now reads the version itself, and runs `npm init` only when no
    `package.json` exists.
 1. 2026-11-09: when is `container` installed? The host table named it as a
-   requirement but not how to meet it. It now points at
-   `06-devcontainer-setup.md` § 1, and says that `container system start` runs
-   once per login and that its first start asks to download a kernel.
+   requirement but not how to meet it, and a link to Apple's releases page
+   left the operator to work out the install from Apple's repository.
+   `06-devcontainer-setup.md` § Installing Apple `container` is now a block
+   that pastes whole. It downloads, checks the signature, installs, and stops
+   on a signature that does not match. The host table says that
+   `container system start` runs once per login, and that its first start asks
+   to download a kernel.
 
 ## Run C — Criterion 3: the refusal rule against an adopter-shaped file
 
