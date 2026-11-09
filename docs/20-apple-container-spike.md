@@ -525,8 +525,25 @@ removes the builder's own image (`ghcr.io/apple/container-builder-shim/builder:0
 - The third `up` succeeded in 2 min 30 s, the result above.
 
 So on a network that drops connections, `container`'s downloads stall without
-recovering and print nothing, and `up` waits indefinitely. Users should be told
-this, and the launcher could make it visible.
+recovering and print nothing, and `up` waits indefinitely.
+
+**Fixed in `74193f7`: images are pulled before building.** The launcher pulls
+the builder image (`container system property list`, `[build] image`) and the
+base image (the `_DEV_CONTAINERS_BASE_IMAGE` digest the CLI logged) unless they
+are present. It prints progress every 10 s, ends a pull whose phase, blob count
+and byte count have not moved for 120 s, and retries three times. The build
+then reads the base image from the local store (`oci-layout://mcr…`), so the
+pull is the same download the build would have made silently. Two runs from
+nothing on the clone, at `0bc602d`, on 2026-11-09:
+
+| Run | Removed first | Result |
+| --- | --- | --- |
+| 1 | Container, `ee-standard-dev`, the feature image and the base image, by name | Exit `0` in 2 min 30 s. Base pulled on attempt 1 (354.2 MB at 7–9 MB/s, four progress lines), then resolved by `oci-layout://`. No builder pull: `container image delete` by name had left the builder image in place, and it does not appear in `container image list`. |
+| 2 | Everything, by `container image prune -a`, which does remove the builder image | Exit `0` in 3 min. `pulling ghcr.io/apple/container-builder-shim/builder:0.13.3 (attempt 1 of 3)`, then the base image, then the build. `check-auth.sh` 20 ✓, 0 ✗. |
+
+The network was healthy for both, so neither run exercised a stall. The stall
+detection is held by `tests/test_container_session.py`, using the exact
+progress lines of the stall above.
 
 **`nproc` reports 9 for `--cpus 8`, which is now explained.** A container's
 `container list --format json` record carries `"resources": {"cpuOverhead": 1,

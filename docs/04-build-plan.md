@@ -1945,7 +1945,7 @@ result.
 - [x] If accepted: the launcher refuses any merged key it does not handle, a
       test holds that, and the `devcontainer` CLI version is pinned by a lock
       file.
-- [ ] If accepted: `06-devcontainer-setup.md` § 1 and `08-adopting.md` § 2.0a
+- [x] If accepted: `06-devcontainer-setup.md` § 1 and `08-adopting.md` § 2.0a
       name the runtime, its host limits and how you know it worked.
 
 ## What is deliberately not in scope
