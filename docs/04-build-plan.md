@@ -1948,6 +1948,41 @@ result.
 - [x] If accepted: `06-devcontainer-setup.md` § 1 and `08-adopting.md` § 2.0a
       name the runtime, its host limits and how you know it worked.
 
+## Phase 15 — Apple `container` for adopters
+
+Opened 2026-11-09 by [ADR 0064](adr/0064-an-adopter-may-run-its-devcontainer-on-apple-container.md),
+which accepts offering the Phase 14 route to every adopted repository, on the
+spike's evidence alone. The decision is binding. **Nothing below ships to the
+adopter template, the adopt scripts or the adopter-facing documents until the
+first five criteria are ticked**, and an unticked one re-opens the question
+rather than being waived. Apple `container` becomes the default on an Apple
+silicon Mac running macOS 26 or later. Docker stays the route for everything
+else and for VS Code.
+
+**No control changes.** If a criterion finds otherwise, that finding is the
+result.
+
+- [ ] The launcher runs a repository adopted from the template, not this one, to
+      a `claude` session where `check-auth.sh` passes.
+- [ ] The same, on a second Mac, by someone other than the author.
+- [ ] The refusal rule is shown against an adopter-shaped `devcontainer.json`
+      with at least one key the launcher does not handle, and the refusal names
+      it.
+- [ ] `adopt.sh` stages 0 and 3 pass on a host with `container` and no Docker,
+      and `inside_container()` is checked against an Apple container.
+- [ ] The migration step in `UPGRADING.md`, followed literally on a repository
+      adopted at the previous release, ends green.
+- [ ] The template carries `bin/container-session.mjs` and a
+      `.devcontainer/package.json` with its lock file pinning
+      `@devcontainers/cli`, shipped through the incubator and a release set
+      (ADRs 0042, 0043, 0057, 0060).
+- [ ] `00-tools.sh` and `30-container.sh` accept either runtime and say which
+      was used.
+- [ ] `START-HERE.md`, `README.md`, `HOW-IT-WORKS.md`, `08-adopting.md` § 2.0a,
+      `06-devcontainer-setup.md` § 1, `14-file-map.md` and `CLAUDE.md` name both
+      runtimes, say who each is for, and `UPGRADING.md` carries the optional
+      migration step.
+
 ## What is deliberately not in scope
 
 | Excluded | Why |
