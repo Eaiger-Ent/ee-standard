@@ -44,9 +44,84 @@ generalise from rather than a specification to implement blind.
 | `security` CLI | built into macOS | Reads and writes Keychain entries |
 | `devcontainer` CLI | `devcontainer --version` | `npm i -g @devcontainers/cli` — needed to generate the lock file in step 4 |
 
-Apple Silicon and Intel both work. Give Docker Desktop **8 GB** of memory
-(Settings → Resources → Memory); the default is tight once a Python toolchain
-and a node toolchain are both installed.
+Apple Silicon and Intel both work. The resource floor is declared in
+`devcontainer.json` `runArgs` as `--cpus 8 --memory 8g` ([ADR 0063](adr/0063-apple-container-runs-what-the-cli-resolved.md)),
+so Docker Desktop's VM must have **at least 8 CPUs and 8 GB** (Settings →
+Resources). Docker refuses to start a container that asks for more CPUs than
+its VM has.
+
+### Or: Apple `container`, for a terminal and Claude CLI session
+
+[ADR 0063](adr/0063-apple-container-runs-what-the-cli-resolved.md) accepted
+Apple's [`container`](https://github.com/apple/container) as a second runtime
+for this repository. It runs the same devcontainer, built from the same
+`devcontainer.json` and lock file, with no Docker running. **VS Code stays on
+Docker.** This route is for a terminal and `claude`.
+
+The launcher, `.devcontainer/bin/container-session.mjs`, never reads
+`devcontainer.json`. It runs the pinned `devcontainer` CLI and maps what the CLI
+resolved to `container` flags. It refuses any setting it cannot reproduce,
+naming it, rather than running a container that differs from Docker's. The
+evidence for each step is in
+[`20-apple-container-spike.md`](20-apple-container-spike.md).
+
+| Requirement | Verify with | Notes |
+| --- | --- | --- |
+| Apple silicon Mac, macOS 26 or later | `sw_vers -productVersion` and `uname -m` | |
+| Apple `container` 1.7.1 or later | `container --version` | Apple's signed installer from the [releases page](https://github.com/apple/container/releases). Installing needs an admin account once; nothing after it does. |
+| Node.js | `node --version` | Runs the pinned CLI and the launcher |
+| The pinned `devcontainer` CLI | `node_modules/.bin/devcontainer --version` reports `0.90.0` | `npm ci` in the checkout, on the host. `package-lock.json` pins it, and the launcher never uses a global install. |
+| The Keychain values | § 2 | The same values Docker uses. `fetch-secrets.sh` runs on the host either way. |
+
+Start the services once per login (the first start offers to download a
+kernel; accept it), install the pinned CLI, and open a session:
+
+```bash
+container system start
+npm ci --no-audit --no-fund
+node .devcontainer/bin/container-session.mjs claude
+```
+
+The first run builds the image and runs `setup.sh`, which takes a few minutes.
+After that, `claude` opens in seconds. The other subcommands:
+
+| Subcommand | Does |
+| --- | --- |
+| `up` | Builds if there is no image, runs `initializeCommand`, starts the container, and runs `postCreateCommand` on creation and `postStartCommand` on every start. A second `up` while running does nothing. |
+| `claude`, `shell` | `up`, then `claude` or a login `bash` as `vscode` |
+| `exec -- <cmd…>` | `up`, then one command as `vscode` |
+| `up --rebuild` | Deletes the container (not its volume) and rebuilds. Needed after `devcontainer.json` changes; `up` refuses a stale image and says so. |
+| `stop` | Stops the container and returns its memory to macOS |
+| `down` | Stops and deletes the container. The `~/.claude` volume is kept. |
+
+**How you know it worked:**
+
+- `up` ends with `check-auth.sh`'s environment table, every line ✓.
+- Inside `claude`, `/status` shows `Auth token: CLAUDE_CODE_OAUTH_TOKEN`, and
+  `! id` shows `uid=1000(vscode)`.
+- `container list` shows `ee-standard-dev` running with 8 CPUs and 8192 MB.
+
+**Limits on the host:**
+
+- **Memory is held until `stop`.** The container's VM keeps whatever the guest
+  has touched. After the full test suite that is about 2.1 GB, even with the
+  guest idle. `stop` returns it.
+- **`nproc` reports 9.** `container` adds one CPU of overhead to the 8 asked
+  for.
+- **A flaky network stalls downloads.** `container`'s downloads stop at zero
+  bytes without recovering. The launcher pulls images before building, ends a
+  pull that fetches nothing for two minutes, and retries three times. If all
+  three stall, it stops and says so. Run `up` again later.
+- **`container image prune -a` also removes the builder's own image.** The next
+  build downloads it again, about 109 MB.
+- **The checkout's parent directory is mounted** at `/workspaces`, so the
+  checkout's sibling directories are visible inside the container. Mounting the
+  checkout itself makes git refuse it as `dubious ownership`.
+- **Claude's state is separate from Docker's.** The `ee-standard-claude-home`
+  volume on `container` is not the one Docker uses.
+- **A refusal names what it cannot reproduce.** `container-session: refused:`
+  followed by a setting means this route would differ from Docker. Use Docker,
+  or extend the launcher, with a test beside the change.
 
 ## 2 — The macOS Keychain values
 

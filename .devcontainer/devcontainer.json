@@ -78,7 +78,13 @@
   // The .docker copy, not the .env itself: --env-file does no shell parsing,
   // so it would take a quoted value's quotes as part of the value. Both files
   // come from one Keychain fetch — see .devcontainer/fetch-secrets.sh.
-  "runArgs": ["--env-file", ".devcontainer/.env.docker"],
+  //
+  // --cpus and --memory are the resource floor, declared rather than left to a
+  // runtime's settings screen (ADR 0063). Both runtimes read them: on Docker
+  // they cap the container inside Docker Desktop's VM, which must itself be
+  // given at least this much; on Apple `container` they size the container's
+  // own VM, whose default of 1 GiB is below the 1.4 GiB the test suite peaks at.
+  "runArgs": ["--env-file", ".devcontainer/.env.docker", "--cpus", "8", "--memory", "8g"],
   "postCreateCommand": "bash .devcontainer/setup.sh",
   "postStartCommand": "bash .devcontainer/check-auth.sh",
 
