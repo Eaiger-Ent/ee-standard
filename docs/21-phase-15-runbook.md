@@ -105,6 +105,43 @@ subshell first, as the spike did. **The count must be `0`.**
 
 Finish with `node .devcontainer/bin/container-session.mjs stop`.
 
+### Recorded: `ste-cc`, 2026-11-10 (first attempt, partial record)
+
+**Not yet evidence for criterion 1.** The operator reports the launcher
+reached a working session, but the record below is missing the versions and the
+check table this document says make a run count. Fill those in from the next
+run, or from the terminal scrollback, before ticking anything.
+
+| What | Recorded |
+| --- | --- |
+| Repository | `ste-cc`, an adopted repository that is not this one, at `v0.11.1`, the newest tag. Docker was its runtime |
+| Clone | A working checkout, **not** a fresh clone as Run A asks, on branch `apple-container-trial` |
+| Operator | The author, not a second person |
+| Launcher source | `container-session.mjs` fetched from this repository by commit SHA (`e16be9b`), sha256 starting `ddfd60e8b9d8f546`, because it is in no release tag |
+| macOS, `container` and `devcontainer` versions, Mac model | **Not recorded** |
+| `check-auth.sh` table, every line ✓ | **Not recorded** (operator reports it worked) |
+| `devcontainer-lock.json` unchanged | **Not recorded** |
+| Secrets in the host process list (must be `0`) | **Not recorded** |
+| What the launcher refused | **Not recorded** (operator reports nothing blocked the run) |
+
+**Findings, each a gap in the runbook as written:**
+
+1. **The launcher is in no release.** Run A says to copy it from
+   `$PATH_TO_EE_STANDARD_CHECKOUT`. An adopter has no such checkout and
+   upgrading does not bring the file, so the first attempt failed with
+   `Cannot find module .../container-session.mjs`. It is the first thing the
+   shipped template must carry (Phase 15 criterion 6).
+2. **The adopter's `package.json` need not pin the CLI.** `ste-cc` had a root
+   `package.json` with 89 packages and no `@devcontainers/cli`, so `npm ci`
+   succeeded and `node_modules/.bin/devcontainer` did not exist. The fix was
+   `npm install --save-exact @devcontainers/cli@0.90.0`, which edits the
+   adopter's own manifest and lock file. ADR 0064 puts the pin in
+   `.devcontainer/package.json` instead, and the launcher looks only at
+   `<root>/node_modules/.bin/devcontainer`. **Open:** whether the launcher must
+   change to find a pin under `.devcontainer/`.
+3. **The stand-in edits files the adopter owns.** Both manifests change on
+   the trial branch. The migration step has to say so and say which files.
+
 ## Run B — Criterion 2: a second Mac, a second person
 
 Run A again, from "a fresh clone", by **someone other than the author**, on a
@@ -210,6 +247,24 @@ you take it, in order, with its command and its observed result:
 | # | Action | Command | Observed |
 | --- | --- | --- | --- |
 | 1 | | | |
+
+**A first draft, from the `ste-cc` run above**, to be replaced by a run that
+follows `UPGRADING.md` with nothing else open. It is what an operator did, not
+yet what the document should say, and it uses the stand-in for the launcher:
+
+| # | Action | Command | Observed |
+| --- | --- | --- | --- |
+| 1 | Branch off | `git switch -c apple-container-trial` | |
+| 2 | Add the launcher | `curl -fsSL <raw URL at a pinned SHA> -o .devcontainer/bin/container-session.mjs` | Absent from the repository until now; `Cannot find module` without it |
+| 3 | Check it is the tested file | `shasum -a 256 .devcontainer/bin/container-session.mjs` | Starts `ddfd60e8b9d8f546` |
+| 4 | Add the CLI pin | `npm install --save-exact --no-audit --no-fund @devcontainers/cli@0.90.0` | `npm ci` alone left no `node_modules/.bin/devcontainer` |
+| 5 | Start the runtime | `container system start` | |
+| 6 | Open a session | `node .devcontainer/bin/container-session.mjs claude` | Operator reports it worked |
+
+Steps 2 to 4 become one copy from the release tag once the template carries
+the launcher and its pin. The text must also say the move edits the repository's
+`package.json` and lock file, or that the pin sits in `.devcontainer/`, whichever
+finding 2 above settles.
 
 **The steps become the text of `UPGRADING.md`'s optional step.** Then a second
 person follows that text *literally*, on a second clone, and the run is ticked
