@@ -47,6 +47,22 @@ else
   echo "  ✗ gh-ee-skills — no EE_SKILLS_GITHUB_TOKEN. See docs/06-devcontainer-setup.md"
 fi
 
+# A token that authenticates is not a token that can push. The incubator is
+# private, so a token that cannot see it answers 404 rather than 403, and the
+# submit scripts read that as "no push access" only after doing the work.
+INCUBATOR="EqualExperts/ee-skills-incubator"
+if [ -n "${EE_SKILLS_INCUBATOR_AMEND_TOKEN:-}" ]; then
+  if [ "$(env -u GITHUB_TOKEN GH_TOKEN="${EE_SKILLS_INCUBATOR_AMEND_TOKEN}" \
+      gh api "repos/${INCUBATOR}" --jq .permissions.push 2>/dev/null)" = "true" ]; then
+    echo "  ✓ ee-skills-submit — can push to ${INCUBATOR}"
+  else
+    echo "  ✗ ee-skills-submit — EE_SKILLS_INCUBATOR_AMEND_TOKEN cannot push to ${INCUBATOR}"
+    echo "      (expired, not approved by the org, or not granted Contents write on that repo)"
+  fi
+else
+  echo "  ✗ ee-skills-submit — no EE_SKILLS_INCUBATOR_AMEND_TOKEN. See docs/06-devcontainer-setup.md"
+fi
+
 # A token that authenticates is not a marketplace that is present. Plugin state
 # lives in the ~/.claude volume, so a container first built before the Keychain
 # entry existed has an empty one and no rebuild is needed to fix it.

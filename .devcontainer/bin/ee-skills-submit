@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Installed to /usr/local/bin by .devcontainer/setup.sh.
+#
+# Runs ONE command with the incubator-amend PAT as its GH_TOKEN, and nothing
+# else does. `gh-ee-skills` scopes a token to a single `gh` call, which cannot
+# serve /skill-submit-new or /skill-submit-amend: their scripts invoke `gh` and
+# `git push` themselves, many times, so the token has to cover the whole
+# command rather than one invocation of it:
+#
+#   ee-skills-submit bash "$SKILL_DIR/scripts/submit-branch.sh" <args...>
+#
+# The token is deliberately not EE_SKILLS_GITHUB_TOKEN. That one only needs to
+# read (the marketplace, mirror_plugin.py); this one can write to
+# EqualExperts/ee-skills-incubator, so it is reachable only through this file.
+# GITHUB_TOKEN is stripped because gh honours one of GH_TOKEN/GITHUB_TOKEN at a
+# time and ours is scoped to Eaiger-Ent.
+set -euo pipefail
+if [ -z "${EE_SKILLS_INCUBATOR_AMEND_TOKEN:-}" ]; then
+  echo "ee-skills-submit: EE_SKILLS_INCUBATOR_AMEND_TOKEN not set (see docs/06-devcontainer-setup.md)" >&2
+  exit 1
+fi
+if [ "$#" -eq 0 ]; then
+  echo "usage: ee-skills-submit <command> [args...]" >&2
+  exit 2
+fi
+exec env -u GITHUB_TOKEN GH_TOKEN="${EE_SKILLS_INCUBATOR_AMEND_TOKEN}" "$@"

@@ -154,11 +154,12 @@ for host in github.com gist.github.com; do
     "!${GH_BIN} auth git-credential"
 done
 
-# Two PATs for two orgs, each scoped per invocation. Both wrappers are reviewed
-# files rather than heredocs — they are executables that land on PATH, so they
+# Wrappers scope the second org's PATs: per `gh` call (gh-ee-skills) or per
+# whole command (ee-skills-submit). They are reviewed files rather than heredocs — they are executables that land on PATH, so they
 # belong in a diff and under the same gates as the rest of the repo.
 sudo install -m 0755 .devcontainer/bin/gh-ee-skills /usr/local/bin/gh-ee-skills
 sudo install -m 0755 .devcontainer/bin/ee-skills-plugins /usr/local/bin/ee-skills-plugins
+sudo install -m 0755 .devcontainer/bin/ee-skills-submit /usr/local/bin/ee-skills-submit
 
 # The ee-skills marketplace and the plugins this repo's workflow depends on.
 # The list, and why each entry is on it, live in that script and nowhere else —

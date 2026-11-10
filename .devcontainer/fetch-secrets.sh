@@ -65,6 +65,16 @@ if [ -n "$EE_SKILLS_GITHUB_TOKEN" ]; then
   echo "  ✓ EE_SKILLS_GITHUB_TOKEN [${LAST_SECRET_KEY}]"
 fi
 
+# Third PAT: write access to EqualExperts/ee-skills-incubator only (Contents and
+# Issues), for /skill-submit-new and /skill-submit-amend. Kept apart from the
+# read-oriented EE_SKILLS_GITHUB_TOKEN above so that what can write is as small as
+# what needs to. Consumed only through the `ee-skills-submit` wrapper (setup.sh).
+fetch_secret EE_SKILLS_INCUBATOR_AMEND_TOKEN "EE_SKILLS_INCUBATOR_AMEND_TOKEN"
+if [ -n "$EE_SKILLS_INCUBATOR_AMEND_TOKEN" ]; then
+  echo "EE_SKILLS_INCUBATOR_AMEND_TOKEN=${EE_SKILLS_INCUBATOR_AMEND_TOKEN}" >> .devcontainer/.env
+  echo "  ✓ EE_SKILLS_INCUBATOR_AMEND_TOKEN [${LAST_SECRET_KEY}]"
+fi
+
 fetch_secret GIT_AUTHOR_NAME "GIT_AUTHOR_NAME"
 if [ -n "$GIT_AUTHOR_NAME" ]; then
   {
