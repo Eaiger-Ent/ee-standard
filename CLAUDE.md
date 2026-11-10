@@ -67,7 +67,9 @@ this repo refers to that file.**
 - Verify container auth/tools: `.devcontainer/check-auth.sh`
 - `gh` for repos in the Eaiger-Ent org (ambient `GITHUB_TOKEN`); `gh-ee-skills`
   for repos in the EqualExperts org (ee-skills, ee-skills-incubator) — the
-  wrapper scopes `EE_SKILLS_GITHUB_TOKEN` to a single invocation.
+  wrapper scopes `EE_SKILLS_GITHUB_TOKEN` to a single invocation. Submitting
+  to the incubator is `ee-skills-submit <command>`, which scopes the separate
+  write PAT `EE_SKILLS_INCUBATOR_AMEND_TOKEN` to a whole command.
 
 All development happens inside the devcontainer (`docs/06-devcontainer-setup.md`
 is the operator guide). Host secrets arrive via `.devcontainer/fetch-secrets.sh`

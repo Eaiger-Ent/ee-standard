@@ -174,18 +174,20 @@ security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" \
 | --- | --- | --- |
 | `EE_STANDARD_GITHUB_TOKEN` | `GITHUB_TOKEN` | Authenticates `gh` and git without an interactive `gh auth login`. Scoped to **Eaiger-Ent** (this repo's org), which is *not* generic across ee projects — stored under the per-project override name (see "Per-project overrides" below), not the bare `GITHUB_TOKEN` service, so it can't leak in as the default PAT for an unrelated project on this machine. |
 | `EE_SKILLS_GITHUB_TOKEN` | `EE_SKILLS_GITHUB_TOKEN` | A second PAT, scoped to the **EqualExperts** org (`ee-skills`, `ee-skills-incubator`, `generate-ee-slides`). Used only via the `gh-ee-skills` wrapper below — it never becomes the ambient `GITHUB_TOKEN`. |
+| `EE_SKILLS_INCUBATOR_AMEND_TOKEN` | `EE_SKILLS_INCUBATOR_AMEND_TOKEN` | A third PAT, **fine-grained**, resource owner `EqualExperts`, repository `ee-skills-incubator` only, with **Contents** and **Issues** read/write and nothing else. It is the only credential that can write to the incubator, and is used only through the `ee-skills-submit` wrapper below. |
 | `GIT_AUTHOR_NAME` | `GIT_AUTHOR_NAME`, `GIT_COMMITTER_NAME` | Pre-configures the container's git identity |
 | `GIT_AUTHOR_EMAIL` | `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_EMAIL` | As above |
 
 ```bash
 security add-generic-password -a "$USER" -s "EE_STANDARD_GITHUB_TOKEN" -w "ghp_..."
 security add-generic-password -a "$USER" -s "EE_SKILLS_GITHUB_TOKEN"   -w "ghp_..."
+security add-generic-password -a "$USER" -s "EE_SKILLS_INCUBATOR_AMEND_TOKEN" -w "github_pat_..."
 security add-generic-password -a "$USER" -s "GIT_AUTHOR_NAME"  -w "Your Name"
 security add-generic-password -a "$USER" -s "GIT_AUTHOR_EMAIL" \
   -w "you@equalexperts.com"
 ```
 
-### Two PATs, two orgs
+### Two PATs, two orgs (and a third for submitting)
 
 `gh` (and the git credential helper that shells out to it) only honours one
 `GH_TOKEN`/`GITHUB_TOKEN` at a time, host-wide — it has no notion of "use PAT A
@@ -207,6 +209,26 @@ repo directly (not just `gh`), embed that PAT in that remote's URL instead —
 `git remote set-url origin https://<PAT>@github.com/EqualExperts/<repo>.git` —
 rather than extending the credential helper. Out of scope for now: this
 container's git operations are all against Eaiger-Ent/ee-standard.
+
+### The incubator submission token
+
+`/skill-submit-new` and `/skill-submit-amend` run `gh` and `git push` inside
+their own scripts, so a token scoped to one `gh` call (`gh-ee-skills`) cannot
+serve them. `setup.sh` installs `ee-skills-submit`, which scopes the third PAT to
+a whole command:
+
+```bash
+ee-skills-submit bash "$SKILL_DIR/scripts/submit-branch.sh" <args...>
+```
+
+The PAT is separate from `EE_SKILLS_GITHUB_TOKEN` on purpose. That one only needs
+to read (the marketplace clone, `scripts/mirror_plugin.py`), so it can be
+read-only; this one can write to a repository, so it is the narrower of the two
+and is reachable only through the wrapper. A container built before the Keychain
+entry existed needs `fetch-secrets.sh` and a rebuild, because the value arrives
+through `--env-file`. `check-auth.sh` reports `✓ ee-skills-submit` only when the
+token can push to the incubator, which is what a 404 from a token that cannot see
+the repository would otherwise hide.
 
 ### The ee-skills marketplace
 
