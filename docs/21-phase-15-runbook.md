@@ -33,7 +33,8 @@ not defects to fix during the run:
 | Requirement | Verify with |
 | --- | --- |
 | Apple silicon Mac, macOS 26 or later | `sw_vers -productVersion` and `uname -m` |
-| Apple `container` 1.7.1 or later | `container --version`, and `container system start` has run |
+| Apple `container` 1.7.1 or later, **installed before Run A** | `container --version`. Not installed? Paste the block in [`06-devcontainer-setup.md`](06-devcontainer-setup.md) § Installing Apple `container`. It downloads, checks the signature and installs, and needs an admin password once |
+| Its services running | `container system status` reads `running`. If not, `container system start`, **once per login**. The first start offers to download a kernel: accept it |
 | **Docker Desktop quit, and not installed for Run D** | `docker info` fails or `docker` is not on `PATH`. A run with Docker answering proves nothing |
 | Node.js | `node --version` |
 | `gh` authenticated to `Eaiger-Ent` | `gh auth status` |
@@ -117,7 +118,10 @@ npm install --save-dev --save-exact --no-audit --no-fund "@devcontainers/cli@${D
 node_modules/.bin/devcontainer --version
 ```
 
-The last line must print the same version as the first.
+The last line must print the same version as the first. `ee-standard-consumer`
+already has a `package.json`, so `npm init` is skipped, and the install modifies
+that file and its `package-lock.json`. That is the stand-in's known side effect
+(§ What these runs cannot yet test), not a mistake in the run.
 
 Then start the services and open a session:
 
@@ -174,6 +178,62 @@ them gets SEC-001's push-protection block as `disabled`, so expect the `1`
 described above. Record it. Do not unarchive the repository to clear it.
 
 Finish with `node .devcontainer/bin/container-session.mjs stop`.
+
+### Run A — 2026-11-09, first pass
+
+| Version | Value |
+| --- | --- |
+| Mac | `Mac14,9` (Apple M2 Pro), arm64 |
+| macOS | 27.2 (`26B123`) |
+| `container --version` | `container CLI version 1.7.1 (build: release, commit: a15b460)` |
+| `node_modules/.bin/devcontainer --version` | `0.90.0` |
+| Node.js | `v26.13.0` |
+| Docker | Not on `PATH` |
+| Clone | `ee-standard-consumer` at `2b89221`, a fresh clone on branch `phase15-apple-container` |
+
+Claude Code ran this pass on the author's Mac. `up` and every check below went
+through the launcher's `exec`. The interactive `claude` session and its
+`/status` line were **not observed** in this pass. The 2026-11-17 pass below
+observed them.
+
+| Check | Result |
+| --- | --- |
+| `up` completes with the lock file unchanged | ✓ exit `0`. `devcontainer-lock.json` unchanged |
+| `check-auth.sh` table, every line ✓ | ✓ six lines, all ✓ |
+| `claude` starts as `vscode`, token source `CLAUDE_CODE_OAUTH_TOKEN` | `id` is `uid=1000(vscode)`. `CLAUDE_CODE_OAUTH_TOKEN` is set and `ANTHROPIC_API_KEY` is not. `claude -p` answered. The interactive session's `/status` was not observed |
+| Secrets in the host process list | `0` for `GITHUB_TOKEN`, `0` for `CLAUDE_CODE_OAUTH_TOKEN` |
+| `uv run register-check` inside the container exits `3` | **✗ exit `1`.** SEC-001 fails on `github_push_protection_enabled`, because push protection is `disabled` on `Eaiger-Ent/ee-standard-consumer`, which is archived (above). SEC-003 is unclassified, as expected. The cause is a repository setting, and Docker would see the same verdict |
+| What the launcher refused, if anything, quoted | Nothing |
+| Anything that needed a flag or step not named here | The findings and questions below |
+
+Findings:
+
+- **The CLI pin had to go into the adopter's own `package.json`.** The consumer
+  already has a root `package.json` (for `markdownlint-cli2`), so the stand-in
+  modified both it and `package-lock.json`. This is the change ADR 0064's
+  `.devcontainer/package.json` avoids. The launcher resolves the CLI only at
+  `<root>/node_modules/.bin/devcontainer`, so it needs that change too.
+- **Memory is 1024 MB.** Apple `container` gives a container 1 GB unless told
+  otherwise. This repository sets `--memory 8g` in `runArgs`, and the template
+  does not. `up` and `uv sync` completed within that 1 GB, but no test suite ran
+  in it. `06-devcontainer-setup.md` asks for 8 GB, so whether the template
+  should carry `--cpus` and `--memory` is a decision for criterion 6.
+- **Every `exec` re-runs `initializeCommand`**, and so reads the Keychain again.
+  This is harmless, but it is noise at the head of every command.
+
+Questions the author had to ask during this pass, each now answered in this
+document:
+
+1. Run A's `cp "$PATH_TO_EE_STANDARD_CHECKOUT/..."` failed, because the document
+   used the variable and never said to set it. § What the host must have now
+   sets it, and every use stops with a message when it is unset.
+1. In the CLI-pin block, should `<that version>` be the first line's output?
+   Yes, but a block pasted whole cannot carry a placeholder. The block now reads
+   the version itself, and runs `npm init` only when no `package.json` exists.
+1. When is `container` installed? The host table named it as a requirement but
+   not how to meet it. `06-devcontainer-setup.md` § Installing Apple `container`
+   is now a block that pastes whole. It downloads, checks the signature,
+   installs, and stops on a signature that does not match.
 
 ### Run A, 2026-11-17
 
@@ -276,6 +336,21 @@ Also try one **runArgs** flag outside `--env-file`, `--cpus` and `--memory`
 **A key that runs without a refusal and is silently dropped is the finding this
 run exists to catch.** Record it exactly and stop; do not continue past it.
 
+### Run C — 2026-11-09
+
+The versions are Run A's 2026-11-09 pass, in Run A's clone, with Run A's
+container present throughout. Each key was added on its own, and the file was
+restored with `git checkout` between keys. `container list -a` was compared
+before and after each `up`.
+
+| Key added | Refused by name? | Container created? | Exit code |
+| --- | --- | --- | --- |
+| `"forwardPorts": [8000]` | Yes: `devcontainer.json: forwardPorts is not handled by this launcher` | No | `2` |
+| `"postAttachCommand": "echo attached"` | Yes: `devcontainer.json: postAttachCommand is not handled by this launcher` | No | `2` |
+| `runArgs` gains `"--cap-add", "SYS_PTRACE"` | Yes: `runArgs: --cap-add is not handled` | No | `2` |
+
+No key ran without a refusal.
+
 ## Run D — Criterion 4: `adopt.sh` on a host with `container` and no Docker
 
 **Question:** how does the guided route behave on a Mac with no Docker?
@@ -316,15 +391,49 @@ If none is present, `inside_container()` returns false there, and stage 0 would
 run inside the container it should refuse to run in. That is a finding for
 criterion 7, and the replacement signal belongs in the record.
 
-**Recorded 2026-11-17, from Run A's container** (`phase15-evidence.sh inside`).
-`/.dockerenv` is absent, `REMOTE_CONTAINERS` is empty, and `CODESPACES` is
-empty. **None is present**, so the finding above stands for criterion 7. No
-replacement signal has been chosen yet. Run D's baseline of the scripts
-themselves has not been run.
-
 **Re-run after the scripts change**, with the same table, expecting stage 0 and
 stage 3 to pass with `container` answering and `docker` absent, and to say which
 runtime they used. Record the second run beside the first.
+
+### Run D, baseline — 2026-11-09
+
+The versions are Run A's 2026-11-09 pass. `command -v docker` printed nothing,
+so Docker was absent. `adopt.sh status` resolved `v0.11.1` and ran its scripts.
+
+| Stage | Verdict | The message, quoted |
+| --- | --- | --- |
+| `00-tools.sh` — `docker` required | ✗ blocked | `✗ Docker — not on PATH  → START-HERE.md § B` |
+| `00-tools.sh` — "Docker is running" | ✗ blocked | `✗ docker info fails — Docker Desktop is not running  → START-HERE.md § A` |
+| `30-container.sh` — the container-running check | Passes (exit `0`) without looking | `Docker is not answering, so whether the container exists cannot be read from here.` Run in Run A's clone, with its Apple container **running** |
+| Any other stage that mentions Docker | None | `_lib.sh` mentions `/.dockerenv` only in `inside_container()` |
+
+Stage 0's other checks passed. The two Docker lines are its only failures, so
+those are the whole of the change stage 0 needs. Stage 3 does not fail. It
+cannot see an Apple container, says so, and moves on.
+
+| Signal | Present in an Apple container? |
+| --- | --- |
+| `/.dockerenv` | No |
+| `REMOTE_CONTAINERS` | No |
+| `CODESPACES` | No |
+
+The 2026-11-17 Run A container (`phase15-evidence.sh inside`) showed the same:
+all three absent.
+
+**Finding for criterion 7:** `inside_container()` returns false inside an Apple
+container. Stage 0, run inside Run A's container, ran the host checks rather
+than refusing. It reported Homebrew, Docker and the devcontainer CLI missing,
+and `docker info` failing. Two replacement signals were present. The checks
+cannot make the choice between them:
+
+- `uname -s` is `Linux` inside the container. The guided route's host is a Mac,
+  so this signal does not depend on which runtime is in use.
+- `/proc/cmdline` holds `init=/sbin/vminitd`, Apple `container`'s guest init.
+  This is specific to the runtime, and it is an implementation detail that
+  could change.
+
+There is no `/run/.containerenv`, and the container's environment holds only
+what `--env-file` and the image set.
 
 ## Run E — Criterion 5: the migration, followed literally
 

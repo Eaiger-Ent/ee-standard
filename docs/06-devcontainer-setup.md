@@ -68,10 +68,36 @@ evidence for each step is in
 | Requirement | Verify with | Notes |
 | --- | --- | --- |
 | Apple silicon Mac, macOS 26 or later | `sw_vers -productVersion` and `uname -m` | |
-| Apple `container` 1.7.1 or later | `container --version` | Apple's signed installer from the [releases page](https://github.com/apple/container/releases). Installing needs an admin account once; nothing after it does. |
+| Apple `container` 1.7.1 or later | `container --version` | § Installing Apple `container`, below. Needs an admin account once; nothing after it does. |
 | Node.js | `node --version` | Runs the pinned CLI and the launcher |
 | The pinned `devcontainer` CLI | `node_modules/.bin/devcontainer --version` reports `0.90.0` | `npm ci` in the checkout, on the host. `package-lock.json` pins it, and the launcher never uses a global install. |
 | The Keychain values | § 2 | The same values Docker uses. `fetch-secrets.sh` runs on the host either way. |
+
+### Installing Apple `container`
+
+Skip this if `container --version` already reports 1.7.1 or later. Otherwise,
+paste this block whole into Terminal. It downloads Apple's signed installer,
+**stops** unless the package is signed by Apple's Containerization team, and
+then installs it:
+
+```bash
+PKG=container-1.7.1-installer-signed.pkg
+cd "$(mktemp -d)" \
+  && curl -fL -o "$PKG" "https://github.com/apple/container/releases/download/1.7.1/$PKG" \
+  && pkgutil --check-signature "$PKG" | grep -F 'Developer ID Installer: Apple Inc. - Containerization (UPBK2H6LZM)' \
+  && sudo installer -pkg "$PKG" -target / \
+  && container --version
+```
+
+The last line must print `container CLI version 1.7.1`. Expect three things:
+
+- **`sudo` asks for your Mac password**, and it needs an admin account. If yours
+  is not one, ask whoever administers the Mac to run the block once. Nothing
+  after the install needs admin.
+- **Nothing printed after the `curl` progress** means the signature check did
+  not match, and nothing was installed. Stop there and report it.
+- The release also carries `container-installer-unsigned.pkg`. Never install
+  that one. The block names the signed file for that reason.
 
 Start the services once per login (the first start offers to download a
 kernel; accept it), install the pinned CLI, and open a session:
