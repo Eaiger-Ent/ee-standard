@@ -38,10 +38,49 @@ not defects to fix during the run:
 | Node.js | `node --version` |
 | `gh` authenticated to `Eaiger-Ent` | `gh auth status` |
 | `claude setup-token` done, and the Keychain entries | [`08-adopting.md`](08-adopting.md) § 2.0a. `.devcontainer/fetch-secrets.sh` reads them |
+| A checkout of this repository on the Mac, and `PATH_TO_EE_STANDARD_CHECKOUT` set to it | `ls "$PATH_TO_EE_STANDARD_CHECKOUT/.devcontainer/bin/container-session.mjs"` |
+
+Runs A and D copy files from the standard's own checkout, which is the stand-in
+for a release that ships them. Set the variable in **every** terminal you run
+them from. The variable lasts only as long as the shell it was set in. Use a
+checkout you already have, on the commit under test, or clone a fresh one:
+
+```bash
+gh repo clone Eaiger-Ent/ee-standard "$HOME/phase15/ee-standard"
+export PATH_TO_EE_STANDARD_CHECKOUT="$HOME/phase15/ee-standard"
+git -C "$PATH_TO_EE_STANDARD_CHECKOUT" rev-parse HEAD
+```
+
+The last line prints the commit to record with the versions. The commands below
+write the variable as `${PATH_TO_EE_STANDARD_CHECKOUT:?…}`, so an unset variable
+stops the command with the message rather than resolving to `/`.
+
+The code blocks in this document carry **no `#` comments**. macOS's default
+shell is zsh, which passes a `#` typed at its prompt to the command as an
+argument unless `setopt interactivecomments` is set. What a comment would have
+said is in the prose around each block.
 
 **Record, for every run:** the date, the macOS version, `container --version`,
-`node_modules/.bin/devcontainer --version`, and the Mac's model. A run without
-its versions is not evidence.
+`node_modules/.bin/devcontainer --version`, the standard checkout's commit, and
+the Mac's model. A run without its versions is not evidence.
+
+`scripts/phase15-evidence.sh` records those observations and the ones the runs
+below ask for, and decides nothing: `host` on the Mac, `inside` from a shell in
+the Apple container, and `run -- COMMAND` around a launcher command (Run C's
+refusal, its exit code and whether a container appeared). It writes to
+`~/phase15`, holds no secret and no username, and is a recorder, not a
+substitute for this document. Paste what it wrote under the run's heading.
+
+Run `host` from the adopted clone, because it reads `.devcontainer/.env` there.
+The container cannot see the standard's checkout, so `inside` needs a copy in
+the clone's `.git/`. The container sees that folder, and `git status` does not
+list it. Keep the record with `tee`, because the `written to:` path it prints
+is inside the container:
+
+```bash
+cp "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/scripts/phase15-evidence.sh" .git/
+node .devcontainer/bin/container-session.mjs exec -- bash .git/phase15-evidence.sh inside | tee "$HOME/phase15/evidence-inside.txt"
+```
 
 ## Run A — Criterion 1: an adopted repository, not this one
 
@@ -57,41 +96,60 @@ mkdir -p "$HOME/phase15" && cd "$HOME/phase15"
 gh repo clone Eaiger-Ent/ee-standard-consumer
 cd ee-standard-consumer
 git switch -c phase15-apple-container
+```
 
-# The stand-in for the template shipping the launcher.
+Copy the launcher in. This is the stand-in for the template shipping it:
+
+```bash
 mkdir -p .devcontainer/bin
-cp "$PATH_TO_EE_STANDARD_CHECKOUT/.devcontainer/bin/container-session.mjs" .devcontainer/bin/
+cp "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/.devcontainer/bin/container-session.mjs" .devcontainer/bin/
 ```
 
 Put the CLI pin where the launcher looks. The version comes from
-`package.json` in the standard's checkout, never from memory:
+`package.json` in the standard's checkout, never from memory, and the first line
+reads it from there and prints it. The `npm init` line creates a `package.json`
+only if the repository has none:
 
 ```bash
-grep '"@devcontainers/cli"' "$PATH_TO_EE_STANDARD_CHECKOUT/package.json"
-npm init -y >/dev/null          # only if the repository has no package.json
-npm install --save-exact --no-audit --no-fund @devcontainers/cli@<that version>
+DEVCONTAINER_CLI_VERSION="$(node -p 'require(process.argv[1]).devDependencies["@devcontainers/cli"]' "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/package.json")" && echo "$DEVCONTAINER_CLI_VERSION"
+[ -f package.json ] || npm init -y >/dev/null
+npm install --save-dev --save-exact --no-audit --no-fund "@devcontainers/cli@${DEVCONTAINER_CLI_VERSION:?the first line did not read a version}"
 node_modules/.bin/devcontainer --version
 ```
+
+The last line must print the same version as the first.
 
 Then start the services and open a session:
 
 ```bash
 container system start
-node .devcontainer/bin/container-session.mjs claude
+node .devcontainer/bin/container-session.mjs claude -n "${PWD:h:t}: ${PWD:t}"
 ```
+
+`-n` names the session after the parent folder and the clone, here
+`phase15: ee-standard-consumer`. `:h` and `:t` are zsh modifiers, and
+[`06-devcontainer-setup.md`](06-devcontainer-setup.md) § 1 says why.
 
 **Expected:** a first build of a few minutes. `up` ends with `check-auth.sh`'s
 table, every line ✓. Inside `claude`, `/status` shows
-`Auth token: CLAUDE_CODE_OAUTH_TOKEN` and `! id` shows `uid=1000(vscode)`. From
+`Session name: phase15: ee-standard-consumer`,
+`Auth token: CLAUDE_CODE_OAUTH_TOKEN`, and `! id` shows `uid=1000(vscode)`. From
 another terminal:
 
 ```bash
-container list                      # the repo's -dev container, running
-ps -axww -o args | grep -c "$(head -c 12 <<<"$GITHUB_TOKEN")"
+cd "$HOME/phase15/ee-standard-consumer"
+container list
+( set -a; . .devcontainer/.env; set +a; : "${GITHUB_TOKEN:?not in .devcontainer/.env}"
+  ps -axww -o args | grep -c -F -f <(printf '%s\n' "$(printf '%s' "$GITHUB_TOKEN" | head -c 12)") )
 ```
 
-The second command counts matches and never prints a value. Source `.env` in a
-subshell first, as the spike did. **The count must be `0`.**
+`container list` should show the repository's `-dev` container, running. The
+last command counts matches and never prints a value. **The count must be `0`.**
+It sources `.env` in a subshell, so the token does not stay in your shell, and
+it stops if the token is empty. An empty pattern matches every line, so the
+count would be the number of processes. The prefix reaches `grep` through
+`-f <(…)`, not its arguments, so `grep` does not count itself.
+`scripts/phase15-evidence.sh host` makes the same check.
 
 | Check | Result |
 | --- | --- |
@@ -99,11 +157,72 @@ subshell first, as the spike did. **The count must be `0`.**
 | `check-auth.sh` table, every line ✓ | |
 | `claude` starts as `vscode`, token source `CLAUDE_CODE_OAUTH_TOKEN` | |
 | Secrets in the host process list | |
-| `uv run register-check` inside the container exits `3` | |
+| `uv run register-check` inside the container exits `3`. If not, which control and which check | |
 | What the launcher refused, if anything, quoted | |
 | Anything that needed a flag or step not named here | |
 
+`3` assumes that every remote check either passes or cannot be read. Whether one
+can be read depends on the token, not on the runtime. A token that can read
+the adopted repository's settings turns a disabled setting into a `FAIL` and an
+exit of `1`, while CI or a narrower token reports the same repository as `3`.
+That is a finding about the repository, not about the launcher. Quote the
+failing check, and do not tick the row until it is settled.
+
+`ee-standard-consumer` has been **archived since 2026-09-03**. It is read-only,
+and its settings cannot change without unarchiving it. A token that can read
+them gets SEC-001's push-protection block as `disabled`, so expect the `1`
+described above. Record it. Do not unarchive the repository to clear it.
+
 Finish with `node .devcontainer/bin/container-session.mjs stop`.
+
+### Run A, 2026-11-17
+
+**Versions.** macOS 27.2.1, `Mac14,9`, arm64. `container` 1.7.1 (build:
+release, commit `a15b460`). `devcontainer` 0.90.0 from `./node_modules/.bin`.
+Node v26.13.1. The standard's checkout was at
+[`ef81d61`](https://github.com/Eaiger-Ent/ee-standard/commit/ef81d61e492b8e1b667dd1d91fb0b70a4e527e86).
+The launcher was copied from `f09e715`, and the launcher is identical at both
+commits. `ee-standard-consumer` was at `2b89221`, on branch
+`phase15-apple-container`. Inside the container: Linux 6.18.56 aarch64, `uv`
+0.12.5, and `claude` 2.1.326 by `check-auth.sh`. `/status` in the session opened
+minutes earlier showed 2.1.319. Docker was not on `PATH`. Two other Apple
+containers were running on the host, `ee-standard-dev` and `ste-cc-dev`, and
+the runbook assumed neither.
+
+| Check | Result |
+| --- | --- |
+| `up` completes with the lock file unchanged | ✓ `.devcontainer/devcontainer-lock.json` is absent from `git status`. The tree changes are the stand-in's own: `package.json`, `package-lock.json` and `.devcontainer/bin/` |
+| `check-auth.sh` table, every line ✓ | ✓ all six: GitHub CLI, Claude Code token, `claude`, `uv`, pre-commit hook, git |
+| `claude` starts as `vscode`, token source `CLAUDE_CODE_OAUTH_TOKEN` | ✓ `/status` shows `Auth token: CLAUDE_CODE_OAUTH_TOKEN`, and `! id` shows `uid=1000(vscode) gid=1000(vscode) groups=1000(vscode),999(nvm)` |
+| Secrets in the host process list | ✓ `0`, counted for `GITHUB_TOKEN` by `phase15-evidence.sh host` |
+| `uv run register-check` inside the container exits `3`. If not, which control and which check | **✗ `1`, open.** SEC-001 `github_push_protection_enabled`: *"secret scanning push protection is 'disabled', not 'enabled'"*. Every local block of SEC-001 passed, and 11 controls passed, with SEC-003 unclassified as usual. The repository is archived (above). The same tree on a token that cannot read the setting exits `3` |
+| What the launcher refused, if anything, quoted | Nothing was reported |
+| Anything that needed a flag or step not named here | Six, listed below. Each is now in this document |
+
+**Steps the document lacked.** Faults 1 to 4 were fixed in `723c41e`, fault 5 in
+`a4575f8`, and fault 6 with this record.
+
+1. `PATH_TO_EE_STANDARD_CHECKOUT` was used but never set, so `cp` read from `/`.
+2. `#` comments in the code blocks: zsh passed them to `git` as arguments.
+3. `<that version>` in a pasted block: zsh read it as a redirect, and the whole
+   block failed to parse.
+4. The secrets count read `742`. In the operator's shell `GITHUB_TOKEN` was empty,
+   and an empty pattern matched every process. With the token set, `grep` would
+   still have matched its own arguments.
+5. `npm install --save-exact` without `--save-dev` put the CLI under
+   `dependencies`.
+6. The recorder's `inside` mode had no instructions. The container cannot see
+   the standard's checkout, and the recorder's `written to:` path is inside the
+   container.
+
+**For the stand-in table.** The launcher resolves the CLI at
+`<root>/node_modules/.bin/devcontainer` (`container-session.mjs`, `const CLI`),
+so it needs a change before the pin can live in `.devcontainer/package.json`.
+The stand-in also had to edit the adopter's own root `package.json`, because
+this repository already had one. A shipped route that adds a file, and changes
+none of the adopter's, avoids that.
+
+**Not ticked.** Criterion 1 stays open on the `register-check` row.
 
 ## Run B — Criterion 2: a second Mac, a second person
 
@@ -130,12 +249,16 @@ In Run A's clone, add one key the launcher's closed sets do not contain. The set
 are `CONFIG_KEYS`, `LABEL_KEYS`, `RUN_ARG_FLAGS` and `BUILD_VALUE_FLAGS` at the
 head of `container-session.mjs`; read them rather than trusting a list here.
 `forwardPorts` and `postAttachCommand` are the two an adopter is most likely to
-write. Take each as its own run, and restore the file between them.
+write. Take each as its own run, and restore the file between them. Check that
+`git stash list` holds nothing you want to lose, restore the file, add **one**
+key, then run `up`:
 
 ```bash
-git stash list                      # nothing you want to lose
+git stash list
 git checkout -- .devcontainer/devcontainer.json
-# add ONE key, then:
+```
+
+```bash
 node .devcontainer/bin/container-session.mjs up
 ```
 
@@ -161,12 +284,12 @@ Today it fails, by design of the present scripts: `00-tools.sh` demands
 `docker` and a `docker info` that answers, and `30-container.sh` looks for the
 container with `docker ps`. This run records the **baseline**, so the change has
 a measurable before and after, and then it is repeated once the scripts are
-changed.
+changed. The first line must print `no docker on PATH`:
 
 ```bash
-command -v docker || echo "no docker on PATH"       # must print the second
+command -v docker || echo "no docker on PATH"
 cd "$HOME/phase15" && mkdir -p adopt-baseline && cd adopt-baseline
-git init -q . && bash "$PATH_TO_EE_STANDARD_CHECKOUT/adopt.sh" status
+git init -q . && bash "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/adopt.sh" status
 ```
 
 | Stage | Verdict | The message, quoted |
@@ -192,6 +315,12 @@ ls -la /.dockerenv; echo "REMOTE_CONTAINERS=${REMOTE_CONTAINERS:-} CODESPACES=${
 If none is present, `inside_container()` returns false there, and stage 0 would
 run inside the container it should refuse to run in. That is a finding for
 criterion 7, and the replacement signal belongs in the record.
+
+**Recorded 2026-11-17, from Run A's container** (`phase15-evidence.sh inside`).
+`/.dockerenv` is absent, `REMOTE_CONTAINERS` is empty, and `CODESPACES` is
+empty. **None is present**, so the finding above stands for criterion 7. No
+replacement signal has been chosen yet. Run D's baseline of the scripts
+themselves has not been run.
 
 **Re-run after the scripts change**, with the same table, expecting stage 0 and
 stage 3 to pass with `container` answering and `docker` absent, and to say which
@@ -220,9 +349,12 @@ and its lock file) and what it does **not** touch: the adopter's
 move, from inside the Apple container:
 
 ```bash
-uv run register-check deployments   # not a conformance run; the stamps must be unchanged
-git status --short                  # only the files the step named
+uv run register-check deployments
+git status --short
 ```
+
+The first is not a conformance run, and the stamps it reports must be
+unchanged. The second must list only the files the step named.
 
 | Check | Result |
 | --- | --- |

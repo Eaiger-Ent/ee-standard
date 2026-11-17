@@ -79,8 +79,15 @@ kernel; accept it), install the pinned CLI, and open a session:
 ```bash
 container system start
 npm ci --no-audit --no-fund
-node .devcontainer/bin/container-session.mjs claude
+node .devcontainer/bin/container-session.mjs claude -n "${PWD:h:t}: ${PWD:t}"
 ```
+
+`-n` names the `claude` session after the checkout's parent folder and the
+checkout itself, for example `git: ee-standard`, so sessions from different
+checkouts are told apart by name. `/status` shows it. `:h` and `:t` are **zsh**
+modifiers, and zsh is macOS's default shell. In bash they do not fail: they
+produce a wrong name. Anything after `claude` is passed to `claude` unchanged,
+so the name is optional.
 
 The first run builds the image and runs `setup.sh`, which takes a few minutes.
 After that, `claude` opens in seconds. The other subcommands:
