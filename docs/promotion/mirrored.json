@@ -2,8 +2,8 @@
   "marketplace": "EqualExperts/ee-skills",
   "plugins": {
     "lint-md": {
-      "version": "1.0.24",
-      "commit": "20529b3bb8bb43d854bc2bc9dd8a24eac2d162f5",
+      "version": "1.0.25",
+      "commit": "64c644143fbfac3c46521038c31e05f7b1011a54",
       "differences": {
         ".claude-plugin/plugin.json": {
           "stance": "by-design",
@@ -16,8 +16,8 @@
       "files": [
         {
           "path": ".claude-plugin/plugin.json",
-          "sha256": "5de9de63fb86d762c7c0acd42f3c91c48a409ce28c04b3838b230ea27d43ed1b",
-          "mirrored_sha256": "45bff4fbce494f81c9b94e8a03e72dd7a8c515ded58bcdc0ba247f260f51b472"
+          "sha256": "d72a38e3b248f6ed4e91370c3c2c9c60282ba1a26149e2b2b762f7d8014f4676",
+          "mirrored_sha256": "f01dda0994907d637de06bbcc5c95b98b0b03f1e3e2e490e167153bea4b078da"
         },
         {
           "path": "LICENSE",
@@ -65,7 +65,7 @@
         },
         {
           "path": "skills/lint-md/scripts/md-lint-hook.py",
-          "sha256": "e638ecc2d33cde800ebcc8a4e7e22ec7bcbeb010e24ad1fcb52a1c0b40a1f43f"
+          "sha256": "707cf43085ed50f3deb3f59d3e838d80fb87514c040d09f6b097620b65b62334"
         },
         {
           "path": "skills/lint-md/scripts/md-precommit-state.sh",
@@ -86,8 +86,8 @@
       ]
     },
     "lint-yaml": {
-      "version": "0.1.21",
-      "commit": "20529b3bb8bb43d854bc2bc9dd8a24eac2d162f5",
+      "version": "0.1.22",
+      "commit": "64c644143fbfac3c46521038c31e05f7b1011a54",
       "differences": {
         ".claude-plugin/plugin.json": {
           "stance": "by-design",
@@ -100,8 +100,8 @@
       "files": [
         {
           "path": ".claude-plugin/plugin.json",
-          "sha256": "73ea1976f8a74752f9fdf82b79e3422dec62e3fd9dfbf68c709093641951cfda",
-          "mirrored_sha256": "82cb03cd3b1e7e6f2212676b025995336f245ee1c1cedb1276df92dd9b023ce7"
+          "sha256": "0ee2e3bcf9729e7e1c399ba6e25501a682403aca212dbaad13e841792f6a7167",
+          "mirrored_sha256": "d7cf53496f755ca8356e3d2714743d2ecdf992312a556e7db5c441a7011ca096"
         },
         {
           "path": "LICENSE",
@@ -153,7 +153,7 @@
         },
         {
           "path": "skills/lint-yaml/scripts/yaml-lint-hook.py",
-          "sha256": "6890e7dcd37991b8b8134c6b24017fc192c60befdfdbc3216d42bcc4cb925e91"
+          "sha256": "c61d82e5a2c49baeba0891591a9743f503f4a041b5163df3b8b6f6152807ae50"
         },
         {
           "path": "skills/lint-yaml/scripts/yaml-validate-config.py",
