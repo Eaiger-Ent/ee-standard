@@ -43,6 +43,13 @@ not defects to fix during the run:
 `node_modules/.bin/devcontainer --version`, and the Mac's model. A run without
 its versions is not evidence.
 
+`scripts/phase15-evidence.sh` records those observations and the ones the runs
+below ask for, and decides nothing: `host` on the Mac, `inside` from a shell in
+the Apple container, and `run -- COMMAND` around a launcher command (Run C's
+refusal, its exit code and whether a container appeared). It writes to
+`~/phase15`, holds no secret and no username, and is a recorder, not a
+substitute for this document. Paste what it wrote under the run's heading.
+
 ## Run A — Criterion 1: an adopted repository, not this one
 
 **Question:** does the launcher, copied into a repository adopted from the
