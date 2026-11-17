@@ -8,7 +8,7 @@
 //   node .devcontainer/bin/container-session.mjs exec -- <cmd...>
 //   node .devcontainer/bin/container-session.mjs stop       # frees host memory
 //   node .devcontainer/bin/container-session.mjs down       # stop and delete (volumes kept)
-//   node .devcontainer/bin/container-session.mjs check --config <f> [--label <f>] [--calls <f>]
+//   node .devcontainer/bin/container-session.mjs check --config <f> [--label <f>] [--calls <f>] [--container-env <f>]
 //
 // It never reads devcontainer.json. Its inputs are the `devcontainer` CLI's own
 // output: `read-configuration`, the `devcontainer.metadata` label the CLI
@@ -39,11 +39,11 @@ const KEEP_ALIVE = 'echo Container started; trap "exit 0" TERM; sleep infinity &
 const CONFIG_KEYS = new Set([
   "name", "image", "features", "containerEnv", "initializeCommand", "runArgs",
   "postCreateCommand", "postStartCommand", "remoteUser", "mounts",
-  "customizations", "configFilePath",
+  "customizations", "configFilePath", "remoteEnv", "forwardPorts",
 ]);
 const LABEL_KEYS = new Set([
   "id", "remoteUser", "mounts", "containerEnv", "postCreateCommand",
-  "postStartCommand", "customizations",
+  "postStartCommand", "customizations", "remoteEnv", "forwardPorts",
 ]);
 // runArgs flags, each taking one value. Both runtimes give them one meaning.
 const RUN_ARG_FLAGS = new Set(["--env-file", "--cpus", "--memory"]);
@@ -54,7 +54,14 @@ const BUILD_VALUE_FLAGS = new Set(["-t", "-f", "--build-arg", "--target", "--pla
 const BUILD_DROPPED_FLAGS = new Set(["--load"]);
 // The keys whose build-time snapshot (the label's last entry) must still match
 // devcontainer.json, or the image is stale.
-const SNAPSHOT_KEYS = ["remoteUser", "mounts", "containerEnv", "postCreateCommand", "postStartCommand"];
+const SNAPSHOT_KEYS = [
+  "remoteUser", "mounts", "containerEnv", "postCreateCommand", "postStartCommand", "remoteEnv", "forwardPorts",
+];
+// The one variable `read-configuration` leaves unresolved in remoteEnv, because
+// it needs a container: `${containerEnv:NAME}` or `${containerEnv:NAME:default}`.
+// The CLI resolves it against the container's configured environment, to the
+// default or "" when NAME is unset. Any other `${...}` still present is refused.
+const CONTAINER_ENV_REF = /\$\{containerEnv:([^:}]+)(?::([^}]*))?\}/g;
 // `container`'s downloads stall without recovering on a network that drops
 // connections, and inside a build they stall silently (spike record, "The
 // launcher, end to end"). So images are pulled first, where progress shows and
@@ -73,6 +80,42 @@ function lifecycleErrors(where, key, value) {
   if (value === undefined || typeof value === "string") return [];
   if (Array.isArray(value) && value.every((part) => typeof part === "string")) return [];
   return [`${where}: ${key} is ${JSON.stringify(value)}; only a string or an array of strings is handled`];
+}
+
+// remoteEnv applies to the processes the tool starts in the container, not to
+// the container itself, so it maps to `-e` on every `container exec`.
+function remoteEnvErrors(where, value) {
+  if (value === undefined) return [];
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return [`${where}: remoteEnv is ${JSON.stringify(value)}; only an object of strings is handled`];
+  }
+  const errors = [];
+  for (const [key, entry] of Object.entries(value)) {
+    if (typeof entry !== "string") {
+      errors.push(`${where}: remoteEnv.${key} is ${JSON.stringify(entry)}; only a string is handled`);
+    } else if (entry.replace(CONTAINER_ENV_REF, "").includes("${")) {
+      errors.push(`${where}: remoteEnv.${key} has a variable other than \${containerEnv:...}, which is not handled`);
+    }
+  }
+  return errors;
+}
+
+// The CLI publishes no port from forwardPorts: it records them in the label
+// and leaves forwarding to the editor, which this launcher does not run. An
+// empty list is therefore the same container on both runtimes; a non-empty one
+// is a port the developer expects and would not get, so it is refused.
+function forwardPortsErrors(where, value) {
+  if (value === undefined || (Array.isArray(value) && value.length === 0)) return [];
+  return [`${where}: forwardPorts ${JSON.stringify(value)} is not handled; only an empty list is`];
+}
+
+export function resolveRemoteEnv(remoteEnv, containerEnv) {
+  const resolved = {};
+  for (const [key, value] of Object.entries(remoteEnv)) {
+    resolved[key] = value.replace(CONTAINER_ENV_REF, (_, name, fallback) => (
+      typeof containerEnv[name] === "string" ? containerEnv[name] : fallback ?? ""));
+  }
+  return resolved;
 }
 
 export function parseMount(mount) {
@@ -136,6 +179,8 @@ export function validateConfig(output) {
   for (const key of ["initializeCommand", "postCreateCommand", "postStartCommand"]) {
     errors.push(...lifecycleErrors("devcontainer.json", key, config[key]));
   }
+  errors.push(...remoteEnvErrors("devcontainer.json", config.remoteEnv));
+  errors.push(...forwardPortsErrors("devcontainer.json", config.forwardPorts));
   // The workspace's parent is what gets mounted (F5), so the CLI's workspace
   // folder must be exactly one level below /workspaces.
   const folder = output.workspace?.workspaceFolder ?? "";
@@ -143,6 +188,15 @@ export function validateConfig(output) {
     errors.push(`workspace: workspaceFolder ${JSON.stringify(folder)} is not /workspaces/<name>`);
   }
   return errors;
+}
+
+// remoteEnv and forwardPorts joined the snapshot after images had been built
+// without them. Whether the CLI records an empty one or omits it is not
+// established here, and neither can change the session, so both read as absent.
+function snapshotValue(key, value) {
+  if (key !== "remoteEnv" && key !== "forwardPorts") return value;
+  if (value === undefined || value === null) return undefined;
+  return Object.keys(value).length === 0 ? undefined : value;
 }
 
 export function validateLabel(entries, output) {
@@ -157,13 +211,15 @@ export function validateLabel(entries, output) {
     for (const key of ["postCreateCommand", "postStartCommand"]) {
       errors.push(...lifecycleErrors(where, key, entry[key]));
     }
+    errors.push(...remoteEnvErrors(where, entry.remoteEnv));
+    errors.push(...forwardPortsErrors(where, entry.forwardPorts));
   });
   // The last entry is devcontainer.json as it was at build time.
   if (output) {
     const last = entries[entries.length - 1];
     const config = output.configuration ?? {};
     for (const key of SNAPSHOT_KEYS) {
-      if (JSON.stringify(last[key]) !== JSON.stringify(config[key])) {
+      if (JSON.stringify(snapshotValue(key, last[key])) !== JSON.stringify(snapshotValue(key, config[key]))) {
         errors.push(`image label: ${key} differs from devcontainer.json; the image is stale, run \`up --rebuild\``);
       }
     }
@@ -245,11 +301,14 @@ export function progressMark(line) {
 
 export function merge(output, entries) {
   const config = output.configuration;
-  const merged = { remoteUser: config.remoteUser, mounts: [], containerEnv: {}, postCreate: [], postStart: [] };
+  const merged = {
+    remoteUser: config.remoteUser, mounts: [], containerEnv: {}, remoteEnv: {}, postCreate: [], postStart: [],
+  };
   const byTarget = new Map();
   for (const entry of entries) {
     if (entry.remoteUser) merged.remoteUser = entry.remoteUser;
     Object.assign(merged.containerEnv, entry.containerEnv ?? {});
+    Object.assign(merged.remoteEnv, entry.remoteEnv ?? {});
     for (const mount of entry.mounts ?? []) {
       const parsed = parseMount(mount);
       byTarget.set(parsed.target, parsed);
@@ -462,13 +521,38 @@ function shellCommand(command) {
   return typeof command === "string" ? ["/bin/sh", "-c", command] : command;
 }
 
-function execArgs(merged, folder, interactive) {
+// What `docker inspect` reports as Config.Env, which the CLI resolves
+// `${containerEnv:...}` against: the image's ENV, containerEnv and the
+// --env-file values. PID 1 was started with exactly that, so its environment
+// is read, as the image's default user that PID 1 runs as. It carries secrets
+// from --env-file; they are only looked up by name, never printed.
+function readContainerEnv() {
+  const result = capture("container", ["exec", CONTAINER, "cat", "/proc/1/environ"]);
+  if (result.status !== 0) throw new Error("could not read the container's environment to resolve remoteEnv");
+  const env = {};
+  for (const pair of result.stdout.split("\0")) {
+    const at = pair.indexOf("=");
+    if (at > 0) env[pair.slice(0, at)] = pair.slice(at + 1);
+  }
+  return env;
+}
+
+function sessionEnv(merged) {
+  if (Object.keys(merged.remoteEnv).length === 0) return {};
+  return resolveRemoteEnv(merged.remoteEnv, readContainerEnv());
+}
+
+function execArgs(merged, folder, interactive, env) {
   const user = merged.remoteUser;
   const args = ["exec"];
   if (interactive) args.push("-i", ...(process.stdin.isTTY ? ["-t"] : []));
   // F6: `container exec -u` sets HOME but not USER or LOGNAME. Neither is a
   // secret; secrets reach the container only through --env-file on `run` (F7).
-  args.push("-u", user, "-e", `USER=${user}`, "-e", `LOGNAME=${user}`, "-w", folder, CONTAINER);
+  args.push("-u", user, "-e", `USER=${user}`, "-e", `LOGNAME=${user}`);
+  // remoteEnv is committed configuration; a resolved `${containerEnv:...}` can
+  // carry a container value, which stays in this argv and is never logged.
+  for (const [key, value] of Object.entries(env)) args.push("-e", `${key}=${value}`);
+  args.push("-w", folder, CONTAINER);
   return args;
 }
 
@@ -508,16 +592,19 @@ async function up({ rebuild = false } = {}) {
     args.push("-v", `${dirname(ROOT)}:/workspaces`, "-w", folder);
     args.push("--entrypoint", "/bin/sh", IMAGE, "-c", KEEP_ALIVE);
     must("container", args, { stdio: ["ignore", "ignore", "inherit"] });
-    for (const command of merged.postCreate) must("container", [...execArgs(merged, folder, false), ...shellCommand(command)]);
+    const env = sessionEnv(merged);
+    for (const command of merged.postCreate) must("container", [...execArgs(merged, folder, false, env), ...shellCommand(command)]);
   } else if (state === "stopped") {
     must("container", ["start", CONTAINER], { stdio: ["ignore", "ignore", "inherit"] });
   } else if (state !== "running") {
     throw new Refusal(`container ${CONTAINER} is ${state}; run \`down\` and try again`);
   }
+  // The CLI runs lifecycle commands with remoteEnv too.
+  const env = sessionEnv(merged);
   if (state !== "running") {
-    for (const command of merged.postStart) must("container", [...execArgs(merged, folder, false), ...shellCommand(command)]);
+    for (const command of merged.postStart) must("container", [...execArgs(merged, folder, false, env), ...shellCommand(command)]);
   }
-  return { merged, folder };
+  return { merged, folder, env };
 }
 
 function down() {
@@ -526,8 +613,8 @@ function down() {
 }
 
 async function attach(command) {
-  const { merged, folder } = await up();
-  const result = run("container", [...execArgs(merged, folder, true), ...command]);
+  const { merged, folder, env } = await up();
+  const result = run("container", [...execArgs(merged, folder, true, env), ...command]);
   return result.status ?? 1;
 }
 
@@ -538,14 +625,21 @@ function check(argv) {
   const output = JSON.parse(readFileSync(files.config, "utf8"));
   const errors = validateConfig(output);
   let builds = [];
-  if (files.label) errors.push(...validateLabel(JSON.parse(readFileSync(files.label, "utf8")), output));
+  const label = files.label ? JSON.parse(readFileSync(files.label, "utf8")) : undefined;
+  if (label) errors.push(...validateLabel(label, output));
   if (files.calls) {
     const plan = planBuilds(JSON.parse(readFileSync(files.calls, "utf8")));
     errors.push(...plan.errors);
     builds = plan.builds;
   }
   refuseAll(errors);
-  process.stdout.write(`${JSON.stringify({ builds, pulls: imagesToPull(builds) })}\n`);
+  const report = { builds, pulls: imagesToPull(builds) };
+  // The exec environment a session would get, against a recorded container env.
+  if (files["container-env"]) {
+    const merged = merge(output, label ?? [output.configuration]);
+    report.remoteEnv = resolveRemoteEnv(merged.remoteEnv, JSON.parse(readFileSync(files["container-env"], "utf8")));
+  }
+  process.stdout.write(`${JSON.stringify(report)}\n`);
   return 0;
 }
 
@@ -560,7 +654,7 @@ async function main(argv) {
     case "down": down(); return 0;
     case "check": return check(rest);
     default:
-      process.stderr.write("usage: container-session.mjs up [--rebuild] | claude [args] | shell | exec -- <cmd> | stop | down | check --config <f> [--label <f>] [--calls <f>]\n");
+      process.stderr.write("usage: container-session.mjs up [--rebuild] | claude [args] | shell | exec -- <cmd> | stop | down | check --config <f> [--label <f>] [--calls <f>] [--container-env <f>]\n");
       return 2;
   }
 }
