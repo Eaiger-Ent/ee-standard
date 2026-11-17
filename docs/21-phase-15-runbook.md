@@ -123,12 +123,17 @@ Then start the services and open a session:
 
 ```bash
 container system start
-node .devcontainer/bin/container-session.mjs claude
+node .devcontainer/bin/container-session.mjs claude -n "${PWD:h:t}: ${PWD:t}"
 ```
+
+`-n` names the session after the parent folder and the clone, here
+`phase15: ee-standard-consumer`. `:h` and `:t` are zsh modifiers, and
+[`06-devcontainer-setup.md`](06-devcontainer-setup.md) § 1 says why.
 
 **Expected:** a first build of a few minutes. `up` ends with `check-auth.sh`'s
 table, every line ✓. Inside `claude`, `/status` shows
-`Auth token: CLAUDE_CODE_OAUTH_TOKEN` and `! id` shows `uid=1000(vscode)`. From
+`Session name: phase15: ee-standard-consumer`,
+`Auth token: CLAUDE_CODE_OAUTH_TOKEN`, and `! id` shows `uid=1000(vscode)`. From
 another terminal:
 
 ```bash
