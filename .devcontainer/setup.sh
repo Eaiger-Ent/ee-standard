@@ -87,10 +87,10 @@ npm ci --no-audit --no-fund
 # Where the artefact is fetched from is recorded in `controls.yaml` as
 # `tools.uv.release_repo`.
 # renovate: datasource=pypi depName=uv
-UV_VERSION=0.13.7
+UV_VERSION=0.13.9
 case "$(uname -m)" in
-  aarch64|arm64) UV_ARCH=aarch64 UV_SHA=71279f8d3c67241e807b9d8db872d1bf541579fb9f08b7d1eb1682196d1e57dc ;;
-  *)             UV_ARCH=x86_64  UV_SHA=c5221ff41b7892bfc223543883600125f6a47fe845093e0f5bdff4f359196d83 ;;
+  aarch64|arm64) UV_ARCH=aarch64 UV_SHA=0797542018e541a9288855df555c8077eed06f7a47d206362030480e8ecc9f3d ;;
+  *)             UV_ARCH=x86_64  UV_SHA=a7fbaff2b9a271d85c1bdb540941090fd1ce011797b4abeb48e4dcd39c2471d5 ;;
 esac
 UV_DIR="uv-${UV_ARCH}-unknown-linux-gnu"
 curl -sSfL -o /tmp/uv.tgz \
@@ -154,11 +154,12 @@ for host in github.com gist.github.com; do
     "!${GH_BIN} auth git-credential"
 done
 
-# Two PATs for two orgs, each scoped per invocation. Both wrappers are reviewed
-# files rather than heredocs — they are executables that land on PATH, so they
+# Wrappers scope the second org's PATs: per `gh` call (gh-ee-skills) or per
+# whole command (ee-skills-submit). They are reviewed files rather than heredocs — they are executables that land on PATH, so they
 # belong in a diff and under the same gates as the rest of the repo.
 sudo install -m 0755 .devcontainer/bin/gh-ee-skills /usr/local/bin/gh-ee-skills
 sudo install -m 0755 .devcontainer/bin/ee-skills-plugins /usr/local/bin/ee-skills-plugins
+sudo install -m 0755 .devcontainer/bin/ee-skills-submit /usr/local/bin/ee-skills-submit
 
 # The ee-skills marketplace and the plugins this repo's workflow depends on.
 # The list, and why each entry is on it, live in that script and nowhere else —

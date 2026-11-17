@@ -75,7 +75,7 @@ container, measured here:
 
 | Requirement | State on this machine |
 | --- | --- |
-| `gh` authenticated with push access to `EqualExperts/ee-skills-incubator`, or able to fork it | **Push access yes, ambient `gh` no.** The scripts invoke `gh` themselves, and this container's `GITHUB_TOKEN` is scoped to `Eaiger-Ent`: plain `gh api repos/EqualExperts/ee-skills-incubator` returns 404. `EE_SKILLS_GITHUB_TOKEN` has `push` and `admin`, so a submission must be run with it in the environment as `GH_TOKEN` — the `gh-ee-skills` wrapper cannot help, because it scopes a single invocation and the invocations are inside someone else's script |
+| `gh` authenticated with push access to `EqualExperts/ee-skills-incubator`, or able to fork it | **Through `ee-skills-submit` only.** The scripts invoke `gh` themselves, and this container's `GITHUB_TOKEN` is scoped to `Eaiger-Ent`: plain `gh api repos/EqualExperts/ee-skills-incubator` returns 404. `EE_SKILLS_INCUBATOR_AMEND_TOKEN` — a fine-grained PAT with Contents and Issues write on that one repository, and nothing else — is what pushes. `ee-skills-submit <command>` runs a whole command with it as `GH_TOKEN`; the `gh-ee-skills` wrapper cannot serve, because it scopes a single `gh` invocation and the invocations are inside someone else's script. `EE_SKILLS_GITHUB_TOKEN` is the read-side token and is not used to submit |
 | `claude` and `uv` on `PATH` | Both present |
 | An Anthropic credential — `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` — for Gate 4 | Neither is exported in an ordinary shell here. `CLAUDE_CODE_OAUTH_TOKEN` is in `.devcontainer/.env`, so this is a `set -a; . .devcontainer/.env; set +a` away rather than a gap. Without it the scripts **stop**: the gates are refused rather than degraded, because Gate 4 skipping without failing would push an ungated submission under a "gates passed" banner |
 | `tests/<skill>/triggers.yaml` and `tests/<skill>/prompt.txt` | **Drafted 2026-08-29** in [`promotion/fixtures/`](promotion/fixtures/README.md), one directory per skill, with the Q4 rationale beside them. The tool still builds the files it commits from its own Q1–Q4, so these are answers to review rather than files it reads — which turns nine live Q&A sessions into nine readings. `tests/test_submission_fixtures.py` derives the set from the plugin in both directions and holds each file to the tool's own validation |
@@ -108,24 +108,28 @@ skipped entirely for such a skill.
 
 #### The submitting shell
 
-Three of the five rows above are environment, and together they are one command.
-Run every `/skill-submit-new` and `/skill-submit-amend` from a shell prepared
-this way — **verified on 2026-08-29**, which is what the last line is for:
+Two of the five rows above are environment. Run every `/skill-submit-new` and
+`/skill-submit-amend` through `ee-skills-submit`, which installs the write PAT
+for that one command and strips the Eaiger-Ent `GITHUB_TOKEN` that would shadow
+it:
 
 ```bash
-set -a; . .devcontainer/.env; set +a   # CLAUDE_CODE_OAUTH_TOKEN, for Gate 4
-unset GITHUB_TOKEN                     # scoped to Eaiger-Ent; it shadows the next line
-export GH_TOKEN="$EE_SKILLS_GITHUB_TOKEN"
-
-gh api repos/EqualExperts/ee-skills-incubator --jq .permissions.push   # true, or stop
+ee-skills-submit gh api repos/EqualExperts/ee-skills-incubator --jq .permissions.push   # true, or stop
+ee-skills-submit bash "$SKILL_DIR/scripts/submit-branch.sh" <args...>
 ```
 
-`unset` rather than a prefix, because `gh` honours one of `GH_TOKEN`/`GITHUB_TOKEN`
-at a time and the scripts invoke `gh` themselves — this is the whole reason the
-`gh-ee-skills` wrapper cannot serve here, since it scopes a single invocation and
-the invocations are somebody else's. The last line is not ceremony: it is the
-one check that distinguishes *can push* from *cannot see*, which is the
-distinction the next paragraph is about.
+`.devcontainer/check-auth.sh` runs the first line at container start and reports
+`✓ ee-skills-submit` or `✗`. Gate 4's `CLAUDE_CODE_OAUTH_TOKEN` is already in the
+container environment through `--env-file`, so nothing is sourced by hand.
+
+`gh` honours one of `GH_TOKEN`/`GITHUB_TOKEN` at a time and the scripts invoke
+`gh` and `git push` themselves, so a wrapper that scopes one `gh` call
+(`gh-ee-skills`) cannot serve; `ee-skills-submit` scopes a whole command. The
+first line is not ceremony: it distinguishes *can push* from *cannot see*, which
+is the distinction the next paragraph is about. The tracking issue the script
+files on the project it ran from is on `Eaiger-Ent/ee-standard`, which this
+token cannot see: the script prints a note and the issue is filed by hand with
+the ambient `gh`.
 
 **Step 1a reads a 404 as good news, and on this machine a 404 is ambiguous.**
 Before doing anything else, `skill-submit-new` runs

@@ -47,13 +47,13 @@ this repo refers to that file.**
 - Run all pre-commit hooks: `uv run pre-commit run --all-files`
 - **Before you push**, most of what CI runs now runs itself. Register contract
   31 added a `pre-push` locus ([ADR 0039](docs/adr/0039-a-push-is-a-locus.md)),
-  and `git push` runs `uv run pytest` (TST-001) and
-  `register-check run --control SUP-001 --control SUP-002` — provided
-  `.git/hooks/pre-push` is installed, which `setup.sh` does and `check-auth.sh`
+  and `git push` runs `uv run pytest` (TST-001) and `register-check run` over
+  SEC-002, SUP-001 and SUP-002 — provided
+  `.git/hooks/pre-push` is installed, which `.devcontainer/setup.sh` does and `check-auth.sh`
   reports. Two commands are still yours to remember, and neither can be wired:
 
   ```bash
-  uv run register-check   # the whole register; the hooks run five controls
+  uv run register-check   # the whole register; the hooks run four controls
   uv sync --frozen        # SUP-001 — the lockfile is current
   ```
 
@@ -67,7 +67,9 @@ this repo refers to that file.**
 - Verify container auth/tools: `.devcontainer/check-auth.sh`
 - `gh` for repos in the Eaiger-Ent org (ambient `GITHUB_TOKEN`); `gh-ee-skills`
   for repos in the EqualExperts org (ee-skills, ee-skills-incubator) — the
-  wrapper scopes `EE_SKILLS_GITHUB_TOKEN` to a single invocation.
+  wrapper scopes `EE_SKILLS_GITHUB_TOKEN` to a single invocation. Submitting
+  to the incubator is `ee-skills-submit <command>`, which scopes the separate
+  write PAT `EE_SKILLS_INCUBATOR_AMEND_TOKEN` to a whole command.
 
 All development happens inside the devcontainer (`docs/06-devcontainer-setup.md`
 is the operator guide). Host secrets arrive via `.devcontainer/fetch-secrets.sh`
@@ -114,14 +116,14 @@ Each of these has been paid for once. None is derivable from the code.
   intent; `.git/hooks/pre-commit` is whether anything runs, and every gate reads
   the first. It cannot become a control — `.git/hooks/` is untracked and CI has
   none.
-- **A support floor is not a pin.** `.python-version` selects (3.14);
+- **A support floor is not a pin.** `.python-version` selects the interpreter;
   `requires-python` constrains. `[tool.ruff] target-version` is deliberately
   absent — ruff derives it, and writing it out was a third copy that drifted.
 - **A shebang resolves from `PATH`.** Every tracked script reads
   `#!/usr/bin/env -S uv run python`; `tests/test_toolchain_pin.py` fails one
   that does not. The base image still ships a `python3` below the floor.
 - **This repository is public.** Write nothing that assumes privacy.
-- **Do not invoke a gate casually.** All eight skills are model-invocable here
+- **Do not invoke a gate casually.** Every skill is model-invocable here
   and they write into this repository.
 - **Never fill in a provenance stamp by hand**, and never refresh one with no
   run behind it. A stamp behind the register is staleness and is never enforced;
@@ -157,7 +159,7 @@ for where anything lives. Both are more current than any list kept here.
 | `docs/08-adopting.md` | The adoption reference. Every phase owes it the steps it introduces |
 | `docs/14-file-map.md` | Which file, and why three config files are three |
 | `docs/adr/` | Every decision in force, **except any marked `Proposed`** — open, awaiting a second reader, and not to be implemented as though settled. Today: none. `archive/` holds the retired |
-| `docs/09`–`docs/20` | Phase records and reviews, in order |
+| `docs/09` onward | Phase records, reviews and runbooks, in order |
 | `docs/craft/plan.md` | **Craft** — the coding-standards workstream for Python and React, which the register is deliberately silent about. Its own naming standard and stages; not a phase of the build plan, and it mints no controls |
 | `craft/` | **The Craft register** — `meta.yaml` plus one file per scope. Coding standards, not controls. `tests/test_craft_register.py` checks it; `register-check` deliberately does not (ADR 0053), and `docs/craft/assess.rules.md` is now a stage record rather than a source |
 | `plugins/craft/` | **What an adopter installs** — `craft-install`, and `profiles/`, which is the register above *rendered* into the configuration that skill copies. Written by `uv run python scripts/craft_publish.py`, held to the register by `tests/test_craft_plugin.py`. Change `craft/` and the build fails until you re-publish |
