@@ -38,10 +38,31 @@ not defects to fix during the run:
 | Node.js | `node --version` |
 | `gh` authenticated to `Eaiger-Ent` | `gh auth status` |
 | `claude setup-token` done, and the Keychain entries | [`08-adopting.md`](08-adopting.md) § 2.0a. `.devcontainer/fetch-secrets.sh` reads them |
+| A checkout of this repository on the Mac, and `PATH_TO_EE_STANDARD_CHECKOUT` set to it | `ls "$PATH_TO_EE_STANDARD_CHECKOUT/.devcontainer/bin/container-session.mjs"` |
+
+Runs A and D copy files from the standard's own checkout, which is the stand-in
+for a release that ships them. Set the variable in **every** terminal you run
+them from. The variable lasts only as long as the shell it was set in. Use a
+checkout you already have, on the commit under test, or clone a fresh one:
+
+```bash
+gh repo clone Eaiger-Ent/ee-standard "$HOME/phase15/ee-standard"
+export PATH_TO_EE_STANDARD_CHECKOUT="$HOME/phase15/ee-standard"
+git -C "$PATH_TO_EE_STANDARD_CHECKOUT" rev-parse HEAD
+```
+
+The last line prints the commit to record with the versions. The commands below
+write the variable as `${PATH_TO_EE_STANDARD_CHECKOUT:?…}`, so an unset variable
+stops the command with the message rather than resolving to `/`.
+
+The code blocks in this document carry **no `#` comments**. macOS's default
+shell is zsh, which passes a `#` typed at its prompt to the command as an
+argument unless `setopt interactivecomments` is set. What a comment would have
+said is in the prose around each block.
 
 **Record, for every run:** the date, the macOS version, `container --version`,
-`node_modules/.bin/devcontainer --version`, and the Mac's model. A run without
-its versions is not evidence.
+`node_modules/.bin/devcontainer --version`, the standard checkout's commit, and
+the Mac's model. A run without its versions is not evidence.
 
 `scripts/phase15-evidence.sh` records those observations and the ones the runs
 below ask for, and decides nothing: `host` on the Mac, `inside` from a shell in
@@ -64,21 +85,28 @@ mkdir -p "$HOME/phase15" && cd "$HOME/phase15"
 gh repo clone Eaiger-Ent/ee-standard-consumer
 cd ee-standard-consumer
 git switch -c phase15-apple-container
+```
 
-# The stand-in for the template shipping the launcher.
+Copy the launcher in. This is the stand-in for the template shipping it:
+
+```bash
 mkdir -p .devcontainer/bin
-cp "$PATH_TO_EE_STANDARD_CHECKOUT/.devcontainer/bin/container-session.mjs" .devcontainer/bin/
+cp "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/.devcontainer/bin/container-session.mjs" .devcontainer/bin/
 ```
 
 Put the CLI pin where the launcher looks. The version comes from
-`package.json` in the standard's checkout, never from memory:
+`package.json` in the standard's checkout, never from memory, and the first line
+reads it from there and prints it. The `npm init` line creates a `package.json`
+only if the repository has none:
 
 ```bash
-grep '"@devcontainers/cli"' "$PATH_TO_EE_STANDARD_CHECKOUT/package.json"
-npm init -y >/dev/null          # only if the repository has no package.json
-npm install --save-exact --no-audit --no-fund @devcontainers/cli@<that version>
+DEVCONTAINER_CLI_VERSION="$(node -p 'require(process.argv[1]).devDependencies["@devcontainers/cli"]' "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/package.json")" && echo "$DEVCONTAINER_CLI_VERSION"
+[ -f package.json ] || npm init -y >/dev/null
+npm install --save-exact --no-audit --no-fund "@devcontainers/cli@${DEVCONTAINER_CLI_VERSION:?the first line did not read a version}"
 node_modules/.bin/devcontainer --version
 ```
+
+The last line must print the same version as the first.
 
 Then start the services and open a session:
 
@@ -93,12 +121,19 @@ table, every line ✓. Inside `claude`, `/status` shows
 another terminal:
 
 ```bash
-container list                      # the repo's -dev container, running
-ps -axww -o args | grep -c "$(head -c 12 <<<"$GITHUB_TOKEN")"
+cd "$HOME/phase15/ee-standard-consumer"
+container list
+( set -a; . .devcontainer/.env; set +a; : "${GITHUB_TOKEN:?not in .devcontainer/.env}"
+  ps -axww -o args | grep -c -F -f <(printf '%s\n' "$(printf '%s' "$GITHUB_TOKEN" | head -c 12)") )
 ```
 
-The second command counts matches and never prints a value. Source `.env` in a
-subshell first, as the spike did. **The count must be `0`.**
+`container list` should show the repository's `-dev` container, running. The
+last command counts matches and never prints a value. **The count must be `0`.**
+It sources `.env` in a subshell, so the token does not stay in your shell, and
+it stops if the token is empty. An empty pattern matches every line, so the
+count would be the number of processes. The prefix reaches `grep` through
+`-f <(…)`, not its arguments, so `grep` does not count itself.
+`scripts/phase15-evidence.sh host` makes the same check.
 
 | Check | Result |
 | --- | --- |
@@ -137,12 +172,16 @@ In Run A's clone, add one key the launcher's closed sets do not contain. The set
 are `CONFIG_KEYS`, `LABEL_KEYS`, `RUN_ARG_FLAGS` and `BUILD_VALUE_FLAGS` at the
 head of `container-session.mjs`; read them rather than trusting a list here.
 `forwardPorts` and `postAttachCommand` are the two an adopter is most likely to
-write. Take each as its own run, and restore the file between them.
+write. Take each as its own run, and restore the file between them. Check that
+`git stash list` holds nothing you want to lose, restore the file, add **one**
+key, then run `up`:
 
 ```bash
-git stash list                      # nothing you want to lose
+git stash list
 git checkout -- .devcontainer/devcontainer.json
-# add ONE key, then:
+```
+
+```bash
 node .devcontainer/bin/container-session.mjs up
 ```
 
@@ -168,12 +207,12 @@ Today it fails, by design of the present scripts: `00-tools.sh` demands
 `docker` and a `docker info` that answers, and `30-container.sh` looks for the
 container with `docker ps`. This run records the **baseline**, so the change has
 a measurable before and after, and then it is repeated once the scripts are
-changed.
+changed. The first line must print `no docker on PATH`:
 
 ```bash
-command -v docker || echo "no docker on PATH"       # must print the second
+command -v docker || echo "no docker on PATH"
 cd "$HOME/phase15" && mkdir -p adopt-baseline && cd adopt-baseline
-git init -q . && bash "$PATH_TO_EE_STANDARD_CHECKOUT/adopt.sh" status
+git init -q . && bash "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/adopt.sh" status
 ```
 
 | Stage | Verdict | The message, quoted |
@@ -227,9 +266,12 @@ and its lock file) and what it does **not** touch: the adopter's
 move, from inside the Apple container:
 
 ```bash
-uv run register-check deployments   # not a conformance run; the stamps must be unchanged
-git status --short                  # only the files the step named
+uv run register-check deployments
+git status --short
 ```
+
+The first is not a conformance run, and the stamps it reports must be
+unchanged. The second must list only the files the step named.
 
 | Check | Result |
 | --- | --- |
