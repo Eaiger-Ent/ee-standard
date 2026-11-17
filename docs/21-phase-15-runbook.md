@@ -102,7 +102,7 @@ only if the repository has none:
 ```bash
 DEVCONTAINER_CLI_VERSION="$(node -p 'require(process.argv[1]).devDependencies["@devcontainers/cli"]' "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/package.json")" && echo "$DEVCONTAINER_CLI_VERSION"
 [ -f package.json ] || npm init -y >/dev/null
-npm install --save-exact --no-audit --no-fund "@devcontainers/cli@${DEVCONTAINER_CLI_VERSION:?the first line did not read a version}"
+npm install --save-dev --save-exact --no-audit --no-fund "@devcontainers/cli@${DEVCONTAINER_CLI_VERSION:?the first line did not read a version}"
 node_modules/.bin/devcontainer --version
 ```
 
@@ -141,9 +141,16 @@ count would be the number of processes. The prefix reaches `grep` through
 | `check-auth.sh` table, every line ✓ | |
 | `claude` starts as `vscode`, token source `CLAUDE_CODE_OAUTH_TOKEN` | |
 | Secrets in the host process list | |
-| `uv run register-check` inside the container exits `3` | |
+| `uv run register-check` inside the container exits `3`. If not, which control and which check | |
 | What the launcher refused, if anything, quoted | |
 | Anything that needed a flag or step not named here | |
+
+`3` assumes that every remote check either passes or cannot be read. Whether one
+can be read depends on the token, not on the runtime. A token that can read
+the adopted repository's settings turns a disabled setting into a `FAIL` and an
+exit of `1`, while CI or a narrower token reports the same repository as `3`.
+That is a finding about the repository, not about the launcher. Quote the
+failing check, and do not tick the row until it is settled.
 
 Finish with `node .devcontainer/bin/container-session.mjs stop`.
 
