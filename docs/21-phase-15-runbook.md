@@ -71,6 +71,17 @@ refusal, its exit code and whether a container appeared). It writes to
 `~/phase15`, holds no secret and no username, and is a recorder, not a
 substitute for this document. Paste what it wrote under the run's heading.
 
+Run `host` from the adopted clone, because it reads `.devcontainer/.env` there.
+The container cannot see the standard's checkout, so `inside` needs a copy in
+the clone's `.git/`. The container sees that folder, and `git status` does not
+list it. Keep the record with `tee`, because the `written to:` path it prints
+is inside the container:
+
+```bash
+cp "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/scripts/phase15-evidence.sh" .git/
+node .devcontainer/bin/container-session.mjs exec -- bash .git/phase15-evidence.sh inside | tee "$HOME/phase15/evidence-inside.txt"
+```
+
 ## Run A — Criterion 1: an adopted repository, not this one
 
 **Question:** does the launcher, copied into a repository adopted from the
@@ -152,7 +163,61 @@ exit of `1`, while CI or a narrower token reports the same repository as `3`.
 That is a finding about the repository, not about the launcher. Quote the
 failing check, and do not tick the row until it is settled.
 
+`ee-standard-consumer` has been **archived since 2026-09-03**. It is read-only,
+and its settings cannot change without unarchiving it. A token that can read
+them gets SEC-001's push-protection block as `disabled`, so expect the `1`
+described above. Record it. Do not unarchive the repository to clear it.
+
 Finish with `node .devcontainer/bin/container-session.mjs stop`.
+
+### Run A, 2026-11-17
+
+**Versions.** macOS 27.2.1, `Mac14,9`, arm64. `container` 1.7.1 (build:
+release, commit `a15b460`). `devcontainer` 0.90.0 from `./node_modules/.bin`.
+Node v26.13.1. The standard's checkout was at
+[`ef81d61`](https://github.com/Eaiger-Ent/ee-standard/commit/ef81d61e492b8e1b667dd1d91fb0b70a4e527e86).
+The launcher was copied from `f09e715`, and the launcher is identical at both
+commits. `ee-standard-consumer` was at `2b89221`, on branch
+`phase15-apple-container`. Inside the container: Linux 6.18.56 aarch64, `uv`
+0.12.5, and `claude` 2.1.326 by `check-auth.sh`. `/status` in the session opened
+minutes earlier showed 2.1.319. Docker was not on `PATH`. Two other Apple
+containers were running on the host, `ee-standard-dev` and `ste-cc-dev`, and
+the runbook assumed neither.
+
+| Check | Result |
+| --- | --- |
+| `up` completes with the lock file unchanged | ✓ `.devcontainer/devcontainer-lock.json` is absent from `git status`. The tree changes are the stand-in's own: `package.json`, `package-lock.json` and `.devcontainer/bin/` |
+| `check-auth.sh` table, every line ✓ | ✓ all six: GitHub CLI, Claude Code token, `claude`, `uv`, pre-commit hook, git |
+| `claude` starts as `vscode`, token source `CLAUDE_CODE_OAUTH_TOKEN` | ✓ `/status` shows `Auth token: CLAUDE_CODE_OAUTH_TOKEN`, and `! id` shows `uid=1000(vscode) gid=1000(vscode) groups=1000(vscode),999(nvm)` |
+| Secrets in the host process list | ✓ `0`, counted for `GITHUB_TOKEN` by `phase15-evidence.sh host` |
+| `uv run register-check` inside the container exits `3`. If not, which control and which check | **✗ `1`, open.** SEC-001 `github_push_protection_enabled`: *"secret scanning push protection is 'disabled', not 'enabled'"*. Every local block of SEC-001 passed, and 11 controls passed, with SEC-003 unclassified as usual. The repository is archived (above). The same tree on a token that cannot read the setting exits `3` |
+| What the launcher refused, if anything, quoted | Nothing was reported |
+| Anything that needed a flag or step not named here | Six, listed below. Each is now in this document |
+
+**Steps the document lacked.** Faults 1 to 4 were fixed in `723c41e`, fault 5 in
+`a4575f8`, and fault 6 with this record.
+
+1. `PATH_TO_EE_STANDARD_CHECKOUT` was used but never set, so `cp` read from `/`.
+2. `#` comments in the code blocks: zsh passed them to `git` as arguments.
+3. `<that version>` in a pasted block: zsh read it as a redirect, and the whole
+   block failed to parse.
+4. The secrets count read `742`. In the operator's shell `GITHUB_TOKEN` was empty,
+   and an empty pattern matched every process. With the token set, `grep` would
+   still have matched its own arguments.
+5. `npm install --save-exact` without `--save-dev` put the CLI under
+   `dependencies`.
+6. The recorder's `inside` mode had no instructions. The container cannot see
+   the standard's checkout, and the recorder's `written to:` path is inside the
+   container.
+
+**For the stand-in table.** The launcher resolves the CLI at
+`<root>/node_modules/.bin/devcontainer` (`container-session.mjs`, `const CLI`),
+so it needs a change before the pin can live in `.devcontainer/package.json`.
+The stand-in also had to edit the adopter's own root `package.json`, because
+this repository already had one. A shipped route that adds a file, and changes
+none of the adopter's, avoids that.
+
+**Not ticked.** Criterion 1 stays open on the `register-check` row.
 
 ## Run B — Criterion 2: a second Mac, a second person
 
@@ -245,6 +310,12 @@ ls -la /.dockerenv; echo "REMOTE_CONTAINERS=${REMOTE_CONTAINERS:-} CODESPACES=${
 If none is present, `inside_container()` returns false there, and stage 0 would
 run inside the container it should refuse to run in. That is a finding for
 criterion 7, and the replacement signal belongs in the record.
+
+**Recorded 2026-11-17, from Run A's container** (`phase15-evidence.sh inside`).
+`/.dockerenv` is absent, `REMOTE_CONTAINERS` is empty, and `CODESPACES` is
+empty. **None is present**, so the finding above stands for criterion 7. No
+replacement signal has been chosen yet. Run D's baseline of the scripts
+themselves has not been run.
 
 **Re-run after the scripts change**, with the same table, expecting stage 0 and
 stage 3 to pass with `container` answering and `docker` absent, and to say which
