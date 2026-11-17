@@ -105,6 +105,7 @@ def _check(
     config: dict[str, Any],
     label: list[dict[str, Any]] | None = None,
     calls: list[list[str]] | None = None,
+    container_env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     assert NODE, "node is not on PATH; every locus that runs pytest installs it"
     args = [NODE, str(LAUNCHER), "check", "--config", str(_write(tmp_path / "config.json", config))]
@@ -112,6 +113,8 @@ def _check(
         args += ["--label", str(_write(tmp_path / "label.json", label))]
     if calls is not None:
         args += ["--calls", str(_write(tmp_path / "calls.json", calls))]
+    if container_env is not None:
+        args += ["--container-env", str(_write(tmp_path / "env.json", container_env))]
     return subprocess.run(args, capture_output=True, text=True, check=False)
 
 
@@ -134,9 +137,116 @@ def test_the_shape_this_repository_uses_is_accepted(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
 
 
-@pytest.mark.parametrize("key", ["forwardPorts", "remoteEnv", "overrideCommand", "workspaceMount"])
+@pytest.mark.parametrize("key", ["appPort", "containerUser", "overrideCommand", "workspaceMount"])
 def test_an_unhandled_config_key_is_refused_by_name(tmp_path: Path, key: str) -> None:
     _refused(_check(tmp_path, _config(**{key: "x"})), key)
+
+
+def _incubator_shaped(**overrides: Any) -> dict[str, Any]:
+    """An adopter's shape: remoteEnv extending the container's PATH, and an
+    empty forwardPorts."""
+    return _config(
+        remoteEnv={"PATH": "/home/node/.local/bin:${containerEnv:PATH}"},
+        forwardPorts=[],
+        **overrides,
+    )
+
+
+def _incubator_label(config: dict[str, Any]) -> list[dict[str, Any]]:
+    c = config["configuration"]
+    return _label(config, remoteEnv=c["remoteEnv"], forwardPorts=c["forwardPorts"])
+
+
+def _resolved(
+    tmp_path: Path,
+    config: dict[str, Any],
+    label: list[dict[str, Any]] | None,
+    container_env: dict[str, str],
+) -> dict[str, str]:
+    result = _check(tmp_path, config, label, container_env=container_env)
+    assert result.returncode == 0, result.stderr
+    resolved: dict[str, str] = json.loads(result.stdout)["remoteEnv"]
+    return resolved
+
+
+def test_remote_env_and_an_empty_forward_ports_are_accepted(tmp_path: Path) -> None:
+    config = _incubator_shaped()
+    result = _check(tmp_path, config, _incubator_label(config), _CALLS)
+    assert result.returncode == 0, result.stderr
+
+
+def test_a_forwarded_port_is_refused(tmp_path: Path) -> None:
+    """The CLI publishes nothing from forwardPorts; the editor forwards them.
+    With no editor, a listed port would silently not be reachable."""
+    _refused(_check(tmp_path, _config(forwardPorts=[3000])), "forwardPorts", "3000")
+
+
+def test_a_forwarded_port_from_a_feature_is_refused(tmp_path: Path) -> None:
+    config = _config()
+    label = _label(config)
+    label[2]["forwardPorts"] = [8080]
+    _refused(_check(tmp_path, config, label), "forwardPorts")
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["${localEnv:HOME}", "${containerWorkspaceFolder}", "${env:X}"],
+)
+def test_a_remote_env_variable_the_cli_left_unresolved_is_refused(
+    tmp_path: Path, value: str
+) -> None:
+    """read-configuration resolves everything but `${containerEnv:...}`.
+    Anything else surviving means the CLI changed, and passing it on would
+    put a literal `${...}` in the session's environment."""
+    _refused(_check(tmp_path, _config(remoteEnv={"X": value})), "remoteEnv.X")
+
+
+def test_a_non_string_remote_env_value_is_refused(tmp_path: Path) -> None:
+    _refused(_check(tmp_path, _config(remoteEnv={"X": None})), "remoteEnv.X")
+
+
+def test_remote_env_resolves_against_the_container_env(tmp_path: Path) -> None:
+    config = _config(
+        remoteEnv={
+            "PATH": "/home/node/.local/bin:${containerEnv:PATH}",
+            "SET": "${containerEnv:A:fallback}",
+            "DEFAULTED": "${containerEnv:MISSING:fallback}",
+            "EMPTY": "[${containerEnv:MISSING}]",
+        }
+    )
+    resolved = _resolved(tmp_path, config, None, {"PATH": "/usr/bin:/bin", "A": "1"})
+    assert resolved == {
+        "PATH": "/home/node/.local/bin:/usr/bin:/bin",
+        "SET": "1",
+        "DEFAULTED": "fallback",
+        "EMPTY": "[]",
+    }
+
+
+def test_remote_env_merges_across_the_label_with_the_config_last(tmp_path: Path) -> None:
+    """The spec's merge: every entry's remoteEnv, later entries winning."""
+    config = _config(remoteEnv={"B": "config"})
+    label = _label(config, remoteEnv={"B": "config"})
+    label[2]["remoteEnv"] = {"A": "feature", "B": "feature"}
+    assert _resolved(tmp_path, config, label, {}) == {"A": "feature", "B": "config"}
+
+
+def test_an_image_built_before_remote_env_changed_is_stale(tmp_path: Path) -> None:
+    config = _incubator_shaped()
+    label = _label(config, remoteEnv={"PATH": "/older"}, forwardPorts=[])
+    _refused(_check(tmp_path, config, label), "remoteEnv", "stale")
+
+
+@pytest.mark.parametrize("key, empty", [("remoteEnv", {}), ("forwardPorts", [])])
+def test_an_empty_new_key_on_either_side_is_not_staleness(
+    tmp_path: Path, key: str, empty: object
+) -> None:
+    """An image built before the launcher read these keys must not be refused
+    as stale over a key that cannot change the session."""
+    config = _config()
+    assert _check(tmp_path, config, _label(config, **{key: empty})).returncode == 0
+    config = _config(**{key: empty})
+    assert _check(tmp_path, config, _label(_config())).returncode == 0
 
 
 def test_a_dockerfile_configuration_is_refused(tmp_path: Path) -> None:
