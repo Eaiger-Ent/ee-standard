@@ -537,7 +537,7 @@ tools:
     # publishes this beside the artefact as `<asset>.sha256` — so a bump can
     # fetch and compare it rather than deriving it, but still needs a human to
     # do so, and an unrevised digest fails the install rather than passing it.
-    sha256: c5221ff41b7892bfc223543883600125f6a47fe845093e0f5bdff4f359196d83
+    sha256: 5acfd9177cfecf0bf87578f059728215ccc884388988f55f7a65041b57387d91
     # Where the project publishes its digests, so the pin above can be compared
     # against what was actually released (SUP-004, ADR 0041). A **manifest**
     # rather than a per-asset `.sha256`: uv publishes both forms and gitleaks
@@ -554,7 +554,7 @@ tools:
       manifest: sha256.sum
       asset: uv-x86_64-unknown-linux-gnu.tar.gz
       also:
-        uv-aarch64-unknown-linux-gnu.tar.gz: 71279f8d3c67241e807b9d8db872d1bf541579fb9f08b7d1eb1682196d1e57dc
+        uv-aarch64-unknown-linux-gnu.tar.gz: 74f2f5c6024d397481db228db8fc25eed420db192243f88438c118e7e013e585
     pinned_at:
       - .devcontainer/setup.sh
       - .github/workflows/register-check.yml
