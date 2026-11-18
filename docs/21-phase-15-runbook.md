@@ -249,7 +249,10 @@ In Run A's clone, add one key the launcher's closed sets do not contain. The set
 are `CONFIG_KEYS`, `LABEL_KEYS`, `RUN_ARG_FLAGS` and `BUILD_VALUE_FLAGS` at the
 head of `container-session.mjs`; read them rather than trusting a list here.
 `forwardPorts` and `postAttachCommand` are the two an adopter is most likely to
-write. Take each as its own run, and restore the file between them. Check that
+write. `forwardPorts` must name a port, such as `"forwardPorts": [3000]`: the
+launcher accepts an empty list, because the CLI publishes nothing from it, and
+refuses one that names a port, because no editor is there to forward it. Take
+each as its own run, and restore the file between them. Check that
 `git stash list` holds nothing you want to lose, restore the file, add **one**
 key, then run `up`:
 
