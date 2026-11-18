@@ -61,8 +61,10 @@ argument unless `setopt interactivecomments` is set. What a comment would have
 said is in the prose around each block.
 
 **Record, for every run:** the date, the macOS version, `container --version`,
-`node_modules/.bin/devcontainer --version`, the standard checkout's commit, and
-the Mac's model. A run without its versions is not evidence.
+the pinned CLI's `--version` with the path it was run from
+(`.devcontainer/node_modules/.bin/devcontainer`, or `node_modules/.bin/devcontainer`
+in a clone pinned at the root), the standard checkout's commit, and the Mac's
+model. A run without its versions is not evidence.
 
 `scripts/phase15-evidence.sh` records those observations and the ones the runs
 below ask for, and decides nothing: `host` on the Mac, `inside` from a shell in
@@ -71,7 +73,16 @@ refusal, its exit code and whether a container appeared). It writes to
 `~/phase15`, holds no secret and no username, and is a recorder, not a
 substitute for this document. Paste what it wrote under the run's heading.
 
-Run `host` from the adopted clone, because it reads `.devcontainer/.env` there.
+Both modes run **from the adopted clone**, once a run has one, so they belong
+after Run A's clone exists and its container is up. Set `PHASE15_RUN` to the
+run's letter first, such as `PHASE15_RUN=a`, so each run keeps its own record
+rather than overwriting the last. `host` reads `.devcontainer/.env` in the
+clone:
+
+```bash
+bash "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/scripts/phase15-evidence.sh" host | tee "$HOME/phase15/evidence-host-${PHASE15_RUN:?set it to the run letter}.txt"
+```
+
 The container cannot see the standard's checkout, so `inside` needs a copy in
 the clone's `.git/`. The container sees that folder, and `git status` does not
 list it. Keep the record with `tee`, because the `written to:` path it prints
@@ -79,7 +90,7 @@ is inside the container:
 
 ```bash
 cp "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/scripts/phase15-evidence.sh" .git/
-node .devcontainer/bin/container-session.mjs exec -- bash .git/phase15-evidence.sh inside | tee "$HOME/phase15/evidence-inside.txt"
+node .devcontainer/bin/container-session.mjs exec -- bash .git/phase15-evidence.sh inside | tee "$HOME/phase15/evidence-inside-${PHASE15_RUN:?set it to the run letter}.txt"
 ```
 
 ## Run A — Criterion 1: an adopted repository, not this one
@@ -249,37 +260,59 @@ person on their own. Say which this was.
 not handle, does it refuse by name, and not run a container that differs from
 Docker's?
 
-In Run A's clone, add one key the launcher's closed sets do not contain. The sets
+Work in Run A's clone, with the launcher **copied in again** from the checkout
+under test. The copy Run A made is older than the launcher this run tests: it
+refuses even an empty `forwardPorts`, and cannot find a pin under
+`.devcontainer/`. The last line prints the commit to record:
+
+```bash
+cd "$HOME/phase15/ee-standard-consumer"
+cp "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/.devcontainer/bin/container-session.mjs" .devcontainer/bin/
+git -C "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}" rev-parse HEAD
+```
+
+A clone pinned at the root in Run A keeps that pin. Do not add a second one
+under `.devcontainer/`, because the launcher refuses two.
+
+Add one key the launcher's closed sets do not contain. The sets
 are `CONFIG_KEYS`, `LABEL_KEYS`, `RUN_ARG_FLAGS` and `BUILD_VALUE_FLAGS` at the
 head of `container-session.mjs`; read them rather than trusting a list here.
-`forwardPorts` and `postAttachCommand` are the two an adopter is most likely to
-write. `forwardPorts` must name a port, such as `"forwardPorts": [3000]`: the
-launcher accepts an empty list, because the CLI publishes nothing from it, and
-refuses one that names a port, because no editor is there to forward it. Take
-each as its own run, and restore the file between them. Check that
-`git stash list` holds nothing you want to lose, restore the file, add **one**
-key, then run `up`:
+There are three runs, one change each, in `.devcontainer/devcontainer.json`:
+
+1. `"forwardPorts": [3000]`. It must name a port: the launcher accepts an empty
+   list, because the CLI publishes nothing from it, and refuses one that names a
+   port, because no editor is there to forward it.
+2. `"postAttachCommand": "echo attached"`.
+3. `"--cap-add", "SYS_PTRACE"` appended to the existing `runArgs` array. A flag
+   outside `--env-file`, `--cpus` and `--memory` takes a different refusal path
+   from a key.
+
+Before each, check that `git stash list` holds nothing you want to lose, and
+restore the file:
 
 ```bash
 git stash list
 git checkout -- .devcontainer/devcontainer.json
 ```
 
+Make the one change, then run `up` under the recorder. Its `run` mode takes a
+`container list` snapshot before and after, so a container created by the run
+shows as a difference even while Run A's container still exists:
+
 ```bash
-node .devcontainer/bin/container-session.mjs up
+bash "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/scripts/phase15-evidence.sh" run -- node .devcontainer/bin/container-session.mjs up
 ```
 
-**Expected:** `container-session: refused:` followed by the key's name, and a
-non-zero exit, **before** any container is created. `container list` must not
-show a new one.
+**Expected:** `container-session: refused:` followed by the key's or flag's
+name, a non-zero exit, and the two snapshots the same. Restore the file after
+the third run.
 
-| Key added | Refused by name? | Container created? | Exit code |
+| Change | Refused by name? (quote it) | Snapshots the same? | Exit code |
 | --- | --- | --- | --- |
-| | | | |
-| | | | |
+| `forwardPorts: [3000]` | | | |
+| `postAttachCommand` | | | |
+| `runArgs` `--cap-add` | | | |
 
-Also try one **runArgs** flag outside `--env-file`, `--cpus` and `--memory`
-(`--cap-add` is the realistic one), since that is a different refusal path.
 **A key that runs without a refusal and is silently dropped is the finding this
 run exists to catch.** Record it exactly and stop; do not continue past it.
 
@@ -291,33 +324,78 @@ Today it fails, by design of the present scripts: `00-tools.sh` demands
 `docker` and a `docker info` that answers, and `30-container.sh` looks for the
 container with `docker ps`. This run records the **baseline**, so the change has
 a measurable before and after, and then it is repeated once the scripts are
-changed. The first line must print `no docker on PATH`:
+changed.
+
+**Run the stage scripts from the checkout under test, not through `adopt.sh`.**
+`adopt.sh` clones the newest **tag** and runs that copy, so it would test the
+released scripts, and the re-run below would test them again rather than the
+change. `status.sh` runs every stage with its output discarded, so it shows a
+verdict per stage but none of the messages this table quotes. The stages are
+therefore run one at a time, and `status.sh` once for its summary. None of
+them changes a tracked file.
+
+Use Run A's clone, with its container **running**. In an empty folder, stage 3
+stops at "no `.devcontainer`" and never reaches the container check. Run each
+command on its own. The first must print `no docker on PATH`:
 
 ```bash
 command -v docker || echo "no docker on PATH"
-cd "$HOME/phase15" && mkdir -p adopt-baseline && cd adopt-baseline
-git init -q . && bash "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/adopt.sh" status
+```
+
+```bash
+cd "$HOME/phase15/ee-standard-consumer"
+node .devcontainer/bin/container-session.mjs up
+ADOPT_ROUTE="${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/plugins/control-register/templates/adopt"
+```
+
+```bash
+bash "$ADOPT_ROUTE/00-tools.sh"; echo "exit $?"
+```
+
+```bash
+bash "$ADOPT_ROUTE/30-container.sh"; echo "exit $?"
+```
+
+```bash
+bash "$ADOPT_ROUTE/status.sh"; echo "exit $?"
 ```
 
 | Stage | Verdict | The message, quoted |
 | --- | --- | --- |
-| `00-tools.sh` — `docker` required | | |
-| `00-tools.sh` — "Docker is running" | | |
-| `30-container.sh` — the container-running check | | |
-| Any other stage that mentions Docker | | |
+| `00-tools.sh`: the `Docker` tool | | |
+| `00-tools.sh`: the `devcontainer CLI` tool. The launcher uses the pinned CLI, not one on `PATH` | | |
+| `00-tools.sh`: "Docker is running" | | |
+| `00-tools.sh`: exit code | | |
+| Where the clone's CLI pin is: `.devcontainer/` or the root | | |
+| `30-container.sh`: "Nothing left to substitute". In a clone pinned under `.devcontainer/` it reports "a placeholder survived", naming files under `.devcontainer/node_modules/`. The scan reads every file there, and the CLI's own code contains `{{`. That is a finding for criterion 7, not a fault in the run. Quote the first file it names | | |
+| `30-container.sh`: the "Built" section. With Docker absent it may print a note and fail nothing, which would pass the stage without checking the container | | |
+| `30-container.sh`: exit code | | |
+| `status.sh`: "on the host" or "inside the container", and each stage's verdict | | |
+| Any other line that mentions Docker | | |
 
-**`inside_container()`** is the one check that cannot be read from the
-scripts. From a shell **inside** the running Apple container from Run A:
+**Inside the container.** `inside_container()` is the one check that cannot be
+read from the scripts. The container cannot see the standard's checkout, so copy
+the route into the clone's `.git/` as the recorder is (§ What the host must
+have), then run the recorder's `inside` mode and `status.sh` there. The first
+line removes an earlier copy, because on the re-run `cp -R` would otherwise copy
+the new route **inside** the old one and `status.sh` would run the old scripts:
 
 ```bash
-ls -la /.dockerenv; echo "REMOTE_CONTAINERS=${REMOTE_CONTAINERS:-} CODESPACES=${CODESPACES:-}"
+rm -rf .git/phase15-adopt
+cp -R "$ADOPT_ROUTE" .git/phase15-adopt
+cp "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/scripts/phase15-evidence.sh" .git/
+node .devcontainer/bin/container-session.mjs exec -- bash .git/phase15-evidence.sh inside | tee "$HOME/phase15/evidence-inside-d.txt"
+node .devcontainer/bin/container-session.mjs exec -- bash .git/phase15-adopt/status.sh; echo "exit $?"
 ```
 
-| Signal | Present in an Apple container? |
+| Signal or verdict | Inside the Apple container |
 | --- | --- |
 | `/.dockerenv` | |
 | `REMOTE_CONTAINERS` | |
 | `CODESPACES` | |
+| `/proc/cmdline` `init=` | |
+| `status.sh`: "on the host" or "inside the container" | |
+| `status.sh`: the verdict for `00-tools.sh` and for `40-adopt.sh` | |
 
 If none is present, `inside_container()` returns false there, and stage 0 would
 run inside the container it should refuse to run in. That is a finding for
@@ -348,47 +426,117 @@ could rename it. `phase15-evidence.sh inside` now records the `init=` token, so
 Runs B and D confirm it on another Mac and in an adopted repository, and a
 release that changes it shows up there.
 
-**Re-run after the scripts change**, with the same table, expecting stage 0 and
-stage 3 to pass with `container` answering and `docker` absent, and to say which
-runtime they used. Record the second run beside the first.
+**Re-run after the scripts change**, with the same commands and tables, from a
+checkout that holds the change. Expect stage 0 and stage 3 to pass with
+`container` answering and `docker` absent, and to say which runtime they used.
+Inside the container, expect `status.sh` to say "inside the container", with
+`00-tools.sh` marked `n/a here`. Record the second run beside the first.
 
 ## Run E — Criterion 5: the migration, followed literally
 
 **Question:** can a repository adopted at the **previous release** move to Apple
 `container` by the written steps alone?
 
-There is no written migration yet, so this run produces it. Take a clone adopted
-at the release before the one you are testing, with Docker as its runtime, and
-make the move **with `UPGRADING.md` open and nothing else**. Write each action as
-you take it, in order, with its command and its observed result:
+**Use** a fresh clone of `Eaiger-Ent/ee-standard-consumer`, made for this run.
+Its adoption predates the newest tag, so it is at "the previous release", and
+Docker was its runtime. It is archived, and that does not matter here, because
+the move pushes nothing. No release ships the launcher yet, so the files the
+move adds come from the checkout under test, as in Run A. That is the stand-in
+for "the tag you upgraded to".
+
+The run has two halves and needs two people.
+
+### E1: the author writes the step
+
+There is no written migration yet, so the first operator **produces** it. The
+starting point is Run A's two copying steps and its `claude` line. Those are the
+steps for a repository with nothing on Apple `container` yet, which is what a
+Docker adopter has.
+
+**Start clean.** The launcher names the container and image after the clone's
+folder, and the volumes come from the adopter's `devcontainer.json`. So any
+clone named `ee-standard-consumer` on a Mac that ran Run A would reuse Run A's
+container, image and volumes, and the move would not start from what a Docker
+adopter has. Remove all three. This deletes Run A's container state, which is
+already recorded above. The commands need no clone, and on a Mac that never ran
+Run A they report that nothing was found, which is fine:
+
+```bash
+container stop ee-standard-consumer-dev
+container delete ee-standard-consumer-dev
+container image delete ee-standard-consumer-dev:local
+container volume list
+```
+
+Delete each listed volume whose name is a `source=` value in the consumer's
+`.devcontainer/devcontainer.json`, one `container volume delete` per name. The
+pulled base image and the builder's cache are left in place, so the build that
+follows can be faster than an adopter's first one. Record its time, but not as
+a first-build figure.
+
+Then make the clone, in a folder of this half's own, and record the release it
+was adopted at, which is the tag its `register-check` dependency names:
+
+```bash
+mkdir -p "$HOME/phase15/run-e1" && cd "$HOME/phase15/run-e1"
+gh repo clone Eaiger-Ent/ee-standard-consumer
+cd ee-standard-consumer
+git rev-parse HEAD
+grep -n 'register-check' pyproject.toml
+```
+
+Make the move. Write each action into this table **as you take it**, with its
+exact command and what you saw, including anything you had to work out:
 
 | # | Action | Command | Observed |
 | --- | --- | --- | --- |
 | 1 | | | |
 
-**The steps become the text of `UPGRADING.md`'s optional step.** Then a second
-person follows that text *literally*, on a second clone, and the run is ticked
-only when they reach Run A's table with every line ✓ and no step performed from
-memory. Say what the file set is that the move adds (the launcher, the CLI pin
-and its lock file) and what it does **not** touch: the adopter's
-`devcontainer.json`, the lock file, and the stamps on their gates. After the
-move, from inside the Apple container:
+Put the table's steps, as prose and commands an adopter can follow, under a
+`### Run E draft step` heading at the end of this section. That draft is the
+text that goes into `UPGRADING.md` with criterion 8. It must say:
+
+- what the move **adds**: the launcher, `.devcontainer/package.json` and its lock
+  file, and nothing else;
+- what it does **not** touch: the adopter's `devcontainer.json`, its
+  `devcontainer-lock.json`, and the stamps on their gates;
+- what to do when the launcher **refuses**: stay on Docker, and keep the refusal,
+  because it names what the launcher could not reproduce.
+
+### E2: a second person follows the draft literally
+
+A second person, not the author, on **their own Mac** where they can, runs
+**Start clean**, then the clone commands with `run-e2` in place of `run-e1` in
+both places, then follows the draft step **and nothing else**. On the author's
+Mac, `run-e2` keeps the two clones apart and **Start clean** removes E1's
+container. Say which Mac it was. No step may be done from
+memory, and no question may be answered outside the text. A question is a
+finding, and its answer goes into the draft. The run passes only when they reach
+Run A's table with every line ✓.
+
+### After the move, both halves
+
+From inside the Apple container:
 
 ```bash
-uv run register-check deployments
 git status --short
+uv run register-check deployments; echo "exit $?"
 ```
 
-The first is not a conformance run, and the stamps it reports must be
-unchanged. The second must list only the files the step named.
+`git status` must list only the files the draft names. A stamp lives in a
+tracked file, so a stamped file missing from that list is a stamp unchanged.
+`register-check deployments` is not a conformance run. It exits non-zero only
+for a stamp ahead of its gate or a record that has stopped describing reality,
+so a non-zero exit here is a finding. Quote its output either way.
 
-| Check | Result |
-| --- | --- |
-| Files added, exactly | |
-| Files changed (must be none outside the named set) | |
-| `register-check deployments` — stamps unchanged | |
-| A repository the launcher **refuses** stays on Docker, and the refusal names why | |
-| Steps the second person got wrong, and what the text lacked | |
+| Check | E1 | E2 |
+| --- | --- | --- |
+| Files added, exactly. If `.devcontainer/node_modules/` is listed, the repository's `.devcontainer/.gitignore` does not ignore it, which is a finding for the draft | | |
+| Files changed, which must be none | | |
+| `register-check deployments`: exit code, and no stamped file in `git status` | | |
+| The draft says what a refused repository does, and that it stays on Docker | | |
+| Run A's table, every line ✓ | | |
+| Steps the second person got wrong, and what the text lacked | n/a | |
 
 ## Where the results go
 
