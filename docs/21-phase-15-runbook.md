@@ -325,9 +325,28 @@ criterion 7, and the replacement signal belongs in the record.
 
 **Recorded 2026-11-17, from Run A's container** (`phase15-evidence.sh inside`).
 `/.dockerenv` is absent, `REMOTE_CONTAINERS` is empty, and `CODESPACES` is
-empty. **None is present**, so the finding above stands for criterion 7. No
-replacement signal has been chosen yet. Run D's baseline of the scripts
-themselves has not been run.
+empty. **None is present**, so the finding above stands for criterion 7. Run D's
+baseline of the scripts themselves has not been run.
+
+**The replacement signal, chosen 2026-11-18:** the kernel's boot line names
+Apple's init. In an Apple container `/proc/cmdline` holds
+`init=/sbin/vminitd`, the init of the Containerization framework that
+`container` boots each container's VM with. The runtime sets it, not the
+launcher, so it holds however the container was started, and any user can read
+it. For criterion 7, `inside_container()` gains one check:
+
+```bash
+grep -q 'init=/sbin/vminitd' /proc/cmdline 2>/dev/null && return 0
+```
+
+It was observed in `ee-standard-dev`, started by the launcher (`container`
+1.7.1, kernel 6.18.56 aarch64), where the three existing signals were again
+absent. PID 1 there is the launcher's keep-alive command, which is close to the
+CLI's own on Docker and so names no runtime, and the cgroup is `0::/`. Its risk
+is that `vminitd` is Apple's implementation detail, so a `container` release
+could rename it. `phase15-evidence.sh inside` now records the `init=` token, so
+Runs B and D confirm it on another Mac and in an adopted repository, and a
+release that changes it shows up there.
 
 **Re-run after the scripts change**, with the same table, expecting stage 0 and
 stage 3 to pass with `container` answering and `docker` absent, and to say which
