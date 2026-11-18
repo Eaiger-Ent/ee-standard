@@ -30,9 +30,13 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const NAME = basename(ROOT);
 const IMAGE = `${NAME}-dev:local`;
 const CONTAINER = `${NAME}-dev`;
-// ADR 0020: the pinned artefact, by the path its lock file owns.
-const CLI = join(ROOT, "node_modules", ".bin", "devcontainer");
+// ADR 0020: the pinned artefact, by the path its lock file owns. An adopter
+// pins it in `.devcontainer/package.json` (ADR 0064); this repository pins it
+// in the root one (ADR 0063). The directories, in that order:
+const CLI_HOMES = [".devcontainer", "."];
 const KEEP_ALIVE = 'echo Container started; trap "exit 0" TERM; sleep infinity & wait';
+
+let CLI;
 
 // The closed sets. Widening one is a decision about what this launcher can
 // reproduce faithfully, so it is made here, in a diff, with a test beside it.
@@ -73,6 +77,27 @@ const PULL_ATTEMPTS = 3;
 const BASE_IMAGE_ARG = "_DEV_CONTAINERS_BASE_IMAGE=";
 
 class Refusal extends Error {}
+
+// The installed CLI, from whichever of the two pins is installed. Both is a
+// refusal rather than an order of precedence: two pins can name two versions,
+// and a rule that picked one would decide silently which the developer meant.
+export function resolveCli(root) {
+  const found = CLI_HOMES.map((home) => join(root, home, "node_modules", ".bin", "devcontainer")).filter(existsSync);
+  if (found.length === 1) return found[0];
+  if (found.length > 1) {
+    throw new Refusal(`two pinned devcontainer CLIs are installed, ${found.join(" and ")}; remove the one that is not this repository's pin`);
+  }
+  const pinned = CLI_HOMES.map((home) => join(root, home)).filter((dir) => {
+    const file = join(dir, "package.json");
+    if (!existsSync(file)) return false;
+    const manifest = JSON.parse(readFileSync(file, "utf8"));
+    return Boolean(manifest.devDependencies?.["@devcontainers/cli"] ?? manifest.dependencies?.["@devcontainers/cli"]);
+  });
+  if (pinned.length === 0) {
+    throw new Refusal(`no package.json in ${CLI_HOMES.map((home) => join(root, home)).join(" or ")} pins @devcontainers/cli`);
+  }
+  throw new Refusal(`the pinned devcontainer CLI is not installed; run \`npm ci\` in ${pinned.join(" and ")} on the host`);
+}
 
 // ---------------------------------------------------------------- validation
 
@@ -351,7 +376,7 @@ function arch() {
 
 function preflight() {
   if (process.platform !== "darwin") throw new Refusal("Apple `container` runs on macOS; use Docker elsewhere");
-  if (!existsSync(CLI)) throw new Refusal(`${CLI} is missing; run \`npm ci\` in ${ROOT} on the host`);
+  CLI = resolveCli(ROOT);
   const status = capture("container", ["system", "status"]);
   if (status.status !== 0) throw new Refusal("`container` services are not running; run `container system start`");
 }

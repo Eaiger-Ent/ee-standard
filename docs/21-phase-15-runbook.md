@@ -24,7 +24,7 @@ not defects to fix during the run:
 
 | The decision (ADR 0064) | What the stand-in does | Record |
 | --- | --- | --- |
-| The CLI pin is in `.devcontainer/package.json` | The launcher resolves the CLI at `<root>/node_modules/.bin/devcontainer`. The run puts `package.json` in the **root** | Whether the launcher needs a change to find `.devcontainer/node_modules`. It does, unless it already finds it |
+| The CLI pin is in `.devcontainer/package.json` | The same, put there by hand. The launcher finds the CLI under `.devcontainer/` or the root, and refuses when both are installed (Run A's finding, fixed after it) | Nothing, unless the launcher refuses the pin |
 | `adopt.sh` accepts either runtime | It does not yet, so Run D runs the **current** scripts to record their baseline | Which stage fails first, and with what message |
 | `UPGRADING.md` carries the migration | It does not yet, so Run E *writes* the steps as you perform them | The steps, in order, as the text for `UPGRADING.md` |
 
@@ -105,19 +105,23 @@ mkdir -p .devcontainer/bin
 cp "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/.devcontainer/bin/container-session.mjs" .devcontainer/bin/
 ```
 
-Put the CLI pin where the launcher looks. The version comes from
+Put the CLI pin in `.devcontainer/`, where ADR 0064 puts it, so the
+adopter's own root `package.json` is untouched. The version comes from
 `package.json` in the standard's checkout, never from memory, and the first line
-reads it from there and prints it. The `npm init` line creates a `package.json`
-only if the repository has none:
+reads it from there and prints it. The second line creates
+`.devcontainer/package.json` only if there is none:
 
 ```bash
 DEVCONTAINER_CLI_VERSION="$(node -p 'require(process.argv[1]).devDependencies["@devcontainers/cli"]' "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/package.json")" && echo "$DEVCONTAINER_CLI_VERSION"
-[ -f package.json ] || npm init -y >/dev/null
-npm install --save-dev --save-exact --no-audit --no-fund "@devcontainers/cli@${DEVCONTAINER_CLI_VERSION:?the first line did not read a version}"
-node_modules/.bin/devcontainer --version
+[ -f .devcontainer/package.json ] || ( cd .devcontainer && npm init -y >/dev/null )
+npm install --prefix .devcontainer --save-dev --save-exact --no-audit --no-fund "@devcontainers/cli@${DEVCONTAINER_CLI_VERSION:?the first line did not read a version}"
+.devcontainer/node_modules/.bin/devcontainer --version
 ```
 
-The last line must print the same version as the first.
+The last line must print the same version as the first. A clone set up before
+this step changed has its pin in the **root** instead. The launcher still finds
+it there, but refuses if a second pin is installed under `.devcontainer/`, so
+use one or the other.
 
 Then start the services and open a session:
 
@@ -249,7 +253,10 @@ In Run A's clone, add one key the launcher's closed sets do not contain. The set
 are `CONFIG_KEYS`, `LABEL_KEYS`, `RUN_ARG_FLAGS` and `BUILD_VALUE_FLAGS` at the
 head of `container-session.mjs`; read them rather than trusting a list here.
 `forwardPorts` and `postAttachCommand` are the two an adopter is most likely to
-write. Take each as its own run, and restore the file between them. Check that
+write. `forwardPorts` must name a port, such as `"forwardPorts": [3000]`: the
+launcher accepts an empty list, because the CLI publishes nothing from it, and
+refuses one that names a port, because no editor is there to forward it. Take
+each as its own run, and restore the file between them. Check that
 `git stash list` holds nothing you want to lose, restore the file, add **one**
 key, then run `up`:
 
@@ -318,9 +325,28 @@ criterion 7, and the replacement signal belongs in the record.
 
 **Recorded 2026-11-17, from Run A's container** (`phase15-evidence.sh inside`).
 `/.dockerenv` is absent, `REMOTE_CONTAINERS` is empty, and `CODESPACES` is
-empty. **None is present**, so the finding above stands for criterion 7. No
-replacement signal has been chosen yet. Run D's baseline of the scripts
-themselves has not been run.
+empty. **None is present**, so the finding above stands for criterion 7. Run D's
+baseline of the scripts themselves has not been run.
+
+**The replacement signal, chosen 2026-11-18:** the kernel's boot line names
+Apple's init. In an Apple container `/proc/cmdline` holds
+`init=/sbin/vminitd`, the init of the Containerization framework that
+`container` boots each container's VM with. The runtime sets it, not the
+launcher, so it holds however the container was started, and any user can read
+it. For criterion 7, `inside_container()` gains one check:
+
+```bash
+grep -q 'init=/sbin/vminitd' /proc/cmdline 2>/dev/null && return 0
+```
+
+It was observed in `ee-standard-dev`, started by the launcher (`container`
+1.7.1, kernel 6.18.56 aarch64), where the three existing signals were again
+absent. PID 1 there is the launcher's keep-alive command, which is close to the
+CLI's own on Docker and so names no runtime, and the cgroup is `0::/`. Its risk
+is that `vminitd` is Apple's implementation detail, so a `container` release
+could rename it. `phase15-evidence.sh inside` now records the `init=` token, so
+Runs B and D confirm it on another Mac and in an adopted repository, and a
+release that changes it shows up there.
 
 **Re-run after the scripts change**, with the same table, expecting stage 0 and
 stage 3 to pass with `container` answering and `docker` absent, and to say which

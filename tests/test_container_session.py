@@ -404,6 +404,74 @@ def test_this_repositorys_devcontainer_is_within_the_handled_set(tmp_path: Path)
     assert result.returncode == 0, result.stderr
 
 
+def _resolve_cli(root: Path) -> subprocess.CompletedProcess[str]:
+    assert NODE, "node is not on PATH; every locus that runs pytest installs it"
+    script = (
+        f"import {{ resolveCli }} from {json.dumps(LAUNCHER.as_uri())};"
+        "try { console.log(resolveCli(process.argv[1])); }"
+        " catch (e) { console.error(e.message); process.exitCode = 2; }"
+    )
+    return subprocess.run(
+        [NODE, "--input-type=module", "-e", script, str(root)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def _pin(root: Path, home: str, *, installed: bool) -> Path:
+    directory = root / home
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "package.json").write_text(
+        json.dumps({"devDependencies": {"@devcontainers/cli": "0.90.0"}})
+    )
+    cli = directory / "node_modules" / ".bin" / "devcontainer"
+    if installed:
+        cli.parent.mkdir(parents=True)
+        cli.write_text("")
+    return cli
+
+
+@pytest.mark.parametrize("home", [".devcontainer", "."])
+def test_the_cli_is_found_under_either_pin(tmp_path: Path, home: str) -> None:
+    """ADR 0064 pins an adopter's CLI in `.devcontainer/`; ADR 0063 pins this
+    repository's in the root. The launcher serves both."""
+    cli = _pin(tmp_path, home, installed=True)
+    result = _resolve_cli(tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert Path(result.stdout.strip()) == cli
+
+
+def test_two_installed_pins_are_refused_naming_both(tmp_path: Path) -> None:
+    """Precedence would choose a version silently, so neither is chosen."""
+    adopter = _pin(tmp_path, ".devcontainer", installed=True)
+    root = _pin(tmp_path, ".", installed=True)
+    result = _resolve_cli(tmp_path)
+    assert result.returncode == 2
+    assert str(adopter) in result.stderr and str(root) in result.stderr
+
+
+def test_an_uninstalled_pin_names_where_to_run_npm_ci(tmp_path: Path) -> None:
+    _pin(tmp_path, ".devcontainer", installed=False)
+    result = _resolve_cli(tmp_path)
+    assert result.returncode == 2
+    assert "npm ci" in result.stderr and str(tmp_path / ".devcontainer") in result.stderr
+
+
+def test_no_pin_at_all_is_refused(tmp_path: Path) -> None:
+    result = _resolve_cli(tmp_path)
+    assert result.returncode == 2
+    assert "pins @devcontainers/cli" in result.stderr
+
+
+def test_this_repository_resolves_its_root_pin() -> None:
+    """Holds while `.devcontainer/` carries no pin of its own here, which is
+    ADR 0063's layout. A second pin in this repository would be refused."""
+    result = _resolve_cli(REPO_ROOT)
+    assert result.returncode == 0, result.stderr
+    assert Path(result.stdout.strip()) == CLI
+
+
 def test_the_launcher_invokes_the_cli_the_lock_file_pins() -> None:
     """ADR 0020 and ADR 0063: the CLI is reached by the path its lock file
     owns, at an exact version no older than 0.90.0 (F1)."""

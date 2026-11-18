@@ -128,6 +128,9 @@ record_inside() {
   if [ -e /.dockerenv ]; then echo "/.dockerenv: present"; else echo "/.dockerenv: absent"; fi
   echo "REMOTE_CONTAINERS: '${REMOTE_CONTAINERS:-}'"
   echo "CODESPACES: '${CODESPACES:-}'"
+  # The chosen replacement signal: the init the kernel was booted with. Only
+  # the init= token is recorded, not the rest of the boot line.
+  echo "/proc/cmdline $(tr ' ' '\n' </proc/cmdline 2>/dev/null | grep '^init=' || echo 'init=: none')"
 
   section "user (the runbook expects uid=1000(vscode))"
   id
