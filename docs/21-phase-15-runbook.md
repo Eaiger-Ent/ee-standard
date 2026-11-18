@@ -24,7 +24,7 @@ not defects to fix during the run:
 
 | The decision (ADR 0064) | What the stand-in does | Record |
 | --- | --- | --- |
-| The CLI pin is in `.devcontainer/package.json` | The launcher resolves the CLI at `<root>/node_modules/.bin/devcontainer`. The run puts `package.json` in the **root** | Whether the launcher needs a change to find `.devcontainer/node_modules`. It does, unless it already finds it |
+| The CLI pin is in `.devcontainer/package.json` | The same, put there by hand. The launcher finds the CLI under `.devcontainer/` or the root, and refuses when both are installed (Run A's finding, fixed after it) | Nothing, unless the launcher refuses the pin |
 | `adopt.sh` accepts either runtime | It does not yet, so Run D runs the **current** scripts to record their baseline | Which stage fails first, and with what message |
 | `UPGRADING.md` carries the migration | It does not yet, so Run E *writes* the steps as you perform them | The steps, in order, as the text for `UPGRADING.md` |
 
@@ -105,19 +105,23 @@ mkdir -p .devcontainer/bin
 cp "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/.devcontainer/bin/container-session.mjs" .devcontainer/bin/
 ```
 
-Put the CLI pin where the launcher looks. The version comes from
+Put the CLI pin in `.devcontainer/`, where ADR 0064 puts it, so the
+adopter's own root `package.json` is untouched. The version comes from
 `package.json` in the standard's checkout, never from memory, and the first line
-reads it from there and prints it. The `npm init` line creates a `package.json`
-only if the repository has none:
+reads it from there and prints it. The second line creates
+`.devcontainer/package.json` only if there is none:
 
 ```bash
 DEVCONTAINER_CLI_VERSION="$(node -p 'require(process.argv[1]).devDependencies["@devcontainers/cli"]' "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/package.json")" && echo "$DEVCONTAINER_CLI_VERSION"
-[ -f package.json ] || npm init -y >/dev/null
-npm install --save-dev --save-exact --no-audit --no-fund "@devcontainers/cli@${DEVCONTAINER_CLI_VERSION:?the first line did not read a version}"
-node_modules/.bin/devcontainer --version
+[ -f .devcontainer/package.json ] || ( cd .devcontainer && npm init -y >/dev/null )
+npm install --prefix .devcontainer --save-dev --save-exact --no-audit --no-fund "@devcontainers/cli@${DEVCONTAINER_CLI_VERSION:?the first line did not read a version}"
+.devcontainer/node_modules/.bin/devcontainer --version
 ```
 
-The last line must print the same version as the first.
+The last line must print the same version as the first. A clone set up before
+this step changed has its pin in the **root** instead. The launcher still finds
+it there, but refuses if a second pin is installed under `.devcontainer/`, so
+use one or the other.
 
 Then start the services and open a session:
 
