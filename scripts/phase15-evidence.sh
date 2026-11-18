@@ -78,11 +78,15 @@ record_host() {
   echo "model: $(sysctl -n hw.model 2>/dev/null || echo unknown)"
   probe "container" container --version
   probe "node" node --version
-  if [ -x node_modules/.bin/devcontainer ]; then
-    echo "devcontainer CLI (./node_modules/.bin): $(node_modules/.bin/devcontainer --version 2>&1 | head -n 1)"
-  else
-    echo "devcontainer CLI (./node_modules/.bin): absent in $(pwd | scrub)"
-  fi
+  # Both places the launcher looks (its CLI_HOMES), each reported, because the
+  # launcher refuses when both hold a CLI.
+  for cli in .devcontainer/node_modules/.bin/devcontainer node_modules/.bin/devcontainer; do
+    if [ -x "$cli" ]; then
+      echo "devcontainer CLI ($cli): $("$cli" --version 2>&1 | head -n 1)"
+    else
+      echo "devcontainer CLI ($cli): absent in $(pwd | scrub)"
+    fi
+  done
 
   section "docker (a run with Docker answering proves nothing)"
   if command -v docker >/dev/null 2>&1; then
