@@ -151,6 +151,26 @@ before `GITHUB_TOKEN`. `check-auth.sh` reports which entry answered on every
 container start, so a value that came from the wrong place is visible rather
 than assumed.
 
+## On Apple `container` instead of Docker
+
+`bin/container-session.mjs` runs this devcontainer on Apple's
+[`container`](https://github.com/apple/container), for a terminal and `claude`
+session, with no Docker (ADR 0065 in the standard's repository). It never reads
+`devcontainer.json`. It runs the `devcontainer` CLI that `package.json` and
+`package-lock.json` pin here, and refuses by name any setting it cannot
+reproduce. A repository it refuses stays on Docker. VS Code needs Docker.
+
+```bash
+container system start
+npm ci --prefix .devcontainer --no-audit --no-fund
+node .devcontainer/bin/container-session.mjs up
+node .devcontainer/bin/container-session.mjs shell
+```
+
+The installed CLI lands in `node_modules/`, which `.gitignore` here keeps out of
+git. Keep the launcher as it was copied: it is identical to the one the
+standard's tests run.
+
 ## Why this exists
 
 Until this directory existed, the only source of a conformant `.devcontainer/`

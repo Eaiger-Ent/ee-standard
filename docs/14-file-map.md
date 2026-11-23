@@ -95,6 +95,6 @@ carry a value the register pins or a fact about this repository's own posture.
 | `plugins/control-register/skills/register-install/` | Puts the checker where the loci can reach it. Writes no provenance stamp — a stamp names a control, and there is none to name |
 | `plugins/control-register/skills/register-variance/` | Reports which way a config change moved ([ADR 0040](adr/0040-a-declined-classification-is-a-verdict.md)) |
 | `plugins/control-register/reference/` | Prose more than one skill must follow, shipped once ([ADR 0036](adr/0036-shared-skill-prose-has-one-home.md)) |
-| `plugins/control-register/templates/devcontainer/` | The devcontainer an adopter copies |
+| `plugins/control-register/templates/devcontainer/` | The devcontainer an adopter copies, with the Apple `container` launcher (`plugins/control-register/templates/devcontainer/bin/container-session.mjs`, identical to the one in `.devcontainer/bin/`) and the `devcontainer` CLI it pins in `package.json` (ADR 0065) |
 | `plugins/control-register/templates/sweep/` | The scheduled sweep an adopter copies |
 | `plugins/control-register/skills/gate-*/deploys.json` | One deployment contract **per gate**, in the gate's own directory ([ADR 0058](adr/0058-a-gate-declares-its-contract-in-its-own-directory.md)) |

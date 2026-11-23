@@ -1,7 +1,7 @@
 # Phase 15 — Apple `container` for adopters: the run sheet
 
 The runbook for the five evidence criteria at the head of
-[`04-build-plan.md`](04-build-plan.md) § Phase 15. [ADR 0064](adr/0064-an-adopter-may-run-its-devcontainer-on-apple-container.md)
+[`04-build-plan.md`](04-build-plan.md) § Phase 15. [ADR 0064](adr/archive/0064-an-adopter-may-run-its-devcontainer-on-apple-container.md)
 accepted offering the route to adopters on the spike's evidence alone, and gated
 the release on these five runs. **None of the template, adopt-script or
 adopter-document changes ships until every run below has a recorded result.** A
@@ -16,8 +16,13 @@ own commands are in [`06-devcontainer-setup.md`](06-devcontainer-setup.md) § 1.
 
 ## What these runs cannot yet test, and what stands in
 
-Nothing under `plugins/control-register/templates/` has changed, so an adopter
-has no launcher. Runs A–C copy it in by hand. That is a stand-in, and it is the
+**Since 2026-11-23, [ADR 0065](adr/0065-the-adopt-route-accepts-either-runtime-now.md)
+ships the launcher in the template and the runtime-aware scripts**, and the
+runs below are evidence rather than a gate. A run made from a checkout at or
+after that change tests the shipped files, not a stand-in. The paragraphs below
+describe the runs made before it. Before then nothing under
+`plugins/control-register/templates/` had changed, so an adopter had no
+launcher. Runs A–C copy it in by hand. That is a stand-in, and it is the
 reason the criteria are about the **launcher**, not about the shipped template.
 Three differences between the stand-in and the decision are findings to record,
 not defects to fix during the run:

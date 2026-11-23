@@ -1950,12 +1950,13 @@ result.
 
 ## Phase 15 — Apple `container` for adopters
 
-Opened 2026-11-09 by [ADR 0064](adr/0064-an-adopter-may-run-its-devcontainer-on-apple-container.md),
+Opened 2026-11-09 by [ADR 0064](adr/archive/0064-an-adopter-may-run-its-devcontainer-on-apple-container.md),
 which accepts offering the Phase 14 route to every adopted repository, on the
-spike's evidence alone. The decision is binding. **Nothing below ships to the
-adopter template, the adopt scripts or the adopter-facing documents until the
-first five criteria are ticked**, and an unticked one re-opens the question
-rather than being waived. Apple `container` becomes the default on an Apple
+spike's evidence alone. ADR 0064 held the release until the first five
+criteria were ticked. **[ADR 0065](adr/0065-the-adopt-route-accepts-either-runtime-now.md)
+superseded it on 2026-11-23 and withdrew that gate**: the template, the adopt
+scripts and the adopter-facing documents ship now. The first five criteria are
+evidence, not a gate, and a failed one re-opens the question in a new ADR. Apple `container` becomes the default on an Apple
 silicon Mac running macOS 26 or later. Docker stays the route for everything
 else and for VS Code.
 
@@ -1976,8 +1977,10 @@ result.
       `.devcontainer/package.json` with its lock file pinning
       `@devcontainers/cli`, shipped through the incubator and a release set
       (ADRs 0042, 0043, 0057, 0060).
-- [ ] `00-tools.sh` and `30-container.sh` accept either runtime and say which
-      was used.
+- [x] `00-tools.sh` and `30-container.sh` accept either runtime and say which
+      was used. `guided.sh` asks the person to confirm the runtime, with Apple
+      `container` the default when both answer (ADR 0065).
+      `tests/test_adopt_runtime.py` runs both stages against stub runtimes.
 - [ ] `START-HERE.md`, `README.md`, `HOW-IT-WORKS.md`, `08-adopting.md` § 2.0a,
       `06-devcontainer-setup.md` § 1, `14-file-map.md` and `CLAUDE.md` name both
       runtimes, say who each is for, and `UPGRADING.md` carries the optional

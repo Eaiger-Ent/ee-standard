@@ -27,7 +27,8 @@ be a required check — and nothing about the repository on disk reveals it. Her
 one file is the control and everything else derives from it, so the chain from a
 rule to a blocked merge is read end to end rather than in pieces nothing joins.
 
-**What it costs.** A Mac with Docker, admin on the repository, and a plan where
+**What it costs.** A Mac with a container runtime (Apple `container` or Docker),
+admin on the repository, and a plan where
 rulesets are available — public, or paid. Most of it you do alone in one sitting;
 two steps wait on somebody else, and [`START-HERE.md`](START-HERE.md) says which
 and where to stop.

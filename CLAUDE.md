@@ -179,13 +179,13 @@ The ones most likely to catch you out, by what they govern:
 | A control's verdict or exit code | ADRs 0016, 0017 |
 | `kind: remote`, tokens, CI credentials | ADRs 0021, 0022 |
 | The register/checker boundary — before adding a rule to Python | **ADR 0018** |
-| The devcontainer, uv, or the interpreter | ADRs 0027, 0028, 0030, 0034, 0037, 0063 |
+| The devcontainer, uv, or the interpreter | ADRs 0027, 0028, 0030, 0034, 0037, 0063, 0065 |
 | The editor locus | ADR 0029 |
 | A gate skill, or shared skill prose | ADRs 0033, 0035, 0036, 0038, 0058 |
 | `pinned_at`, or a gate writing the register | **ADR 0045** |
 | Loci, pins, digests, or a bot's config | ADRs 0020, 0039, 0041 |
 | Writing or amending an ADR | ADRs 0024, 0025, 0026 |
-| The adopter's route, or the marketplace | ADRs 0032, 0042, 0043, 0044, 0057, 0060 |
+| The adopter's route, or the marketplace | ADRs 0032, 0042, 0043, 0044, 0057, 0060, 0065 |
 | Anything in the Craft workstream | **ADRs 0051, 0052, 0053, 0054, 0055, 0056** |
 
 **Naming (ADR 0031).** The plugin is `control-register`, the checker is

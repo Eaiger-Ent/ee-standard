@@ -55,7 +55,10 @@ its VM has.
 [ADR 0063](adr/0063-apple-container-runs-what-the-cli-resolved.md) accepted
 Apple's [`container`](https://github.com/apple/container) as a second runtime
 for this repository. It runs the same devcontainer, built from the same
-`devcontainer.json` and lock file, with no Docker running. **VS Code stays on
+`devcontainer.json` and lock file, with no Docker running. The adopter template
+ships the same launcher ([ADR 0065](adr/0065-the-adopt-route-accepts-either-runtime-now.md)),
+and pins the CLI in `.devcontainer/package.json` rather than the root, so an
+adopter runs `npm ci --prefix .devcontainer` where this page says `npm ci`. **VS Code stays on
 Docker.** This route is for a terminal and `claude`.
 
 The launcher, `.devcontainer/bin/container-session.mjs`, never reads

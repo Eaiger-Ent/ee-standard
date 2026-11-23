@@ -63,14 +63,14 @@ Nothing here is installed by any step below, and the first failure without it is
 | Tool | Install | You have it when |
 | --- | --- | --- |
 | Homebrew | <https://brew.sh> | `brew --version` |
-| Docker Desktop | <https://www.docker.com/products/docker-desktop/> | `docker info` succeeds |
+| A container runtime: Apple `container` or Docker Desktop | [`START-HERE.md`](../START-HERE.md) § A says which is for whom | `container system status` or `docker info` succeeds |
 | Claude Code | <https://docs.claude.com/en/docs/claude-code/setup> | `claude --version` |
 | node and npm | `brew install node` | `npm --version` |
-| `devcontainer` CLI | `npm i -g @devcontainers/cli` | `devcontainer --version` |
+| `devcontainer` CLI, for Docker only | `npm i -g @devcontainers/cli` | `devcontainer --version` |
 | GitHub CLI | `brew install gh`, then `gh auth login` | `gh auth status` |
 | VS Code | `brew install --cask visual-studio-code` | `code --version` |
 
-`git` and `curl` ship with macOS. Give Docker Desktop **8 GB** of memory
+`git` and `curl` ship with macOS. On Docker, give Docker Desktop **8 GB** of memory
 (Settings → Resources → Memory); the default is tight once a Python and a node
 toolchain are both installed.
 
@@ -552,19 +552,21 @@ declared.
 | --- | --- |
 | `claude setup-token`, and the Keychain entries | The Keychain is the host's, and this is what `fetch-secrets.sh` reads |
 | `fetch-secrets.sh` | It **is** `initializeCommand` — it runs before a container exists |
-| `devcontainer build` / `up` | There is no Docker in the container |
+| `devcontainer build` / `up`, or the Apple `container` launcher | There is no container runtime in the container |
 | Copying the template in | Nothing to copy it into until it is there |
 
 **Everything after that goes inside**: `uv`, `register-check`, every gate,
 `pre-commit`, the tests, and your commits.
 
-**Apple `container` is not an adopter's runtime yet.** This standard's own
-repository can run its devcontainer on Apple `container` for a terminal and
-Claude CLI session ([ADR 0063](adr/0063-apple-container-runs-what-the-cli-resolved.md)).
-The adopter template does not ship that launcher, so for an adopted repository
-the table above is complete. In the standard's repository the split is the same,
-with two more host steps: `npm ci`, which installs the pinned `devcontainer`
-CLI, and the launcher, which takes the place of `devcontainer up`.
+**Apple `container` is an adopter's runtime too**
+([ADR 0065](adr/0065-the-adopt-route-accepts-either-runtime-now.md)). The
+adopter template ships the launcher, `.devcontainer/bin/container-session.mjs`,
+and pins the `devcontainer` CLI it runs in `.devcontainer/package.json`. On
+Apple `container` the split is the same, with two more host steps:
+`npm ci --prefix .devcontainer`, which installs the pinned CLI, and the
+launcher, which takes the place of `devcontainer up`. This standard's own
+repository pins the CLI in its root `package.json` instead
+([ADR 0063](adr/0063-apple-container-runs-what-the-cli-resolved.md)).
 [`06-devcontainer-setup.md`](06-devcontainer-setup.md) § 1 covers its host
 limits and how you know it worked.
 
