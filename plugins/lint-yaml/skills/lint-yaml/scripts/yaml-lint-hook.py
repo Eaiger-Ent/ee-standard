@@ -25,9 +25,11 @@ LINT = shlex.split(LINT_INVOCATION)
 # The tool is the first token that names yamllint, not the first token: in
 # `uv run yamllint` or `uvx --from yamllint==1.38.0 yamllint` the first token is the
 # runner.
+# An invocation that is not yamllint is named generically: its first token is
+# a runner (`uv`), and "uv [x.yml] — reported" named the wrong tool (#1276).
 TOOL = next(
     (Path(token).name for token in LINT if Path(token).name == 'yamllint'),
-    Path(LINT[0]).name if LINT else 'yaml-lint',
+    'yaml-lint',
 )
 
 
@@ -61,11 +63,15 @@ if not in_repo(Path(f)):
     sys.exit(0)
 
 cfg = '.yamllint.yml'
-args = ['-c', cfg] if Path(cfg).exists() else []
+# `-c` is yamllint's flag. Appended to any other invocation it became that program's
+# argument, e.g. the file name a parse one-liner opened (#1276).
+args = ['-c', cfg] if TOOL == 'yamllint' and Path(cfg).exists() else []
 r = subprocess.run(LINT + args + [f], capture_output=True, text=True, check=False)
 out = (r.stdout + r.stderr).strip()
 
+# Findings go to stderr with exit 2, the only PostToolUse result Claude Code shows
+# the model; exit 0 with stdout reached only the transcript (#1276).
 if r.returncode != 0:
-    print(f'{TOOL} [{Path(f).name}] — reported:\n{out}')
-else:
-    print(f'{TOOL} [{Path(f).name}]: OK')
+    print(f'{TOOL} [{Path(f).name}] — reported:\n{out}', file=sys.stderr)
+    sys.exit(2)
+print(f'{TOOL} [{Path(f).name}]: OK')
