@@ -2017,11 +2017,14 @@ criterion finds a control change, that finding is the result.
 - [x] The template states a resource floor, `--cpus 4 --memory 4g`, so an Apple
       container does not start with 1 GiB (ADR 0066 point 5). Closed
       2026-11-23.
-- [ ] Something proposes bumps of `.devcontainer/package-lock.json`, here and in
-      an adopter. `gate-supply-chain` writes one Dependabot entry per ecosystem
+- [x] Something proposes bumps of `.devcontainer/package-lock.json`, here and in
+      an adopter. `gate-supply-chain` wrote one Dependabot entry per ecosystem
       at `/`, so the CLI pin moved out of reach of the npm entry when it left
-      the root. `dependabot.yml` carries a gate's stamp, so it is not edited by
-      hand to close this.
+      the root. Closed 2026-11-23: at gate contract 7 it writes an entry per
+      directory holding a tracked lockfile, and groups lockfiles that must move
+      together into one entry. Redeployed here, which added one grouped npm
+      entry for `/.devcontainer` and the template's copy;
+      `register-check run --control SUP-001 … SUP-004` exits `0`.
 
 ## What is deliberately not in scope
 

@@ -13,7 +13,7 @@
     },
     "skills/gate-*/SKILL.md": {
       "stance": "owed-upstream",
-      "why": "ADR 0062: every gate takes `--plan` and `--answers <path>`, and marks each takeover, removal, choice and platform question as answerable from the adoption plan. Before that, the only difference was the skill-map link, by design (docs/05-promotion.md row 8). Submitted 2026-11-07 in release set adr-0062-answered-once (incubator#1324 to #1331), tracked by #312. Once it ships and is taken back, this returns to by-design with the skill-map `normalise` pattern."
+      "why": "ADR 0062: every gate takes `--plan` and `--answers <path>`, and marks each takeover, removal, choice and platform question as answerable from the adoption plan. Before that, the only difference was the skill-map link, by design (docs/05-promotion.md row 8). Submitted 2026-11-07 in release set adr-0062-answered-once (incubator#1324 to #1331), tracked by #312. Once it ships and is taken back, this returns to by-design with the skill-map `normalise` pattern. Since then, ADR 0066: gate-supply-chain's SKILL.md writes one Dependabot entry per directory holding a tracked lockfile (gate contract 7). Not yet submitted."
     },
     "skills/register-[iv]*/SKILL.md": {
       "stance": "by-design",
@@ -81,6 +81,14 @@
     "templates/devcontainer/devcontainer.json": {
       "stance": "owed-upstream",
       "why": "ADR 0066: Apple `container` is a first-class engine. `runArgs` states a resource floor, `--cpus 4 --memory 4g`, because on Apple `container` a container that asks for nothing gets 1 GiB (Phase 15 Run A). Not yet submitted: owed in an incubator amendment to control-register, with the ADR 0065 files above."
+    },
+    "skills/gate-supply-chain/deploys.json": {
+      "stance": "owed-upstream",
+      "why": "ADR 0066: gate-supply-chain writes one Dependabot entry per ecosystem and per directory holding a tracked lockfile, so `.devcontainer/package-lock.json`, the Apple `container` CLI pin, gets update proposals. Gate contract 6 to 7. Not yet submitted: owed in an incubator amendment to control-register."
+    },
+    "skills/gate-supply-chain/templates/dependabot.yaml": {
+      "stance": "owed-upstream",
+      "why": "ADR 0066: gate-supply-chain writes one Dependabot entry per ecosystem and per directory holding a tracked lockfile, so `.devcontainer/package-lock.json`, the Apple `container` CLI pin, gets update proposals. Gate contract 6 to 7. Not yet submitted: owed in an incubator amendment to control-register."
     }
   }
 }

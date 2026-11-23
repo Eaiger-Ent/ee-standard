@@ -130,7 +130,7 @@ fix there.
 
 | State var | Command |
 | --- | --- |
-| `LOCK_STATE` | which of `LOCKFILES` git tracks, per ecosystem |
+| `LOCK_STATE` | every tracked file named in `LOCKFILES`, at any depth, per ecosystem, with its directory: `git ls-files` filtered by basename. `/` is the root, and `/.devcontainer` holds the devcontainer template's CLI pin |
 | `WORKFLOWS` | `ls .github/workflows/ 2>/dev/null \|\| echo NONE` |
 | `INSTALL_STATE` | whether a gating job already installs from the lockfile, and which step it is |
 | `UPDATE_STATE` | `.github/dependabot.yml`, `renovate.json` or another Renovate config — which exists, and which ecosystems it covers |
@@ -224,13 +224,39 @@ never the file. If there is no devcontainer, write nothing and say so.
 ## Step 2 — Wire dependency updates (SUP-002)
 
 Read `${CLAUDE_SKILL_DIR}/templates/dependabot.yaml` and write one `updates:`
-entry per ecosystem, using a spelling from that ecosystem's
-`ECOSYSTEM_SPELLING`.
+entry per ecosystem **and per directory in `LOCK_STATE`**, using a spelling
+from that ecosystem's `ECOSYSTEM_SPELLING` and the directory as `<<DIRECTORY>>`.
+Dependabot reads one directory per entry, so an npm entry at `/` proposes
+nothing for `.devcontainer/package-lock.json`. That lockfile pins the CLI the
+Apple `container` launcher runs (ADR 0066), and until contract 7 nothing moved it.
 
-- **`UPDATE_STATE` shows a config covering every ecosystem:** stamp it, and say
-  it was adopted.
-- **`UPDATE_STATE` shows a config missing an ecosystem:** add only the missing
-  entries. Do not reformat the file — a wholesale rewrite makes this gate's
+**Lockfiles that must move together share one entry.** When two directories of
+one ecosystem pin the same package and the repository holds them identical (a
+template's copy of a lockfile, checked against the one in use), one proposal
+per directory would leave each pull request failing until someone combined them
+by hand. Write those directories as one entry, with `directories:` in place of
+`directory:` and a group matching every dependency, so Dependabot proposes one
+change across both:
+
+```yaml
+  - package-ecosystem: npm
+    directories: [/.devcontainer, /plugins/control-register/templates/devcontainer]
+    groups:
+      together:
+        patterns: ["*"]
+    schedule:
+      interval: weekly
+```
+
+Whether two directories move together is a fact about the repository, not
+something to infer from file names. Ask via **AskUserQuestion** when two
+directories of one ecosystem pin the same package. *Answerable from the plan:
+`choice`, subject `lockfiles that move together`.*
+
+- **`UPDATE_STATE` shows a config covering every ecosystem and directory:**
+  stamp it, and say it was adopted.
+- **`UPDATE_STATE` shows a config missing an ecosystem or a directory:** add
+  only the missing entries. Do not reformat the file — a wholesale rewrite makes this gate's
   change unreviewable.
 - **Two bots configured:** leave both. A repository may run Dependabot for the
   ecosystems it understands and Renovate for what it cannot reach — a version

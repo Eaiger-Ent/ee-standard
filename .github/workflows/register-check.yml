@@ -53,7 +53,7 @@ jobs:
           # renovate: datasource=pypi depName=uv
           pip install uv==0.13.9
 
-      # ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
+      # ee-control: SUP-001  ee-skill: gate-supply-chain@0.5.1  gate-contract: 7  register: v0.32.0  register-contract: 39
       #
       # Adopted, not deployed: hand-written in Phase 0.5 and stamped when the
       # gate that owns it was built. It sits above every other gate's steps
@@ -123,8 +123,8 @@ jobs:
       - name: Secret scan
         run: gitleaks detect --no-banner --redact
 
-      # ee-control: SUP-003  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
-      # ee-control: SUP-004  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
+      # ee-control: SUP-003  ee-skill: gate-supply-chain@0.5.1  gate-contract: 7  register: v0.32.0  register-contract: 39
+      # ee-control: SUP-004  ee-skill: gate-supply-chain@0.5.1  gate-contract: 7  register: v0.32.0  register-contract: 39
       #
       # SUP-003's ci locus, and SUP-004's. No step of its own: this full audit
       # runs the checker with no `--control`, so it reaches every applicable

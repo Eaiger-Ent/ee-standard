@@ -142,10 +142,10 @@ continue as evidence. A run that fails re-opens the question in a new ADR.
 - The engine rests on one operator's runs on one Mac. Run B's waiver means no
   second operator has followed the run sheet, so a gap that only a different
   operator or Mac would have hit can reach adopters first.
-- `.devcontainer/package-lock.json` is a new npm directory. `gate-supply-chain`
-  writes one Dependabot entry per ecosystem at `/`, so nothing proposes a bump
-  of the CLI yet, here or in an adopter. The build plan carries it as an open
-  criterion.
+- `.devcontainer/package-lock.json` is a new npm directory, which a Dependabot
+  entry at `/` never reaches. `gate-supply-chain` contract 7 writes an entry
+  per lockfile directory, so an adopter has proposals for the CLI only after
+  re-running that gate.
 - `init=/sbin/vminitd` remains Apple's implementation detail (ADR 0065).
 - The ee-skills copy of `control-register` changes only through an incubator
   amendment (ADRs 0042, 0043, 0057, 0060). Until one ships, an adopter on the
