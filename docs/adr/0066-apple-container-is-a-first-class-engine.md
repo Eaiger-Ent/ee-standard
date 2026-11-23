@@ -110,15 +110,19 @@ which engine the repository runs on, because Docker keeps working, and no tool
 writes into the adopter's `.devcontainer/`. The adopter copies the files. This
 replaces the "optional" in ADR 0065 point 4.
 
-**5. The template states a resource floor:** `--cpus 4 --memory 8g` in
+**5. The template states a resource floor:** `--cpus 4 --memory 4g` in
 `runArgs`. On Apple `container` it sizes the container. On Docker it bounds the
-container inside Docker Desktop's VM. Four CPUs, not this repository's eight,
-because Docker refuses a container that asks for more CPUs than its VM has.
+container inside Docker Desktop's VM. Four of each, not this repository's
+eight, because Docker refuses a container that asks for more CPUs than its VM
+has, and a default should fit a small Mac. An adopter whose build needs more
+raises both.
 
-**6. Run B is waived, not passed.** No second person on a second Mac is
-available. The waiver is recorded in the build plan and the run sheet, under
-its own name, and does not count as a result. Runs C, D and E continue as
-evidence. A run that fails re-opens the question in a new ADR.
+**6. Run B and Run E's second half are waived, not passed.** Both need a
+second person, and no second person on a second Mac is available. Each waiver
+is recorded in the build plan and the run sheet, under its own name, and does
+not count as a result. Run E's criterion closes on its first half, E1, in
+which the author follows `UPGRADING.md`'s step and corrects it. Runs C, D and E1
+continue as evidence. A run that fails re-opens the question in a new ADR.
 
 ## Consequences
 
@@ -128,7 +132,7 @@ evidence. A run that fails re-opens the question in a new ADR.
   CI fails a repository that loses its pin.
 - An adopter learns that their launcher is behind from `register-check
   deployments`, which they already run.
-- An adopter on Apple `container` gets 8 GiB rather than 1 GiB.
+- An adopter on Apple `container` gets 4 GB rather than 1 GiB.
 - Phase 15 can close without a second operator.
 
 **Trade-offs and risks:**

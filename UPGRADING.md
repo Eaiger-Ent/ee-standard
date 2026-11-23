@@ -133,7 +133,7 @@ git add .devcontainer/bin/container-session.mjs .devcontainer/package.json .devc
 ```
 
 To run on Apple `container` as well, also give the container a resource floor.
-The template's `runArgs` now ends `"--cpus", "4", "--memory", "8g"`. Without
+The template's `runArgs` now ends `"--cpus", "4", "--memory", "4g"`. Without
 those flags an Apple container gets 1 GiB. Add the same four values to your
 `runArgs`. Then, **on the Mac rather than in the container**, start a session as
 [`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md) § 1 does:

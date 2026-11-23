@@ -1967,8 +1967,13 @@ macOS 26 or later. Docker is the engine for everything else and for VS Code.
 Register contract 39 adds a tool, `devcontainer-cli`, to `tools:`. If a
 criterion finds a control change, that finding is the result.
 
-- [ ] The launcher runs a repository adopted from the template, not this one, to
-      a `claude` session where `check-auth.sh` passes.
+- [x] The launcher runs a repository adopted from the template, not this one, to
+      a `claude` session where `check-auth.sh` passes. Closed 2026-11-23 on Run A
+      (2026-11-17): every `check-auth.sh` line ✓, `claude` as `vscode`, no
+      secret in the host process list. `register-check` exited `1`, not `3`, on
+      SEC-001's push protection alone. That is a setting of the archived
+      `ee-standard-consumer`, which cannot change, and not the launcher's doing.
+      Every local block passed.
 - [x] The same, on a second Mac, by someone other than the author.
       **Waived** 2026-11-23 by ADR 0066 point 6, not passed. No second operator
       on a second Mac was available. Apple `container` is in daily use on the
@@ -1976,11 +1981,15 @@ criterion finds a control change, that finding is the result.
       tick. `21-phase-15-runbook.md` § Run B records the waiver.
 - [ ] The refusal rule is shown against an adopter-shaped `devcontainer.json`
       with at least one key the launcher does not handle, and the refusal names
-      it.
+      it. Run C's 2026-11-09 record, moved from #319, refused all three by name
+      with no container created. It stays unticked because that record names no
+      standard commit, and it ran a launcher older than the shipped one. Run C
+      re-run as written closes it.
 - [ ] `adopt.sh` stages 0 and 3 pass on a host with `container` and no Docker,
       and `inside_container()` is checked against an Apple container.
 - [ ] The migration step in `UPGRADING.md`, followed literally on a repository
-      adopted at the previous release, ends green.
+      adopted at the previous release, ends green. Closes on Run E1 alone: E2,
+      the second person, is **waived** by ADR 0066 point 6, as Run B is.
 - [ ] The template carries `bin/container-session.mjs` and a
       `.devcontainer/package.json` with its lock file pinning
       `@devcontainers/cli`, shipped through the incubator and a release set
@@ -2005,7 +2014,7 @@ criterion finds a control change, that finding is the result.
       the plugin's copy, as `CURRENT`, `DIFFERS` or `ABSENT`, and sets no exit
       code over it (ADR 0066 point 3). Closed 2026-11-23, held by
       `tests/test_deployments.py`.
-- [x] The template states a resource floor, `--cpus 4 --memory 8g`, so an Apple
+- [x] The template states a resource floor, `--cpus 4 --memory 4g`, so an Apple
       container does not start with 1 GiB (ADR 0066 point 5). Closed
       2026-11-23.
 - [ ] Something proposes bumps of `.devcontainer/package-lock.json`, here and in

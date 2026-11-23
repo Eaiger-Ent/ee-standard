@@ -80,7 +80,7 @@
     },
     "templates/devcontainer/devcontainer.json": {
       "stance": "owed-upstream",
-      "why": "ADR 0066: Apple `container` is a first-class engine. `runArgs` states a resource floor, `--cpus 4 --memory 8g`, because on Apple `container` a container that asks for nothing gets 1 GiB (Phase 15 Run A). Not yet submitted: owed in an incubator amendment to control-register, with the ADR 0065 files above."
+      "why": "ADR 0066: Apple `container` is a first-class engine. `runArgs` states a resource floor, `--cpus 4 --memory 4g`, because on Apple `container` a container that asks for nothing gets 1 GiB (Phase 15 Run A). Not yet submitted: owed in an incubator amendment to control-register, with the ADR 0065 files above."
     }
   }
 }

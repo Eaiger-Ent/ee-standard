@@ -124,7 +124,7 @@ replacement owes.
 
 On Docker, give Docker Desktop 8 GB of memory (Settings → Resources → Memory).
 Apple `container` has no VM to size: each container gets what its
-`devcontainer.json` `runArgs` ask for, which in the template is 4 CPUs and 8 GB.
+`devcontainer.json` `runArgs` ask for, which in the template is 4 CPUs and 4 GB.
 
 **`gh auth login` asks which protocol you prefer, and the answer here is
 HTTPS.** It is not a preference — it decides what `gh repo create` and

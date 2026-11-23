@@ -245,7 +245,11 @@ The stand-in also had to edit the adopter's own root `package.json`, because
 this repository already had one. A shipped route that adds a file, and changes
 none of the adopter's, avoids that.
 
-**Not ticked.** Criterion 1 stays open on the `register-check` row.
+**Ticked 2026-11-23, with the `register-check` row as a finding about the
+repository.** The `1` is SEC-001's push protection on the archived
+`ee-standard-consumer`, which cannot change while it is archived. Every local
+block passed, so the launcher reproduced what Docker would have. Criterion 1 is
+about the launcher, not about this repository's settings.
 
 ## Run B — Criterion 2: a second Mac, a second person
 
@@ -334,6 +338,29 @@ the third run.
 
 **A key that runs without a refusal and is silently dropped is the finding this
 run exists to catch.** Record it exactly and stop; do not continue past it.
+
+### Run C, 2026-11-09, moved from #319
+
+Recorded by the first operator in PR #319, which never merged, and moved here
+on 2026-11-23. The versions are Run A's first pass that day, also from #319:
+`Mac14,9` (M2 Pro), macOS 27.2 (`26B123`), `container` 1.7.1 (commit
+`a15b460`), `devcontainer` 0.90.0 from `node_modules/.bin`, Node v26.13.0,
+Docker not on `PATH`, and `ee-standard-consumer` at `2b89221`. **The standard
+checkout's commit was not recorded**, and the launcher was older than the one
+the template ships. The steps were the run sheet of that date: each key added on
+its own, the file restored with `git checkout` between keys, and
+`container list -a` compared before and after each `up`, with Run A's container
+present throughout.
+
+| Change | Refused by name? (quote it) | Container created? | Exit code |
+| --- | --- | --- | --- |
+| `"forwardPorts": [8000]` | Yes: `devcontainer.json: forwardPorts is not handled by this launcher` | No | `2` |
+| `"postAttachCommand": "echo attached"` | Yes: `devcontainer.json: postAttachCommand is not handled by this launcher` | No | `2` |
+| `runArgs` gains `"--cap-add", "SYS_PTRACE"` | Yes: `runArgs: --cap-add is not handled` | No | `2` |
+
+No key ran without a refusal. **Not ticked**, because the version record is
+incomplete and the launcher has changed since. It is strong evidence, and a
+re-run against the shipped launcher, as written above, closes criterion 3.
 
 ## Run D — Criterion 4: `adopt.sh` on a host with `container` and no Docker
 
@@ -531,6 +558,11 @@ text that goes into `UPGRADING.md` with criterion 8. It must say:
   because it names what the launcher could not reproduce.
 
 ### E2: a second person follows the draft literally
+
+**Waived 2026-11-23** by [ADR 0066](adr/0066-apple-container-is-a-first-class-engine.md)
+point 6, for the reason Run B is: no second person is available. Criterion 5
+closes on E1. If someone becomes available, run E2 as written below and record
+it beside E1.
 
 A second person, not the author, on **their own Mac** where they can, runs
 **Start clean**, then the clone commands with `run-e2` in place of `run-e1` in
