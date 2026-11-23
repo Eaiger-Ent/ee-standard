@@ -46,6 +46,11 @@ done
 # install the tree the pinned one lives in.
 npm ci --no-audit --no-fund
 
+# The devcontainer CLI the Apple container launcher runs on the host, pinned by
+# .devcontainer/package-lock.json (ADR 0066). Installed here too because the
+# launcher's tests resolve it.
+npm ci --prefix .devcontainer --no-audit --no-fund
+
 # ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
 #
 # `gate-build` owns this file; each gate writes and stamps its own region inside

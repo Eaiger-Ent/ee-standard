@@ -262,8 +262,9 @@ def test_the_template_pins_the_cli_this_repository_pins() -> None:
         entry = data["packages"]["node_modules/@devcontainers/cli"]
         return f"{entry['version']} {entry['integrity']}"
 
-    assert pinned(TEMPLATE / "package.json") == pinned(REPO_ROOT / "package.json")
-    assert locked(TEMPLATE / "package-lock.json") == locked(REPO_ROOT / "package-lock.json")
+    here = REPO_ROOT / ".devcontainer"
+    assert pinned(TEMPLATE / "package.json") == pinned(here / "package.json")
+    assert locked(TEMPLATE / "package-lock.json") == locked(here / "package-lock.json")
 
 
 def test_the_template_ignores_the_installed_cli() -> None:

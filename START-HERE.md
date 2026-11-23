@@ -87,9 +87,9 @@ with. It is for the second sitting and the third, not this one.
 
 ### A — What this assumes
 
-macOS, with one container runtime running. Either will do, and the route asks
-which to use when it finds both
-([ADR 0065](docs/adr/0065-the-adopt-route-accepts-either-runtime-now.md)):
+macOS, with one container engine running. Both are first class: either will
+do, and the route asks which to use when it finds both
+([ADR 0066](docs/adr/0066-apple-container-is-a-first-class-engine.md)):
 
 | Runtime | For | Running when |
 | --- | --- | --- |
@@ -124,7 +124,7 @@ replacement owes.
 
 On Docker, give Docker Desktop 8 GB of memory (Settings → Resources → Memory).
 Apple `container` has no VM to size: each container gets what its
-`devcontainer.json` `runArgs` ask for.
+`devcontainer.json` `runArgs` ask for, which in the template is 4 CPUs and 8 GB.
 
 **`gh auth login` asks which protocol you prefer, and the answer here is
 HTTPS.** It is not a preference — it decides what `gh repo create` and

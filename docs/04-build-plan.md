@@ -1953,19 +1953,27 @@ result.
 Opened 2026-11-09 by [ADR 0064](adr/archive/0064-an-adopter-may-run-its-devcontainer-on-apple-container.md),
 which accepts offering the Phase 14 route to every adopted repository, on the
 spike's evidence alone. ADR 0064 held the release until the first five
-criteria were ticked. **[ADR 0065](adr/0065-the-adopt-route-accepts-either-runtime-now.md)
+criteria were ticked. **[ADR 0065](adr/archive/0065-the-adopt-route-accepts-either-runtime-now.md)
 superseded it on 2026-11-23 and withdrew that gate**: the template, the adopt
 scripts and the adopter-facing documents ship now. The first five criteria are
-evidence, not a gate, and a failed one re-opens the question in a new ADR. Apple `container` becomes the default on an Apple
-silicon Mac running macOS 26 or later. Docker stays the route for everything
-else and for VS Code.
+evidence, not a gate, and a failed one re-opens the question in a new ADR.
+**[ADR 0066](adr/0066-apple-container-is-a-first-class-engine.md) superseded ADR 0065
+the same day** and made Apple `container` a first-class container engine: the
+register pins its CLI, `register-check deployments` reports its launcher, and
+Run B is waived. Apple `container` is the default on an Apple silicon Mac running
+macOS 26 or later. Docker is the engine for everything else and for VS Code.
 
-**No control changes.** If a criterion finds otherwise, that finding is the
-result.
+**No control changes.** No control's `rung`, `verify` or `applies_to` moves.
+Register contract 39 adds a tool, `devcontainer-cli`, to `tools:`. If a
+criterion finds a control change, that finding is the result.
 
 - [ ] The launcher runs a repository adopted from the template, not this one, to
       a `claude` session where `check-auth.sh` passes.
-- [ ] The same, on a second Mac, by someone other than the author.
+- [x] The same, on a second Mac, by someone other than the author.
+      **Waived** 2026-11-23 by ADR 0066 point 6, not passed. No second operator
+      on a second Mac was available. Apple `container` is in daily use on the
+      author's Mac and working well, and that is the only evidence behind this
+      tick. `21-phase-15-runbook.md` § Run B records the waiver.
 - [ ] The refusal rule is shown against an adopter-shaped `devcontainer.json`
       with at least one key the launcher does not handle, and the refusal names
       it.
@@ -1981,10 +1989,30 @@ result.
       was used. `guided.sh` asks the person to confirm the runtime, with Apple
       `container` the default when both answer (ADR 0065).
       `tests/test_adopt_runtime.py` runs both stages against stub runtimes.
-- [ ] `START-HERE.md`, `README.md`, `HOW-IT-WORKS.md`, `08-adopting.md` § 2.0a,
+- [x] `START-HERE.md`, `README.md`, `HOW-IT-WORKS.md`, `08-adopting.md` § 2.0a,
       `06-devcontainer-setup.md` § 1, `14-file-map.md` and `CLAUDE.md` name both
-      runtimes, say who each is for, and `UPGRADING.md` carries the optional
-      migration step.
+      runtimes, say who each is for, and `UPGRADING.md` carries the migration
+      step. Closed 2026-11-23: none calls Apple `container` the second engine,
+      and the step in `UPGRADING.md` § 3 is the one register contract 39
+      requires rather than an optional one (ADR 0066 point 4). Run E still
+      tests it, followed literally.
+- [x] The register names the CLI the engine runs. `tools.devcontainer-cli` pins
+      it by `.devcontainer/package-lock.json`, register contract 39, and this
+      repository's pin moved there from the root so that the published register
+      describes an adopter (ADR 0066 point 2). Closed 2026-11-23:
+      `tool_versions_match_register` fails the file untracked.
+- [x] `register-check deployments` reports whether a repository's launcher is
+      the plugin's copy, as `CURRENT`, `DIFFERS` or `ABSENT`, and sets no exit
+      code over it (ADR 0066 point 3). Closed 2026-11-23, held by
+      `tests/test_deployments.py`.
+- [x] The template states a resource floor, `--cpus 4 --memory 8g`, so an Apple
+      container does not start with 1 GiB (ADR 0066 point 5). Closed
+      2026-11-23.
+- [ ] Something proposes bumps of `.devcontainer/package-lock.json`, here and in
+      an adopter. `gate-supply-chain` writes one Dependabot entry per ecosystem
+      at `/`, so the CLI pin moved out of reach of the npm entry when it left
+      the root. `dependabot.yml` carries a gate's stamp, so it is not edited by
+      hand to close this.
 
 ## What is deliberately not in scope
 

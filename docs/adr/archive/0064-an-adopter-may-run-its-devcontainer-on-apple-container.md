@@ -2,10 +2,10 @@
 
 **Status:** Superseded
 **Date:** 2026-11-09
-**Superseded by:** [ADR 0065: Ship the Apple `container` Route to Adopters Now](../0065-the-adopt-route-accepts-either-runtime-now.md)
+**Superseded by:** [ADR 0065: Ship the Apple `container` Route to Adopters Now](0065-the-adopt-route-accepts-either-runtime-now.md)
 **Revision:** 1
 
-Superseded by [ADR 0065](../0065-the-adopt-route-accepts-either-runtime-now.md)
+Superseded by [ADR 0065](0065-the-adopt-route-accepts-either-runtime-now.md)
 on 2026-11-23. Its points 1 to 4 stand there, with stage 0 asking the person
 to confirm the runtime. Its point 5, the release gate, is withdrawn: the route
 ships now, and the five runs continue as evidence.

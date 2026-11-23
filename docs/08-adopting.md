@@ -558,15 +558,16 @@ declared.
 **Everything after that goes inside**: `uv`, `register-check`, every gate,
 `pre-commit`, the tests, and your commits.
 
-**Apple `container` is an adopter's runtime too**
-([ADR 0065](adr/0065-the-adopt-route-accepts-either-runtime-now.md)). The
+**Apple `container` is a first-class engine for an adopter too**
+([ADR 0066](adr/0066-apple-container-is-a-first-class-engine.md)). The
 adopter template ships the launcher, `.devcontainer/bin/container-session.mjs`,
 and pins the `devcontainer` CLI it runs in `.devcontainer/package.json`. On
 Apple `container` the split is the same, with two more host steps:
 `npm ci --prefix .devcontainer`, which installs the pinned CLI, and the
 launcher, which takes the place of `devcontainer up`. This standard's own
-repository pins the CLI in its root `package.json` instead
-([ADR 0063](adr/0063-apple-container-runs-what-the-cli-resolved.md)).
+repository pins it in the same place, and the register names that lock file in
+`tools.devcontainer-cli`, so a repository without it fails
+`tool_versions_match_register`.
 [`06-devcontainer-setup.md`](06-devcontainer-setup.md) § 1 covers its host
 limits and how you know it worked.
 

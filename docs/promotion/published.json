@@ -68,7 +68,7 @@
     },
     "templates/devcontainer/bin/container-session.mjs": {
       "stance": "owed-upstream",
-      "why": "ADR 0065: the adopt route accepts Apple `container` or Docker. Stage 0 fails only when neither answers, stage 3 asks each runtime that answers, and guided.sh asks the person to confirm the runtime. The template ships the Apple `container` launcher, identical to .devcontainer/bin/, and pins the devcontainer CLI it runs in its own package.json and lock file. Not yet submitted: owed in an incubator amendment to control-register."
+      "why": "ADR 0065: the adopt route accepts Apple `container` or Docker. Stage 0 fails only when neither answers, stage 3 asks each runtime that answers, and guided.sh asks the person to confirm the runtime. The template ships the Apple `container` launcher, identical to .devcontainer/bin/, and pins the devcontainer CLI it runs in its own package.json and lock file. Not yet submitted: owed in an incubator amendment to control-register. Since then, ADR 0066: a comment names `.devcontainer/` as the pin's home everywhere."
     },
     "templates/devcontainer/package.json": {
       "stance": "owed-upstream",
@@ -77,6 +77,10 @@
     "templates/devcontainer/package-lock.json": {
       "stance": "owed-upstream",
       "why": "ADR 0065: the adopt route accepts Apple `container` or Docker. Stage 0 fails only when neither answers, stage 3 asks each runtime that answers, and guided.sh asks the person to confirm the runtime. The template ships the Apple `container` launcher, identical to .devcontainer/bin/, and pins the devcontainer CLI it runs in its own package.json and lock file. Not yet submitted: owed in an incubator amendment to control-register."
+    },
+    "templates/devcontainer/devcontainer.json": {
+      "stance": "owed-upstream",
+      "why": "ADR 0066: Apple `container` is a first-class engine. `runArgs` states a resource floor, `--cpus 4 --memory 8g`, because on Apple `container` a container that asks for nothing gets 1 GiB (Phase 15 Run A). Not yet submitted: owed in an incubator amendment to control-register, with the ADR 0065 files above."
     }
   }
 }

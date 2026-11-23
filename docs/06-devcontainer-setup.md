@@ -38,7 +38,7 @@ generalise from rather than a specification to implement blind.
 
 | Requirement | Verify with | Notes |
 | --- | --- | --- |
-| Docker Desktop or OrbStack, running | `docker info` | Any runtime the Dev Containers extension can reach |
+| A container engine, running: Docker Desktop or OrbStack, or Apple `container` | `docker info`, or `container system status` | Docker for VS Code and any Mac. Apple `container` for a terminal and `claude` on Apple silicon, set up below |
 | VS Code + **Dev Containers** extension | search `ms-vscode-remote.remote-containers` | |
 | Claude Code on the host | `claude --version` | Needed once, to mint the token in step 2 |
 | `security` CLI | built into macOS | Reads and writes Keychain entries |
@@ -50,16 +50,17 @@ so Docker Desktop's VM must have **at least 8 CPUs and 8 GB** (Settings →
 Resources). Docker refuses to start a container that asks for more CPUs than
 its VM has.
 
-### Or: Apple `container`, for a terminal and Claude CLI session
+### Apple `container`, for a terminal and Claude CLI session
 
-[ADR 0063](adr/0063-apple-container-runs-what-the-cli-resolved.md) accepted
-Apple's [`container`](https://github.com/apple/container) as a second runtime
-for this repository. It runs the same devcontainer, built from the same
-`devcontainer.json` and lock file, with no Docker running. The adopter template
-ships the same launcher ([ADR 0065](adr/0065-the-adopt-route-accepts-either-runtime-now.md)),
-and pins the CLI in `.devcontainer/package.json` rather than the root, so an
-adopter runs `npm ci --prefix .devcontainer` where this page says `npm ci`. **VS Code stays on
-Docker.** This route is for a terminal and `claude`.
+Apple's [`container`](https://github.com/apple/container) is a first-class
+container engine here and for every adopter
+([ADR 0066](adr/0066-apple-container-is-a-first-class-engine.md), from
+[ADR 0063](adr/0063-apple-container-runs-what-the-cli-resolved.md)). It runs the
+same devcontainer, built from the same `devcontainer.json` and lock file, with
+no Docker running. The adopter template ships the same launcher, and this
+repository and the template both pin its CLI in `.devcontainer/package.json`,
+which the register names in `tools.devcontainer-cli`. **VS Code stays on
+Docker.** This engine is for a terminal and `claude`.
 
 The launcher, `.devcontainer/bin/container-session.mjs`, never reads
 `devcontainer.json`. It runs the pinned `devcontainer` CLI and maps what the CLI
@@ -73,7 +74,7 @@ evidence for each step is in
 | Apple silicon Mac, macOS 26 or later | `sw_vers -productVersion` and `uname -m` | |
 | Apple `container` 1.7.1 or later | `container --version` | Apple's signed installer from the [releases page](https://github.com/apple/container/releases). Installing needs an admin account once; nothing after it does. |
 | Node.js | `node --version` | Runs the pinned CLI and the launcher |
-| The pinned `devcontainer` CLI | `node_modules/.bin/devcontainer --version` reports `0.90.0` | `npm ci` in the checkout, on the host. `package-lock.json` pins it, and the launcher never uses a global install. |
+| The pinned `devcontainer` CLI | `.devcontainer/node_modules/.bin/devcontainer --version` reports `0.90.0` | `npm ci --prefix .devcontainer` in the checkout, on the host. `.devcontainer/package-lock.json` pins it, and the launcher never uses a global install. |
 | The Keychain values | § 2 | The same values Docker uses. `fetch-secrets.sh` runs on the host either way. |
 
 Start the services once per login (the first start offers to download a
@@ -81,7 +82,7 @@ kernel; accept it), install the pinned CLI, and open a session:
 
 ```bash
 container system start
-npm ci --no-audit --no-fund
+npm ci --prefix .devcontainer --no-audit --no-fund
 node .devcontainer/bin/container-session.mjs claude -n "${PWD:h:t}: ${PWD:t}"
 ```
 

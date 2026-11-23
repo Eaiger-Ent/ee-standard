@@ -86,6 +86,12 @@ jobs:
         # package-lock.json; `npm ci` is also SUP-001's frozen node install.
         run: npm ci --no-audit --no-fund
 
+      - name: Install the devcontainer CLI
+        # The suite resolves the Apple container launcher's pinned CLI
+        # (tests/test_container_session.py), which .devcontainer/package-lock.json
+        # owns since ADR 0066 moved it out of the root.
+        run: npm ci --prefix .devcontainer --no-audit --no-fund
+
       # ee-control: LNT-001  ee-skill: gate-quality@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
       #
       # Adopted, not deployed. The three steps below are one gate's ci locus:

@@ -109,7 +109,8 @@ Each of these has been paid for once. None is derivable from the code.
 
 - **Work in the container, not on the host.** Only four steps are the host's:
   `claude setup-token` and the Keychain entries, `fetch-secrets.sh` (it **is**
-  `initializeCommand`), `devcontainer build`/`up`, and copying a template in
+  `initializeCommand`), `devcontainer build`/`up` or the Apple `container`
+  launcher (`npm ci --prefix .devcontainer` first), and copying a template in
   before a container exists. A host run once reported green about a uv version
   it was not using. `docs/08-adopting.md` § 2.0a is the split.
 - **A wired locus is not an installed hook.** `.pre-commit-config.yaml` states
@@ -179,13 +180,13 @@ The ones most likely to catch you out, by what they govern:
 | A control's verdict or exit code | ADRs 0016, 0017 |
 | `kind: remote`, tokens, CI credentials | ADRs 0021, 0022 |
 | The register/checker boundary — before adding a rule to Python | **ADR 0018** |
-| The devcontainer, uv, or the interpreter | ADRs 0027, 0028, 0030, 0034, 0037, 0063, 0065 |
+| The devcontainer, uv, or the interpreter | ADRs 0027, 0028, 0030, 0034, 0037, 0063, 0066 |
 | The editor locus | ADR 0029 |
 | A gate skill, or shared skill prose | ADRs 0033, 0035, 0036, 0038, 0058 |
 | `pinned_at`, or a gate writing the register | **ADR 0045** |
 | Loci, pins, digests, or a bot's config | ADRs 0020, 0039, 0041 |
 | Writing or amending an ADR | ADRs 0024, 0025, 0026 |
-| The adopter's route, or the marketplace | ADRs 0032, 0042, 0043, 0044, 0057, 0060, 0065 |
+| The adopter's route, or the marketplace | ADRs 0032, 0042, 0043, 0044, 0057, 0060, 0066 |
 | Anything in the Craft workstream | **ADRs 0051, 0052, 0053, 0054, 0055, 0056** |
 
 **Naming (ADR 0031).** The plugin is `control-register`, the checker is

@@ -1,13 +1,18 @@
 # ADR 0065: Ship the Apple `container` Route to Adopters Now
 
-**Status:** Accepted
+**Status:** Superseded
 **Date:** 2026-11-23
-**Supersedes:** [ADR 0064: An Adopter May Run Its Devcontainer on Apple `container`](archive/0064-an-adopter-may-run-its-devcontainer-on-apple-container.md)
+**Superseded by:** [ADR 0066: Apple `container` Is a First-Class Container Engine](../0066-apple-container-is-a-first-class-engine.md)
+**Supersedes:** [ADR 0064: An Adopter May Run Its Devcontainer on Apple `container`](0064-an-adopter-may-run-its-devcontainer-on-apple-container.md)
 **Revision:** 1
+
+Superseded by [ADR 0066](../0066-apple-container-is-a-first-class-engine.md)
+on 2026-11-23. Its points 1 to 3 stand there. Point 4's optional move becomes
+part of register contract 39, and point 5's Run B is waived.
 
 ## Background
 
-**The question.** [ADR 0064](archive/0064-an-adopter-may-run-its-devcontainer-on-apple-container.md)
+**The question.** [ADR 0064](0064-an-adopter-may-run-its-devcontainer-on-apple-container.md)
 decided that an adopted repository may run its devcontainer on Apple's
 [`container`](https://github.com/apple/container) instead of Docker. It also
 held the change back: nothing reached the template or the adopt scripts until
@@ -138,22 +143,22 @@ rule and parent mount stand.
 
 ## Related ADRs
 
-- [ADR 0064](archive/0064-an-adopter-may-run-its-devcontainer-on-apple-container.md)
+- [ADR 0064](0064-an-adopter-may-run-its-devcontainer-on-apple-container.md)
   — superseded. Its points 1 to 4 stand here with the changes above.
-- [ADR 0063](0063-apple-container-runs-what-the-cli-resolved.md) — the launcher
+- [ADR 0063](../0063-apple-container-runs-what-the-cli-resolved.md) — the launcher
   and its refusal rule.
-- [ADR 0049](0049-the-adoption-route-is-executable.md) — the scripts detect,
+- [ADR 0049](../0049-the-adoption-route-is-executable.md) — the scripts detect,
   and `guided.sh` acts.
-- [ADR 0037](0037-the-template-is-the-whole-devcontainer-step.md) — why the
+- [ADR 0037](../0037-the-template-is-the-whole-devcontainer-step.md) — why the
   launcher must be in the template to reach an adopter.
-- [ADR 0026](0026-an-adr-stands-on-its-own.md) — why a change to the gate is a
+- [ADR 0026](../0026-an-adr-stands-on-its-own.md) — why a change to the gate is a
   new ADR.
 
 ## References
 
-- [`21-phase-15-runbook.md`](../21-phase-15-runbook.md) — Run A's record, and
+- [`21-phase-15-runbook.md`](../../21-phase-15-runbook.md) — Run A's record, and
   the runs still to come.
-- [`20-apple-container-spike.md`](../20-apple-container-spike.md) — the spike.
-- [`06-devcontainer-setup.md`](../06-devcontainer-setup.md) § 1 — the
+- [`20-apple-container-spike.md`](../../20-apple-container-spike.md) — the spike.
+- [`06-devcontainer-setup.md`](../../06-devcontainer-setup.md) § 1 — the
   launcher's commands and limits.
 - [apple/container](https://github.com/apple/container).
