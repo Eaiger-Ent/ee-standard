@@ -25,11 +25,15 @@ updates:
   # template's copy of the same pin. tests/test_adopt_runtime.py holds the two
   # identical, so they move in one grouped proposal rather than two that each
   # fail until combined. Added by the gate's re-run at contract 7.
+  # `group-by: dependency-name` is what makes the group span both directories;
+  # without it Dependabot opens one pull request per directory. Added by hand
+  # after review, before the gate's example carried it.
   - package-ecosystem: npm
     directories: [/.devcontainer, /plugins/control-register/templates/devcontainer]
     groups:
       together:
         patterns: ["*"]
+        group-by: dependency-name
     schedule:
       interval: weekly
   - package-ecosystem: devcontainers

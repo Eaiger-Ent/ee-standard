@@ -235,15 +235,18 @@ one ecosystem pin the same package and the repository holds them identical (a
 template's copy of a lockfile, checked against the one in use), one proposal
 per directory would leave each pull request failing until someone combined them
 by hand. Write those directories as one entry, with `directories:` in place of
-`directory:` and a group matching every dependency, so Dependabot proposes one
-change across both:
+`directory:` and a group matching every dependency. The group needs
+`group-by: dependency-name`: without it Dependabot still opens one pull request
+per directory. The paths below are placeholders for the two directories the
+repository holds identical:
 
 ```yaml
   - package-ecosystem: npm
-    directories: [/.devcontainer, /plugins/control-register/templates/devcontainer]
+    directories: [/.devcontainer, /<the directory holding the copy>]
     groups:
       together:
         patterns: ["*"]
+        group-by: dependency-name
     schedule:
       interval: weekly
 ```
