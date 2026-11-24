@@ -12,7 +12,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 
 if ! installed gh || ! gh auth status >/dev/null 2>&1; then
   echo "gh is not authenticated, so none of these questions can be asked."
-  detail "00-preflight.sh settles that first."
+  detail "00-tools.sh settles that first."
   exit 3
 fi
 cd "$(repository_root)" || exit 1

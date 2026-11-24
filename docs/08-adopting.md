@@ -706,9 +706,9 @@ sed -i.bak \
   -e "s/{{PROJECT_NAME}}/$(basename "$PWD")/g" \
   .devcontainer/devcontainer.json
 sed -i.bak \
-  -e "s/{{UV_VERSION}}/${uv_version}/g" \
-  -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86}/g" \
-  -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm}/g" \
+  -e "s/{{UV_VERSION}}/${uv_version:?}/g" \
+  -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86:?}/g" \
+  -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm:?}/g" \
   .devcontainer/setup.sh
 rm .devcontainer/*.bak
 grep -rl '{{' .devcontainer
@@ -1184,9 +1184,13 @@ claude plugin install lint-md@ee-standard
 claude plugin install lint-yaml@ee-standard
 ```
 
-Then, in a session in your repository, run `/lint-md`, then `/lint-yaml`.
-`/register-adopt` plans both controls as *dispatch elsewhere*: it names the
-skill and does not run it, so these are two commands you run yourself. Each
+Then, in a session in your repository, run `/lint-md`, then `/lint-yaml`, and
+commit what they wrote — **before** `/register-adopt`. It plans both controls as
+*dispatch elsewhere*: it names the skill and does not run it, so these are two
+commands you run yourself, and it stops while either fails. That order is not a
+preference. `/register-adopt` pushes before it protects `main`, and the `pre-push`
+hook `gate-supply-chain` installs runs SUP-001, which fails until `lint-md`'s
+`package-lock.json` is tracked. Each
 skill writes its tool's configuration, a PostToolUse hook script and its
 `.claude/settings.json` entry, a pre-commit hook and a CI step. `lint-md`
 pins `markdownlint-cli2` in `package-lock.json`, and `lint-yaml` adds
@@ -1210,9 +1214,11 @@ missing. Three things are left for you, and the checker reports the first two:
 2. **A root `.gitignore` containing `node_modules/`.** That is step 4 below,
    and the reason is the same: without it DOC-001 lints somebody else's
    markdown.
-3. **Re-run `/gate-supply-chain`.** `lint-md` gave the repository a
-   `package.json`, which is a node ecosystem, and SUP-002 needs an update
-   channel for it. § 3.A says why the gate adds it rather than you.
+3. **`/gate-supply-chain` must see the `package.json`.** `lint-md` gave the
+   repository a node ecosystem, and SUP-002 needs an update channel for it.
+   Run first, as above, `/register-adopt`'s own `/gate-supply-chain` adds it;
+   adding `lint-md` to a repository adopted earlier means re-running the gate.
+   § 3.A says why the gate adds it rather than you.
 
 **If you will not install a plugin**, § 3.A is DOC-001 by hand, and YML-001's
 by-hand route is listed after it. It is the fallback, and nothing in it is
@@ -1263,10 +1269,11 @@ npm init -y && npm install --save-dev markdownlint-cli2
    one — and staged 1,542 files before anyone noticed.
 5. A `pre-commit` hook whose `entry` is `node_modules/.bin/markdownlint-cli2`,
    never `npx --no-install`.
-6. A CI job **whose id is `lint-md`**, running the same binary. That string is
-   what CI-001's `required_checks:` names, and GitHub matches a required check
-   by the context a job produces — rename the job and your ruleset waits forever
-   for a check nothing reports.
+6. A CI job **whose id is `lint-md`**, running the same binary. The register
+   you copied requires only `register-check`, but if you add `lint-md` to
+   CI-001's `required_checks:` — this repository does — that string is what it
+   names, and GitHub matches a required check by the context a job produces.
+   Rename the job and your ruleset waits forever for a check nothing reports.
 7. **The editor extension the register names**, in
    `.devcontainer/devcontainer.json` under `customizations.vscode.extensions`.
    DOC-001 declares **three** loci and this is the third: `editor_extension:` in
