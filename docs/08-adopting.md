@@ -2345,6 +2345,60 @@ those runs complete rather than tolerated, and is the wrong trade here: a
 standing credential readable by a run that checks out a bot's dependency change
 is a wider blast radius than the one control it settles.
 
+#### Renewing it
+
+The token expires, and that is the point: SEC-003 fails one that may live longer
+than `max_lifetime_hours` allows. **Nothing warns you before it expires.**
+SEC-003 checks how long the token is allowed to live, not how long it has left.
+So set a reminder for a week before the expiry date when you issue it, and
+again each time you renew it.
+
+**What expiry looks like.** Every run that carries the secret reports each
+remote block `UNCLASSIFIED` with the same reason:
+
+```text
+? remote: github_push_protection_enabled — the token was rejected for
+  /repos/<owner>/<repo> (401) — it is invalid or expired; this is a token to
+  fix rather than one to supply
+```
+
+With `--require-complete` that fails the run, so from that day every pull
+request and every push to the default branch fails on controls that still hold.
+Fork and Dependabot runs keep passing, because they never carried the secret.
+Do not read their green as the token working.
+
+**To renew it:**
+
+1. On the token's page, **Regenerate token**, or make a new one with the same
+   fields. It is scoped to this one repository, with `Administration: read`
+   and nothing else, and expires within your policy.
+2. Update the secret **straight away**. Regenerating stops the old value working
+   at once, so every run fails until the secret holds the new one:
+
+   ```bash
+   gh secret set PLATFORM_READ_TOKEN --env conformance --repo <owner>/<repo>
+   ```
+
+   It prompts for the value rather than taking it as an argument, so the token
+   never lands in your shell history. Drop `--env conformance` if you hold it as
+   a repository secret, as this repository does (`docs/04-build-plan.md` § The
+   one place this repository does not do what it asks of everyone else).
+3. Check that it was stored, and that it works:
+
+   ```bash
+   gh secret list --env conformance --repo <owner>/<repo>   # updated today
+   gh run rerun <run-id> --failed --repo <owner>/<repo>
+   ```
+
+   The re-run should report `0 unclassified`. A run that still reports the
+   401 is still carrying the old value.
+
+**Renewing a token on GitHub does not update anything that holds a copy of it.**
+This repository found that on 2026-11-23: the token had been renewed, the
+secret still held the 2026-08-24 value, and every run since 2026-11-22 had
+failed. A token kept in your Keychain for the devcontainer is a different
+credential from this one. Renewing that one changes nothing here.
+
 #### What none of this checks
 
 No API lets a fine-grained token enumerate its own permissions. *Scoped to this
