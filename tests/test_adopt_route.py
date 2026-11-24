@@ -84,7 +84,7 @@ def test_the_route_directory_exists_and_holds_scripts() -> None:
 
 @pytest.mark.parametrize("script", _scripts(), ids=lambda p: p.name)
 def test_a_stage_script_is_executable(script: Path) -> None:
-    """An adopter runs `./00-preflight.sh`, not `bash 00-preflight.sh`."""
+    """An adopter runs `./00-tools.sh`, not `bash 00-tools.sh`."""
     mode = script.stat().st_mode
     assert mode & stat.S_IXUSR, (
         f"{script.relative_to(REPO_ROOT)} is not executable. "

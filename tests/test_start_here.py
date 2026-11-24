@@ -738,7 +738,7 @@ def test_it_says_a_test_suite_is_required_before_the_first_push() -> None:
     it too; this holds the half the reader sees first.
     """
     step = TEXT.split("## 5 — Run the adoption", 1)[1].split("\n## 6 ", 1)[0]
-    assert "Write one test first" in step, (
+    assert "No test yet?" in step and "TST-001" in step, (
         "step 5 does not warn that a repository with no tests cannot push"
     )
     trouble = TEXT.split("## When it goes wrong", 1)[1].split("\n## ", 1)[0]

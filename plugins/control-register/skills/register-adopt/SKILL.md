@@ -396,7 +396,11 @@ is has not been adopted, whatever was written for it.
 
 ## Step 6 — Commit
 
-Only after Step 5, and only if it did not exit `1` or `2`.
+Only after Step 5, and only if it did not exit `1` or `2` — with one exception. A
+first adoption exits `1` on the **dispatch elsewhere** controls, on any block
+whose message names one (SUP-001's lockfile block names DOC-001), and on remote
+blocks awaiting a platform act Step 2 listed under *What needs a human*. If those
+are the only failures, commit: Output's **Adopted** block says what runs next.
 
 One commit, conventional format, listing the control IDs deployed:
 
@@ -422,8 +426,8 @@ Read `${CLAUDE_SKILL_DIR}/output-templates.md` and emit the block whose trigger 
 
 | State | Trigger |
 | --- | --- |
-| **Adopted** | Step 5 exited `0` or `3`, and Step 6 committed |
-| **Failed** | A gate, or `register-install` at row 5a, failed; or Step 5 exited `1` or `2` |
+| **Adopted** | Step 5 exited `0` or `3`, or `1` only on what Step 6's exception names, and Step 6 committed |
+| **Failed** | A gate, or `register-install` at row 5a, failed; or Step 5 exited `2`, or `1` on anything else |
 | **Cancelled** | **Cancel** at Step 3 |
 | **Blocked** | A stop before Step 2: no checker, no register, not a git repository, or a stamp ahead of the installed contract |
 

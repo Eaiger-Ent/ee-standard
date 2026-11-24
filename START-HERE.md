@@ -204,12 +204,22 @@ repository's name. This leaves you with an empty repository, which is a
 repository but not yet a project: **§ C2 is what step 5 needs on top of it.**
 
 ```bash
-git rev-parse --show-toplevel 2>/dev/null && { echo "STOP: already inside a repository — cd out first"; }
-mkdir -p my-new-project && cd my-new-project
-git init -b main
-git commit -q --allow-empty -m "Initial commit"
-gh repo create "$(basename "$PWD")" --private --source=. --remote=origin --push
+if git rev-parse --show-toplevel >/dev/null 2>&1; then
+  echo "STOP: already inside a repository — cd out first"
+else
+  mkdir -p my-new-project && cd my-new-project \
+    && git init -b main \
+    && git commit -q --allow-empty -m "Initial commit" \
+    && gh repo create "$(basename "$PWD")" --private --source=. --remote=origin --push
+fi
 ```
+
+**`--private` or `--public` is the one choice here that changes what you can
+reach.** On GitHub Free, a private repository has no rulesets and no push
+protection, so CI-001 and SEC-001's server-side block cannot hold (§ D). A public
+repository has both. Change `--private` to `--public` here, or in the block
+below, if the repository is going to be public — and decide before step 3,
+because the rulesets step is where it shows.
 
 **A repository already, but nothing on GitHub:**
 
@@ -314,7 +324,8 @@ against the table above and move on.
 
 ### D — What your repository can support
 
-If it is, run this before anything else. It decides whether two of the fifteen
+Whether your repository is private, and on which plan, decides this. Run it
+before anything else. It decides whether two of the fifteen
 controls are reachable at all, and finding that out at step 3 wastes the four
 steps before it.
 
@@ -754,13 +765,20 @@ not start without it:
 
 ```bash
 sed -i.bak -e "s/{{PROJECT_NAME}}/$(basename "$PWD")/g" .devcontainer/devcontainer.json
-sed -i.bak -e "s/{{UV_VERSION}}/${uv_version}/g" -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86}/g" -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm}/g" .devcontainer/setup.sh
+sed -i.bak -e "s/{{UV_VERSION}}/${uv_version:?}/g" -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86:?}/g" -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm:?}/g" .devcontainer/setup.sh
 rm .devcontainer/*.bak
-grep -rl '{{' .devcontainer
+grep -rl --exclude-dir=node_modules '{{' .devcontainer
 ```
 
 **That `grep` must print nothing.** A surviving placeholder is what fails the
 build later, at `sha256sum -c`, with no clue why.
+
+**Run both blocks in the same terminal.** The second reads the three values the
+first set, and a new tab or window has none of them. The `:?` makes the second
+`sed` stop with a *parameter not set* error rather than write empty values — an
+adopter's did exactly that, the `grep` above came back clean because nothing
+was left to find, and the container then failed fetching uv with a `404`. If you
+see that message, run the extraction block again first.
 
 **Check before you write.** The Keychain service names carry no project prefix
 by design — one credential serves every ee project on the machine — so if you
@@ -826,7 +844,7 @@ three from the template, or build on Docker.
 `container`, and the environment report at the end shows `uv` at the
 version you substituted, built for your architecture.
 
-**One `✗` is expected here** if you skipped the optional `gh` credential:
+**One `✗` is expected here** if you have not stored § E's GitHub token yet:
 
 ```text
 ✗ GitHub CLI — not authenticated.
@@ -927,9 +945,12 @@ them after the adoption, at § Your first full report.
 prints three rows. The volume survives rebuilds, so this is once per project
 rather than once per container.
 
-Then, in that same container shell:
+Then, in that same container shell, keep Claude Code's per-user settings out of
+your commits — § What a Claude Code session adds to your repository says why — and
+start a session:
 
 ```bash
+grep -qx '.claude/settings.local.json' .gitignore 2>/dev/null || echo '.claude/settings.local.json' >> .gitignore
 claude --permission-mode acceptEdits
 ```
 
@@ -954,6 +975,10 @@ session prints — and this step prints commands and verdicts you will want:
 ```text
 /tui default
 ```
+
+**No test yet?** § C2's skeleton writes one. TST-001 needs a suite that collects
+something, and TYP-001 runs mypy strict, so a test you write yourself needs its
+`-> None`.
 
 Then type this at the same prompt:
 
@@ -983,15 +1008,55 @@ answer for you, **unless the plan lists a GitHub API call** — a change to what
 your colleagues can push is always answered by you, once, with the call on
 screen. Anything the plan did not list is still asked.
 
-**Done when:** it reports every control planned and verified, and commits.
+**It ends red, and that is expected.** Its own report fails DOC-001 and YML-001,
+and SUP-001 on a lockfile those two bring. `/register-adopt` *names* the skills
+that deploy them and does not run them. It commits anyway and ends with a
+numbered **Next** list, which is the rest of this step.
 
-**Write one test first if you have none.** TST-001 requires a test suite to
-exist — a runner that collects nothing exits non-zero, so `git push` is refused
-until there is something to run. Any real test will do; an empty file will not:
+### Then, at the same prompt: finish what `/register-adopt` hands on
+
+**This is part of step 5, not an optional extra.** Until it is done, DOC-001,
+YML-001 and SUP-001 fail.
+
+**If `/register-adopt` applied the ruleset** — it does on a public repository, or
+on a paid plan — `main` is now protected and takes changes only by pull request.
+So do this on a branch. Leave the Claude session (`/exit`) and run:
 
 ```bash
-mkdir -p tests && printf 'def test_it_runs():\n    assert True\n' > tests/test_smoke.py
+git switch -c adopt/lint
 ```
+
+The branch carries `/register-adopt`'s last commit with it, which is how that
+commit reaches `main`. Then `claude --permission-mode acceptEdits` again, and:
+
+1. `/lint-md` — deploys DOC-001, and its `package-lock.json` is what SUP-001 was
+   asking for.
+2. `/lint-yaml` — deploys YML-001.
+3. `/gate-supply-chain` — again. `lint-md` gave your repository a
+   `package.json`, which is a node ecosystem, and SUP-002 needs an update
+   channel for it.
+4. Two edits of your own: `node_modules/` in your root `.gitignore`, and
+   DOC-001's editor extension in `.devcontainer/devcontainer.json`.
+   [`docs/08-adopting.md`](docs/08-adopting.md) § 3 items 4 and 7 give both
+   exactly. DOC-001 still fails without them.
+
+Then commit, and land it:
+
+```bash
+uv run register-check
+git add -A && git commit -m "chore(standard): deploy DOC-001 and YML-001"
+git push -u origin adopt/lint
+gh pr create --fill
+```
+
+Read `git status` before `git add -A` — it should show only what the four steps
+wrote. Merge the pull request once its `register-check` job passes. If
+`/register-adopt` did **not** apply a ruleset, skip the branch and push to `main`.
+
+**Done when:** `uv run register-check` exits `3` with nothing failing — SEC-003
+stays `UNCLASSIFIED` on your machine for good, and § Your first full report says
+why — and the pull request's `register-check` job is green. On a private repository without rulesets it exits `1` on CI-001
+and SEC-001 instead, which § If your plan has no rulesets explains.
 
 **If it fails:** it will still prompt for `.devcontainer/devcontainer.json` —
 that is a sensitive file and no permission mode silences it. `gate-repo` asks its
@@ -1040,7 +1105,7 @@ should not be committed.
 | `.claude/settings.json` | The project's shared settings: hooks, and anything the team agrees on | Yes |
 | `CLAUDE.md` | Only created if you run `/init`. Guidance for future sessions | Yes, if you want one |
 
-Add the one line before your first commit:
+Step 5 adds the line before the first session starts. If you skipped it:
 
 ```bash
 echo '.claude/settings.local.json' >> .gitignore
@@ -1074,9 +1139,10 @@ have caught people out:
 
 - **It is a command, not a slash command.** There is no `/register-check` in
   Claude Code. Run it in a terminal.
-- **Run it inside the container.** Everything after step 4 goes inside —
-  `devcontainer exec --workspace-folder . uv run register-check`, or open a
-  shell in the container and run it there.
+- **Run it inside the container.** Everything after step 4 goes inside. Get a
+  shell with `node .devcontainer/bin/container-session.mjs shell` on Apple
+  `container`, or `devcontainer exec --workspace-folder . bash` on Docker, and
+  run it there.
 
 ```bash
 uv run register-check
@@ -1126,40 +1192,32 @@ predictable set, and the order you clear them in matters.
 
 | The report says | What it means | What clears it |
 | --- | --- | --- |
-| `DOC-001 FAIL` — *no tracked markdownlint configuration file* | One of the two controls no gate in `control-register` deploys. It is `lint-md`'s, as YML-001 is `lint-yaml`'s. **Tracked** is the operative word: a file git does not carry is not wired | `/lint-md`, installed at step 5 — see below |
+| `DOC-001 FAIL` — *no tracked markdownlint configuration file* | One of the two controls no gate in `control-register` deploys. It is `lint-md`'s, as YML-001 is `lint-yaml`'s. **Tracked** is the operative word: a file git does not carry is not wired | `/lint-md`, in step 5's *Then, at the same prompt* |
 | `YML-001 FAIL` — *no tracked yamllint configuration (.yamllint, .yamllint.yaml, .yamllint.yml)* | The other one, and it fails for the same reason | `/lint-yaml`, after `/lint-md` |
 | `SUP-001 FAIL` — *markdownlint-cli2 is sourced from package-lock.json, which is not tracked* | **The same cause**, not a second one. The register pins that tool from a lockfile you do not have yet | Committing `package-lock.json` in the step above |
-| `SEC-001 FAIL` — *push protection is 'disabled'* | The local blocks pass — the scanner runs at every locus. This is the server-side stop, and only GitHub can turn it on | Settings → Code security → enable push protection. Admin, and one click |
-| `CI-001 FAIL` — *not protected as the register requires* | Note its file block **passed**: you have *recorded* the ruleset. Recording is intent; this block asks what GitHub enforces, and the answer is nothing | `/gate-repo`, which applies the recorded ruleset through the API |
+| `SEC-001 FAIL` — *push protection is 'disabled'* | The local blocks pass — the scanner runs at every locus. This is the server-side stop, and only GitHub can turn it on. Step 3 asked for it | Settings → Code security → enable push protection. Admin, and one click. On a private repository without a paid plan there is no such setting: § If your plan has no rulesets |
+| `CI-001 FAIL` — *not protected as the register requires* | Note its file block **passed**: you have *recorded* the ruleset. Recording is intent; this block asks what GitHub enforces. `/register-adopt` applies it through `gate-repo` at step 5, so this means it could not: a private repository without rulesets, a token without `administration: write`, or a plan you declined | The first: § If your plan has no rulesets. Otherwise fix the token (§ E) and run `/gate-repo` |
 | `GOV-001 FAIL` — *a merge waits for no check at all* | Not a separate problem. Every blocking control is credited to a CI job nothing requires, which is CI-001's failure seen from the other end | Clearing CI-001 clears this |
 | `SEC-003 UNCLASSIFIED` | Permanent, and correct. Those blocks answer only inside a GitHub Actions job; your own token settles nothing about what CI carries | Nothing. This is why a local run cannot exit `0` |
 
-**Two skills, and you run both yourself.** `/register-adopt` plans DOC-001 and
-YML-001 as *dispatch elsewhere*: it names each skill and does not run it. So at
-the same prompt, run `/lint-md`, then `/lint-yaml`, then `/gate-supply-chain`
-again. `lint-md` gave your repository a `package.json`, which is a node
-ecosystem, and SUP-002 needs an update channel for it. Then run the checker.
-DOC-001 still fails until you add its editor extension and `node_modules/` to
-your root `.gitignore`. [`docs/08-adopting.md`](docs/08-adopting.md) § 3 has
-both, and how you know each step worked. If you will not install a plugin, its
-§ 3.A wires both controls by hand, and `register-check` verifies what you write
-the same way.
+**The first three rows are one job, and step 5 already gave it to you.**
+`/register-adopt` plans DOC-001 and YML-001 as *dispatch elsewhere*: it names each
+skill and does not run it. Step 5's *Then, at the same prompt* runs them, then
+`/gate-supply-chain` again, on a branch if `main` is protected. If you will not
+install a plugin, [`docs/08-adopting.md`](docs/08-adopting.md) § 3.A wires both
+controls by hand, and `register-check` verifies what you write the same way.
 
-**Clear them in that order, and there is a reason.** DOC-001 needs commits, and
-committing is easiest while you can still push to the default branch. CI-001 is
-last because applying the ruleset is what takes that away.
+**The rest are platform state.** Push protection is a setting (step 3), and the
+ruleset was applied during step 5 if your plan allows it. Neither needs a commit.
 
-**Do not make `register-check` a required check before you have watched that job
-pass.** The workflow you were given runs `register-check --require-complete`,
-which fails the run on anything it could not verify — a missing CI credential,
-for instance. Require the check first and the merge queue waits for a job that
-cannot pass, on a branch you can no longer push to directly. Nothing merges,
-including the fix. Push, watch the job go green, *then* run `/gate-repo`.
-
-If the job exits `1` on incompleteness rather than on a violation, it wants the
-credential: § The CI token above makes it, then
+**The CI job passes on exit `3`, deliberately.** The Conformance step
+`/register-install` wrote fails on a violation and tolerates *could not verify*,
+because without a CI credential some remote blocks cannot answer. Making it
+strict — `register-check --require-complete`, so that `3` fails too — is a later
+sitting: § The CI token above makes the credential, then
 [`docs/08-adopting.md`](docs/08-adopting.md) § 4.2 and § 4.3 wire it up, in that
-order.
+order. Do it only after you have watched the tolerant job pass, or the ruleset
+waits on a job that cannot.
 
 ## When it goes wrong
 
@@ -1168,7 +1226,7 @@ order.
 | Container starts, `uv: command not found` | The uv placeholders substituted to nothing | Re-run step 4's extraction and check the `echo` is non-empty |
 | Every gate says its pre-commit locus is wired, nothing runs on commit | A wired locus is not an installed hook | `ls -l .git/hooks/pre-commit`; `uv run pre-commit install` |
 | A gate is green about a tool version you are not running | You ran it on the host, not in the container | Everything after step 4 goes inside |
-| `sha256sum -c` fails during container create | A placeholder survived, or an architecture digest is wrong | `grep -rl '{{' .devcontainer` should print nothing |
+| `sha256sum -c` fails during container create | A placeholder survived, or an architecture digest is wrong | `grep -rl --exclude-dir=node_modules '{{' .devcontainer` should print nothing |
 | `refusing to allow a Personal Access Token to create or update workflow` | The token has no **Workflows** permission — it is separate from Contents | Add it, re-store the token, and rebuild |
 | `git push` refused, and `pytest` said `no tests ran` (exit 5) | TST-001 requires a test suite to exist, and a runner that collects nothing exits non-zero | Write one test. An empty suite is not a passing one |
 | SUP-001: *"markdownlint-cli2 is sourced from package-lock.json, which is not tracked"* | You have not deployed DOC-001 yet — that tool is its, not a supply-chain fault | [`docs/08-adopting.md`](docs/08-adopting.md) § 3 |

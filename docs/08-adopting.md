@@ -706,9 +706,9 @@ sed -i.bak \
   -e "s/{{PROJECT_NAME}}/$(basename "$PWD")/g" \
   .devcontainer/devcontainer.json
 sed -i.bak \
-  -e "s/{{UV_VERSION}}/${uv_version}/g" \
-  -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86}/g" \
-  -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm}/g" \
+  -e "s/{{UV_VERSION}}/${uv_version:?}/g" \
+  -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86:?}/g" \
+  -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm:?}/g" \
   .devcontainer/setup.sh
 rm .devcontainer/*.bak
 grep -rl '{{' .devcontainer
@@ -1263,10 +1263,11 @@ npm init -y && npm install --save-dev markdownlint-cli2
    one — and staged 1,542 files before anyone noticed.
 5. A `pre-commit` hook whose `entry` is `node_modules/.bin/markdownlint-cli2`,
    never `npx --no-install`.
-6. A CI job **whose id is `lint-md`**, running the same binary. That string is
-   what CI-001's `required_checks:` names, and GitHub matches a required check
-   by the context a job produces — rename the job and your ruleset waits forever
-   for a check nothing reports.
+6. A CI job **whose id is `lint-md`**, running the same binary. The register
+   you copied requires only `register-check`, but if you add `lint-md` to
+   CI-001's `required_checks:` — this repository does — that string is what it
+   names, and GitHub matches a required check by the context a job produces.
+   Rename the job and your ruleset waits forever for a check nothing reports.
 7. **The editor extension the register names**, in
    `.devcontainer/devcontainer.json` under `customizations.vscode.extensions`.
    DOC-001 declares **three** loci and this is the third: `editor_extension:` in

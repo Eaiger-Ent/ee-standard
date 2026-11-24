@@ -582,6 +582,12 @@ Re-running a failed or partial adoption? Add --yes. It pre-answers the plan and
 the checker install, which get the same answer every time, and answers nothing
 else: gate-repo still asks before every call that changes what your colleagues
 can push.
+
+5. It ends red on DOC-001 and YML-001, and that is expected: it names the skills
+that deploy them and does not run them. Its last lines are a numbered Next list
+— /lint-md, /lint-yaml, /gate-supply-chain again, two edits of your own, then a
+pull request if main is now protected. START-HERE.md § 5, "Then, at the same
+prompt", is that list with the reasons. The adoption is not done until it is.
 MSG
 
 echo

@@ -78,9 +78,9 @@ sed -i.bak \
   -e "s/{{PROJECT_NAME}}/$(basename "$PWD")/g" \
   devcontainer.json
 sed -i.bak \
-  -e "s/{{UV_VERSION}}/${uv_version}/g" \
-  -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86}/g" \
-  -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm}/g" \
+  -e "s/{{UV_VERSION}}/${uv_version:?}/g" \
+  -e "s/{{UV_SHA256_X86_64}}/${uv_sha_x86:?}/g" \
+  -e "s/{{UV_SHA256_AARCH64}}/${uv_sha_arm:?}/g" \
   setup.sh
 rm ./*.bak
 grep -rl '{{' .

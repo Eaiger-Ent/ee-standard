@@ -15,7 +15,7 @@
 #     else
 #       fail "what does not" "B"
 #     fi
-#     verdict 00-preflight.sh 10-repo.sh
+#     verdict 00-tools.sh 10-repo.sh
 #
 # and `verdict` turns the counters into the exit code that names the next stage.
 
