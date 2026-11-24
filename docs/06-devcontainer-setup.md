@@ -74,7 +74,7 @@ evidence for each step is in
 | Apple silicon Mac, macOS 26 or later | `sw_vers -productVersion` and `uname -m` | |
 | Apple `container` 1.7.1 or later | `container --version` | Apple's signed installer from the [releases page](https://github.com/apple/container/releases). Installing needs an admin account once; nothing after it does. |
 | Node.js | `node --version` | Runs the pinned CLI and the launcher |
-| The pinned `devcontainer` CLI | `.devcontainer/node_modules/.bin/devcontainer --version` reports `0.90.0` | `npm ci --prefix .devcontainer` in the checkout, on the host. `.devcontainer/package-lock.json` pins it, and the launcher never uses a global install. |
+| The pinned `devcontainer` CLI | `.devcontainer/node_modules/.bin/devcontainer --version` reports the version `.devcontainer/package.json` pins | `npm ci --prefix .devcontainer` in the checkout, on the host. `.devcontainer/package-lock.json` pins it, and the launcher never uses a global install. |
 | The Keychain values | § 2 | The same values Docker uses. `fetch-secrets.sh` runs on the host either way. |
 
 Start the services once per login (the first start offers to download a
