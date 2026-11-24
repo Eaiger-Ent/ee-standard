@@ -24,7 +24,7 @@
     },
     "templates/adopt/guided.sh": {
       "stance": "owed-upstream",
-      "why": "ADR 0065: guided.sh asks which container runtime to use and builds with it, and _lib.sh gains RUNTIME_APPLE and RUNTIME_DOCKER and recognises an Apple container. Not yet submitted: owed in an incubator amendment to control-register."
+      "why": "ADR 0065: guided.sh asks which container runtime to use and builds with it, and _lib.sh gains RUNTIME_APPLE and RUNTIME_DOCKER and recognises an Apple container. Not yet submitted: owed in an incubator amendment to control-register. Since then: \u00a7 1 updates an installed plugin rather than reporting it, \u00a7 4 copies no template that lacks the launcher, and the handover updates the container's plugins."
     },
     "templates/adopt/_lib.sh": {
       "stance": "owed-upstream",
@@ -36,7 +36,7 @@
     },
     "templates/adopt/30-container.sh": {
       "stance": "owed-upstream",
-      "why": "ADR 0065: the adopt route accepts Apple `container` or Docker. Stage 0 fails only when neither answers, stage 3 asks each runtime that answers, and guided.sh asks the person to confirm the runtime. The template ships the Apple `container` launcher, identical to .devcontainer/bin/, and pins the devcontainer CLI it runs in its own package.json and lock file. Not yet submitted: owed in an incubator amendment to control-register."
+      "why": "ADR 0065: the adopt route accepts Apple `container` or Docker. Stage 0 fails only when neither answers, stage 3 asks each runtime that answers, and guided.sh asks the person to confirm the runtime. The template ships the Apple `container` launcher, identical to .devcontainer/bin/, and pins the devcontainer CLI it runs in its own package.json and lock file. Not yet submitted: owed in an incubator amendment to control-register. Since then: stage 3 fails a .devcontainer missing the launcher, package.json or package-lock.json, which a template from a plugin older than 0.6.0 lacks."
     },
     "templates/devcontainer/.gitignore": {
       "stance": "owed-upstream",

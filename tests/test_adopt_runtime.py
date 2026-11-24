@@ -190,6 +190,9 @@ def _substituted_project(tmp_path: Path) -> Path:
     project = tmp_path / "my-app"
     (project / ".devcontainer").mkdir(parents=True)
     (project / ".devcontainer" / "setup.sh").write_text(f"# {'a' * 64}\n", encoding="utf-8")
+    (project / ".devcontainer" / "bin").mkdir()
+    for name in ("bin/container-session.mjs", "package.json", "package-lock.json"):
+        (project / ".devcontainer" / name).write_text("{}\n", encoding="utf-8")
     # The pinned CLI's own code carries `{{`, and it is installed, not substituted.
     modules = project / ".devcontainer" / "node_modules" / "cli"
     modules.mkdir(parents=True)
@@ -217,6 +220,22 @@ def test_stage_3_waits_for_a_container_apple_has_not_started(tmp_path: Path) -> 
     result = _run(route / "30-container.sh", env, project)
     assert result.returncode == 2, result.stdout
     assert "no running container for this folder" in result.stdout
+
+
+def test_stage_3_fails_a_template_older_than_the_launcher(tmp_path: Path) -> None:
+    """Reported on Run D: a cache left at 0.1.0 by an install that does not update.
+
+    § 4 copied its template, which has no launcher, and nothing said so until
+    § 5's `shell` failed with `Cannot find module`. Contract 39 needs the three
+    files on either runtime, so this stage names the gap where it happens.
+    """
+    project = _substituted_project(tmp_path)
+    (project / ".devcontainer" / "bin" / "container-session.mjs").unlink()
+    route = _route(tmp_path)
+    result = _run(route / "30-container.sh", _host(tmp_path), project)
+    assert result.returncode == 1, result.stdout
+    assert "the template predates the launcher" in result.stdout
+    assert "bin/container-session.mjs" in result.stdout
 
 
 def test_stage_3_says_when_no_runtime_can_be_asked(tmp_path: Path) -> None:

@@ -508,11 +508,28 @@ Everything below arrives in it, including the devcontainer you copy at step 4.
 ```bash
 claude plugin marketplace add Eaiger-Ent/ee-standard
 claude plugin install control-register@ee-standard
+claude plugin marketplace update ee-standard
+claude plugin update control-register@ee-standard
 ```
 
+**The last two lines are not optional, even on a first install.** On a machine
+that has installed the plugin before, the first two find the existing copy and
+leave it as it was, however old — and nothing later says so. One adopter's
+cache still held the first release, whose template has no Apple `container`
+launcher; § 4 copied it without complaint and § 5 failed with
+`Cannot find module`. On a fresh
+install the update finds nothing newer and changes nothing. If it prints
+*Restart to apply changes*, restart any Claude Code session that is open.
+
 **Done when:** `claude plugin list | grep control-register` prints a row, and
-`ls ~/.claude/plugins/cache/ee-standard/control-register/*/templates/devcontainer`
-lists files.
+the newest version in the cache is the one `main` publishes:
+
+```bash
+ls ~/.claude/plugins/cache/ee-standard/control-register/
+curl -fsSL https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/main/plugins/control-register/.claude-plugin/plugin.json | grep '"version"'
+```
+
+An older version left alongside it is harmless; § 4 takes the newest.
 
 **If it fails:** `claude: command not found` means Claude Code is not installed —
 see the table above.
@@ -686,11 +703,18 @@ version=$(ls "$plugin" | sort -V | tail -1)
 echo "${version:?no control-register in the cache — § 1 has not run}"
 cp -R "$plugin/$version/templates/devcontainer" .devcontainer
 rm .devcontainer/README.md
+test -f .devcontainer/bin/container-session.mjs \
+  || echo "STOP: template $version predates the launcher — § 1's update has not run"
 ```
 
 **The version is resolved, not globbed.** With two versions cached, `*` expands
 to both and `cp -R` copies two directories into one — a `.devcontainer` that
 looks copied and has the template nested inside it.
+
+**If it printed `STOP`**, the newest plugin in the cache is older than the
+register needs, on either runtime: contract 39 requires the launcher's files in
+every repository. Delete the copy with `rm -rf .devcontainer`, run § 1's two
+update lines, and copy again.
 
 Read the version and the x86_64 digest out of the register, and fetch the
 aarch64 one from the release. **Check all three are non-empty** — an extraction
@@ -862,9 +886,17 @@ claude plugin marketplace add Eaiger-Ent/ee-standard
 claude plugin install control-register@ee-standard
 claude plugin install lint-md@ee-standard
 claude plugin install lint-yaml@ee-standard
+claude plugin marketplace update ee-standard
+claude plugin update control-register@ee-standard
+claude plugin update lint-md@ee-standard
+claude plugin update lint-yaml@ee-standard
 ```
 
-The last two deploy DOC-001 and YML-001, the two controls no gate in
+The update lines are § 1's, for § 1's reason: the volume outlives a rebuild, so
+a container you built for an earlier release still holds that release's plugin,
+and `install` leaves it there.
+
+The `lint-md` and `lint-yaml` installs deploy DOC-001 and YML-001, the two controls no gate in
 `control-register` deploys. They are mirrors of the skills Equal Experts
 publishes in its private `ee-skills` marketplace, served from this one so you
 can install them

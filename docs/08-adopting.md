@@ -275,14 +275,26 @@ names.
 ```bash
 claude plugin marketplace add Eaiger-Ent/ee-standard
 claude plugin install control-register@ee-standard
+claude plugin marketplace update ee-standard
+claude plugin update control-register@ee-standard
 ```
 
+**The update is part of the install.** `marketplace add` and `plugin install`
+are no-ops on a machine that has the plugin already, at whatever version it has,
+and nothing downstream compares that version with a release. A cache left at the
+first release supplied a template with no Apple `container` launcher, § 2.0 copied it,
+and the first sign was `Cannot find module` at the launcher's `shell`. On a
+fresh install the update finds nothing newer and costs nothing.
+
 **How you know it worked**, and it is worth knowing the path as well as the
-verdict, because § 2.0 copies a directory out of it:
+verdict, because § 2.0 copies a directory out of it. The newest version listed
+should be the `version` in the
+[plugin's `plugin.json`](https://github.com/Eaiger-Ent/ee-standard/blob/main/plugins/control-register/.claude-plugin/plugin.json)
+on `main`, which is what the marketplace serves:
 
 ```bash
 claude plugin list | grep control-register
-ls ~/.claude/plugins/cache/ee-standard/control-register/*/templates/devcontainer
+ls ~/.claude/plugins/cache/ee-standard/control-register/
 ```
 
 The nine skills — six gates, `register-adopt`, `register-install` and
@@ -301,7 +313,9 @@ mounts its own `~/.claude` as a named volume, so a plugin installed on the host
 is not there — `/register-adopt` reports `Unknown command` and nothing explains
 why. Neither install is redundant: the host's supplies the devcontainer template
 copied in § 2.0, and the container's supplies the skills that deploy the gates.
-The volume outlives a rebuild, so the second install is once per project.
+The volume outlives a rebuild, so the second install is once per project — and
+for the same reason it keeps whatever version it was given, so it needs the two
+update lines above as much as the host does.
 
 ### 0.1 — Where `./controls.yaml` comes from
 
