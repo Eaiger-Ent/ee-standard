@@ -1,0 +1,8 @@
+{
+  "name": "devcontainer-tools",
+  "private": true,
+  "description": "The devcontainer CLI that bin/container-session.mjs runs on Apple container. package-lock.json pins it, and the launcher calls it by node_modules/.bin (ADR 0065).",
+  "devDependencies": {
+    "@devcontainers/cli": "0.90.0"
+  }
+}

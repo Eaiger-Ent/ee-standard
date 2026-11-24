@@ -102,7 +102,7 @@ That is the honest report rather than a regression.
 
 ## What it costs
 
-A Mac with Docker, admin on the repository, and a plan where rulesets are
+A Mac with a container runtime (Apple `container` or Docker), admin on the repository, and a plan where rulesets are
 available — public, or paid. All development happens inside the devcontainer,
 and everything runs through `uv`: the pinned interpreter, the pinned tools, the
 same versions at every locus.

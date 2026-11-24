@@ -68,7 +68,15 @@
   // parsing, so it would read a quoted value's quotes as part of the value; the
   // `.env` is sourced as shell, where the quotes are required. One fetch writes
   // the first and derives the second, so there is one thing to keep correct.
-  "runArgs": ["--env-file", ".devcontainer/.env.docker"],
+  //
+  // The resource floor is stated here, not left to the engine (ADR 0066). On
+  // Apple `container` each container gets only what it asks for, and one that
+  // asks for nothing gets 1 GiB (Phase 15's first adopter-shaped run). On
+  // Docker the same flags bound the container inside Docker Desktop's VM. Four
+  // CPUs and 4 GB, where this standard's own repository asks for eight of
+  // each: Docker refuses a container that asks for more CPUs than its VM has,
+  // and a default fits a small Mac. Raise both if your build needs more.
+  "runArgs": ["--env-file", ".devcontainer/.env.docker", "--cpus", "4", "--memory", "4g"],
 
   "postCreateCommand": "bash .devcontainer/setup.sh",
   "postStartCommand": "bash .devcontainer/check-auth.sh",

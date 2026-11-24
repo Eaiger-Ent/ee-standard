@@ -30,9 +30,10 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const NAME = basename(ROOT);
 const IMAGE = `${NAME}-dev:local`;
 const CONTAINER = `${NAME}-dev`;
-// ADR 0020: the pinned artefact, by the path its lock file owns. An adopter
-// pins it in `.devcontainer/package.json` (ADR 0064); this repository pins it
-// in the root one (ADR 0063). The directories, in that order:
+// ADR 0020: the pinned artefact, by the path its lock file owns. It is pinned
+// in `.devcontainer/package.json`, here and in every adopter (ADR 0066). A
+// repository pinned at the root before that still resolves. The directories,
+// in that order:
 const CLI_HOMES = [".devcontainer", "."];
 const KEEP_ALIVE = 'echo Container started; trap "exit 0" TERM; sleep infinity & wait';
 

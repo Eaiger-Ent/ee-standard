@@ -1,10 +1,9 @@
 {
   "name": "ee-standard",
   "private": true,
-  "description": "Node toolchain for ee-standard. package-lock.json is the one authority for each tool here: markdownlint-cli2 for DOC-001, and @devcontainers/cli for the Apple container launcher (ADR 0063). Every locus invokes them by node_modules/.bin rather than pinning a version of its own.",
+  "description": "Node toolchain for ee-standard. package-lock.json is the one authority for markdownlint-cli2 (DOC-001), which every locus invokes by node_modules/.bin rather than pinning a version of its own. The devcontainer CLI the Apple container launcher runs is pinned in .devcontainer/package.json, where the adopter template pins it (ADR 0066).",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@devcontainers/cli": "0.90.0",
     "markdownlint-cli2": "0.24.1"
   },
   "overrides": {

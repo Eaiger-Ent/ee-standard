@@ -6,7 +6,7 @@
 # that owns it was built. The stamp is at the top of the file rather than at
 # each entry, which is right here and wrong in `.pre-commit-config.yaml`: every
 # line of this file belongs to SUP-002.
-# ee-control: SUP-002  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
+# ee-control: SUP-002  ee-skill: gate-supply-chain@0.5.1  gate-contract: 7  register: v0.32.0  register-contract: 39
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -19,6 +19,21 @@ updates:
       interval: weekly
   - package-ecosystem: npm
     directory: /
+    schedule:
+      interval: weekly
+  # The devcontainer CLI the Apple `container` launcher runs (ADR 0066), and the
+  # template's copy of the same pin. tests/test_adopt_runtime.py holds the two
+  # identical, so they move in one grouped proposal rather than two that each
+  # fail until combined. Added by the gate's re-run at contract 7.
+  # `group-by: dependency-name` is what makes the group span both directories;
+  # without it Dependabot opens one pull request per directory. Added by hand
+  # after review, before the gate's example carried it.
+  - package-ecosystem: npm
+    directories: [/.devcontainer, /plugins/control-register/templates/devcontainer]
+    groups:
+      together:
+        patterns: ["*"]
+        group-by: dependency-name
     schedule:
       interval: weekly
   - package-ecosystem: devcontainers

@@ -28,12 +28,34 @@ require_tool() {
   fi
 }
 
+# Either runtime will do, and neither is required by name (ADR 0065). Each is
+# asked whether it is running, not only whether it is installed: an installed
+# runtime that does not answer builds nothing.
+docker_answers=false
+if installed docker && docker info >/dev/null 2>&1; then
+  docker_answers=true
+fi
+apple_answers=false
+if installed container && container system status >/dev/null 2>&1; then
+  apple_answers=true
+fi
+
 section "Tools (§ B)"
 require_tool brew "Homebrew"
-require_tool docker "Docker"
 require_tool claude "Claude Code"
 require_tool npm "npm"
-require_tool devcontainer "devcontainer CLI"
+
+# Only the Docker route builds with a `devcontainer` on PATH. The Apple route
+# runs the CLI that `.devcontainer/package.json` pins, by its path (ADR 0020).
+if installed devcontainer; then
+  pass "devcontainer CLI"
+elif [ "$docker_answers" = true ]; then
+  fail "devcontainer CLI — not on PATH, and the Docker route builds with it" "B"
+else
+  optional "devcontainer CLI"
+  detail "The Apple container route runs the CLI that .devcontainer/package.json pins."
+fi
+
 require_tool gh "GitHub CLI"
 require_tool uv "uv"
 
@@ -59,21 +81,36 @@ else
   detail "§ 5 offers two ways into the container and only one of them is VS Code."
 fi
 
-# -------------------------------------------------------------------- docker
+# ----------------------------------------------------------- container runtime
 
-section "Docker is running (§ A)"
-if ! installed docker || ! docker info >/dev/null 2>&1; then
-  fail "docker info fails — Docker Desktop is not running" "A"
-else
-  pass "docker info succeeds"
+section "A container runtime is running (§ A)"
+if [ "$apple_answers" = true ]; then
+  pass "$RUNTIME_APPLE — container system status succeeds"
+  detail "Each container gets the memory its devcontainer.json runArgs ask for. There is no VM to size."
+fi
+
+if [ "$docker_answers" = true ]; then
+  pass "$RUNTIME_DOCKER — docker info succeeds"
 
   memory_bytes=$(docker info --format '{{.MemTotal}}' 2>/dev/null || echo 0)
   memory_gb=$((memory_bytes / 1000000000))
   if [ "$memory_gb" -ge 8 ]; then
-    pass "${memory_gb} GB of memory"
+    pass "Docker has ${memory_gb} GB of memory"
   else
     manual "Docker has ${memory_gb} GB of memory, and the build wants 8" "B"
   fi
+fi
+
+if [ "$apple_answers" = false ] && [ "$docker_answers" = false ]; then
+  fail "no container runtime answers — neither Apple container nor Docker" "A"
+fi
+
+# Installed and not running is worth naming, whichever way the verdict went.
+if [ "$apple_answers" = false ] && installed container; then
+  detail "Apple container is installed, and container system status fails: its services are not running."
+fi
+if [ "$docker_answers" = false ] && installed docker; then
+  detail "Docker is installed, and docker info fails: Docker is not running."
 fi
 
 # ------------------------------------------------------------ git URL rewrites

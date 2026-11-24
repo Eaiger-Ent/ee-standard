@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-17
-**Revision:** 8
+**Revision:** 9
 
 Ratified decision from
 [`09-phase-1.5-review.md`](../09-phase-1.5-review.md) § Decisions required.
@@ -266,6 +266,16 @@ the test the third pass introduced for `stacks:` and the fourth for
 | --- | --- |
 | Only `blocking` and `blocking (baselined)` controls, and meta-controls, set the exit code (`runner.EXIT_SETTING_RUNGS`) | What a rung means is part of the register *format*, defined in `docs/00-concepts.md` § The enforcement ladder. A repository chooses each control's rung, which is a register fact. It cannot choose what `warn` means and still be using this standard |
 
+### Still staying in the checker — where the launcher is
+
+[ADR 0066](0066-apple-container-is-a-first-class-engine.md), accepted
+2026-11-23, made `register-check deployments` compare a repository's Apple
+`container` launcher with the plugin's copy. It sets no exit code.
+
+| Rule | Why it is not a register fact |
+| --- | --- |
+| The launcher is at `templates/devcontainer/bin/container-session.mjs` in the plugin and `.devcontainer/bin/container-session.mjs` in a repository (`deployments._LAUNCHER_IN_PLUGIN`, `_LAUNCHER_IN_REPO`) | Both are the template's layout, not a repository's. The plugin decides where its template keeps the file, and the template is copied to `.devcontainer/`, the directory the register's own `devcontainer` predicate names. A repository that moved the file would have a launcher that resolves its CLI from the wrong root, because the launcher finds the repository two directories above itself |
+
 ### Applied — fifth pass, register contract 12
 
 One rule, and it moves *into* the checker rather than out of it — the direction
@@ -361,5 +371,6 @@ deployment was recorded. No control proves the deployment was complete.
 | 6 | 2026-08-20 | § Applied — fifth pass, register contract 12. | Nathan Carney |
 | 7 | 2026-08-24 | § Still staying in the checker — the platform-credential additions. Records why the token-expiry header, the Actions variable and the credential-probe endpoint are the checker's, while the maximum they are compared against is the register's. | Nathan Carney |
 | 8 | 2026-08-24 | Same section, one row: the presence of `X-OAuth-Scopes` identifying a classic personal access token, added with register contract 24. | Nathan Carney |
+| 9 | 2026-11-23 | § Still staying in the checker — where the launcher is. The two paths `register-check deployments` compares for ADR 0066. | Nathan Carney |
 
 Revisions before 2026-08-23 are backfilled from the amendments in the body and from git, per [ADR 0025](0025-an-amendment-is-a-recorded-revision.md); they were not recorded at the time.
