@@ -198,17 +198,22 @@ referencing no secret the register does not name, and what it reads,
 writes. There is nothing to write and so no `deployed_by` to name;
 `gate-secrets` verifies it and writes nothing for it.
 
-**SEC-002 sat in that row until register contract 32 and no longer does.** It
-is still satisfied by an absence — a workflow **not** referencing a static
-credential — but from ADR 0039 it declares a `pre-push` locus, and a locus is
-something a gate installs. So `gate-secrets` now writes one artefact for it, a
-hook, and stamps it. The lesson is worth keeping: which row a control belongs in
-is read from the register at plan time and never remembered, because a control
-can move between them.
+**SEC-002 sat in that row until register contract 32.** From ADR 0039 it declares
+a `pre-push` locus, a hook `gate-secrets` writes and stamps. Which row a control
+belongs in is read from the register at plan time, never remembered: controls move.
 
 A control satisfied by an absence still has to appear in the plan, and has to be
 distinguishable from one nobody has got to yet. Planning it as **manual** would
 tell a reader there is an act they owe, and there is not.
+
+### A failing *dispatch elsewhere* control stops the run here
+
+If one fails — on a first adoption DOC-001 and YML-001 both do — emit **Blocked**:
+the operator runs the named skills, then this one again.
+`gate-supply-chain` wires SUP-001 at `pre-push`, SUP-001 fails while `lint-md`'s
+`package-lock.json` is untracked, and Step 4 pushes before `gate-repo` — so the run
+would stop at its own push, and those skills start only when a human types them.
+Run first, they also hand `gate-supply-chain` the node ecosystem to cover.
 
 ---
 
@@ -397,10 +402,9 @@ is has not been adopted, whatever was written for it.
 ## Step 6 — Commit
 
 Only after Step 5, and only if it did not exit `1` or `2` — with one exception. A
-first adoption exits `1` on the **dispatch elsewhere** controls, on any block
-whose message names one (SUP-001's lockfile block names DOC-001), and on remote
-blocks awaiting a platform act Step 2 listed under *What needs a human*. If those
-are the only failures, commit: Output's **Adopted** block says what runs next.
+first adoption can exit `1` on remote blocks awaiting a platform act Step 2 listed
+under *What needs a human*. If those are the only failures, commit: Output's
+**Adopted** block says what runs next.
 
 One commit, conventional format, listing the control IDs deployed:
 
@@ -429,7 +433,7 @@ Read `${CLAUDE_SKILL_DIR}/output-templates.md` and emit the block whose trigger 
 | **Adopted** | Step 5 exited `0` or `3`, or `1` only on what Step 6's exception names, and Step 6 committed |
 | **Failed** | A gate, or `register-install` at row 5a, failed; or Step 5 exited `2`, or `1` on anything else |
 | **Cancelled** | **Cancel** at Step 3 |
-| **Blocked** | A stop before Step 2: no checker, no register, not a git repository, or a stamp ahead of the installed contract |
+| **Blocked** | A stop before Step 2: no checker, no register, not a git repository, a stamp ahead of the installed contract, or a failing *dispatch elsewhere* control |
 
 ## Error handling
 

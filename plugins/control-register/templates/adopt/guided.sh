@@ -574,7 +574,20 @@ what it prints — and this step prints verdicts you will want:
 
   /tui default
 
-Then, at the same prompt:
+First the two controls it cannot deploy, which only you can start:
+
+  /lint-md
+  /lint-yaml
+
+then node_modules/ in .gitignore and DOC-001's editor extension in
+.devcontainer/devcontainer.json (docs/08-adopting.md § 3, items 1 and 2), and
+commit them from the same prompt:
+
+  ! git add -A && git commit -m "chore(standard): deploy DOC-001 and YML-001"
+
+/register-adopt stops while DOC-001 or YML-001 fails: it pushes before it
+protects main, and the pre-push hook refuses that push without lint-md's
+lockfile. Then, at the same prompt:
 
   /register-adopt --repo . --register ./controls.yaml
 
@@ -583,11 +596,10 @@ the checker install, which get the same answer every time, and answers nothing
 else: gate-repo still asks before every call that changes what your colleagues
 can push.
 
-5. It ends red on DOC-001 and YML-001, and that is expected: it names the skills
-that deploy them and does not run them. Its last lines are a numbered Next list
-— /lint-md, /lint-yaml, /gate-supply-chain again, two edits of your own, then a
-pull request if main is now protected. START-HERE.md § 5, "Then, at the same
-prompt", is that list with the reasons. The adoption is not done until it is.
+5. It pushes its gates' work, protects main, and commits the rest without
+pushing. Its last lines are a numbered Next list: on a protected main, a branch
+and a pull request for that commit. START-HERE.md § 5, "Then: land the last
+commit", is that list with the reasons. The adoption is not done until it lands.
 MSG
 
 echo

@@ -939,7 +939,7 @@ The `lint-md` and `lint-yaml` installs deploy DOC-001 and YML-001, the two contr
 publishes in its private `ee-skills` marketplace, served from this one so you
 can install them
 ([ADR 0060](docs/adr/0060-this-marketplace-mirrors-the-lint-skills.md)). You run
-them after the adoption, at § Your first full report.
+them inside the adoption session, just before the adoption itself.
 
 **Done when** `claude plugin list | grep -E 'control-register|lint-(md|yaml)'`
 prints three rows. The volume survives rebuilds, so this is once per project
@@ -980,6 +980,30 @@ session prints — and this step prints commands and verdicts you will want:
 something, and TYP-001 runs mypy strict, so a test you write yourself needs its
 `-> None`.
 
+**First, the two controls `/register-adopt` cannot deploy.** DOC-001 and YML-001
+belong to `lint-md` and `lint-yaml`, which start only when you type them — a
+session cannot run them for you. `/register-adopt` stops while either fails,
+because it pushes before it protects `main`, and the `pre-push` hook it has just
+installed refuses that push until `lint-md`'s `package-lock.json` is committed.
+At the same prompt:
+
+1. `/lint-md` — deploys DOC-001.
+2. `/lint-yaml` — deploys YML-001.
+3. Two edits of your own: `node_modules/` in your root `.gitignore`, and
+   DOC-001's editor extension in `.devcontainer/devcontainer.json`.
+   [`docs/08-adopting.md`](docs/08-adopting.md) § 3, items 1 and 2, give both
+   exactly. DOC-001 still fails without them.
+
+Then commit them without leaving the session — `!` runs a shell command:
+
+```text
+! git status --short
+! git add -A && git commit -m "chore(standard): deploy DOC-001 and YML-001"
+```
+
+Read the status first: it should show only what those three steps wrote. The
+commit stays local; `/register-adopt` pushes it with its own.
+
 Then type this at the same prompt:
 
 ```text
@@ -1008,55 +1032,35 @@ answer for you, **unless the plan lists a GitHub API call** — a change to what
 your colleagues can push is always answered by you, once, with the call on
 screen. Anything the plan did not list is still asked.
 
-**It ends red, and that is expected.** Its own report fails DOC-001 and YML-001,
-and SUP-001 on a lockfile those two bring. `/register-adopt` *names* the skills
-that deploy them and does not run them. It commits anyway and ends with a
-numbered **Next** list, which is the rest of this step.
+**What it does, in order.** It deploys the gates, commits what they wrote, and
+pushes — `main` takes that commit while it can still take a push. Then
+`gate-repo` protects `main`, the whole register is verified, and what is left —
+`gate-repo`'s record of the ruleset — is committed and **not** pushed. It ends
+with a numbered **Next** list, which is the rest of this step.
 
-### Then, at the same prompt: finish what `/register-adopt` hands on
-
-**This is part of step 5, not an optional extra.** Until it is done, DOC-001,
-YML-001 and SUP-001 fail.
+### Then: land the last commit
 
 **If `/register-adopt` applied the ruleset** — it does on a public repository, or
-on a paid plan — `main` is now protected and takes changes only by pull request.
-So do this on a branch. Leave the Claude session (`/exit`) and run:
+on a paid plan — `main` now takes changes only by pull request. Leave the session
+(`/exit`) and run:
 
 ```bash
-git switch -c adopt/lint
-```
-
-The branch carries `/register-adopt`'s last commit with it, which is how that
-commit reaches `main`. Then `claude --permission-mode acceptEdits` again, and:
-
-1. `/lint-md` — deploys DOC-001, and its `package-lock.json` is what SUP-001 was
-   asking for.
-2. `/lint-yaml` — deploys YML-001.
-3. `/gate-supply-chain` — again. `lint-md` gave your repository a
-   `package.json`, which is a node ecosystem, and SUP-002 needs an update
-   channel for it.
-4. Two edits of your own: `node_modules/` in your root `.gitignore`, and
-   DOC-001's editor extension in `.devcontainer/devcontainer.json`.
-   [`docs/08-adopting.md`](docs/08-adopting.md) § 3 items 4 and 7 give both
-   exactly. DOC-001 still fails without them.
-
-Then commit, and land it:
-
-```bash
-uv run register-check
-git add -A && git commit -m "chore(standard): deploy DOC-001 and YML-001"
-git push -u origin adopt/lint
+git switch -c adopt/finish
+git push -u origin adopt/finish
 gh pr create --fill
 ```
 
-Read `git status` before `git add -A` — it should show only what the four steps
-wrote. Merge the pull request once its `register-check` job passes. If
-`/register-adopt` did **not** apply a ruleset, skip the branch and push to `main`.
+The branch carries the last commit. Merge the pull request once its
+`register-check` job passes. If no ruleset was applied, `git push` instead.
 
 **Done when:** `uv run register-check` exits `3` with nothing failing — SEC-003
 stays `UNCLASSIFIED` on your machine for good, and § Your first full report says
-why — and the pull request's `register-check` job is green. On a private repository without rulesets it exits `1` on CI-001
-and SEC-001 instead, which § If your plan has no rulesets explains.
+why — and the `register-check` job on `main` is green. On a private repository
+without rulesets it exits `1` on CI-001 and SEC-001 instead, which § If your plan
+has no rulesets explains.
+
+**If it stops before planning** and names DOC-001 or YML-001, the commands above
+it did not land: run whichever it names, commit, and run it again with `--yes`.
 
 **If it fails:** it will still prompt for `.devcontainer/devcontainer.json` —
 that is a sensitive file and no permission mode silences it. `gate-repo` asks its
@@ -1192,9 +1196,9 @@ predictable set, and the order you clear them in matters.
 
 | The report says | What it means | What clears it |
 | --- | --- | --- |
-| `DOC-001 FAIL` — *no tracked markdownlint configuration file* | One of the two controls no gate in `control-register` deploys. It is `lint-md`'s, as YML-001 is `lint-yaml`'s. **Tracked** is the operative word: a file git does not carry is not wired | `/lint-md`, in step 5's *Then, at the same prompt* |
-| `YML-001 FAIL` — *no tracked yamllint configuration (.yamllint, .yamllint.yaml, .yamllint.yml)* | The other one, and it fails for the same reason | `/lint-yaml`, after `/lint-md` |
-| `SUP-001 FAIL` — *markdownlint-cli2 is sourced from package-lock.json, which is not tracked* | **The same cause**, not a second one. The register pins that tool from a lockfile you do not have yet | Committing `package-lock.json` in the step above |
+| `DOC-001 FAIL` — *no tracked markdownlint configuration file* | One of the two controls no gate in `control-register` deploys. It is `lint-md`'s, as YML-001 is `lint-yaml`'s. **Tracked** is the operative word: a file git does not carry is not wired | `/lint-md`, before `/register-adopt` in step 5 |
+| `YML-001 FAIL` — *no tracked yamllint configuration (.yamllint, .yamllint.yaml, .yamllint.yml)* | The other one, and it fails for the same reason | `/lint-yaml`, straight after `/lint-md` |
+| `SUP-001 FAIL` — *markdownlint-cli2 is sourced from package-lock.json, which is not tracked* | **The same cause**, not a second one. The register pins that tool from a lockfile you do not have yet | Committing `package-lock.json` in the step above. Until then the `pre-push` hook refuses every push |
 | `SEC-001 FAIL` — *push protection is 'disabled'* | The local blocks pass — the scanner runs at every locus. This is the server-side stop, and only GitHub can turn it on. Step 3 asked for it | Settings → Code security → enable push protection. Admin, and one click. On a private repository without a paid plan there is no such setting: § If your plan has no rulesets |
 | `CI-001 FAIL` — *not protected as the register requires* | Note its file block **passed**: you have *recorded* the ruleset. Recording is intent; this block asks what GitHub enforces. `/register-adopt` applies it through `gate-repo` at step 5, so this means it could not: a private repository without rulesets, a token without `administration: write`, or a plan you declined | The first: § If your plan has no rulesets. Otherwise fix the token (§ E) and run `/gate-repo` |
 | `GOV-001 FAIL` — *a merge waits for no check at all* | Not a separate problem. Every blocking control is credited to a CI job nothing requires, which is CI-001's failure seen from the other end | Clearing CI-001 clears this |
@@ -1202,8 +1206,8 @@ predictable set, and the order you clear them in matters.
 
 **The first three rows are one job, and step 5 already gave it to you.**
 `/register-adopt` plans DOC-001 and YML-001 as *dispatch elsewhere*: it names each
-skill and does not run it. Step 5's *Then, at the same prompt* runs them, then
-`/gate-supply-chain` again, on a branch if `main` is protected. If you will not
+skill and does not run it, and it stops while either fails. Step 5 runs them
+before it, and commits their output. If you will not
 install a plugin, [`docs/08-adopting.md`](docs/08-adopting.md) § 3.A wires both
 controls by hand, and `register-check` verifies what you write the same way.
 
@@ -1229,7 +1233,7 @@ waits on a job that cannot.
 | `sha256sum -c` fails during container create | A placeholder survived, or an architecture digest is wrong | `grep -rl --exclude-dir=node_modules '{{' .devcontainer` should print nothing |
 | `refusing to allow a Personal Access Token to create or update workflow` | The token has no **Workflows** permission — it is separate from Contents | Add it, re-store the token, and rebuild |
 | `git push` refused, and `pytest` said `no tests ran` (exit 5) | TST-001 requires a test suite to exist, and a runner that collects nothing exits non-zero | Write one test. An empty suite is not a passing one |
-| SUP-001: *"markdownlint-cli2 is sourced from package-lock.json, which is not tracked"* | You have not deployed DOC-001 yet — that tool is its, not a supply-chain fault | [`docs/08-adopting.md`](docs/08-adopting.md) § 3 |
+| SUP-001: *"markdownlint-cli2 is sourced from package-lock.json, which is not tracked"*, or `git push` refused by the `pre-push` hook with it | You have not deployed and committed DOC-001 yet — that tool is its, not a supply-chain fault | Step 5's *First, the two controls*: `/lint-md`, `/lint-yaml`, the two edits, commit. Never `--no-verify` |
 
 ## If your plan has no rulesets
 
