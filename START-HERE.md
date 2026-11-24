@@ -20,9 +20,18 @@ about to do says which, so you can raise them today and carry on.
 public, so the clone is anonymous — you need only `git` and `curl`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/main/adopt.sh -o adopt.sh
-bash adopt.sh
+mkdir -p ~/.cache/ee-standard
+curl -fsSL https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/main/adopt.sh -o ~/.cache/ee-standard/adopt.sh
+bash ~/.cache/ee-standard/adopt.sh
 ```
+
+**`adopt.sh` lives outside your repository, never in it.** It is a fetcher, not
+part of your project: it clones the newest release into the same cache
+directory and runs the route from there, reading whichever repository you are
+standing in. Fetched into the repository instead, it shows up as an untracked
+file for as long as you work there — an adopter met exactly that. If an earlier
+copy of these instructions put one in your repository, `rm adopt.sh`; never
+commit it.
 
 That checks § B's tools, asks where you keep projects and what to call this one,
 reads whether it already exists locally and on GitHub, and does the one thing
@@ -34,7 +43,7 @@ holds and tells you where you are. If the GitHub PAT is not there, it prints
 the token under this project's name, and offers to store one you paste.
 
 ```bash
-bash adopt.sh status
+bash ~/.cache/ee-standard/adopt.sh status
 ```
 
 That one only reads, and answers "what still needs doing" at any point.
@@ -273,8 +282,19 @@ uv init --name "$(basename "$PWD" | tr '_' '-')" --python 3.15
 uv add --dev pytest
 mkdir -p tests
 printf 'def test_it_runs() -> None:\n    assert True\n' > tests/test_smoke.py
-git add pyproject.toml uv.lock .python-version tests/
+printf '__pycache__/\n.venv/\n' >> .gitignore
+git add pyproject.toml uv.lock .python-version README.md .gitignore tests/
+[ ! -d src ] || git add src/
 ```
+
+**Everything `uv init` writes is yours, and all of it is staged.** Besides the
+three files the table needs, it writes a `README.md` — and, on newer uv, a
+`src/` package — which are your project's, so they go into your first commit
+with the rest. Edit the README whenever you like; nothing here reads it.
+Inside an existing git repository `uv init` writes no `.gitignore`, so the
+`printf` adds one: without it the first test run leaves `tests/__pycache__/`
+untracked, and a dependency install leaves `.venv/`. **The block stages and does
+not commit** — step 5's gates are what that first commit should pass through.
 
 **`--python 3.15` is not optional, and `uv init` will not choose it for you.**
 It writes both files that matter — `.python-version`, which *selects* the
@@ -568,7 +588,7 @@ and both are worth putting right.
 stopped.** The plugin you just installed ships a set of scripts that can: they
 read your machine and name the one stage still to look at.
 
-**If you took the guided route above, `bash adopt.sh status` is the same
+**If you took the guided route above, `bash ~/.cache/ee-standard/adopt.sh status` is the same
 thing** and needs no plugin. What follows is the same scripts reached through
 the plugin you have just installed.
 

@@ -86,7 +86,7 @@ verify block names in `args.tool`:
 | `IGNORE_FILE` | the same block, `args.ignore_file` |
 | `SECRET_PATHS` | SEC-001's `secret_files_are_gitignored` block, `args.paths` |
 | `TOOL_VERSION` | `tools.<TOOL>.version` |
-| `TOOL_SHA256` | `tools.<TOOL>.sha256` |
+| `TOOL_SHA256`, `TOOL_SHA256_ARM64` | `tools.<TOOL>.sha256` (the x64 build); the `checksums.also` entry for the `linux_arm64` asset, which an Apple silicon container runs |
 | `TOOL_REPO` | `tools.<TOOL>.release_repo` — `owner/name`, where the release is fetched from |
 | `PINNED_AT` | `tools.<TOOL>.pinned_at` — the paths that must repeat the version |
 | `CHECKER` | SEC-002's `gate_wired_at_declared_loci` block, `args.tool` — the checker, not the scanner |
@@ -185,11 +185,11 @@ checksum before running anything from it.
 
 ```bash
 bash "${CLAUDE_SKILL_DIR}/scripts/install-scanner.sh" \
-  "$TOOL" "$TOOL_REPO" "$TOOL_VERSION" "$TOOL_SHA256"
+  "$TOOL" "$TOOL_REPO" "$TOOL_VERSION" "$TOOL_SHA256" "$TOOL_SHA256_ARM64"
 ```
 
-It downloads the pinned release into a temporary directory, never the
-repository, and installs it only when the checksum matches.
+It downloads the build for this processor (arm64 on Apple silicon) to a
+temporary directory, never the repository, and installs only on a checksum match.
 
 If it exits `1`, **stop**. A downloaded artefact that does not match
 the checksum the register records is the one case where continuing is worse than
