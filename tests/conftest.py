@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -44,6 +45,32 @@ def template_payload(template: str, indent: int) -> str:
     return "".join(
         " " * indent + line if line.strip() else line for line in parts[1].splitlines(keepends=True)
     )
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """No `git` a test runs may reach a repository through the environment.
+
+    Git runs a hook from a worktree with `GIT_DIR` exported, pointing into the
+    main repository's `.git/worktrees/`. The pre-push hook runs this suite, and
+    `make_repo` then found that repository rather than its temporary directory.
+    On 2026-11-23 a push from a worktree set `core.bare = true` in this
+    repository's `.git/config` and committed ten "fixture" commits onto the
+    worktree's branch. A hook in the main checkout exports no `GIT_DIR`, which
+    is why it had never shown.
+
+    Git names the variables itself (`git rev-parse --local-env-vars`), so the
+    list is git's and not a copy kept here. Cleared once, before collection,
+    rather than per test, because a module-scoped fixture runs before any
+    function-scoped one could clear them.
+    """
+    names = subprocess.run(
+        ["git", "rev-parse", "--local-env-vars"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    for name in names:
+        os.environ.pop(name, None)
 
 
 @pytest.fixture(autouse=True)
