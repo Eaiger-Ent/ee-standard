@@ -746,3 +746,28 @@ def test_it_says_a_test_suite_is_required_before_the_first_push() -> None:
     assert "markdownlint-cli2 is sourced" in trouble, (
         "the lockfile failure that means DOC-001 is undeployed has no row"
     )
+
+
+def test_step_1_updates_a_plugin_that_is_already_installed() -> None:
+    """Reported on Run D: `Cannot find module …/container-session.mjs` at § 5.
+
+    `claude plugin install` finds an existing copy and leaves it, however old.
+    The adopter's cache was at 0.1.0, § 4 copied its launcher-less template, and
+    nothing said so. § 1 updates after installing, § 4 stops on a template
+    without the launcher, and the container's own install updates too, because
+    its volume outlives a rebuild.
+    """
+    step_1 = TEXT.split("## 1 — Install the plugin", 1)[1].split("\n## ", 1)[0]
+    for line in (
+        "claude plugin marketplace update ee-standard",
+        "claude plugin update control-register@ee-standard",
+    ):
+        assert line in step_1, f"§ 1 never runs `{line}`, so an old cache stays old"
+    step_4 = TEXT.split("## 4 — The container", 1)[1].split("\n## 5 ", 1)[0]
+    assert "test -f .devcontainer/bin/container-session.mjs" in step_4, (
+        "§ 4 copies whatever template the cache holds without checking it has the launcher"
+    )
+    step_5 = TEXT.split("## 5 — Run the adoption", 1)[1].split("\n## 6 ", 1)[0]
+    assert "claude plugin update control-register@ee-standard" in step_5, (
+        "the container's install never updates, and its volume outlives a rebuild"
+    )

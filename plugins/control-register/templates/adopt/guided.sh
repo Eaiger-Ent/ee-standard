@@ -138,11 +138,20 @@ echo "  The container runs on: $runtime"
 # --------------------------------------------------------------------- § 1
 
 banner "The plugin (§ 1)"
+# An install finds an existing copy and leaves it, however old, so an installed
+# plugin is updated rather than reported. A cache left at 0.1.0 once supplied a
+# template with no Apple container launcher, and nothing said so until § 5.
 if grep -q "control-register@ee-standard" < <(claude plugin list 2>/dev/null); then
   detail "control-register is already installed."
+  if confirm "Update it to the newest release? It touches no project"; then
+    claude plugin marketplace update ee-standard
+    claude plugin update control-register@ee-standard
+  fi
 elif confirm "Install the control-register plugin? It touches no project"; then
   claude plugin marketplace add Eaiger-Ent/ee-standard
   claude plugin install control-register@ee-standard
+  claude plugin marketplace update ee-standard
+  claude plugin update control-register@ee-standard
 else
   detail "Skipped. § 4 copies the devcontainer template out of it, so it is needed."
 fi
@@ -389,6 +398,10 @@ if [ -d .devcontainer ]; then
 elif [ -z "$plugin_version" ]; then
   echo "The plugin cache is empty, so there is no template to copy."
   detail "§ 1 installs it. § 4 has the steps if you would rather do it by hand."
+elif [ ! -f "$plugin_cache/$plugin_version/templates/devcontainer/bin/container-session.mjs" ]; then
+  echo "The newest plugin in the cache, $plugin_version, predates the launcher every"
+  echo "repository now needs, so its template is not copied."
+  detail "§ 1 has the update lines. Run them, then run this again."
 elif ! [ -f controls.yaml ]; then
   echo "No controls.yaml, and the uv version and digest are read out of it."
   detail "§ 2 is where the register comes from."
@@ -528,6 +541,13 @@ install the skills that deploy DOC-001 and YML-001.
   claude plugin install control-register@ee-standard
   claude plugin install lint-md@ee-standard
   claude plugin install lint-yaml@ee-standard
+  claude plugin marketplace update ee-standard
+  claude plugin update control-register@ee-standard
+  claude plugin update lint-md@ee-standard
+  claude plugin update lint-yaml@ee-standard
+
+The update lines matter after a new release: the volume outlives a rebuild
+and keeps whatever version it was given, and an install leaves it there.
 
 3. The route is on your Mac, and this is a different machine. ~/.cache is
 not mounted into the container, so fetch the bootstrap again in there:

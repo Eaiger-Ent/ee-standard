@@ -28,6 +28,20 @@ else
   pass "the template README is gone"
 fi
 
+# Register contract 39 holds these three in every repository, on either runtime.
+# Their absence means the template came from a plugin older than 0.6.0 — usually
+# a cache § 1's install left alone, because an install does not update.
+missing=""
+for file in bin/container-session.mjs package.json package-lock.json; do
+  [ -f ".devcontainer/$file" ] || missing="$missing $file"
+done
+if [ -z "$missing" ]; then
+  pass "the launcher and its pinned CLI are in place"
+else
+  fail "the template predates the launcher — missing:$missing" "4"
+  detail "It was copied from an old plugin. § 1's update lines, then copy again."
+fi
+
 # --------------------------------------------------------------- substitutions
 
 section "Nothing left to substitute (§ 4)"
