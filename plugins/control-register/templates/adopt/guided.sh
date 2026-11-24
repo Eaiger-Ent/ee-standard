@@ -251,7 +251,9 @@ else
     uv add --dev pytest
     mkdir -p tests
     printf 'def test_it_runs() -> None:\n    assert True\n' > tests/test_smoke.py
-    git add pyproject.toml uv.lock .python-version tests/
+    printf '__pycache__/\n.venv/\n' >> .gitignore
+    git add pyproject.toml uv.lock .python-version README.md .gitignore tests/
+    [ ! -d src ] || git add src/
     pass "created, and staged — not committed"
   else
     detail "Skipped. § 5 will stop, having written nothing, until this exists."

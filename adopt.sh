@@ -2,8 +2,12 @@
 #
 # The bootstrap. This is the one file you fetch by hand; it gets the rest.
 #
-#   curl -fsSL https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/main/adopt.sh -o adopt.sh
-#   bash adopt.sh
+#   mkdir -p ~/.cache/ee-standard
+#   curl -fsSL https://raw.githubusercontent.com/Eaiger-Ent/ee-standard/main/adopt.sh -o ~/.cache/ee-standard/adopt.sh
+#   bash ~/.cache/ee-standard/adopt.sh
+#
+# Kept outside the repository it adopts: it is a fetcher, not part of the
+# project, and fetched into one it sits there untracked.
 #
 # It needs nothing installed but git and curl, and no credentials: this
 # repository is public, so the clone below is anonymous. That is the point —

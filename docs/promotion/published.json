@@ -11,12 +11,20 @@
         "\"version\": \"[^\"]*\""
       ]
     },
-    "skills/*[!n]/SKILL.md": {
+    "skills/*[!ns]/SKILL.md": {
       "stance": "by-design",
-      "why": "Each copy names its own repository's skill map: docs/02-skill-family.md here, docs/skill-relationship-map.md in the incubator, which substitutes it on promotion (docs/05-promotion.md row 8). Nothing else may differ. Widened to the gates and register-install on re-recording at 0.1.21, once ADR 0059 revision 2 shipped (incubator#1247 to #1253) and the incubator's review fixes were taken back. register-adopt and register-variance folded in on re-recording at 0.1.22, once #1258 shipped and the incubator's 'whose rows list the skills' sentence was taken back. Widened to every skill on re-recording at 0.1.26, once ADR 0062's release set adr-0062-answered-once shipped (incubator#1324 to #1331) unchanged: the six gates' and register-adopt's SKILL.md differ from the published copies only in this link. Spelled `skills/*[!n]/SKILL.md` from ADR 0066 so that it leaves out gate-supply-chain, the one skill whose name ends in `n` and whose SKILL.md is owed upstream below. A new skill ending in `n` is reported as undeclared, not passed.",
+      "why": "Each copy names its own repository's skill map: docs/02-skill-family.md here, docs/skill-relationship-map.md in the incubator, which substitutes it on promotion (docs/05-promotion.md row 8). Nothing else may differ. Widened to the gates and register-install on re-recording at 0.1.21, once ADR 0059 revision 2 shipped (incubator#1247 to #1253) and the incubator's review fixes were taken back. register-adopt and register-variance folded in on re-recording at 0.1.22, once #1258 shipped and the incubator's 'whose rows list the skills' sentence was taken back. Widened to every skill on re-recording at 0.1.26, once ADR 0062's release set adr-0062-answered-once shipped (incubator#1324 to #1331) unchanged: the six gates' and register-adopt's SKILL.md differ from the published copies only in this link. Spelled `skills/*[!n]/SKILL.md` from ADR 0066 so that it leaves out gate-supply-chain, the one skill whose name ends in `n` and whose SKILL.md is owed upstream below. Narrowed to `skills/*[!ns]/SKILL.md` at plugin 0.6.3 so that it also leaves out gate-secrets, whose SKILL.md is owed upstream below. A new skill ending in `n` or `s` is reported as undeclared, not passed.",
       "normalise": [
         "docs/(?:02-skill-family|skill-relationship-map)\\.md"
       ]
+    },
+    "skills/gate-secrets/SKILL.md": {
+      "stance": "owed-upstream",
+      "why": "Phase 15 Run D: pre-flight reads TOOL_SHA256_ARM64 from the register's `checksums.also`, and Step 1 passes it to install-scanner.sh, so an Apple silicon container installs the arm64 build rather than an x64 one that cannot run there. Its skill-map link differs by design, as for every other SKILL.md. Not yet submitted: owed in an incubator amendment to control-register."
+    },
+    "skills/gate-secrets/scripts/install-scanner.sh": {
+      "stance": "owed-upstream",
+      "why": "Phase 15 Run D: picks the archive for the processor it runs on (x64 or arm64) and holds it to that archive's checksum, refusing any other processor. It always fetched the x64 build before. Not yet submitted: owed in an incubator amendment to control-register."
     },
     "skills/gate-supply-chain/SKILL.md": {
       "stance": "owed-upstream",
