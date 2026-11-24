@@ -31,7 +31,9 @@ fi
 # --------------------------------------------------------------- substitutions
 
 section "Nothing left to substitute (§ 4)"
-files_with_placeholders=$(grep -rl '{{' .devcontainer 2>/dev/null || true)
+# node_modules is the pinned CLI the Apple route installs, and its own code
+# carries `{{`. It is installed, not substituted, so it is not read.
+files_with_placeholders=$(grep -rl --exclude-dir=node_modules '{{' .devcontainer 2>/dev/null || true)
 if [ -z "$files_with_placeholders" ]; then
   pass "no {{PLACEHOLDER}} survives"
 else
@@ -60,11 +62,35 @@ fi
 # ---------------------------------------------------------------------- built
 
 section "Built (§ 4)"
-if ! installed docker || ! docker info >/dev/null 2>&1; then
-  detail "Docker is not answering, so whether the container exists cannot be read from here."
-elif grep -q "devcontainer.local_folder=$PWD" < <(docker ps --format '{{.Labels}}' 2>/dev/null); then
-  pass "a devcontainer for this folder is running"
-else
+# Each runtime that answers is asked, so a container started on either is found
+# (ADR 0065). The Apple launcher names the container after the folder.
+asked=false
+if installed docker && docker info >/dev/null 2>&1; then
+  asked=true
+  if grep -q "devcontainer.local_folder=$PWD" < <(docker ps --format '{{.Labels}}' 2>/dev/null); then
+    pass "a devcontainer for this folder is running on Docker"
+    running=true
+  fi
+fi
+if installed container && container system status >/dev/null 2>&1; then
+  asked=true
+  apple_name="$(basename "$PWD")-dev"
+  if container list --all --format json 2>/dev/null | node -e '
+    let raw = "";
+    process.stdin.on("data", (chunk) => { raw += chunk; });
+    process.stdin.on("end", () => {
+      const found = JSON.parse(raw || "[]").some(
+        (c) => c.configuration?.id === process.argv[1] && c.status?.state === "running");
+      process.exit(found ? 0 : 1);
+    });' "$apple_name" 2>/dev/null; then
+    pass "$apple_name is running on Apple container"
+    running=true
+  fi
+fi
+
+if [ "$asked" = false ]; then
+  detail "No container runtime is answering, so whether the container exists cannot be read from here."
+elif [ "${running:-false}" = false ]; then
   manual "no running container for this folder" "4"
   detail "Expected until the container has been started. It is not a failure."
 fi

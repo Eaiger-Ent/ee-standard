@@ -17,7 +17,7 @@
 # Schema: docs/01-register-schema.md
 # Concepts: docs/00-concepts.md
 
-version: 0.32.0
+version: 0.33.0
 
 meta:
   owner: platform-engineering
@@ -387,7 +387,14 @@ meta:
   #     must understand, and a new assert, `agent_definitions_declare_model_floor`.
   #     It is at `warn`, which sets no exit code (ADR 0061), so no adopter's
   #     build changes on the day it lands.
-  register_contract: 38
+  # 39: `tools:` gains `devcontainer-cli`, the CLI the Apple `container`
+  #     launcher runs, pinned by `.devcontainer/package-lock.json` (ADR 0066).
+  #     `tool_versions_match_register` now fails a repository whose
+  #     `.devcontainer/package-lock.json` is untracked, so an adopter moving to
+  #     this contract takes the launcher files with it: UPGRADING.md's Apple
+  #     `container` step is what this contract requires, not an option beside
+  #     it. No control's `rung`, `verify` or `applies_to` changes.
+  register_contract: 39
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -445,6 +452,25 @@ tools:
     # version is repeated. A `lockfile` tool records `invocation` — how the
     # pinned artefact is reached, so that a locus cannot silently run another.
     invocation: node_modules/.bin/markdownlint-cli2
+  # The CLI that reads `devcontainer.json`, and on Apple `container` the only
+  # reader of it: the launcher at `.devcontainer/bin/container-session.mjs`
+  # maps what this CLI resolved to `container` flags and never reads the file
+  # (ADR 0063). Until contract 39 its pin lived in `package-lock.json` files and
+  # nowhere here, so the engine an adopter is steered to on an Apple silicon Mac
+  # rested on a version no register entry named, and a deleted lock file failed
+  # nothing until the launcher refused on the host. ADR 0066 made Apple
+  # `container` a first-class engine, and a first-class engine's tools are
+  # register facts like any other locus's.
+  #
+  # The lock file is `.devcontainer/`'s, not the root's, in this repository and
+  # in the adopter template alike: an adopter's root `package.json` is theirs,
+  # and many adopters have none (ADR 0064, kept by ADR 0066). `lockfile` is not
+  # a field `register-check publish` may vary, so the two had to agree for the
+  # published register to describe an adopter's repository.
+  devcontainer-cli:
+    source: lockfile
+    lockfile: .devcontainer/package-lock.json
+    invocation: .devcontainer/node_modules/.bin/devcontainer
   # YML-001's linter, in the lockfile form ADR 0059 gives a repository that has
   # a Python lockfile. One without one pins it `source: literal`, with a
   # `version` and the `pinned_at` loci that repeat it, and every locus runs
@@ -513,7 +539,7 @@ tools:
     # one tool in the repository that is not pinned.
     install:
       repository: https://github.com/Eaiger-Ent/ee-standard
-      ref: v0.11.1
+      ref: v0.12.0
   uv:
     source: literal
     # Where the release artefact is fetched from, as for gitleaks. The

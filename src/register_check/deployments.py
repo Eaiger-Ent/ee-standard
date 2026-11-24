@@ -55,6 +55,15 @@ _PLUGIN_IN_REPO = "plugins/control-register"
 #: what a promotion copies (ADR 0058).
 _DECLARATIONS = "skills/*/deploys.json"
 
+#: The Apple `container` launcher as the plugin's devcontainer template ships it,
+#: relative to the plugin root, and where that template's copy puts it in a
+#: repository (ADR 0066). Both are the template's layout, not a repository's:
+#: the template is copied to `.devcontainer/`, which is also where the
+#: register's `devcontainer` predicate looks. ADR 0018 records the reason.
+_LAUNCHER_IN_PLUGIN = "templates/devcontainer/bin/container-session.mjs"
+_LAUNCHER_IN_REPO = ".devcontainer/bin/container-session.mjs"
+_DEVCONTAINER = ".devcontainer/devcontainer.json"
+
 #: Where the declaration lived before ADR 0058. It is never read: the
 #: incubator never syncs `.claude-plugin/` on an amendment, so the published
 #: copy keeps a stale one indefinitely, and falling back to it would bring back
@@ -429,6 +438,50 @@ class Outside:
         return _version_key(self.installed) > newest > ()
 
 
+class LauncherState(Enum):
+    """Whether this repository's launcher is the copy the installed plugin ships.
+
+    ADR 0064 left the launcher untracked, so a fix reached an adopter only if
+    they happened to look. ADR 0066 made Apple `container` a first-class engine,
+    and an engine whose one moving part nothing reports is not one. Reported,
+    never enforced, like a gate's staleness (ADR 0038): the adopter's copy is
+    theirs, and a launcher behind the template still runs.
+    """
+
+    CURRENT = "CURRENT"
+    #: Present and not byte-identical to the plugin's copy: an older release's,
+    #: or edited. The two are not told apart, because nothing records which
+    #: release a copy came from.
+    DIFFERS = "DIFFERS"
+    #: A devcontainer and no launcher. The repository runs on Docker only.
+    ABSENT = "ABSENT"
+
+
+@dataclass(frozen=True)
+class Launcher:
+    state: LauncherState
+    path: str
+    #: The plugin's copy this run compared against.
+    template: Path
+
+
+def launcher(repo: Repo, plugin: Path) -> Launcher | None:
+    """This repository's Apple `container` launcher against the plugin's.
+
+    `None` when there is nothing to say: no devcontainer to run, or a plugin
+    that predates the template carrying a launcher, which has no copy to
+    compare against and is not evidence that the repository's is wrong.
+    """
+    template = plugin / _LAUNCHER_IN_PLUGIN
+    if not repo.exists(_DEVCONTAINER) or not template.is_file():
+        return None
+    if not repo.exists(_LAUNCHER_IN_REPO):
+        return Launcher(LauncherState.ABSENT, _LAUNCHER_IN_REPO, template)
+    same = (repo.root / _LAUNCHER_IN_REPO).read_bytes() == template.read_bytes()
+    state = LauncherState.CURRENT if same else LauncherState.DIFFERS
+    return Launcher(state, _LAUNCHER_IN_REPO, template)
+
+
 @dataclass(frozen=True)
 class Report:
     plugin: Path
@@ -460,6 +513,9 @@ class Report:
     #: Why no installed version is shown for an outside skill, when the
     #: inventory could not be read at all. CI has none.
     inventory_note: str | None = None
+    #: The Apple `container` launcher, or `None` when there is none to compare.
+    #: Never part of `owed` or `defective`: it sets no exit code.
+    launcher: Launcher | None = None
 
     @property
     def owed(self) -> list[GateReport]:
@@ -778,6 +834,7 @@ def build(
         unreconciled=tuple(unreconciled(declined, inventory)),
         unmanaged_pins=unmanaged,
         inventory_note=inventory.unreadable,
+        launcher=launcher(repo, plugin),
     )
 
 
@@ -909,6 +966,10 @@ def render(report: Report, register: Register) -> str:
             "    An unmanaged pin does not drift — it never moves, and the "
             "supply-chain controls stay green over it. Reported, not enforced."
         )
+    if report.launcher is not None:
+        lines.append("")
+        lines.append("  The Apple container launcher (ADR 0066):")
+        lines.append(f"    {report.launcher.path}  {_launcher_line(report.launcher)}")
     owed, defective = report.owed, report.defective
     lines += [
         "",
@@ -945,6 +1006,22 @@ def _outside_line(entry: Outside) -> str:
     if entry.installed is None:
         return stamped
     return f"{stamped}; installed {entry.installed}" + (" (newer)" if entry.behind else "")
+
+
+def _launcher_line(entry: Launcher) -> str:
+    match entry.state:
+        case LauncherState.CURRENT:
+            return "CURRENT — identical to the plugin's template"
+        case LauncherState.DIFFERS:
+            return (
+                f"DIFFERS from {entry.template} — copy it from the release you "
+                "upgraded to (UPGRADING.md). Reported, not enforced."
+            )
+        case LauncherState.ABSENT:
+            return (
+                "ABSENT — this repository runs on Docker only. UPGRADING.md's Apple "
+                "container step adds it."
+            )
 
 
 def _run_line(gate: str) -> str:
