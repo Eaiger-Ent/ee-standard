@@ -1,12 +1,18 @@
 # ADR 0064: An Adopter May Run Its Devcontainer on Apple `container`
 
-**Status:** Accepted
+**Status:** Superseded
 **Date:** 2026-11-09
+**Superseded by:** [ADR 0065: Ship the Apple `container` Route to Adopters Now](0065-the-adopt-route-accepts-either-runtime-now.md)
 **Revision:** 1
+
+Superseded by [ADR 0065](0065-the-adopt-route-accepts-either-runtime-now.md)
+on 2026-11-23. Its points 1 to 4 stand there, with stage 0 asking the person
+to confirm the runtime. Its point 5, the release gate, is withdrawn: the route
+ships now, and the five runs continue as evidence.
 
 ## Background
 
-**The question.** [ADR 0063](0063-apple-container-runs-what-the-cli-resolved.md)
+**The question.** [ADR 0063](../0063-apple-container-runs-what-the-cli-resolved.md)
 accepted Apple's [`container`](https://github.com/apple/container) as a second
 runtime for *this* repository, through a host launcher,
 `.devcontainer/bin/container-session.mjs`. It deliberately stopped there:
@@ -24,7 +30,7 @@ of the repository and not only of the document?
 
 **Where the standard stands today.** Every adopter-facing artefact assumes
 Docker, and
-[`08-adopting.md`](../08-adopting.md) § 2.0a says so in terms: *"Apple
+[`08-adopting.md`](../../08-adopting.md) § 2.0a says so in terms: *"Apple
 `container` is not an adopter's runtime yet … the table above is complete."*
 Concretely:
 
@@ -209,23 +215,23 @@ acceptance ADR 0063 carries a dated amendment pointing here, as ADR 0024 did for
 
 ## Related ADRs
 
-- [ADR 0063](0063-apple-container-runs-what-the-cli-resolved.md) — the decision
+- [ADR 0063](../0063-apple-container-runs-what-the-cli-resolved.md) — the decision
   whose scope paragraph this one overtakes.
-- [ADR 0037](0037-the-template-is-the-whole-devcontainer-step.md) — why the
+- [ADR 0037](../0037-the-template-is-the-whole-devcontainer-step.md) — why the
   template is the whole devcontainer step, and so where a second runtime must
   land to reach an adopter.
-- [ADR 0020](0020-a-locus-reaches-the-pinned-artefact.md) — the launcher calls
+- [ADR 0020](../0020-a-locus-reaches-the-pinned-artefact.md) — the launcher calls
   the pinned CLI by path.
-- [ADR 0018](0018-register-checker-boundary.md) — the test the CLI pin's
+- [ADR 0018](../0018-register-checker-boundary.md) — the test the CLI pin's
   location is measured against.
-- [ADR 0026](0026-an-adr-stands-on-its-own.md) — why this is a new ADR and not an
+- [ADR 0026](../0026-an-adr-stands-on-its-own.md) — why this is a new ADR and not an
   edit to 0063.
 
 ## References
 
-- [`20-apple-container-spike.md`](../20-apple-container-spike.md) — the spike
+- [`20-apple-container-spike.md`](../../20-apple-container-spike.md) — the spike
   and the launcher's pass record, 2026-11-08.
-- [`08-adopting.md`](../08-adopting.md) § 2.0a — the adopter's host/container
+- [`08-adopting.md`](../../08-adopting.md) § 2.0a — the adopter's host/container
   split, which names Apple `container` as not yet theirs.
-- [`UPGRADING.md`](../../UPGRADING.md) § What an upgrade does not touch.
+- [`UPGRADING.md`](../../../UPGRADING.md) § What an upgrade does not touch.
 - [apple/container](https://github.com/apple/container).

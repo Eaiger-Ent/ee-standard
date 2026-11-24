@@ -56,8 +56,16 @@ banner() {
 # ------------------------------------------------------------------ § A and § B
 
 banner "Tools (§ A, § B)"
-"$HERE/00-tools.sh"
-tools_exit=$?
+# The report is kept so the runtime question below reads back what 00-tools.sh
+# found, rather than asking the runtimes again.
+tools_report=$(mktemp)
+trap 'rm -f "$tools_report"' EXIT
+tools_colour=""
+if [ -t 1 ]; then
+  tools_colour=1
+fi
+ADOPT_COLOUR="$tools_colour" "$HERE/00-tools.sh" | tee "$tools_report"
+tools_exit=${PIPESTATUS[0]}
 
 # Three different answers, and treating them alike was a real complaint: a run
 # with every tool present stopped on "install what is missing", which named
@@ -86,6 +94,46 @@ case "$tools_exit" in
     exit 1
     ;;
 esac
+
+# ------------------------------------------------------------- the runtime
+
+# 00-tools.sh passed, so at least one runtime answers. Which one builds the
+# container is the person's choice (ADR 0065): one that answers is confirmed,
+# and with both, Apple container is the default answer.
+apple_found=false
+docker_found=false
+if grep -qF "$RUNTIME_APPLE" "$tools_report"; then
+  apple_found=true
+fi
+if grep -qF "$RUNTIME_DOCKER" "$tools_report"; then
+  docker_found=true
+fi
+
+runtime=""
+if [ "$apple_found" = true ] && [ "$docker_found" = true ]; then
+  echo
+  echo "Apple container and Docker both answer. VS Code's Reopen in Container"
+  echo "works only with Docker. Apple container is for a terminal and claude."
+  case "$(ask "Which one builds and runs the container, apple or docker?" apple)" in
+    [aA]*) runtime=apple ;;
+    [dD]*) runtime=docker ;;
+  esac
+elif [ "$apple_found" = true ]; then
+  if confirm "Apple container answers. Use it to build and run the container?"; then
+    runtime=apple
+  fi
+elif [ "$docker_found" = true ]; then
+  if confirm "Docker answers. Use it to build and run the container?"; then
+    runtime=docker
+  fi
+fi
+
+if [ -z "$runtime" ]; then
+  echo "No container runtime chosen. Nothing has been changed."
+  detail "§ A names the two runtimes and who each is for."
+  exit 1
+fi
+echo "  The container runs on: $runtime"
 
 # --------------------------------------------------------------------- § 1
 
@@ -271,7 +319,7 @@ MSG
 guide_root=$(git -C "$HERE" rev-parse --show-toplevel 2>/dev/null || true)
 GUIDE="${guide_root:+$guide_root/START-HERE.md}"
 credentials_report=$(mktemp)
-trap 'rm -f "$credentials_report"' EXIT
+trap 'rm -f "$tools_report" "$credentials_report"' EXIT
 
 # 25-credentials.sh is the check; this only reads back what it reported.
 run_credentials() {
@@ -378,7 +426,7 @@ elif confirm "Copy the devcontainer template and substitute it?"; then
       .devcontainer/setup.sh
     rm -f .devcontainer/*.bak
 
-    left=$(grep -rl '{{' .devcontainer 2>/dev/null || true)
+    left=$(grep -rl --exclude-dir=node_modules '{{' .devcontainer 2>/dev/null || true)
     if [ -n "$left" ]; then
       echo "  a placeholder survived, in: $left"
       detail "That is what fails the build later at sha256sum -c. § 4 by hand."
@@ -397,8 +445,19 @@ detail "Where the container stands now:"
 echo
 echo "Building it is one command and takes a few minutes. It needs"
 echo "CLAUDE_OAUTH_TOKEN in the Keychain, which is the § E step above."
-if [ -d .devcontainer ] && confirm "Build the container now?"; then
-  devcontainer up --workspace-folder . --remove-existing-container
+if [ ! -d .devcontainer ]; then
+  :
+elif [ "$runtime" = apple ] && [ ! -f .devcontainer/bin/container-session.mjs ]; then
+  echo "This .devcontainer has no Apple container launcher. It was copied before"
+  echo "the template carried one."
+  detail "§ 4 names the files the Apple container route needs."
+elif confirm "Build the container now?"; then
+  if [ "$runtime" = apple ]; then
+    npm ci --prefix .devcontainer --no-audit --no-fund \
+      && node .devcontainer/bin/container-session.mjs up
+  else
+    devcontainer up --workspace-folder . --remove-existing-container
+  fi
 fi
 
 # --------------------------------------------------------------------- § 6
@@ -441,6 +500,13 @@ MSG
 # has been given commands at every step, and being handed a section number at
 # the last one is where the momentum goes.
 banner "What happens next (§ 5)"
+if [ "$runtime" = apple ]; then
+  enter_command="node .devcontainer/bin/container-session.mjs shell"
+  enter_note="On Apple container the route is a terminal. VS Code needs Docker."
+else
+  enter_command="devcontainer exec --workspace-folder . bash"
+  enter_note="VS Code's \"Reopen in Container\" and its built-in terminal do the same thing."
+fi
 cat <<MSG
 
 Everything from here runs INSIDE the container. Four things, in order.
@@ -448,10 +514,10 @@ Everything from here runs INSIDE the container. Four things, in order.
 1. Get a shell in it. From your Mac:
 
   cd $project_path
-  devcontainer exec --workspace-folder . bash
+  $enter_command
 
-You are in when \`pwd\` prints a path beginning /workspaces. VS Code's
-"Reopen in Container" and its built-in terminal do the same thing.
+You are in when \`pwd\` prints a path beginning /workspaces.
+$enter_note
 
 2. Install the plugin again, inside. This is not a mistake in § 1 and not a
 mistake here: the container's ~/.claude is a named volume, not your Mac's home

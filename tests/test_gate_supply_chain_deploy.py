@@ -100,6 +100,7 @@ def _render(template: str, register: Register) -> str:
     for placeholder, value in {
         "<<ECOSYSTEM>>": ECOSYSTEM,
         "<<ECOSYSTEM_SPELLING>>": ecosystem.dependabot[0],
+        "<<DIRECTORY>>": "/",
         "<<FROZEN_INSTALL>>": ecosystem.frozen_install_command[LOCKFILE],
         "<<TOOL>>": tool,
         "<<TOOL_INVOCATION>>": register.tools[tool].invocation or "",

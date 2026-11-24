@@ -75,6 +75,13 @@ jobs:
         if: steps.gap.outputs.gap == 'true'
         run: npm ci --no-audit --no-fund
 
+      - name: Install the devcontainer CLI
+        # The suite resolves the Apple container launcher's pinned CLI
+        # (tests/test_container_session.py), which .devcontainer/package-lock.json
+        # owns since ADR 0066 moved it out of the root.
+        if: steps.gap.outputs.gap == 'true'
+        run: npm ci --prefix .devcontainer --no-audit --no-fund
+
       - name: Tests, on the oldest interpreter this package claims to support
         if: steps.gap.outputs.gap == 'true'
         # `UV_PYTHON` is the one thing that outranks `.python-version` — recorded

@@ -1,7 +1,7 @@
 # Phase 15 — Apple `container` for adopters: the run sheet
 
 The runbook for the five evidence criteria at the head of
-[`04-build-plan.md`](04-build-plan.md) § Phase 15. [ADR 0064](adr/0064-an-adopter-may-run-its-devcontainer-on-apple-container.md)
+[`04-build-plan.md`](04-build-plan.md) § Phase 15. [ADR 0064](adr/archive/0064-an-adopter-may-run-its-devcontainer-on-apple-container.md)
 accepted offering the route to adopters on the spike's evidence alone, and gated
 the release on these five runs. **None of the template, adopt-script or
 adopter-document changes ships until every run below has a recorded result.** A
@@ -16,8 +16,15 @@ own commands are in [`06-devcontainer-setup.md`](06-devcontainer-setup.md) § 1.
 
 ## What these runs cannot yet test, and what stands in
 
-Nothing under `plugins/control-register/templates/` has changed, so an adopter
-has no launcher. Runs A–C copy it in by hand. That is a stand-in, and it is the
+**Since 2026-11-23, [ADR 0065](adr/archive/0065-the-adopt-route-accepts-either-runtime-now.md)
+ships the launcher in the template and the runtime-aware scripts**, and
+[ADR 0066](adr/0066-apple-container-is-a-first-class-engine.md) makes Apple `container` a
+first-class engine and waives Run B. The
+runs below are evidence rather than a gate. A run made from a checkout at or
+after that change tests the shipped files, not a stand-in. The paragraphs below
+describe the runs made before it. Before then nothing under
+`plugins/control-register/templates/` had changed, so an adopter had no
+launcher. Runs A–C copy it in by hand. That is a stand-in, and it is the
 reason the criteria are about the **launcher**, not about the shipped template.
 Three differences between the stand-in and the decision are findings to record,
 not defects to fix during the run:
@@ -118,12 +125,13 @@ cp "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/.
 
 Put the CLI pin in `.devcontainer/`, where ADR 0064 puts it, so the
 adopter's own root `package.json` is untouched. The version comes from
-`package.json` in the standard's checkout, never from memory, and the first line
+`.devcontainer/package.json` in the standard's checkout, never from memory (it
+was the root `package.json` before ADR 0066), and the first line
 reads it from there and prints it. The second line creates
 `.devcontainer/package.json` only if there is none:
 
 ```bash
-DEVCONTAINER_CLI_VERSION="$(node -p 'require(process.argv[1]).devDependencies["@devcontainers/cli"]' "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/package.json")" && echo "$DEVCONTAINER_CLI_VERSION"
+DEVCONTAINER_CLI_VERSION="$(node -p 'require(process.argv[1]).devDependencies["@devcontainers/cli"]' "${PATH_TO_EE_STANDARD_CHECKOUT:?set it first, see What the host must have}/.devcontainer/package.json")" && echo "$DEVCONTAINER_CLI_VERSION"
 [ -f .devcontainer/package.json ] || ( cd .devcontainer && npm init -y >/dev/null )
 npm install --prefix .devcontainer --save-dev --save-exact --no-audit --no-fund "@devcontainers/cli@${DEVCONTAINER_CLI_VERSION:?the first line did not read a version}"
 .devcontainer/node_modules/.bin/devcontainer --version
@@ -237,7 +245,11 @@ The stand-in also had to edit the adopter's own root `package.json`, because
 this repository already had one. A shipped route that adds a file, and changes
 none of the adopter's, avoids that.
 
-**Not ticked.** Criterion 1 stays open on the `register-check` row.
+**Ticked 2026-11-23, with the `register-check` row as a finding about the
+repository.** The `1` is SEC-001's push protection on the archived
+`ee-standard-consumer`, which cannot change while it is archived. Every local
+block passed, so the launcher reproduced what Docker would have. Criterion 1 is
+about the launcher, not about this repository's settings.
 
 ## Run B — Criterion 2: a second Mac, a second person
 
@@ -253,6 +265,17 @@ document. The result table is Run A's, with these two lines added:
 
 A second Mac on the **same** account and network is a weaker run than a second
 person on their own. Say which this was.
+
+### Run B, waived 2026-11-23
+
+**Not run.** No second person with a second Mac was available, and none is
+expected. [ADR 0066](adr/0066-apple-container-is-a-first-class-engine.md) point
+6 waives this run, on the owner's report that Apple `container` is in daily use
+and working well. Criterion 2 is ticked as **waived**, which is not a pass. The
+gap it leaves is that no second operator has followed this document, so any
+step that only the author knows has not been found. Runs C, D and E still stand.
+If someone becomes available, run it as written above and record the result
+here. A failure re-opens ADR 0066.
 
 ## Run C — Criterion 3: the refusal rule against an adopter-shaped file
 
@@ -315,6 +338,29 @@ the third run.
 
 **A key that runs without a refusal and is silently dropped is the finding this
 run exists to catch.** Record it exactly and stop; do not continue past it.
+
+### Run C, 2026-11-09, moved from #319
+
+Recorded by the first operator in PR #319, which never merged, and moved here
+on 2026-11-23. The versions are Run A's first pass that day, also from #319:
+`Mac14,9` (M2 Pro), macOS 27.2 (`26B123`), `container` 1.7.1 (commit
+`a15b460`), `devcontainer` 0.90.0 from `node_modules/.bin`, Node v26.13.0,
+Docker not on `PATH`, and `ee-standard-consumer` at `2b89221`. **The standard
+checkout's commit was not recorded**, and the launcher was older than the one
+the template ships. The steps were the run sheet of that date: each key added on
+its own, the file restored with `git checkout` between keys, and
+`container list -a` compared before and after each `up`, with Run A's container
+present throughout.
+
+| Change | Refused by name? (quote it) | Container created? | Exit code |
+| --- | --- | --- | --- |
+| `"forwardPorts": [8000]` | Yes: `devcontainer.json: forwardPorts is not handled by this launcher` | No | `2` |
+| `"postAttachCommand": "echo attached"` | Yes: `devcontainer.json: postAttachCommand is not handled by this launcher` | No | `2` |
+| `runArgs` gains `"--cap-add", "SYS_PTRACE"` | Yes: `runArgs: --cap-add is not handled` | No | `2` |
+
+No key ran without a refusal. **Not ticked**, because the version record is
+incomplete and the launcher has changed since. It is strong evidence, and a
+re-run against the shipped launcher, as written above, closes criterion 3.
 
 ## Run D — Criterion 4: `adopt.sh` on a host with `container` and no Docker
 
@@ -437,6 +483,14 @@ Inside the container, expect `status.sh` to say "inside the container", with
 **Question:** can a repository adopted at the **previous release** move to Apple
 `container` by the written steps alone?
 
+**Since ADR 0066 the step exists.** It is `UPGRADING.md` § 3, *Moving past
+register contract 38*, and it changes two of the files the tables below say it
+must not: `.devcontainer/.gitignore` gains `node_modules/`, and `runArgs` gains
+the resource floor if the repository will run on Apple `container`. E1 now
+follows that step and corrects it, rather than writing one from nothing. Its
+draft below replaces the step's text if they differ, and E2 follows the
+corrected step.
+
 **Use** a fresh clone of `Eaiger-Ent/ee-standard-consumer`, made for this run.
 Its adoption predates the newest tag, so it is at "the previous release", and
 Docker was its runtime. It is archived, and that does not matter here, because
@@ -505,6 +559,11 @@ text that goes into `UPGRADING.md` with criterion 8. It must say:
 
 ### E2: a second person follows the draft literally
 
+**Waived 2026-11-23** by [ADR 0066](adr/0066-apple-container-is-a-first-class-engine.md)
+point 6, for the reason Run B is: no second person is available. Criterion 5
+closes on E1. If someone becomes available, run E2 as written below and record
+it beside E1.
+
 A second person, not the author, on **their own Mac** where they can, runs
 **Start clean**, then the clone commands with `run-e2` in place of `run-e1` in
 both places, then follows the draft step **and nothing else**. On the author's
@@ -545,8 +604,10 @@ Under each run's heading in **this file**, with the versions it ran on, as
 criterion in [`04-build-plan.md`](04-build-plan.md) § Phase 15, and run
 `uv run python scripts/plan_progress.py` to confirm the count moved. Never tick
 one for a run that was not done, and never from a run whose versions went
-unrecorded. A criterion that failed is left unticked, with the finding written
-under it, and ADR 0064 is re-read against it.
+unrecorded. The one exception is a run an ADR waives, as ADR 0066 waived Run B.
+It is ticked with the word **Waived** and its reason, and recorded as not run.
+A criterion that failed is left unticked, with the finding written under it,
+and ADR 0066 is re-read against it.
 
 **A run that needed a flag, a step or a file not named here is not a pass with a
 footnote.** Record it, and put it in the document before the next person runs it.

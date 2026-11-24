@@ -1,5 +1,6 @@
 # Written to `.github/dependabot.yml` in the target repository. One `updates:`
-# entry per ecosystem the repository is actually in, using the
+# entry per ecosystem the repository is actually in **and per directory that
+# holds one of its tracked lockfiles**, using the
 # `package-ecosystem:` spelling the register's `ecosystems.<name>.dependabot`
 # accepts — never a spelling chosen here.
 #
@@ -14,11 +15,18 @@
 # and DEV-001's digest pins current instead of fossilising: a pin nothing
 # updates is a pin that rots at a known version, which is a different failure
 # from an unpinned one but not a better one.
+#
+# `directory:` is where the lockfile is, `/` for the root. Dependabot reads one
+# directory per entry, so a lockfile anywhere else got no proposals: from
+# contract 7 this gate writes an entry for each. The case that found it is the
+# devcontainer template's `.devcontainer/package-lock.json`, which pins the CLI
+# the Apple `container` launcher runs (ADR 0066), and which an entry at `/`
+# never reached.
 # --- .github/dependabot.yml ---
 # ee-control: SUP-002  ee-skill: gate-supply-chain@<<SKILL_VERSION>>  gate-contract: <<GATE_CONTRACT>>  register: v<<REGISTER_VERSION>>  register-contract: <<REGISTER_CONTRACT>>
 version: 2
 updates:
   - package-ecosystem: <<ECOSYSTEM_SPELLING>>
-    directory: /
+    directory: <<DIRECTORY>>
     schedule:
       interval: weekly
