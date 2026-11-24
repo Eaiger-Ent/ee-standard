@@ -7,7 +7,9 @@ hook that blocks commits on unresolved violations, and a GitHub Actions CI step.
 ## What it does
 
 You start it with `/lint-md`. It installs `markdownlint-cli2` as an exact-pinned dev
-dependency, then writes `.markdownlint.yaml` and `.markdownlint-cli2.yaml`. It also writes
+dependency and runs `npm audit`. A package under it with an advisory of its own is overridden
+to its newest published version in `package.json`. It then writes `.markdownlint.yaml` and
+`.markdownlint-cli2.yaml`. It also writes
 `.claude/hooks/md-lint.py` and registers it in `.claude/settings.json`, adds a
 `.pre-commit-config.yaml` hook and a workflow step. It finishes by linting every Markdown file
 once to show what already fails. If the repo still uses pymarkdownlnt, the skill moves it
@@ -80,6 +82,11 @@ has never set this gets exactly what it got before.
   lives. A pre-commit hook pinned by its own `rev:` would hold a second copy that drifts.
   So the hook is a `repo: local` entry, and the skill replaces an older `rev:`-pinned block
   when it finds one.
+- **Why override a vulnerable dependency rather than run `npm audit fix`?**
+  `markdownlint-cli2` pins `markdownlint` exactly. A fix to a package underneath it does not
+  arrive until `markdownlint-cli2` releases again, and `npm audit fix` can only offer a
+  downgrade. An override is easy to undo, and the skill names no version, so it never goes
+  out of date.
 - **Why write `ignores` verbatim rather than merging it with the default?** A repository
   that sets `ignores: []` means "ignore nothing". Merging would quietly bring the default
   list back.

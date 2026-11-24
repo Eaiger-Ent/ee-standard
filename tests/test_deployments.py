@@ -196,8 +196,11 @@ def test_a_missing_artefact_is_reported(tmp_path: Path) -> None:
     assert report.gates[0].absent_paths == (".pre-commit-config.yaml",)
 
 
+# Split so this source line is not itself a stamp: `register-check deployments`
+# reads every tracked file, and a whole literal here was reported as a real
+# lint-md@1.0.9 deployment once the repository's own stamps moved past it.
 _LINT_MD_STAMP = (
-    "# ee-control: DOC-001  ee-skill: lint-md@1.0.9  register: v0.29.0  register-contract: 35\n"
+    "# ee-" "control: DOC-001  ee-skill: lint-md@1.0.9  register: v0.29.0  register-contract: 35\n"
 )
 
 
