@@ -1,6 +1,7 @@
 # Start here
 
-**You need a Mac with Docker.** By the end your repository will refuse commits
+**You need a Mac with a container runtime: Apple `container` or Docker.** § A
+says which is for whom. By the end your repository will refuse commits
 carrying secrets, install its dependencies frozen and get upgrade proposals for
 them, run lint, types and tests at every locus that declares them, and have a
 default branch whose protection is verified against what GitHub actually
@@ -86,7 +87,23 @@ with. It is for the second sitting and the third, not this one.
 
 ### A — What this assumes
 
-macOS, with Docker running. The container's secrets are fetched from the macOS
+macOS, with one container engine running. Both are first class: either will
+do, and the route asks which to use when it finds both
+([ADR 0066](docs/adr/0066-apple-container-is-a-first-class-engine.md)):
+
+| Runtime | For | Running when |
+| --- | --- | --- |
+| Apple `container`, at the version `docs/06-devcontainer-setup.md` § 1 names | An Apple silicon Mac on macOS 26 or later, working in a terminal and `claude`. The default when both answer | `container system status` succeeds |
+| Docker Desktop | An Intel Mac, an older macOS, or VS Code's **Reopen in Container**, which needs Docker | `docker info` succeeds |
+
+Apple `container` needs no Docker. It runs the same devcontainer through a
+launcher that the template ships, `.devcontainer/bin/container-session.mjs`.
+The launcher refuses, by name, any `devcontainer.json` setting it cannot
+reproduce, so a repository it refuses stays on Docker.
+[`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md) § 1 has its
+commands and its limits.
+
+The container's secrets are fetched from the macOS
 Keychain by a script that runs *before* the container exists, so on Linux or
 Windows that script is what you adapt first —
 [`docs/08-adopting.md`](docs/08-adopting.md) § 2.0 states the contract a
@@ -98,14 +115,16 @@ replacement owes.
 | --- | --- | --- |
 | Homebrew | <https://brew.sh> | `brew --version` |
 | uv | `brew install uv` | `uv --version` |
-| Docker Desktop | <https://www.docker.com/products/docker-desktop/> | `docker info` succeeds |
+| A container runtime, one of the two in § A | Apple `container`: Apple's signed installer from <https://github.com/apple/container/releases>, then `container system start`. Docker: <https://www.docker.com/products/docker-desktop/> | `container system status` or `docker info` succeeds |
 | Claude Code | <https://docs.claude.com/en/docs/claude-code/setup> | `claude --version` |
 | node and npm | `brew install node` | `npm --version` |
-| `devcontainer` CLI | `npm i -g @devcontainers/cli` | `devcontainer --version` |
+| `devcontainer` CLI, for Docker only | `npm i -g @devcontainers/cli` | `devcontainer --version`. The Apple route runs the CLI that `.devcontainer/package.json` pins |
 | GitHub CLI | `brew install gh`, then `gh auth login` — **choose HTTPS** | `gh auth status` |
 | VS Code | `brew install --cask visual-studio-code` | `code --version` |
 
-Give Docker Desktop 8 GB of memory (Settings → Resources → Memory).
+On Docker, give Docker Desktop 8 GB of memory (Settings → Resources → Memory).
+Apple `container` has no VM to size: each container gets what its
+`devcontainer.json` `runArgs` ask for, which in the template is 4 CPUs and 4 GB.
 
 **`gh auth login` asks which protocol you prefer, and the answer here is
 HTTPS.** It is not a preference — it decides what `gh repo create` and
@@ -738,14 +757,29 @@ what the first command printed:
 security add-generic-password -a "$USER" -s "CLAUDE_OAUTH_TOKEN" -w "<paste it here>"
 ```
 
-Then build:
+Then build, with the runtime you chose in § A. On Docker:
 
 ```bash
 devcontainer up --workspace-folder . --remove-existing-container
 ```
 
+On Apple `container`, install the CLI that `.devcontainer/package.json` pins,
+then start the container with the launcher. Start the services first if
+`container system status` fails:
+
+```bash
+container system start
+npm ci --prefix .devcontainer --no-audit --no-fund
+node .devcontainer/bin/container-session.mjs up
+```
+
+A `.devcontainer` copied before the template carried the launcher has no
+`bin/container-session.mjs`, `package.json` or `package-lock.json`. Copy those
+three from the template, or build on Docker.
+
 **Done when:** the `grep` prints nothing, the build ends with
-`"outcome":"success"`, and the environment report at the end shows `uv` at the
+`"outcome":"success"` on Docker or the `check-auth.sh` table on Apple
+`container`, and the environment report at the end shows `uv` at the
 version you substituted, built for your architecture.
 
 **One `✗` is expected here** if you skipped the optional `gh` credential:
@@ -762,6 +796,9 @@ step 5 — `gate-repo` and the remote checks talk to GitHub — so fix it on the
 security add-generic-password -a "$USER" -s "GITHUB_TOKEN" -w "<a token>"
 devcontainer up --workspace-folder . --remove-existing-container
 ```
+
+On Apple `container`, the second line is
+`node .devcontainer/bin/container-session.mjs up --rebuild`.
 
 `gh auth login` inside the container works too and does not survive a rebuild:
 the only persistent volume is `/home/vscode/.claude`, and `gh` keeps its
@@ -783,7 +820,7 @@ and on your Mac that resolves to whatever uv your Mac happens to have. Phase 4
 ran an adoption on the host and every gate reported green about a uv version it
 was not using.
 
-Get a shell inside it, from your repository root:
+Get a shell inside it, from your repository root. On Docker:
 
 ```bash
 devcontainer exec --workspace-folder . bash
@@ -791,6 +828,12 @@ devcontainer exec --workspace-folder . bash
 
 Or open the folder in VS Code and choose **Reopen in Container** — then use its
 built-in terminal, which is already inside.
+
+On Apple `container`:
+
+```bash
+node .devcontainer/bin/container-session.mjs shell
+```
 
 **Either shell is fine.** `bash` is the container user's login shell and what the
 command above gives you; VS Code's terminal opens `zsh`, which the template

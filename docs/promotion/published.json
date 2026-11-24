@@ -13,7 +13,7 @@
     },
     "skills/gate-*/SKILL.md": {
       "stance": "owed-upstream",
-      "why": "ADR 0062: every gate takes `--plan` and `--answers <path>`, and marks each takeover, removal, choice and platform question as answerable from the adoption plan. Before that, the only difference was the skill-map link, by design (docs/05-promotion.md row 8). Submitted 2026-11-07 in release set adr-0062-answered-once (incubator#1324 to #1331), tracked by #312. Once it ships and is taken back, this returns to by-design with the skill-map `normalise` pattern."
+      "why": "ADR 0062: every gate takes `--plan` and `--answers <path>`, and marks each takeover, removal, choice and platform question as answerable from the adoption plan. Before that, the only difference was the skill-map link, by design (docs/05-promotion.md row 8). Submitted 2026-11-07 in release set adr-0062-answered-once (incubator#1324 to #1331), tracked by #312. Once it ships and is taken back, this returns to by-design with the skill-map `normalise` pattern. Since then, ADR 0066: gate-supply-chain's SKILL.md writes one Dependabot entry per directory holding a tracked lockfile (gate contract 7). Not yet submitted."
     },
     "skills/register-[iv]*/SKILL.md": {
       "stance": "by-design",
@@ -28,11 +28,11 @@
     },
     "templates/adopt/guided.sh": {
       "stance": "owed-upstream",
-      "why": "§ C's base-directory prompt defaulted to $HOME/git, a directory most adopters do not keep projects in, while START-HERE.md § C tells them to run from wherever they do. It now defaults to $PWD, the directory adopt.sh was run from, which adopt.sh never changes before handing over. Submitted 2026-11-07 as incubator#1320 (branch amend/register-install--whome192-20261107), tracked by #304. Since then, § E: when 25-credentials.sh reports no GitHub PAT, it prints START-HERE.md § E's fields and permissions from the guide beside it, the command that stores the token under the project-scoped name, and offers to store a pasted one. Submitted 2026-11-07 on incubator#1320, tracked by #304."
+      "why": "§ C's base-directory prompt defaulted to $HOME/git, a directory most adopters do not keep projects in, while START-HERE.md § C tells them to run from wherever they do. It now defaults to $PWD, the directory adopt.sh was run from, which adopt.sh never changes before handing over. Submitted 2026-11-07 as incubator#1320 (branch amend/register-install--whome192-20261107), tracked by #304. Since then, § E: when 25-credentials.sh reports no GitHub PAT, it prints START-HERE.md § E's fields and permissions from the guide beside it, the command that stores the token under the project-scoped name, and offers to store a pasted one. Submitted 2026-11-07 on incubator#1320, tracked by #304. Since then, ADR 0065: guided.sh asks which container runtime to use and builds with it, and _lib.sh gains RUNTIME_APPLE and RUNTIME_DOCKER and recognises an Apple container. Not yet submitted."
     },
     "templates/adopt/_lib.sh": {
       "stance": "owed-upstream",
-      "why": "Gains project_prefix, the project-scoped Keychain name 25-credentials.sh reads and guided.sh writes, and PAT_MISSING, the words guided.sh reads back from 25-credentials.sh's report; ADOPT_COLOUR keeps colours through the tee guided.sh reads it with. Rides with templates/adopt/guided.sh. Submitted 2026-11-07 on incubator#1320, tracked by #304."
+      "why": "Gains project_prefix, the project-scoped Keychain name 25-credentials.sh reads and guided.sh writes, and PAT_MISSING, the words guided.sh reads back from 25-credentials.sh's report; ADOPT_COLOUR keeps colours through the tee guided.sh reads it with. Rides with templates/adopt/guided.sh. Submitted 2026-11-07 on incubator#1320, tracked by #304. Since then, ADR 0065: guided.sh asks which container runtime to use and builds with it, and _lib.sh gains RUNTIME_APPLE and RUNTIME_DOCKER and recognises an Apple container. Not yet submitted."
     },
     "templates/adopt/25-credentials.sh": {
       "stance": "owed-upstream",
@@ -49,6 +49,46 @@
     "reference/unattended.md": {
       "stance": "owed-upstream",
       "why": "ADR 0062: the three kinds of question `--yes` never answers may be answered by the plan when it lists them, and `--yes` does not answer a plan that lists a platform call. Submitted 2026-11-07 in release set adr-0062-answered-once (incubator#1324 to #1331), tracked by #312."
+    },
+    "templates/adopt/00-tools.sh": {
+      "stance": "owed-upstream",
+      "why": "ADR 0065: the adopt route accepts Apple `container` or Docker. Stage 0 fails only when neither answers, stage 3 asks each runtime that answers, and guided.sh asks the person to confirm the runtime. The template ships the Apple `container` launcher, identical to .devcontainer/bin/, and pins the devcontainer CLI it runs in its own package.json and lock file. Not yet submitted: owed in an incubator amendment to control-register."
+    },
+    "templates/adopt/30-container.sh": {
+      "stance": "owed-upstream",
+      "why": "ADR 0065: the adopt route accepts Apple `container` or Docker. Stage 0 fails only when neither answers, stage 3 asks each runtime that answers, and guided.sh asks the person to confirm the runtime. The template ships the Apple `container` launcher, identical to .devcontainer/bin/, and pins the devcontainer CLI it runs in its own package.json and lock file. Not yet submitted: owed in an incubator amendment to control-register."
+    },
+    "templates/devcontainer/.gitignore": {
+      "stance": "owed-upstream",
+      "why": "ADR 0065: the adopt route accepts Apple `container` or Docker. Stage 0 fails only when neither answers, stage 3 asks each runtime that answers, and guided.sh asks the person to confirm the runtime. The template ships the Apple `container` launcher, identical to .devcontainer/bin/, and pins the devcontainer CLI it runs in its own package.json and lock file. Not yet submitted: owed in an incubator amendment to control-register. Ignores node_modules/, where the pinned CLI is installed."
+    },
+    "templates/devcontainer/README.md": {
+      "stance": "owed-upstream",
+      "why": "ADR 0065: the adopt route accepts Apple `container` or Docker. Stage 0 fails only when neither answers, stage 3 asks each runtime that answers, and guided.sh asks the person to confirm the runtime. The template ships the Apple `container` launcher, identical to .devcontainer/bin/, and pins the devcontainer CLI it runs in its own package.json and lock file. Not yet submitted: owed in an incubator amendment to control-register. Gains a section on the Apple `container` route."
+    },
+    "templates/devcontainer/bin/container-session.mjs": {
+      "stance": "owed-upstream",
+      "why": "ADR 0065: the adopt route accepts Apple `container` or Docker. Stage 0 fails only when neither answers, stage 3 asks each runtime that answers, and guided.sh asks the person to confirm the runtime. The template ships the Apple `container` launcher, identical to .devcontainer/bin/, and pins the devcontainer CLI it runs in its own package.json and lock file. Not yet submitted: owed in an incubator amendment to control-register. Since then, ADR 0066: a comment names `.devcontainer/` as the pin's home everywhere."
+    },
+    "templates/devcontainer/package.json": {
+      "stance": "owed-upstream",
+      "why": "ADR 0065: the adopt route accepts Apple `container` or Docker. Stage 0 fails only when neither answers, stage 3 asks each runtime that answers, and guided.sh asks the person to confirm the runtime. The template ships the Apple `container` launcher, identical to .devcontainer/bin/, and pins the devcontainer CLI it runs in its own package.json and lock file. Not yet submitted: owed in an incubator amendment to control-register."
+    },
+    "templates/devcontainer/package-lock.json": {
+      "stance": "owed-upstream",
+      "why": "ADR 0065: the adopt route accepts Apple `container` or Docker. Stage 0 fails only when neither answers, stage 3 asks each runtime that answers, and guided.sh asks the person to confirm the runtime. The template ships the Apple `container` launcher, identical to .devcontainer/bin/, and pins the devcontainer CLI it runs in its own package.json and lock file. Not yet submitted: owed in an incubator amendment to control-register."
+    },
+    "templates/devcontainer/devcontainer.json": {
+      "stance": "owed-upstream",
+      "why": "ADR 0066: Apple `container` is a first-class engine. `runArgs` states a resource floor, `--cpus 4 --memory 4g`, because on Apple `container` a container that asks for nothing gets 1 GiB (Phase 15 Run A). Not yet submitted: owed in an incubator amendment to control-register, with the ADR 0065 files above."
+    },
+    "skills/gate-supply-chain/deploys.json": {
+      "stance": "owed-upstream",
+      "why": "ADR 0066: gate-supply-chain writes one Dependabot entry per ecosystem and per directory holding a tracked lockfile, so `.devcontainer/package-lock.json`, the Apple `container` CLI pin, gets update proposals. Gate contract 6 to 7. Not yet submitted: owed in an incubator amendment to control-register."
+    },
+    "skills/gate-supply-chain/templates/dependabot.yaml": {
+      "stance": "owed-upstream",
+      "why": "ADR 0066: gate-supply-chain writes one Dependabot entry per ecosystem and per directory holding a tracked lockfile, so `.devcontainer/package-lock.json`, the Apple `container` CLI pin, gets update proposals. Gate contract 6 to 7. Not yet submitted: owed in an incubator amendment to control-register."
     }
   }
 }

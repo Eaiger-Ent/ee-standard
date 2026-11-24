@@ -568,3 +568,72 @@ def test_an_owed_gate_names_the_command_that_discharges_it(tmp_path: Path) -> No
 def test_a_gate_owed_nothing_names_no_command(tmp_path: Path) -> None:
     report = _report(tmp_path, {".pre-commit-config.yaml": _stamp(5)})
     assert "owed a run" not in render(report, REGISTER)
+
+
+# --- The Apple container launcher (ADR 0066) --------------------------------
+
+_LAUNCHER = "// the launcher\n"
+
+
+def _launcher_report(tmp_path: Path, files: dict[str, str], shipped: str | None) -> Report:
+    plugin = _plugin(tmp_path)
+    if shipped is not None:
+        template = plugin / "templates" / "devcontainer" / "bin" / "container-session.mjs"
+        template.parent.mkdir(parents=True)
+        template.write_text(shipped, encoding="utf-8")
+    repo = make_repo(tmp_path / "repo", files)
+    return build(repo, plugin, REGISTER)
+
+
+_DEVCONTAINER = {".devcontainer/devcontainer.json": "{}\n"}
+
+
+@pytest.mark.parametrize(
+    ("files", "state"),
+    [
+        ({**_DEVCONTAINER, ".devcontainer/bin/container-session.mjs": _LAUNCHER}, "CURRENT"),
+        ({**_DEVCONTAINER, ".devcontainer/bin/container-session.mjs": "// older\n"}, "DIFFERS"),
+        (_DEVCONTAINER, "ABSENT"),
+    ],
+)
+def test_the_launcher_is_compared_with_the_plugins_copy(
+    tmp_path: Path, files: dict[str, str], state: str
+) -> None:
+    report = _launcher_report(tmp_path, files, _LAUNCHER)
+    assert report.launcher is not None
+    assert report.launcher.state.value == state
+    assert f"{report.launcher.path}  {state}" in render(report, REGISTER)
+
+
+def test_a_launcher_that_differs_is_reported_and_owes_nothing(tmp_path: Path) -> None:
+    """Reported, never enforced (ADR 0038): it is not owed, not defective."""
+    files = {**_DEVCONTAINER, ".devcontainer/bin/container-session.mjs": "// older\n"}
+    report = _launcher_report(tmp_path, files, _LAUNCHER)
+    quiet = _launcher_report(tmp_path / "quiet", {"README.md": "#\n"}, _LAUNCHER)
+    assert [g.gate.name for g in report.owed] == [g.gate.name for g in quiet.owed]
+    assert report.defective == []
+
+
+@pytest.mark.parametrize(
+    ("files", "shipped"),
+    [
+        ({"README.md": "#\n"}, _LAUNCHER),
+        (_DEVCONTAINER, None),
+    ],
+    ids=["no devcontainer", "a plugin with no launcher"],
+)
+def test_nothing_is_said_when_there_is_nothing_to_compare(
+    tmp_path: Path, files: dict[str, str], shipped: str | None
+) -> None:
+    report = _launcher_report(tmp_path, files, shipped)
+    assert report.launcher is None
+    assert "Apple container launcher" not in render(report, REGISTER)
+
+
+def test_a_launcher_that_differs_does_not_change_the_exit_code(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    files = {**_DEVCONTAINER, ".devcontainer/bin/container-session.mjs": "// older\n"}
+    report = _launcher_report(tmp_path, files, _LAUNCHER)
+    assert _cli(Repo(tmp_path / "repo"), report.plugin) == 0
+    assert "DIFFERS" in capsys.readouterr().out
