@@ -27,7 +27,7 @@ import pytest
 from conftest import REPO_ROOT
 
 LAUNCHER = REPO_ROOT / ".devcontainer" / "bin" / "container-session.mjs"
-CLI = REPO_ROOT / "node_modules" / ".bin" / "devcontainer"
+CLI = REPO_ROOT / ".devcontainer" / "node_modules" / ".bin" / "devcontainer"
 
 NODE = shutil.which("node")
 
@@ -434,8 +434,9 @@ def _pin(root: Path, home: str, *, installed: bool) -> Path:
 
 @pytest.mark.parametrize("home", [".devcontainer", "."])
 def test_the_cli_is_found_under_either_pin(tmp_path: Path, home: str) -> None:
-    """ADR 0064 pins an adopter's CLI in `.devcontainer/`; ADR 0063 pins this
-    repository's in the root. The launcher serves both."""
+    """ADR 0066 pins the CLI in `.devcontainer/`, here and in every adopter. A
+    repository pinned at the root before that, as Phase 15's stand-ins were,
+    still resolves."""
     cli = _pin(tmp_path, home, installed=True)
     result = _resolve_cli(tmp_path)
     assert result.returncode == 0, result.stderr
@@ -464,9 +465,9 @@ def test_no_pin_at_all_is_refused(tmp_path: Path) -> None:
     assert "pins @devcontainers/cli" in result.stderr
 
 
-def test_this_repository_resolves_its_root_pin() -> None:
-    """Holds while `.devcontainer/` carries no pin of its own here, which is
-    ADR 0063's layout. A second pin in this repository would be refused."""
+def test_this_repository_resolves_its_devcontainer_pin() -> None:
+    """ADR 0066 moved this repository's pin from the root to `.devcontainer/`,
+    the layout the adopter template ships. A second pin here would be refused."""
     result = _resolve_cli(REPO_ROOT)
     assert result.returncode == 0, result.stderr
     assert Path(result.stdout.strip()) == CLI
@@ -477,9 +478,8 @@ def test_the_launcher_invokes_the_cli_the_lock_file_pins() -> None:
     owns, at an exact version no older than 0.90.0 (F1)."""
     source = LAUNCHER.read_text()
     assert '"node_modules", ".bin", "devcontainer"' in source
-    pinned = json.loads((REPO_ROOT / "package.json").read_text())["devDependencies"][
-        "@devcontainers/cli"
-    ]
+    manifest = json.loads((REPO_ROOT / ".devcontainer" / "package.json").read_text())
+    pinned = manifest["devDependencies"]["@devcontainers/cli"]
     assert pinned[0].isdigit(), f"@devcontainers/cli is {pinned!r}, not an exact version"
     major, minor = (int(part) for part in pinned.split(".")[:2])
     assert (major, minor) >= (0, 90), f"@devcontainers/cli {pinned} is below 0.90.0 (ADR 0063 F1)"

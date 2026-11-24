@@ -63,14 +63,14 @@ Nothing here is installed by any step below, and the first failure without it is
 | Tool | Install | You have it when |
 | --- | --- | --- |
 | Homebrew | <https://brew.sh> | `brew --version` |
-| Docker Desktop | <https://www.docker.com/products/docker-desktop/> | `docker info` succeeds |
+| A container runtime: Apple `container` or Docker Desktop | [`START-HERE.md`](../START-HERE.md) § A says which is for whom | `container system status` or `docker info` succeeds |
 | Claude Code | <https://docs.claude.com/en/docs/claude-code/setup> | `claude --version` |
 | node and npm | `brew install node` | `npm --version` |
-| `devcontainer` CLI | `npm i -g @devcontainers/cli` | `devcontainer --version` |
+| `devcontainer` CLI, for Docker only | `npm i -g @devcontainers/cli` | `devcontainer --version` |
 | GitHub CLI | `brew install gh`, then `gh auth login` | `gh auth status` |
 | VS Code | `brew install --cask visual-studio-code` | `code --version` |
 
-`git` and `curl` ship with macOS. Give Docker Desktop **8 GB** of memory
+`git` and `curl` ship with macOS. On Docker, give Docker Desktop **8 GB** of memory
 (Settings → Resources → Memory); the default is tight once a Python and a node
 toolchain are both installed.
 
@@ -552,19 +552,22 @@ declared.
 | --- | --- |
 | `claude setup-token`, and the Keychain entries | The Keychain is the host's, and this is what `fetch-secrets.sh` reads |
 | `fetch-secrets.sh` | It **is** `initializeCommand` — it runs before a container exists |
-| `devcontainer build` / `up` | There is no Docker in the container |
+| `devcontainer build` / `up`, or the Apple `container` launcher | There is no container runtime in the container |
 | Copying the template in | Nothing to copy it into until it is there |
 
 **Everything after that goes inside**: `uv`, `register-check`, every gate,
 `pre-commit`, the tests, and your commits.
 
-**Apple `container` is not an adopter's runtime yet.** This standard's own
-repository can run its devcontainer on Apple `container` for a terminal and
-Claude CLI session ([ADR 0063](adr/0063-apple-container-runs-what-the-cli-resolved.md)).
-The adopter template does not ship that launcher, so for an adopted repository
-the table above is complete. In the standard's repository the split is the same,
-with two more host steps: `npm ci`, which installs the pinned `devcontainer`
-CLI, and the launcher, which takes the place of `devcontainer up`.
+**Apple `container` is a first-class engine for an adopter too**
+([ADR 0066](adr/0066-apple-container-is-a-first-class-engine.md)). The
+adopter template ships the launcher, `.devcontainer/bin/container-session.mjs`,
+and pins the `devcontainer` CLI it runs in `.devcontainer/package.json`. On
+Apple `container` the split is the same, with two more host steps:
+`npm ci --prefix .devcontainer`, which installs the pinned CLI, and the
+launcher, which takes the place of `devcontainer up`. This standard's own
+repository pins it in the same place, and the register names that lock file in
+`tools.devcontainer-cli`, so a repository without it fails
+`tool_versions_match_register`.
 [`06-devcontainer-setup.md`](06-devcontainer-setup.md) § 1 covers its host
 limits and how you know it worked.
 
@@ -2341,6 +2344,60 @@ The alternative — putting the token in Dependabot's own secret store — makes
 those runs complete rather than tolerated, and is the wrong trade here: a
 standing credential readable by a run that checks out a bot's dependency change
 is a wider blast radius than the one control it settles.
+
+#### Renewing it
+
+The token expires, and that is the point: SEC-003 fails one that may live longer
+than `max_lifetime_hours` allows. **Nothing warns you before it expires.**
+SEC-003 checks how long the token is allowed to live, not how long it has left.
+So set a reminder for a week before the expiry date when you issue it, and
+again each time you renew it.
+
+**What expiry looks like.** Every run that carries the secret reports each
+remote block `UNCLASSIFIED` with the same reason:
+
+```text
+? remote: github_push_protection_enabled — the token was rejected for
+  /repos/<owner>/<repo> (401) — it is invalid or expired; this is a token to
+  fix rather than one to supply
+```
+
+With `--require-complete` that fails the run, so from that day every pull
+request and every push to the default branch fails on controls that still hold.
+Fork and Dependabot runs keep passing, because they never carried the secret.
+Do not read their green as the token working.
+
+**To renew it:**
+
+1. On the token's page, **Regenerate token**, or make a new one with the same
+   fields. It is scoped to this one repository, with `Administration: read`
+   and nothing else, and expires within your policy.
+2. Update the secret **straight away**. Regenerating stops the old value working
+   at once, so every run fails until the secret holds the new one:
+
+   ```bash
+   gh secret set PLATFORM_READ_TOKEN --env conformance --repo <owner>/<repo>
+   ```
+
+   It prompts for the value rather than taking it as an argument, so the token
+   never lands in your shell history. Drop `--env conformance` if you hold it as
+   a repository secret, as this repository does (`docs/04-build-plan.md` § The
+   one place this repository does not do what it asks of everyone else).
+3. Check that it was stored, and that it works:
+
+   ```bash
+   gh secret list --env conformance --repo <owner>/<repo>   # updated today
+   gh run rerun <run-id> --failed --repo <owner>/<repo>
+   ```
+
+   The re-run should report `0 unclassified`. A run that still reports the
+   401 is still carrying the old value.
+
+**Renewing a token on GitHub does not update anything that holds a copy of it.**
+This repository found that on 2026-11-23: the token had been renewed, the
+secret still held the 2026-08-24 value, and every run since 2026-11-22 had
+failed. A token kept in your Keychain for the devcontainer is a different
+credential from this one. Renewing that one changes nothing here.
 
 #### What none of this checks
 

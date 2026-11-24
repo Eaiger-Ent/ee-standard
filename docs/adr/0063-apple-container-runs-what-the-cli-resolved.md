@@ -185,7 +185,7 @@ not precede it.
 **Amended 2026-11-09: the scope paragraph above is overtaken.** The decision
 stands: the launcher, its refusal rule, the CLI pin and the parent mount are
 unchanged. What changed is that this repository was the proof and not the
-destination. [ADR 0064](0064-an-adopter-may-run-its-devcontainer-on-apple-container.md)
+destination. [ADR 0064](archive/0064-an-adopter-may-run-its-devcontainer-on-apple-container.md)
 takes the separate decision this paragraph reserved, and offers the route to
 every adopter once its release criteria are met.
 
@@ -272,4 +272,4 @@ later ADR without the rest falling. The `nproc` reading remains unexplained.
 | Rev | Date | What changed | Ratified by |
 | --- | --- | --- | --- |
 | 1 | 2026-11-08 | Original decision: Apple `container` as a second runtime for this repository, through a host launcher that maps the `devcontainer` CLI's resolved output to `container` flags. | Nathan Carney |
-| 2 | 2026-11-09 | The **Scope: this repository only** paragraph is overtaken by [ADR 0064](0064-an-adopter-may-run-its-devcontainer-on-apple-container.md). The launcher, refusal rule, CLI pin and parent mount are unchanged. | Nathan Carney |
+| 2 | 2026-11-09 | The **Scope: this repository only** paragraph is overtaken by [ADR 0064](archive/0064-an-adopter-may-run-its-devcontainer-on-apple-container.md). The launcher, refusal rule, CLI pin and parent mount are unchanged. | Nathan Carney |

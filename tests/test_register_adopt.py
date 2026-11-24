@@ -158,6 +158,7 @@ def _fill(text: str, register: Register, gate: str, **extra: str) -> str:
         "<<CHECKER_INVOCATION>>": register.tools["register-check"].invocation or "",
         "<<ECOSYSTEM>>": "python",
         "<<ECOSYSTEM_SPELLING>>": ecosystem.dependabot[0],
+        "<<DIRECTORY>>": "/",
         "<<FROZEN_INSTALL>>": ecosystem.frozen_install_command["uv.lock"],
         "<<STACK>>": "python",
         "<<SOURCE_PATTERN>>": r"\.pyi?$",

@@ -10,3 +10,7 @@
 # failed quietly, later, in someone else's clone.
 .env
 .env.docker
+
+# The devcontainer CLI that the Apple container route installs with `npm ci`.
+# package-lock.json pins it, so the installed copy is never committed.
+node_modules/

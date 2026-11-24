@@ -108,12 +108,18 @@ installed() {
 }
 
 # VS Code's Dev Containers sets REMOTE_CONTAINERS and Codespaces sets
-# CODESPACES; /.dockerenv catches a container started any other way.
+# CODESPACES; /.dockerenv catches a Docker container started any other way.
+# Apple `container` sets none of the three. Its runtime boots each container's
+# VM with its own init, and the kernel's boot line names it, however the
+# container was started (docs/21-phase-15-runbook.md, Run D).
 inside_container() {
   if [ -f /.dockerenv ]; then
     return 0
   fi
   if [ -n "${REMOTE_CONTAINERS:-}" ] || [ -n "${CODESPACES:-}" ]; then
+    return 0
+  fi
+  if grep -q 'init=/sbin/vminitd' /proc/cmdline 2>/dev/null; then
     return 0
   fi
   return 1
@@ -135,6 +141,14 @@ project_prefix() {
 # rather than two that could stop matching.
 # shellcheck disable=SC2034  # read by the scripts that source this file
 PAT_MISSING="no GitHub PAT in the Keychain"
+
+# The words 00-tools.sh reports a running container runtime with. guided.sh
+# reads them back to ask which runtime to use, so they are one string here
+# rather than two that could stop matching (ADR 0065).
+# shellcheck disable=SC2034  # read by the scripts that source this file
+RUNTIME_APPLE="Apple container answers"
+# shellcheck disable=SC2034  # read by the scripts that source this file
+RUNTIME_DOCKER="Docker answers"
 
 # A stage reads the repository you are standing in, so the command to re-run it
 # is two lines, not one. Printing only the second sent a reader to

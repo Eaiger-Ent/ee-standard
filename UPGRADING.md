@@ -106,6 +106,52 @@ which checker you get.
 grep -A2 '^    install:' controls.yaml
 ```
 
+### Moving past register contract 38: the Apple `container` files
+
+Register contract 39 makes Apple `container` a first-class container engine
+([ADR 0066](docs/adr/0066-apple-container-is-a-first-class-engine.md)). Its register
+pins the `devcontainer` CLI the engine runs, in
+`tools.devcontainer-cli`, by `.devcontainer/package-lock.json`. A repository
+without that file fails `tool_versions_match_register` in step 6. So if your
+diff in step 2 adds `devcontainer-cli`, add the files the template now carries.
+This applies whichever engine you run: adding them changes nothing on Docker.
+
+Copy them from the tag you are moving to, in the shell where step 2 set `$base`
+and `$new`. The first line stops if you already have a `.devcontainer/package.json`,
+because that file is yours and this step must not overwrite it. Merge the
+`@devcontainers/cli` pin into it by hand instead:
+
+```bash
+[ ! -e .devcontainer/package.json ] || { echo ".devcontainer/package.json exists: merge by hand"; false; }
+tmpl="$base/$new/plugins/control-register/templates/devcontainer"
+mkdir -p .devcontainer/bin
+curl -fsSL "$tmpl/bin/container-session.mjs" -o .devcontainer/bin/container-session.mjs
+curl -fsSL "$tmpl/package.json" -o .devcontainer/package.json
+curl -fsSL "$tmpl/package-lock.json" -o .devcontainer/package-lock.json
+grep -qx 'node_modules/' .devcontainer/.gitignore || printf '\n# The pinned devcontainer CLI, installed by npm ci.\nnode_modules/\n' >> .devcontainer/.gitignore
+git add .devcontainer/bin/container-session.mjs .devcontainer/package.json .devcontainer/package-lock.json .devcontainer/.gitignore
+```
+
+To run on Apple `container` as well, also give the container a resource floor.
+The template's `runArgs` now ends `"--cpus", "4", "--memory", "4g"`. Without
+those flags an Apple container gets 1 GiB. Add the same four values to your
+`runArgs`. Then, **on the Mac rather than in the container**, start a session as
+[`docs/06-devcontainer-setup.md`](docs/06-devcontainer-setup.md) § 1 does:
+
+```bash
+container system start
+npm ci --prefix .devcontainer --no-audit --no-fund
+node .devcontainer/bin/container-session.mjs up
+```
+
+If the launcher **refuses**, it names the `devcontainer.json` setting it cannot
+reproduce. Stay on Docker and keep the refusal: it is the record of why. The
+files you added still satisfy contract 39.
+
+**Done when** `git status --short .devcontainer` lists the files above and
+nothing else, and, if you ran the launcher, `up` ended with `check-auth.sh`'s
+table, every line ✓. Step 6 confirms the register agrees.
+
 ## 4 — Move the checker
 
 In Claude Code:
@@ -187,7 +233,10 @@ again with the credential your laptop does not hold. That run is the verdict.
 ## What an upgrade does not touch
 
 - **Your devcontainer.** The template was copied once, at adoption, and is yours
-  now; `gate-build` pins it but never re-copies it. To take a template change,
+  now; `gate-build` pins it but never re-copies it. The one exception is the
+  Apple `container` files in step 3, which register contract 39 requires and you
+  copy by hand. `register-check deployments` says whether your launcher is
+  still the plugin's copy. To take a template change,
   compare `plugins/control-register/templates/devcontainer/` between the two
   tags and apply it by hand.
 - **Decisions you recorded.** Your `deployment-decisions.yaml` entries stay as

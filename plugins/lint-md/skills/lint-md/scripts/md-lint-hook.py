@@ -81,13 +81,17 @@ def main() -> int:
     findings = (result.stdout + result.stderr).strip()
 
     if result.returncode != 0:
+        # Exit 2 with the text on stderr: for a PostToolUse hook that is the only
+        # combination Claude Code shows the model. stdout with exit 1 reached the
+        # transcript and nobody else, so this STOP was never read (#1275).
         print(
             f"\n\n⚠ STOP: markdownlint [{target.name}] has unfixable errors — "
             f"do not proceed until resolved.\n"
             f"Fix each issue listed below by editing {target}, then re-save:\n\n"
-            f"{findings}\n"
+            f"{findings}\n",
+            file=sys.stderr,
         )
-        return 1
+        return 2
 
     print(f"markdownlint [{target.name}]: OK")
     return 0
