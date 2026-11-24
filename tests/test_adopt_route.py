@@ -345,6 +345,7 @@ def test_the_guided_substitution_matches_the_template_it_substitutes() -> None:
 #: holding a second copy, so each must still be the one the guide gives.
 HANDOVER_COMMANDS = (
     "devcontainer exec --workspace-folder . bash",
+    "node .devcontainer/bin/container-session.mjs shell",
     "claude plugin marketplace add Eaiger-Ent/ee-standard",
     "claude plugin install control-register@ee-standard",
     "claude plugin install lint-md@ee-standard",

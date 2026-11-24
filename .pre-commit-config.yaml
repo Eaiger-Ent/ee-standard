@@ -84,7 +84,7 @@ repos:
         language: system
         pass_filenames: false
         types: [python]
-      # ee-control: SUP-003  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
+      # ee-control: SUP-003  ee-skill: gate-supply-chain@0.5.1  gate-contract: 7  register: v0.32.0  register-contract: 39
       #
       # SUP-003's pre-commit locus, which was declared from Phase 0 and wired by
       # nothing until contract 14. The gate is the checker itself: no
@@ -176,8 +176,8 @@ repos:
         always_run: true
         stages: [pre-push]
 
-      # ee-control: SUP-001  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
-      # ee-control: SUP-002  ee-skill: gate-supply-chain@0.1.0  gate-contract: 6  register: v0.29.0  register-contract: 35
+      # ee-control: SUP-001  ee-skill: gate-supply-chain@0.5.1  gate-contract: 7  register: v0.32.0  register-contract: 39
+      # ee-control: SUP-002  ee-skill: gate-supply-chain@0.5.1  gate-contract: 7  register: v0.32.0  register-contract: 39
       #
       # Hand-written, not deployed, as the hook above it is and for the same
       # reason: the gate's template carries this block and the gate was not
