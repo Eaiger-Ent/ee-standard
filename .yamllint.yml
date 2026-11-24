@@ -2,9 +2,10 @@
 # passes it with `-c`, and the pre-commit hook and the CI step find it in the
 # repository root.
 #
-# Deployed by `lint-yaml` 0.1.16 on 2026-10-31, then two values changed by
-# hand, each marked below. `lint-yaml` writes no provenance stamp, and YML-001
-# reads none, so nothing here claims the run beyond this line.
+# Deployed by `lint-yaml` 0.1.22 on 2026-11-23, then one rule added by hand,
+# marked below. 0.1.22 ships `line-length.max: 200`, so the other hand change
+# 0.1.16 needed is now the skill's own output. `lint-yaml` writes no provenance
+# stamp, and YML-001 reads none, so nothing here claims the run beyond this line.
 extends: default
 
 # Not linted: what the repository does not author (a virtualenv, node_modules).
@@ -12,9 +13,6 @@ extends: default
 ignore-from-file: .gitignore
 
 rules:
-  # Changed from the skill's 120. This repository's register and workflows
-  # carry pinned digests, URLs and provenance stamps, each a single token that
-  # cannot be wrapped. Measured at 120: 46 findings.
   line-length:
     max: 200
   # The correctness floor, stated at error rather than inherited: `default` sets `truthy`
@@ -27,7 +25,7 @@ rules:
     level: error
   comments:
     min-spaces-from-content: 1
-  # Added; the skill leaves `default`'s warning on. No file here opens with
+  # Added by hand; the skill leaves `default`'s warning on. No file here opens with
   # `---`, and a gate template must not: its payload is spliced into a file that
   # already has its own start. Measured with it on: 39 warnings.
   document-start: disable

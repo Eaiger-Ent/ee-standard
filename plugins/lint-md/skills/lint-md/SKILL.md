@@ -92,6 +92,10 @@ Verify:
 If the install fails (non-zero exit or `command not found`), stop and show the user the
 exact error output. Do not proceed.
 
+Then read `${CLAUDE_SKILL_DIR}/audit.md` and follow it: `markdownlint-cli2` pins
+`markdownlint` exactly, so a fix to a transitive dependency does not reach the project
+until it re-releases, and `npm audit fix` can only offer a downgrade.
+
 ### Step 1b — DevContainer setup.sh
 
 If `DEVCONTAINER_STATE` is `EXISTS`: read `.devcontainer/setup.sh` and check whether
