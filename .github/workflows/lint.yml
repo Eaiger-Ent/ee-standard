@@ -1,7 +1,7 @@
-# ee-control: DOC-001  ee-skill: lint-md@1.0.9  register: v0.29.0  register-contract: 35
+# ee-control: DOC-001  ee-skill: lint-md@1.0.26  register: v0.32.0  register-contract: 38
 #
-# Deployed artefact — DOC-001's ci locus. Reconciled by the `lint-md` 1.0.9 run
-# on 2026-08-28, which detected the step and skipped it. Two hand-edits remain
+# Deployed artefact — DOC-001's ci locus. Reconciled by the `lint-md` 1.0.26 run
+# on 2026-11-23, which detected the step and skipped it. Two hand-edits remain
 # and both are narrowings the skill would not revert now: the checkout action is
 # pinned to a newer commit SHA than the template's (SUP-003), and `npm ci`
 # carries --no-audit --no-fund. The invocation is no longer among them — the
