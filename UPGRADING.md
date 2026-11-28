@@ -152,6 +152,33 @@ files you added still satisfy contract 39.
 nothing else, and, if you ran the launcher, `up` ended with `check-auth.sh`'s
 table, every line ✓. Step 6 confirms the register agrees.
 
+### Moving past register contract 39: an update entry per lockfile directory
+
+Register contract 40 makes SUP-002 require a Dependabot entry for **every
+directory holding a tracked lockfile**, not one entry per ecosystem anywhere.
+The case it was found on is yours if you took contract 39's step above:
+`.devcontainer/package-lock.json` sits outside the root, and an `npm` entry at
+`/`, or none, proposes it nothing. Step 6 fails it as *no update entry for: node
+at /.devcontainer*.
+
+Step 5 re-runs `/gate-supply-chain`, which writes the entry. To add it by hand
+instead, append to `.github/dependabot.yml`:
+
+```yaml
+  - package-ecosystem: npm
+    directory: /.devcontainer
+    schedule:
+      interval: weekly
+```
+
+A lockfile nothing should update, such as a test fixture's, goes in SUP-002's
+`exclude_directories:` as a Dependabot `directories` glob. That is a loosening,
+recorded in your register where a reviewer sees it. A Renovate configuration
+that covers every ecosystem is unaffected: Renovate finds nested lockfiles
+itself.
+
+**Done when** `uv run register-check run --control SUP-002` passes.
+
 ## 4 — Move the checker
 
 In Claude Code:

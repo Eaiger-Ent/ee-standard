@@ -294,6 +294,10 @@ def _deploy_all(root: Path, register: Register) -> None:
         "    schedule:\n      interval: weekly\n"
         "  - package-ecosystem: devcontainers\n    directory: /\n"
         "    schedule:\n      interval: weekly\n"
+        # One entry per lockfile directory, as the skill's Step 2 writes, from
+        # register contract 40 required: the template's launcher pin (#345).
+        "  - package-ecosystem: npm\n    directory: /.devcontainer\n"
+        "    schedule:\n      interval: weekly\n"
     )
     (root / ".github/dependabot.yml").write_text(dependabot, encoding="utf-8")
     _hooks(

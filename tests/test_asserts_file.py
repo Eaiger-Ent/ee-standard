@@ -6,6 +6,8 @@ import json
 from collections.abc import Mapping
 from pathlib import Path
 
+import pytest
+
 from conftest import a_register, make_repo
 from register_check.asserts_file import (
     dependency_update_config_covers_all_ecosystems,
@@ -16,6 +18,7 @@ from register_check.asserts_file import (
     precommit_hook_present,
     secret_files_are_gitignored,
 )
+from register_check.repo import Repo
 
 _DIGEST = "sha256:" + "a" * 64
 
@@ -74,6 +77,117 @@ def test_dependency_update_config_coverage(tmp_path: Path) -> None:
     result = dependency_update_config_covers_all_ecosystems(partial, a_register(), {})
     assert not result.passed
     assert "python" in result.message
+
+
+def _lockfiles_in_two_directories(root: Path, entries: str) -> Repo:
+    """The adopter's shape: a Python root, and the launcher's npm pin beneath it."""
+    return make_repo(
+        root,
+        {
+            "pyproject.toml": "[project]\n",
+            "uv.lock": "# lock\n",
+            ".devcontainer/package-lock.json": "{}\n",
+            ".github/dependabot.yml": "version: 2\nupdates:\n" + entries,
+        },
+    )
+
+
+_UV_AT_ROOT = "  - package-ecosystem: uv\n    directory: /\n"
+
+
+def test_a_lockfile_outside_the_root_needs_an_entry_of_its_own(tmp_path: Path) -> None:
+    """#345: an npm entry at `/` passed, and nothing proposed the launcher's pin."""
+    at_root = _lockfiles_in_two_directories(
+        tmp_path / "a", _UV_AT_ROOT + "  - package-ecosystem: npm\n    directory: /\n"
+    )
+    result = dependency_update_config_covers_all_ecosystems(at_root, a_register(), {})
+    assert not result.passed
+    assert "node at /.devcontainer" in result.message
+
+    wrong_ecosystem = _lockfiles_in_two_directories(
+        tmp_path / "b", _UV_AT_ROOT + "  - package-ecosystem: uv\n    directory: /.devcontainer\n"
+    )
+    assert not dependency_update_config_covers_all_ecosystems(
+        wrong_ecosystem, a_register(), {}
+    ).passed
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        "    directory: /.devcontainer\n",
+        "    directory: .devcontainer/\n",
+        "    directories: [/, /.devcontainer]\n",
+        '    directories: ["/*"]\n',
+        '    directories: ["/**"]\n',
+    ],
+)
+def test_each_spelling_dependabot_accepts_covers_the_directory(tmp_path: Path, entry: str) -> None:
+    repo = _lockfiles_in_two_directories(
+        tmp_path / "r", _UV_AT_ROOT + "  - package-ecosystem: npm\n" + entry
+    )
+    result = dependency_update_config_covers_all_ecosystems(repo, a_register(), {})
+    assert result.passed, result.message
+
+
+def test_a_star_stays_in_one_directory(tmp_path: Path) -> None:
+    repo = make_repo(
+        tmp_path / "r",
+        {
+            "pyproject.toml": "[project]\n",
+            "uv.lock": "# lock\n",
+            "apps/web/package-lock.json": "{}\n",
+            ".github/dependabot.yml": (
+                "version: 2\nupdates:\n"
+                + _UV_AT_ROOT
+                + '  - package-ecosystem: npm\n    directories: ["/*"]\n'
+            ),
+        },
+    )
+    result = dependency_update_config_covers_all_ecosystems(repo, a_register(), {})
+    assert not result.passed
+    assert "node at /apps/web" in result.message
+
+
+def test_an_excluded_directory_is_not_required(tmp_path: Path) -> None:
+    """A fixture's lockfile is not a dependency anyone ships; the register says so."""
+    repo = make_repo(
+        tmp_path / "r",
+        {
+            "pyproject.toml": "[project]\n",
+            "uv.lock": "# lock\n",
+            "tests/fixtures/app/uv.lock": "# lock\n",
+            ".github/dependabot.yml": "version: 2\nupdates:\n" + _UV_AT_ROOT,
+        },
+    )
+    assert not dependency_update_config_covers_all_ecosystems(repo, a_register(), {}).passed
+    excluded = {"exclude_directories": ["/tests/fixtures/**"]}
+    result = dependency_update_config_covers_all_ecosystems(repo, a_register(), excluded)
+    assert result.passed, result.message
+
+
+def test_an_untracked_lockfile_asks_for_no_entry(tmp_path: Path) -> None:
+    repo = make_repo(
+        tmp_path / "r",
+        {
+            "pyproject.toml": "[project]\n",
+            "uv.lock": "# lock\n",
+            ".github/dependabot.yml": "version: 2\nupdates:\n" + _UV_AT_ROOT,
+        },
+    )
+    (repo.root / "scratch").mkdir()
+    (repo.root / "scratch/package-lock.json").write_text("{}\n", encoding="utf-8")
+    assert dependency_update_config_covers_all_ecosystems(repo, a_register(), {}).passed
+
+
+def test_the_register_passes_its_exclusions_to_the_assert() -> None:
+    sup_002 = next(c for c in a_register().controls if c.id == "SUP-002")
+    block = next(
+        b
+        for b in sup_002.verify
+        if b.assert_name == "dependency_update_config_covers_all_ecosystems"
+    )
+    assert block.args.get("exclude_directories") == []
 
 
 def test_renovate_narrowed_to_custom_managers_is_not_blanket_coverage(tmp_path: Path) -> None:
