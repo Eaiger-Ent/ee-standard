@@ -168,6 +168,9 @@ def test_a_lockfile_failure_names_the_control_that_wants_the_tool() -> None:
     assert _who_needs("not-a-tool-any-control-names", register) == "", (
         "a tool no control names should add nothing rather than guess"
     )
+    # A tool the register pins and no control names still says where to look.
+    said = _who_needs("devcontainer-cli", register)
+    assert "tools.devcontainer-cli" in said, "the launcher's pin names no fix (#345)"
 
 
 def test_the_header_is_true_in_an_adopters_repository() -> None:

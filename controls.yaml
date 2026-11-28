@@ -384,7 +384,15 @@ meta:
   #     this contract takes the launcher files with it: UPGRADING.md's Apple
   #     `container` step is what this contract requires, not an option beside
   #     it. No control's `rung`, `verify` or `applies_to` changes.
-  register_contract: 39
+  # 40: SUP-002 requires a Dependabot entry for every directory holding a
+  #     tracked lockfile, not one per ecosystem anywhere (#345). A repository
+  #     with `.devcontainer/package-lock.json` and an npm entry only at `/`, or
+  #     none, now fails; `gate-supply-chain` has written the entry since its
+  #     contract 7, so re-running it is the fix. The verify block gains
+  #     `exclude_directories`, which a skill reading the register must honour.
+  #     Renovate configs that cover every ecosystem are unaffected: Renovate
+  #     finds nested package files itself.
+  register_contract: 40
 
 # ---------------------------------------------------------------------------
 # Stack predicates. A control whose `applies_to` names a predicate that this
@@ -1446,8 +1454,16 @@ controls:
     locus: [pre-push, ci]
     applies_to: [always]
     verify:
+      # Every directory holding a tracked lockfile needs an entry for its
+      # ecosystem, from contract 40 (#345). Dependabot reads one directory per
+      # entry, so a pin outside the root — `.devcontainer/package-lock.json`,
+      # the CLI the Apple `container` launcher runs (ADR 0066) — passed with
+      # nothing proposing it an update. `exclude_directories` takes Dependabot
+      # `directories` globs, for a lockfile nothing should update, such as a
+      # test fixture. An exclusion is a loosening, and reads as one in review.
       - kind: file
         assert: dependency_update_config_covers_all_ecosystems
+        args: {exclude_directories: []}
       - kind: file
         assert: gate_wired_at_declared_loci
         args: {tool: register-check}

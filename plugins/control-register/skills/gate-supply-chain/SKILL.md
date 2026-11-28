@@ -229,6 +229,10 @@ from that ecosystem's `ECOSYSTEM_SPELLING` and the directory as `<<DIRECTORY>>`.
 Dependabot reads one directory per entry, so an npm entry at `/` proposes
 nothing for `.devcontainer/package-lock.json`. That lockfile pins the CLI the
 Apple `container` launcher runs (ADR 0066), and until contract 7 nothing moved it.
+From register contract 40 SUP-002 fails a lockfile directory with no entry. Skip
+only a directory matching a glob in SUP-002's
+`dependency_update_config_covers_all_ecosystems` block, `args.exclude_directories`,
+and say which you skipped: the register decided those, not this skill.
 
 **Lockfiles that must move together share one entry.** When two directories of
 one ecosystem pin the same package and the repository holds them identical (a

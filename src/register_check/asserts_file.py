@@ -58,7 +58,6 @@ def substitute_package(pattern: str, package: str) -> str:
     return pattern.replace(PACKAGE_PLACEHOLDER, re.escape(package))
 
 
-
 def _ok(message: str) -> AssertResult:
     return AssertResult(True, message)
 
@@ -267,7 +266,7 @@ def _renovate_covers_ecosystems(config: object) -> bool:
 
 
 def dependency_update_config_covers_all_ecosystems(
-    repo: Repo, register: Register, _args: Mapping[str, object]
+    repo: Repo, register: Register, args: Mapping[str, object]
 ) -> AssertResult:
     renovate = next((p for p in _RENOVATE_CONFIGS if repo.exists(p)), None)
     if renovate is not None:
@@ -295,11 +294,8 @@ def dependency_update_config_covers_all_ecosystems(
     config = yaml.safe_load(repo.read(dependabot))
     if not isinstance(config, dict):
         return _fail(f"{dependabot} is not a mapping")
-    covered = {
-        str(update.get("package-ecosystem", ""))
-        for update in config.get("updates") or []
-        if isinstance(update, dict)
-    }
+    updates = [u for u in config.get("updates") or [] if isinstance(u, dict)]
+    covered = {str(update.get("package-ecosystem", "")) for update in updates}
     missing = [
         name
         for name, spellings in _required_update_ecosystems(repo, register).items()
@@ -307,7 +303,70 @@ def dependency_update_config_covers_all_ecosystems(
     ]
     if missing:
         return _fail(f"{dependabot} does not cover: {', '.join(missing)}")
-    return _ok(f"{dependabot} covers every ecosystem present")
+    excluded = [str(glob) for glob in _as_list(args.get("exclude_directories"))]
+    uncovered = [
+        f"{name} at {directory}"
+        for name, directory in _lockfile_directories(repo, register)
+        if not any(_dependabot_pattern_matches(g, directory) for g in excluded)
+        and not _directory_covered(updates, register.ecosystems[name].dependabot, directory)
+    ]
+    if uncovered:
+        return _fail(
+            f"{dependabot} has no update entry for: {', '.join(uncovered)}. Dependabot "
+            "reads one directory per entry, so a lockfile it is not pointed at is never "
+            "proposed an update"
+        )
+    return _ok(f"{dependabot} covers every ecosystem present, in every lockfile directory")
+
+
+def _as_list(value: object) -> list[object]:
+    if value is None:
+        return []
+    return list(value) if isinstance(value, (list, tuple)) else [value]
+
+
+def _lockfile_directories(repo: Repo, register: Register) -> list[tuple[str, str]]:
+    """Every (ecosystem, directory) holding a tracked lockfile, at any depth.
+
+    Which files are lockfiles is the register's (`ecosystems.<name>.lockfiles`).
+    A lockfile spelled with a directory of its own, as Gradle's
+    `gradle/verification-metadata.xml` is, belongs to the project above it.
+    """
+    found: set[tuple[str, str]] = set()
+    for path in repo.tracked:
+        for name, ecosystem in register.ecosystems.items():
+            for lockfile in ecosystem.lockfiles:
+                if path == lockfile or path.endswith("/" + lockfile):
+                    found.add((name, _normalise_directory(path[: -len(lockfile)])))
+    return sorted(found)
+
+
+def _normalise_directory(directory: str) -> str:
+    """`/`, `.devcontainer`, `/.devcontainer/` and `./.devcontainer` as one spelling."""
+    trimmed = directory.strip()
+    if trimmed == "." or trimmed.startswith("./"):
+        trimmed = trimmed[1:]
+    return "/" + trimmed.strip("/")
+
+
+def _dependabot_pattern_matches(pattern: str, directory: str) -> bool:
+    """A Dependabot `directories` glob, where `*` stays in one segment and `**` does not."""
+    regex = re.escape(_normalise_directory(pattern))
+    regex = regex.replace(r"/\*\*", "(?:/.*)?").replace(r"\*\*", ".*")
+    regex = regex.replace(r"\*", "[^/]*").replace(r"\?", "[^/]")
+    return re.fullmatch(regex, directory) is not None
+
+
+def _directory_covered(
+    updates: list[dict[object, object]], spellings: tuple[str, ...], directory: str
+) -> bool:
+    for update in updates:
+        if str(update.get("package-ecosystem", "")) not in spellings:
+            continue
+        patterns = [*_as_list(update.get("directory")), *_as_list(update.get("directories"))]
+        if any(_dependabot_pattern_matches(str(p), directory) for p in patterns):
+            return True
+    return False
 
 
 def _feature_id(reference: str) -> str:
@@ -543,7 +602,17 @@ def _who_needs(tool: str, register: Register) -> str:
                     f"deployed {control.id} yet, this is that rather than a "
                     "supply-chain defect"
                 )
-    return ""
+    # No control's verify block names it, but the register pins it, as it pins
+    # `devcontainer-cli` for the Apple `container` launcher. The entry's comment
+    # is where the reason lives, so point there (#345). A name the register does
+    # not pin gets nothing: a pointer to an entry that is not there is a guess.
+    if tool not in register.tools:
+        return ""
+    return (
+        f" — no control names {tool}; the register pins it under `tools.{tool}`, "
+        "and the comment there says which files a repository at this contract "
+        "must carry"
+    )
 
 
 def tool_versions_match_register(
@@ -980,4 +1049,3 @@ FILE_ASSERTS: dict[str, AssertFn] = {
     "stack_tool_pinned_in_lockfile": stack_tool_pinned_in_lockfile,
     "secret_files_are_gitignored": secret_files_are_gitignored,
 }
-

@@ -474,7 +474,9 @@ def test_the_command_fails_over_a_record_the_inventory_has_moved_past(
                 "  - skill: lint-md\n"
                 '    version: "1.0.7"\n'
                 "    reason: writes what this register forbids\n"
-                "    review_by: 2026-11-27\n"
+                # Far off: this test is about the inventory, and a date that
+                # passes turns it into a test of expiry (it did, 2026-11-28).
+                "    review_by: 2099-01-01\n"
             ),
         },
     )
